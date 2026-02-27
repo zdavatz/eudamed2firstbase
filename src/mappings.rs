@@ -33,6 +33,7 @@ pub fn country_alpha2_to_numeric(code: &str) -> &str {
         "SK" => "703",
         "CH" => "756",
         "TR" => "792",
+        "XI" => "826", // Northern Ireland (UK)
         other => {
             eprintln!("Warning: unknown country code '{}', passing through", other);
             other
@@ -58,8 +59,8 @@ pub fn risk_class_to_gs1(code: &str) -> &str {
 /// Device status: EUDAMED → GS1
 pub fn device_status_to_gs1(code: &str) -> &str {
     match code {
-        "ON_THE_MARKET" => "ON_MARKET",
-        "NO_LONGER_PLACED_ON_THE_MARKET" => "NO_LONGER_PLACED_ON_MARKET",
+        "ON_THE_MARKET" | "ON_MARKET" => "ON_MARKET",
+        "NO_LONGER_PLACED_ON_THE_MARKET" | "NO_LONGER_ON_THE_MARKET" => "NO_LONGER_PLACED_ON_MARKET",
         "NOT_INTENDED_FOR_EU_MARKET" => "NOT_INTENDED_FOR_EU_MARKET",
         other => other,
     }
