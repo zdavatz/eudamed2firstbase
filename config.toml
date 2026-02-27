@@ -1,0 +1,19 @@
+sterilisation_method = "OZONE"
+
+[provider]
+gln = "7612345000435"
+party_name = "UDI manufacturer POC/MVP"
+
+[target_market]
+country_code = "097"
+
+[gpc]
+segment_code = "51000000"
+class_code = "51150100"
+family_code = "51150000"
+category_code = "10005844"
+category_name = "Medical Devices"
+
+[endocrine_substances.Estradiol]
+ec_number = "200-023-8"
+cas_number = "50-28-2"
