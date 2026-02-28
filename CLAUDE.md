@@ -27,7 +27,7 @@ No tests yet. Validate output by diffing `json/firstbase_28.02.2026.json` agains
 - **transform_detail.rs**: API detail -> firstbase conversion. Richest output with clinical data, market info, IFU URLs. Can merge listing data for manufacturer/AR SRN and risk class.
 - **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet.
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, sterilisation method, and endocrine substance identifier lookups.
-- **download.sh**: Unified download + convert script. Usage: `./download.sh --N`. Downloads listing, extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), converts to firstbase JSON.
+- **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [--N]`. Downloads listing (with optional client-side SRN filtering), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), converts to firstbase JSON.
 
 ## Key Design Decisions
 

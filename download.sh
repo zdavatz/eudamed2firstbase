@@ -1,21 +1,39 @@
 #!/bin/bash
 # Download EUDAMED devices (listing + details) and convert to firstbase JSON
-# Usage: ./download.sh --10    # download first 10 products
-#        ./download.sh --100   # download first 100 products
-#        ./download.sh --5000  # download first 5000 products
+# Usage: ./download.sh --10                            # download first 10 products
+#        ./download.sh --100                           # download first 100 products
+#        ./download.sh --srn CH-MF-000023141           # all products for this manufacturer SRN
+#        ./download.sh --srn CH-MF-000023141 --50      # first 50 products for this SRN
 set -euo pipefail
 
-# Parse --N argument
+# Parse arguments
 TOTAL=""
-for arg in "$@"; do
-    if [[ "$arg" =~ ^--([0-9]+)$ ]]; then
-        TOTAL="${BASH_REMATCH[1]}"
-    fi
+SRN=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --srn)
+            SRN="$2"
+            shift 2
+            ;;
+        --[0-9]*)
+            TOTAL="${1#--}"
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
 done
 
-if [[ -z "$TOTAL" ]]; then
-    echo "Usage: $0 --N"
-    echo "  N = number of products to download (e.g. --10, --100, --5000)"
+if [[ -z "$TOTAL" && -z "$SRN" ]]; then
+    echo "Usage: $0 [--N] [--srn <SRN>]"
+    echo "  --N              Number of products to download (e.g. --10, --100, --5000)"
+    echo "  --srn <SRN>      Download all products for a manufacturer SRN"
+    echo ""
+    echo "Examples:"
+    echo "  $0 --10                            # first 10 products"
+    echo "  $0 --srn CH-MF-000023141           # all products for this SRN"
+    echo "  $0 --srn CH-MF-000023141 --50      # first 50 for this SRN"
     exit 1
 fi
 
@@ -25,38 +43,84 @@ PARALLEL=10
 PAGE_SIZE=300
 mkdir -p ndjson
 
-LISTING="ndjson/eudamed_${TOTAL}.ndjson"
-UUIDS="ndjson/uuids_${TOTAL}.txt"
-DETAILS="ndjson/eudamed_${TOTAL}_details.ndjson"
+# Set output file names
+if [[ -n "$SRN" ]]; then
+    LABEL="$SRN"
+else
+    LABEL="$TOTAL"
+fi
+LISTING="ndjson/eudamed_${LABEL}.ndjson"
+UUIDS="ndjson/uuids_${LABEL}.txt"
+DETAILS="ndjson/eudamed_${LABEL}_details.ndjson"
 
 # --- Step 1: Download listing ---
-echo "=== Step 1: Downloading $TOTAL listings ==="
-PAGES=$(( (TOTAL + PAGE_SIZE - 1) / PAGE_SIZE ))
-: > "$LISTING"
-collected=0
-
-for ((p=1; p<=PAGES; p++)); do
-    remaining=$((TOTAL - collected))
-    fetch_size=$((remaining < PAGE_SIZE ? remaining : PAGE_SIZE))
-    echo -n "  Page $p/$PAGES (fetch $fetch_size) ... "
-    tmp=$(mktemp)
-    if ! curl -fsSL "${BASE_URL}?page=${p}&pageSize=${fetch_size}&size=${fetch_size}&iso2Code=en&languageIso2Code=en" \
-        -A "$USER_AGENT" -o "$tmp" 2>/dev/null; then
-        echo "FAILED"
+if [[ -n "$SRN" ]]; then
+    echo "=== Step 1: Downloading listings for SRN $SRN${TOTAL:+ (limit: $TOTAL)} ==="
+    : > "$LISTING"
+    collected=0
+    p=0
+    while true; do
+        p=$((p + 1))
+        echo -n "  Page $p ... "
+        tmp=$(mktemp)
+        if ! curl -fsSL "${BASE_URL}?page=${p}&pageSize=${PAGE_SIZE}&size=${PAGE_SIZE}&iso2Code=en&languageIso2Code=en" \
+            -A "$USER_AGENT" -o "$tmp" 2>/dev/null; then
+            echo "FAILED"
+            rm -f "$tmp"
+            sleep 1
+            continue
+        fi
+        page_total=$(jq -r '.content | length' "$tmp" 2>/dev/null || echo 0)
+        if [[ $page_total -eq 0 ]]; then
+            echo "empty page, done scanning"
+            rm -f "$tmp"
+            break
+        fi
+        matched=$(jq -c --arg srn "$SRN" '.content[] | select(.manufacturerSrn == $srn)' "$tmp" 2>/dev/null | tee -a "$LISTING" | wc -l)
+        collected=$((collected + matched))
+        echo "$matched matches / $page_total on page (total: $collected)"
         rm -f "$tmp"
-        sleep 1
-        continue
-    fi
-    count=$(jq -r '.content | length' "$tmp" 2>/dev/null || echo 0)
-    jq -c '.content[]' "$tmp" >> "$LISTING" 2>/dev/null
-    collected=$((collected + count))
-    echo "$count records (total: $collected)"
-    rm -f "$tmp"
-    [[ $count -eq 0 ]] && break
-    [[ $collected -ge $TOTAL ]] && break
-    sleep 0.3
-done
+        if [[ -n "$TOTAL" && $collected -ge $TOTAL ]]; then
+            # Trim to exact count
+            head -n "$TOTAL" "$LISTING" > "$LISTING.tmp" && mv "$LISTING.tmp" "$LISTING"
+            collected=$TOTAL
+            break
+        fi
+        sleep 0.3
+    done
+else
+    echo "=== Step 1: Downloading $TOTAL listings ==="
+    PAGES=$(( (TOTAL + PAGE_SIZE - 1) / PAGE_SIZE ))
+    : > "$LISTING"
+    collected=0
+    for ((p=1; p<=PAGES; p++)); do
+        remaining=$((TOTAL - collected))
+        fetch_size=$((remaining < PAGE_SIZE ? remaining : PAGE_SIZE))
+        echo -n "  Page $p/$PAGES (fetch $fetch_size) ... "
+        tmp=$(mktemp)
+        if ! curl -fsSL "${BASE_URL}?page=${p}&pageSize=${fetch_size}&size=${fetch_size}&iso2Code=en&languageIso2Code=en" \
+            -A "$USER_AGENT" -o "$tmp" 2>/dev/null; then
+            echo "FAILED"
+            rm -f "$tmp"
+            sleep 1
+            continue
+        fi
+        count=$(jq -r '.content | length' "$tmp" 2>/dev/null || echo 0)
+        jq -c '.content[]' "$tmp" >> "$LISTING" 2>/dev/null
+        collected=$((collected + count))
+        echo "$count records (total: $collected)"
+        rm -f "$tmp"
+        [[ $count -eq 0 ]] && break
+        [[ $collected -ge $TOTAL ]] && break
+        sleep 0.3
+    done
+fi
 echo "  Listings: $collected → $LISTING"
+
+if [[ $collected -eq 0 ]]; then
+    echo "No products found. Exiting."
+    exit 0
+fi
 
 # --- Step 2: Extract UUIDs ---
 echo "=== Step 2: Extracting UUIDs ==="
