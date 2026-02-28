@@ -857,8 +857,8 @@ fn transform_market_info(udidi: &MdrUdidiData) -> Option<SalesInformationModule>
         let start = mi.start_date.as_deref().unwrap_or("");
         let end = mi.end_date.as_deref();
 
-        let start_dt = convert_date_to_datetime(start);
-        let end_dt = end.map(|d| convert_date_to_datetime(d));
+        let start_dt = convert_date_to_datetime(start, false);
+        let end_dt = end.map(|d| convert_date_to_datetime(d, true));
 
         TargetMarketSalesCondition {
             condition_code: CodeValue { value: condition_code.to_string() },
@@ -886,8 +886,9 @@ fn transform_market_info(udidi: &MdrUdidiData) -> Option<SalesInformationModule>
     })
 }
 
-/// Convert EUDAMED date "2026-02-03+01:00" to datetime "2026-02-03T13:00:00+00:00"
-fn convert_date_to_datetime(date_str: &str) -> String {
+/// Convert EUDAMED date "2026-02-03+01:00" to datetime.
+/// Start dates use T13:00:00+00:00, end dates use T21:00:00+00:00.
+fn convert_date_to_datetime(date_str: &str, is_end_date: bool) -> String {
     let date_part = if date_str.contains('+') && !date_str.contains('T') {
         date_str.split('+').next().unwrap_or(date_str)
     } else if date_str.contains('T') {
@@ -895,7 +896,8 @@ fn convert_date_to_datetime(date_str: &str) -> String {
     } else {
         date_str
     };
-    format!("{}T13:00:00+00:00", date_part)
+    let time = if is_end_date { "21:00:00" } else { "13:00:00" };
+    format!("{}T{}+00:00", date_part, time)
 }
 
 /// Sort production identifiers: SERIAL_NUMBER, MANUFACTURING_DATE, BATCH_NUMBER, ...
@@ -911,13 +913,5 @@ fn prod_id_sort_key(id: &str) -> u8 {
 }
 
 fn generate_uuid() -> String {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-    let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-    format!("{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
-        (n >> 32) as u32,
-        (n >> 16) as u16 & 0xFFFF,
-        n as u16 & 0x0FFF,
-        0x8000 | (n as u16 & 0x3FFF),
-        n & 0xFFFFFFFFFFFF)
+    uuid::Uuid::new_v4().to_string()
 }
