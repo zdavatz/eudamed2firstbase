@@ -1,18 +1,36 @@
 # eudamed2firstbase
 
-Rust CLI tool that converts EUDAMED DTX PullResponse XML files into GS1 firstbase JSON format.
+Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Supports three input modes: DTX PullResponse XML, EUDAMED public API listing, and EUDAMED public API detail (with listing merge).
 
-## Usage
-
-1. Place EUDAMED XML files in the `xml/` directory
-2. Configure `config.toml` with provider info, GPC codes, and sterilisation settings
-3. Run the converter:
+## Quick Start: Download & Convert from EUDAMED API
 
 ```bash
-cargo run
+./download.sh --10     # download and convert first 10 products
+./download.sh --100    # download and convert first 100 products
+./download.sh --5000   # download and convert first 5000 products
 ```
 
-Output is written to `json/firstbase_dd.mm.yyyy.json` (today's date).
+The download script handles the full pipeline: listing download, UUID extraction, parallel detail download (with resume support), and firstbase JSON conversion.
+
+## Manual Usage
+
+### Mode 1: XML (DTX PullResponse)
+
+1. Place EUDAMED XML files in the `xml/` directory
+2. Run: `cargo run`
+3. Output: `json/firstbase_dd.mm.yyyy.json`
+
+### Mode 2: API Listing (NDJSON)
+
+1. Place listing NDJSON files in the `ndjson/` directory
+2. Run: `cargo run ndjson` or `cargo run ndjson <directory>`
+3. Output: `json/firstbase_eudamed_*_dd.mm.yyyy.json`
+
+### Mode 3: API Detail (NDJSON with listing merge)
+
+1. Run: `cargo run detail <details.ndjson> [listing.ndjson]`
+2. The optional listing file provides manufacturer SRN, authorised rep SRN, and risk class
+3. Output: `json/firstbase_eudamed_*_details_dd.mm.yyyy.json`
 
 ## Configuration
 
@@ -44,12 +62,20 @@ cas_number = "50-28-2"
 
 ```
 src/
-  main.rs        # CLI entry point: reads xml/, writes json/
-  config.rs      # config.toml parsing
-  eudamed.rs     # EUDAMED XML parsing (roxmltree DOM)
-  firstbase.rs   # GS1 firstbase JSON output model (serde)
-  transform.rs   # EUDAMED -> firstbase conversion logic
-  mappings.rs    # Code mapping tables (country, risk class, clinical sizes, units, etc.)
+  main.rs              # CLI entry point: routing for xml/ndjson/detail modes
+  config.rs            # config.toml parsing
+  eudamed.rs           # EUDAMED XML parsing (roxmltree DOM)
+  api_json.rs          # EUDAMED API listing NDJSON parsing (serde)
+  api_detail.rs        # EUDAMED API detail NDJSON parsing (serde)
+  firstbase.rs         # GS1 firstbase JSON output model (serde)
+  transform.rs         # XML -> firstbase conversion logic
+  transform_api.rs     # API listing -> firstbase conversion logic
+  transform_detail.rs  # API detail -> firstbase conversion (with listing merge)
+  mappings.rs          # Code mapping tables (country, risk class, clinical sizes, units, etc.)
+
+download.sh            # Unified download + convert script (./download.sh --N)
+download_10k.sh        # Legacy: download 10k listings
+download_details.sh    # Legacy: download details from UUID list
 ```
 
 ## What it does
@@ -69,10 +95,20 @@ src/
 - Extracts contact information (manufacturer, authorised representative, product designer)
 - Generates market info with country-specific sales conditions
 
+## EUDAMED Public API
+
+The download script uses the EUDAMED public API at `https://ec.europa.eu/tools/eudamed/api/devices/udiDiData`:
+
+- **Listing endpoint**: `GET ?page=N&pageSize=300` — basic device info (GTIN, risk class, manufacturer)
+- **Detail endpoint**: `GET /{uuid}?languageIso2Code=en` — full device data (clinical sizes, substances, market info, warnings)
+
+The detail endpoint provides richer data but lacks manufacturer/AR SRN and risk class, which are merged from the listing data.
+
 ## Dependencies
 
 - `roxmltree` - XML DOM parsing with namespace support
 - `serde` / `serde_json` - JSON serialization
+- `uuid` - v4 UUID generation for catalogue item identifiers
 - `chrono` - date handling
 - `anyhow` - error handling
 - `toml` - config file parsing
