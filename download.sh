@@ -59,31 +59,34 @@ if [[ -n "$SRN" ]]; then
     : > "$LISTING"
     collected=0
     p=0
+    # Use server-side srn= filtering (API supports it for both manufacturer and AR SRN)
     while true; do
         p=$((p + 1))
-        echo -n "  Page $p ... "
+        fetch_size=$PAGE_SIZE
+        if [[ -n "$TOTAL" ]]; then
+            remaining=$((TOTAL - collected))
+            fetch_size=$((remaining < PAGE_SIZE ? remaining : PAGE_SIZE))
+        fi
+        echo -n "  Page $p (fetch $fetch_size) ... "
         tmp=$(mktemp)
-        if ! curl -fsSL "${BASE_URL}?page=${p}&pageSize=${PAGE_SIZE}&size=${PAGE_SIZE}&iso2Code=en&languageIso2Code=en" \
+        if ! curl -fsSL "${BASE_URL}?page=${p}&pageSize=${fetch_size}&size=${fetch_size}&srn=${SRN}&iso2Code=en&languageIso2Code=en" \
             -A "$USER_AGENT" -o "$tmp" 2>/dev/null; then
             echo "FAILED"
             rm -f "$tmp"
             sleep 1
             continue
         fi
-        page_total=$(jq -r '.content | length' "$tmp" 2>/dev/null || echo 0)
-        if [[ $page_total -eq 0 ]]; then
-            echo "empty page, done scanning"
+        count=$(jq -r '.content | length' "$tmp" 2>/dev/null || echo 0)
+        if [[ $count -eq 0 ]]; then
+            echo "empty page, done"
             rm -f "$tmp"
             break
         fi
-        matched=$(jq -c --arg srn "$SRN" '.content[] | select(.manufacturerSrn == $srn)' "$tmp" 2>/dev/null | tee -a "$LISTING" | wc -l)
-        collected=$((collected + matched))
-        echo "$matched matches / $page_total on page (total: $collected)"
+        jq -c '.content[]' "$tmp" >> "$LISTING" 2>/dev/null
+        collected=$((collected + count))
+        echo "$count records (total: $collected)"
         rm -f "$tmp"
         if [[ -n "$TOTAL" && $collected -ge $TOTAL ]]; then
-            # Trim to exact count
-            head -n "$TOTAL" "$LISTING" > "$LISTING.tmp" && mv "$LISTING.tmp" "$LISTING"
-            collected=$TOTAL
             break
         fi
         sleep 0.3
