@@ -3,6 +3,7 @@ use serde::Deserialize;
 /// Full device detail from GET /devices/udiDiData/{uuid}?languageIso2Code=en
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ApiDeviceDetail {
     pub uuid: Option<String>,
     pub ulid: Option<String>,
@@ -78,6 +79,7 @@ pub struct ApiDeviceDetail {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct DiIdentifier {
     pub uuid: Option<String>,
     pub code: Option<String>,
@@ -93,6 +95,7 @@ pub struct RefCode {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct MultiLangText {
     pub texts: Option<Vec<LangText>>,
     pub text_by_default_language: Option<String>,
@@ -100,6 +103,7 @@ pub struct MultiLangText {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct LangText {
     pub language: Option<Language>,
     pub text: Option<String>,
@@ -108,6 +112,7 @@ pub struct LangText {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct Language {
     pub iso_code: Option<String>,
     pub name: Option<String>,
@@ -125,6 +130,7 @@ pub struct UdiPiType {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ClinicalSize {
     pub text: Option<String>,
     pub value: Option<f64>,
@@ -140,6 +146,7 @@ pub struct ClinicalSize {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct StorageHandlingCondition {
     pub type_code: Option<String>,
     pub mandatory: Option<bool>,
@@ -148,6 +155,7 @@ pub struct StorageHandlingCondition {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct CriticalWarning {
     pub type_code: Option<String>,
     pub mandatory: Option<bool>,
@@ -170,6 +178,7 @@ pub struct MarketAvailability {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct Country {
     pub name: Option<String>,
     pub iso2_code: Option<String>,
@@ -179,6 +188,7 @@ pub struct Country {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct DeviceStatus {
     #[serde(rename = "type")]
     pub status_type: Option<RefCode>,
@@ -187,6 +197,7 @@ pub struct DeviceStatus {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct CndNomenclature {
     pub code: Option<String>,
     pub description: Option<MultiLangText>,

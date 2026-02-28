@@ -42,12 +42,14 @@ pub struct ModelName {
 }
 
 #[derive(Debug, Default, Clone)]
+#[allow(dead_code)]
 pub struct DiIdentifier {
     pub di_code: Option<String>,
     pub issuing_entity_code: Option<String>,
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 pub struct MdrUdidiData {
     pub identifier: Option<DiIdentifier>,
     pub status: Option<String>,
