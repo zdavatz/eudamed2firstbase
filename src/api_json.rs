@@ -4,6 +4,7 @@ use serde::Deserialize;
 /// (GET /devices/udiDiData?page=N&pageSize=300)
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ApiDevice {
     pub basic_udi: Option<String>,
     pub primary_di: Option<String>,

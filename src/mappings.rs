@@ -322,8 +322,3 @@ pub fn regulation_from_risk_class(risk_class: &str) -> &str {
         _ => "MDR",
     }
 }
-
-/// Classification system code for risk class
-pub fn classification_system_for_risk_class(_risk_class: &str) -> &str {
-    "76"
-}
