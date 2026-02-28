@@ -7,8 +7,9 @@ Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON 
 ```bash
 ./download.sh --10                            # download and convert first 10 products
 ./download.sh --100                           # download and convert first 100 products
-./download.sh --srn CH-MF-000023141           # all products for a manufacturer SRN
-./download.sh --srn CH-MF-000023141 --50      # first 50 products for a specific SRN
+./download.sh --srn IN-MF-000014457           # all products for a manufacturer SRN
+./download.sh --srn IN-MF-000014457 --50      # first 50 products for a specific SRN
+./download.sh --srn DE-AR-000006322           # all products for an authorised rep SRN
 ```
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download (with resume support), and firstbase JSON conversion.
@@ -103,6 +104,7 @@ download_details.sh    # Legacy: download details from UUID list
 The download script uses the EUDAMED public API at `https://ec.europa.eu/tools/eudamed/api/devices/udiDiData`:
 
 - **Listing endpoint**: `GET ?page=N&pageSize=300` — basic device info (GTIN, risk class, manufacturer)
+- **Listing with SRN filter**: `GET ?page=N&pageSize=300&srn=<SRN>` — server-side filtering by manufacturer or authorised rep SRN
 - **Detail endpoint**: `GET /{uuid}?languageIso2Code=en` — full device data (clinical sizes, substances, market info, warnings)
 
 The detail endpoint provides richer data but lacks manufacturer/AR SRN and risk class, which are merged from the listing data.
