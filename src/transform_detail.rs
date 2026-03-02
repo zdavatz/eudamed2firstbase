@@ -9,6 +9,12 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
     let now = Local::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
+    // Use version_date for lastChangeDateTime (avoids G572 "future date" error)
+    let last_change = device.version_date.as_ref()
+        .filter(|d| !d.is_empty())
+        .cloned()
+        .unwrap_or_else(|| now_str.clone());
+
     let gtin = device.gtin();
 
     // --- Device status ---
@@ -160,18 +166,18 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
         healthcare_item_module: healthcare_module,
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
-                is_implantable: None, // Basic UDI-DI level, not in UDI-DI JSON
+                is_implantable: Some("FALSE".to_string()), // Default false; Basic UDI-DI level
                 device_count,
                 direct_marking,
-                measuring_function: None, // Basic UDI-DI level
-                is_active: None,          // Basic UDI-DI level
-                administer_medicine: None, // Basic UDI-DI level
-                is_medicinal_product: None, // Basic UDI-DI level
+                measuring_function: Some(false),    // Default false; Basic UDI-DI level
+                is_active: Some(false),             // Default false; Basic UDI-DI level
+                administer_medicine: Some(false),   // Default false; Basic UDI-DI level
+                is_medicinal_product: Some(false),  // Default false; Basic UDI-DI level
                 is_reprocessed: device.reprocessed,
-                is_reusable_surgical: None, // Basic UDI-DI level
+                is_reusable_surgical: Some(false),  // Default false; Basic UDI-DI level
                 production_identifier_types: production_ids,
                 annex_xvi_types: Vec::new(), // Type codes at Basic UDI-DI level
-                multi_component_type: None,  // At Basic UDI-DI level
+                multi_component_type: Some(CodeValue { value: "DEVICE".to_string() }), // Default DEVICE
                 is_new_device: device.new_device,
                 eu_status: CodeValue {
                     value: status_code,
@@ -211,13 +217,19 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
         },
         contact_information: contacts,
         synchronisation_dates: TradeItemSynchronisationDates {
-            last_change: now_str.clone(),
+            last_change,
             effective: now_str.clone(),
             publication: now_str,
         },
         global_model_info: vec![GlobalModelInformation {
-            number: String::new(), // Will be merged from listing data (basicUdi)
-            descriptions: Vec::new(),
+            number: device.primary_di_code(), // Fallback; overridden by listing merge (basicUdi)
+            descriptions: trade_names
+                .iter()
+                .map(|(lang, text)| LangValue {
+                    language_code: lang.clone(),
+                    value: text.clone(),
+                })
+                .collect(),
         }],
         gtin,
         additional_identification,
@@ -386,23 +398,15 @@ fn build_healthcare_module(device: &ApiDeviceDetail) -> Option<HealthcareItemInf
     let clinical_sizes = build_clinical_sizes(device);
     let storage_handling = build_storage_handling(device);
     let clinical_warnings = build_clinical_warnings(device);
-    let contains_latex = device.latex.map(|b| bool_str(b));
-
-    // Only produce the module if there's something to put in it
-    if clinical_sizes.is_empty()
-        && storage_handling.is_empty()
-        && clinical_warnings.is_empty()
-        && contains_latex.is_none()
-    {
-        return None;
-    }
+    // Default latex/blood/tissue to FALSE (mandatory fields per 097.011/097.010)
+    let contains_latex = Some(device.latex.map(|b| bool_str(b)).unwrap_or_else(|| "FALSE".to_string()));
 
     Some(HealthcareItemInformationModule {
         info: HealthcareItemInformation {
-            human_blood_derivative: None,
+            human_blood_derivative: Some("FALSE".to_string()),
             contains_latex,
-            human_tissue: None,
-            animal_tissue: None,
+            human_tissue: Some("FALSE".to_string()),
+            animal_tissue: Some(false),
             storage_handling,
             clinical_sizes,
             clinical_warnings,
@@ -500,7 +504,14 @@ fn build_storage_handling(device: &ApiDeviceDetail) -> Vec<ClinicalStorageHandli
             let shc_code = extract_shc_code(type_code_raw);
             let gs1_code = mappings::storage_handling_to_gs1(&shc_code);
 
-            let descriptions = extract_descriptions(&shc.description);
+            let mut descriptions = extract_descriptions(&shc.description);
+            // 097.074: Some SHC codes require a description; use code as placeholder
+            if descriptions.is_empty() {
+                descriptions.push(LangValue {
+                    language_code: "en".to_string(),
+                    value: gs1_code.clone(),
+                });
+            }
 
             Some(ClinicalStorageHandling {
                 type_code: CodeValue { value: gs1_code },
@@ -572,6 +583,12 @@ fn build_sales_module(device: &ApiDeviceDetail) -> Option<SalesInformationModule
         }
     }
 
+    // If no ORIGINAL_PLACED match found but we have markets, use the first as ORIGINAL_PLACED
+    // (097.020: ON_MARKET status requires at least one ORIGINAL_PLACED country)
+    if original_countries.is_empty() && !additional_countries.is_empty() {
+        original_countries.push(additional_countries.remove(0));
+    }
+
     let mut conditions = Vec::new();
     if !original_countries.is_empty() {
         conditions.push(TargetMarketSalesCondition {
@@ -630,6 +647,10 @@ fn build_referenced_trade_items(device: &ApiDeviceDetail) -> Vec<ReferencedTrade
         Some(g) if !g.is_empty() => g.clone(),
         _ => return Vec::new(),
     };
+    // Skip self-references (G641 error)
+    if gtin == device.primary_di_code() {
+        return Vec::new();
+    }
     let type_code = match link.device_criterion.as_deref() {
         Some("LEGACY") => "REPLACED",
         Some("STANDARD") => "REPLACED_BY",

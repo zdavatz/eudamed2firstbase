@@ -414,8 +414,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
             .map(|b| if b { "TRUE" } else { "FALSE" }.to_string());
         let human_tissue = basic_udi.human_tissues_cells
             .map(|b| if b { "TRUE" } else { "FALSE" }.to_string());
-        let animal_tissue = basic_udi.animal_tissues_cells
-            .map(|b| serde_json::Value::Bool(b));
+        let animal_tissue = basic_udi.animal_tissues_cells;
 
         // Storage handling
         let storage = transform_storage_handling(udidi);

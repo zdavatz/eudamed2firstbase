@@ -389,6 +389,14 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
                     },
                 );
         }
+
+        // Update regulatory act based on risk class (MDR vs IVDR) — fixes 097.005
+        let act = mappings::regulation_from_risk_class(rc);
+        if let Some(ref mut module) = trade_item.regulated_trade_item_module {
+            if let Some(reg) = module.info.first_mut() {
+                reg.act = act.to_string();
+            }
+        }
     }
 
     // Add manufacturer contact
