@@ -70,6 +70,19 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
         }
     }
 
+    // --- Non-GS1 primary DI → additional identification (GDSN only allows GS1 as Gtin) ---
+    if !device.is_gs1_primary() {
+        let agency = device.primary_di_agency().unwrap_or_default();
+        let type_code = mappings::issuing_agency_to_type_code(&agency).to_string();
+        let code = device.primary_di_code();
+        if !code.is_empty() {
+            additional_identification.push(AdditionalTradeItemIdentification {
+                type_code,
+                value: code,
+            });
+        }
+    }
+
     // --- Secondary DI → additional identification as GTIN_14 ---
     if let Some(ref secondary) = device.secondary_di {
         if let Some(ref code) = secondary.code {
