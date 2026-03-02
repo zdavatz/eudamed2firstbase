@@ -90,7 +90,7 @@ download.sh                # Unified download + convert script (./download.sh --
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
-push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Live/CreateMany)
+push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Draft/CreateOne + AddMany publish)
 ```
 
 ## What it does
@@ -216,12 +216,11 @@ You can publish multiple items in a single request by adding more objects to the
 
 #### 4. Bulk Workflow: push_to_api.sh
 
-The `push_to_api.sh` script handles the full workflow: token acquisition, batched `Live/CreateMany` with publish, and `RequestStatus/Get` for validation results.
+The `push_to_api.sh` script handles the full workflow: token acquisition, draft creation via `Draft/CreateOne` (per file), and publish via `AddMany` (batches of 100).
 
 ```bash
-./push_to_api.sh                    # push all UUID files in firstbase_json/ (batches of 50)
+./push_to_api.sh                    # push all UUID files in firstbase_json/
 ./push_to_api.sh --dry-run          # show what would be pushed, no API calls
-./push_to_api.sh --batch 20         # use smaller batch size
 ./push_to_api.sh --status <reqid>   # query status of a previous request
 ```
 
@@ -234,7 +233,9 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh
 ```
 
-Each batch sends a `Live/CreateMany` request (with `DocumentCommand: "Add"` and `PublishToGln: ["4399902421386"]`), then queries `RequestStatus/Get` for validation errors.
+The script creates each draft individually via `Draft/CreateOne`, then publishes all successful drafts to GLN `4399902421386` via `AddMany` in batches of 100. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at draft creation — this is expected.
+
+**Note:** The `Live/CreateMany` endpoint currently returns HTTP 500 on the test server, so the script uses the `Draft/CreateOne` + `AddMany` workflow instead.
 
 #### Validation Error Fixes Applied
 

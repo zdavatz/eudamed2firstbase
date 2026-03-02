@@ -43,7 +43,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, and endocrine substance identifier lookups.
 - **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), converts to firstbase JSON.
 - **firstbase_validation.py**: Schema validation script. Downloads and caches the GS1 Product API Swagger spec (978 GDSN definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, data types, enum values, and nested structures recursively. Cache in `.swagger_cache.json`. Handles DraftItem wrapper, batch arrays, and direct TradeItem formats.
-- **push_to_api.sh**: Pushes firstbase JSON files to GS1 Catalogue Item API via `Live/CreateMany` in batches. Handles token acquisition, publish to GLN, and `RequestStatus/Get` for validation results. Usage: `./push_to_api.sh` or `./push_to_api.sh --status <reqid>`.
+- **push_to_api.sh**: Pushes firstbase JSON files to GS1 Catalogue Item API via `Draft/CreateOne` (per file) then publishes via `AddMany` (batches of 100). Handles token acquisition, publish to GLN. Usage: `./push_to_api.sh` or `./push_to_api.sh --status <reqid>`.
 
 ## Key Design Decisions
 
@@ -80,9 +80,9 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **Create draft**: `POST /CatalogueItem/Draft/CreateOne` — body is the DraftItem JSON file directly
 - **Publish**: `POST /CatalogueItemPublication/AddMany` — Items array with Identifier, DataSource (GLN), Gtin, TargetMarket, PublishToGln array
 - **PublishToGln**: `4399902421386` (GS1 UDI Connector recipient)
-- **Workflow (preferred)**: `Live/CreateMany` (batched, with `DocumentCommand: "Add"` and `PublishToGln`) → `RequestStatus/Get` (with `IncludeGs1Response: true`) for validation results
-- **Workflow (alternative)**: Create drafts (CreateOne per file) → Publish all (AddMany with Items array) → Recipient sees data
-- **push_to_api.sh**: Automates the preferred workflow. Batches files (default 50), pushes via Live/CreateMany, queries RequestStatus.
+- **Workflow (preferred)**: Create drafts (`Draft/CreateOne` per file) → Publish all (`AddMany` with Items array, batches of 100) → Recipient sees data
+- **Workflow (alternative)**: `Live/CreateMany` (batched, with `DocumentCommand: "Add"` and `PublishToGln`) → `RequestStatus/Get` (with `IncludeGs1Response: true`) for validation results. Note: `Live/CreateMany` currently returns HTTP 500 on the test server.
+- **push_to_api.sh**: Automates the preferred workflow. Creates drafts one-by-one via `Draft/CreateOne`, then publishes in batches of 100 via `AddMany`. Query status with `--status <reqid>`.
 - **Validation error defaults**: MDR boolean fields (implantable, active, measuring, etc.) default to false. multiComponentDeviceTypeCode defaults to DEVICE. Tissue/blood/latex default to FALSE. lastChangeDateTime uses EUDAMED version_date. Self-referencing devices skipped. First market country used as ORIGINAL_PLACED fallback. SHC code used as placeholder storage description. MDR vs IVDR regulatory act set from risk class during listing merge.
 
 ## EUDAMED Public API
