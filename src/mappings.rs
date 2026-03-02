@@ -348,6 +348,7 @@ pub fn issuing_agency_to_type_code(agency: &str) -> &str {
         "hibcc" => "HIBC",
         "iccbba" => "ICCBBA",
         "ifa" => "IFA",
+        "eudamed" => "IFA", // EUDAMED-assigned DIs use IFA format (e.g. D-PD-F003MM)
         _ => "GS1",
     }
 }

@@ -346,12 +346,37 @@ impl ApiDeviceDetail {
         Some(Self::extract_refdata_code(code))
     }
 
-    /// Get the primary DI code (GTIN)
-    pub fn gtin(&self) -> String {
+    /// Get the primary DI code
+    pub fn primary_di_code(&self) -> String {
         self.primary_di
             .as_ref()
             .and_then(|di| di.code.clone())
             .unwrap_or_default()
+    }
+
+    /// Get the primary DI issuing agency suffix (e.g. "gs1", "hibcc", "eudamed")
+    pub fn primary_di_agency(&self) -> Option<String> {
+        self.primary_di
+            .as_ref()
+            .and_then(|di| di.issuing_agency.as_ref())
+            .and_then(|ia| ia.code.as_ref())
+            .map(|code| code.rsplit('.').next().unwrap_or(code).to_string())
+    }
+
+    /// True if primary DI is a GS1 identifier (GTIN/GMN)
+    pub fn is_gs1_primary(&self) -> bool {
+        self.primary_di_agency()
+            .map(|a| a == "gs1")
+            .unwrap_or(true) // default to GS1 if no agency specified
+    }
+
+    /// Get GTIN — only if primary DI is GS1, otherwise empty
+    pub fn gtin(&self) -> String {
+        if self.is_gs1_primary() {
+            self.primary_di_code()
+        } else {
+            String::new()
+        }
     }
 
     /// Get trade name texts as (language_code, text) pairs
