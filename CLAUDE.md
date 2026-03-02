@@ -2,19 +2,20 @@
 
 ## Project Overview
 
-EUDAMED to GS1 firstbase JSON converter. Three input modes: DTX PullResponse XML, EUDAMED public API listing (NDJSON), and API detail (NDJSON with listing merge).
+EUDAMED to GS1 firstbase JSON converter. Four input modes: DTX PullResponse XML, EUDAMED public API listing (NDJSON), API detail (NDJSON with listing merge), and EUDAMED JSON (individual device files).
 
 ## Build & Run
 
 ```bash
 cargo build
-cargo run                                            # XML mode: xml/ -> json/
-cargo run ndjson                                     # API listing mode: ndjson/ -> json/
+cargo run                                            # XML mode: xml/ -> firstbase_json/
+cargo run ndjson                                     # API listing mode: ndjson/ -> firstbase_json/
 cargo run detail <details.ndjson> [listing.ndjson]   # API detail mode with optional listing merge
+cargo run eudamed_json                               # EUDAMED JSON mode: eudamed_json/ -> firstbase_json/ (1:1)
 ./download.sh --10                                   # Download + convert 10 products from EUDAMED API
 ```
 
-No tests yet. Validate output by diffing `json/firstbase_28.02.2026.json` against `maik/CIN_7612345000435_07612345780313_097.json`.
+No tests yet. Validate output by diffing `firstbase_json/firstbase_28.02.2026.json` against `maik/CIN_7612345000435_07612345780313_097.json`.
 
 ## Architecture
 
@@ -25,6 +26,8 @@ No tests yet. Validate output by diffing `json/firstbase_28.02.2026.json` agains
 - **transform.rs**: XML -> firstbase conversion. Builds packaging hierarchy by walking parent-child DI references. Sorts languages (en, fr, de, it), substances (WHO before ECHA), market infos (ORIGINAL_PLACED first).
 - **transform_api.rs**: API listing -> firstbase conversion. Simpler mapping from flat listing data.
 - **transform_detail.rs**: API detail -> firstbase conversion. Richest output with clinical data, market info, IFU URLs. Can merge listing data for manufacturer/AR SRN and risk class.
+- **eudamed_json.rs**: EUDAMED JSON file parsing (serde). `EudamedDevice` struct with inline manufacturer/AR objects, basicUdi, riskClass, device flags.
+- **transform_eudamed_json.rs**: EUDAMED JSON -> firstbase conversion. One-to-one file mapping. Includes full manufacturer/AR contact info with addresses, email, phone. No GTIN (device-level records).
 - **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet.
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, sterilisation method, and endocrine substance identifier lookups.
 - **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), converts to firstbase JSON.
