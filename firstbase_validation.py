@@ -223,11 +223,24 @@ def validate_files(validator, ti_def, files):
             results[fpath.name] = [Issue("PARSE_ERROR", "", str(e))]
             continue
 
-        trade_item = doc.get("TradeItem", doc)
+        # Handle batch files (JSON array), DraftItem wrapper, or direct TradeItem
+        if isinstance(doc, list):
+            # Batch file — validate each item
+            for idx, item in enumerate(doc):
+                inner = item.get("DraftItem", item) if isinstance(item, dict) else item
+                ti = inner.get("TradeItem", inner) if isinstance(inner, dict) else inner
+                item_issues = validator.validate(ti, ti_def, f"[{idx}].TradeItem")
+                if item_issues:
+                    results[f"{fpath.name}[{idx}]"] = item_issues
+            continue
+
+        # Single document — unwrap DraftItem if present
+        inner = doc.get("DraftItem", doc)
+        trade_item = inner.get("TradeItem", inner)
         issues = validator.validate(trade_item, ti_def, "TradeItem")
 
         # Also validate CatalogueItemChildItemLink children
-        children = doc.get("CatalogueItemChildItemLink", [])
+        children = inner.get("CatalogueItemChildItemLink", [])
         child_def = validator.resolve("CatalogueItemChildItemLink")
         if child_def and children:
             for i, child in enumerate(children):

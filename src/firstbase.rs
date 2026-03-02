@@ -1,5 +1,14 @@
 use serde::Serialize;
 
+/// Top-level wrapper: {"DraftItem": {"TradeItem": ...}, "Identifier": "Draft_<uuid>"}
+#[derive(Serialize, Debug)]
+pub struct DraftItemDocument {
+    #[serde(rename = "DraftItem")]
+    pub draft_item: FirstbaseDocument,
+    #[serde(rename = "Identifier")]
+    pub identifier: String,
+}
+
 #[derive(Serialize, Debug)]
 pub struct FirstbaseDocument {
     #[serde(rename = "TradeItem")]

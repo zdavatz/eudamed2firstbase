@@ -2,7 +2,7 @@
 pub fn country_alpha2_to_numeric(code: &str) -> &str {
     match code {
         "AT" => "040",
-        "BE" => "56",
+        "BE" => "056",
         "BG" => "100",
         "CY" => "196",
         "CZ" => "203",
@@ -33,7 +33,24 @@ pub fn country_alpha2_to_numeric(code: &str) -> &str {
         "SK" => "703",
         "CH" => "756",
         "TR" => "792",
+        "GB" => "826",
         "XI" => "826", // Northern Ireland (UK)
+        // Non-EU countries (for manufacturer/product designer contacts)
+        "AU" => "036",
+        "BR" => "076",
+        "CA" => "124",
+        "CN" => "156",
+        "IL" => "376",
+        "IN" => "356",
+        "JP" => "392",
+        "KR" => "410",
+        "MX" => "484",
+        "NZ" => "554",
+        "RU" => "643",
+        "SG" => "702",
+        "TW" => "158",
+        "US" => "840",
+        "ZA" => "710",
         other => {
             eprintln!("Warning: unknown country code '{}', passing through", other);
             other

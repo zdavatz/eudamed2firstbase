@@ -34,7 +34,7 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 
 1. Run: `cargo run detail <details.ndjson> [listing.ndjson]`
 2. The optional listing file provides manufacturer SRN, authorised rep SRN, and risk class
-3. Output: `firstbase_json/firstbase_eudamed_*_details_dd.mm.yyyy.json`
+3. Output: batch file `firstbase_json/firstbase_eudamed_*_details_dd.mm.yyyy.json` plus individual `firstbase_json/<uuid>.json` per device
 
 ### Mode 4: EUDAMED JSON (individual device files)
 
@@ -53,8 +53,8 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 sterilisation_method = "OZONE"
 
 [provider]
-gln = "7612345000435"
-party_name = "UDI manufacturer POC/MVP"
+gln = "7612345000480"
+party_name = "EUDAMED Public Download Importing"
 
 [target_market]
 country_code = "097"
@@ -96,6 +96,8 @@ firstbase_validation.py    # Schema validation against GS1 Product API Swagger s
 
 ## What it does
 
+- Wraps output in DraftItem envelope: `{"DraftItem": {"TradeItem": ...}, "Identifier": "Draft_<uuid>"}`
+- Writes both batch JSON and individual per-UUID files in detail mode
 - Parses EUDAMED PullResponse XML with full namespace handling
 - Reconstructs packaging hierarchy (base unit -> intermediate -> outermost package)
 - Translates all EUDAMED codes to GS1 equivalents:

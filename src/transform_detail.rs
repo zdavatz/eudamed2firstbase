@@ -70,25 +70,11 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
         }
     }
 
-    // --- Secondary DI → additional identification ---
+    // --- Secondary DI → additional identification as GTIN_14 ---
     if let Some(ref secondary) = device.secondary_di {
         if let Some(ref code) = secondary.code {
-            let agency = secondary.issuing_agency.as_ref()
-                .and_then(|a| a.code.as_ref())
-                .map(|c| mappings::issuing_agency_to_type_code(c))
-                .unwrap_or("GS1");
             additional_identification.push(AdditionalTradeItemIdentification {
-                type_code: agency.to_string(),
-                value: code.clone(),
-            });
-        }
-    }
-
-    // --- Unit of use → additional identification ---
-    if let Some(ref uou) = device.unit_of_use {
-        if let Some(ref code) = uou.code {
-            additional_identification.push(AdditionalTradeItemIdentification {
-                type_code: "UNIT_OF_USE_IDENTIFIER".to_string(),
+                type_code: "GTIN_14".to_string(),
                 value: code.clone(),
             });
         }
@@ -156,7 +142,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
 
     TradeItem {
         is_brand_bank_publication: false,
-        target_sector: vec!["HEALTHCARE".to_string(), "UDI_REGISTRY".to_string()],
+        target_sector: vec!["UDI_REGISTRY".to_string()],
         chemical_regulation_module,
         healthcare_item_module: healthcare_module,
         medical_device_module: MedicalDeviceTradeItemModule {
@@ -245,7 +231,10 @@ fn build_sterility(device: &ApiDeviceDetail, config: &Config) -> Option<Sterilit
 
     let prior_to_use = if sterilization {
         vec![CodeValue {
-            value: "STERILISE_BEFORE_USE".to_string(),
+            value: config
+                .sterilisation_method
+                .clone()
+                .unwrap_or_else(|| "UNSPECIFIED".to_string()),
         }]
     } else {
         Vec::new()

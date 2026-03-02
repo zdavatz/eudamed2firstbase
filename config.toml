@@ -1,8 +1,8 @@
 sterilisation_method = "OZONE"
 
 [provider]
-gln = "7612345000435"
-party_name = "UDI manufacturer POC/MVP"
+gln = "7612345000480"
+party_name = "EUDAMED Public Download Importing"
 
 [target_market]
 country_code = "097"

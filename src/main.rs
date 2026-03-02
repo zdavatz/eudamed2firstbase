@@ -161,9 +161,14 @@ fn process_ndjson_file(input_path: &Path, config: &config::Config) -> Result<()>
         match api_json::parse_api_device(trimmed) {
             Ok(device) => {
                 let trade_item = transform_api::transform_api_device(&device, config);
-                trade_items.push(firstbase::FirstbaseDocument {
+                let document = firstbase::FirstbaseDocument {
                     trade_item,
                     children: Vec::new(),
+                };
+                let uuid = device.uuid.as_deref().unwrap_or("unknown");
+                trade_items.push(firstbase::DraftItemDocument {
+                    identifier: format!("Draft_{}", uuid),
+                    draft_item: document,
                 });
             }
             Err(e) => {
@@ -243,6 +248,7 @@ fn process_detail_ndjson(
 
         match api_detail::parse_api_detail(trimmed) {
             Ok(detail) => {
+                let uuid = detail.uuid.clone().unwrap_or_default();
                 let mut trade_item = transform_detail::transform_detail_device(&detail, config);
 
                 // Merge listing data (manufacturer, AR, risk class, basic UDI)
@@ -251,10 +257,23 @@ fn process_detail_ndjson(
                     merge_listing_data(&mut trade_item, listing);
                 }
 
-                trade_items.push(firstbase::FirstbaseDocument {
+                let document = firstbase::FirstbaseDocument {
                     trade_item,
                     children: Vec::new(),
-                });
+                };
+                let draft_doc = firstbase::DraftItemDocument {
+                    identifier: format!("Draft_{}", uuid),
+                    draft_item: document,
+                };
+
+                // Write individual file per UUID
+                if !uuid.is_empty() {
+                    let individual_path = output_dir.join(format!("{}.json", uuid));
+                    let individual_json = serde_json::to_string_pretty(&draft_doc)?;
+                    std::fs::write(&individual_path, &individual_json)?;
+                }
+
+                trade_items.push(draft_doc);
             }
             Err(e) => {
                 if errors < 10 {
@@ -447,10 +466,17 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                         children: Vec::new(),
                     };
 
+                    // Extract UUID from filename (stem without extension)
+                    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
+                    let draft_doc = firstbase::DraftItemDocument {
+                        draft_item: document,
+                        identifier: format!("Draft_{}", stem),
+                    };
+
                     let filename = path.file_name().unwrap_or_default().to_string_lossy();
                     let output_path = output_dir.join(filename.as_ref());
 
-                    let json = serde_json::to_string_pretty(&document)?;
+                    let json = serde_json::to_string_pretty(&draft_doc)?;
                     std::fs::write(&output_path, &json)?;
 
                     processed += 1;
