@@ -1,6 +1,6 @@
 # eudamed2firstbase
 
-Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Supports three input modes: DTX PullResponse XML, EUDAMED public API listing, and EUDAMED public API detail (with listing merge).
+Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Supports four input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), and EUDAMED JSON (individual device files).
 
 ## Quick Start: Download & Convert from EUDAMED API
 
@@ -22,19 +22,27 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 
 1. Place EUDAMED XML files in the `xml/` directory
 2. Run: `cargo run`
-3. Output: `json/firstbase_dd.mm.yyyy.json`
+3. Output: `firstbase_json/firstbase_dd.mm.yyyy.json`
 
 ### Mode 2: API Listing (NDJSON)
 
 1. Place listing NDJSON files in the `ndjson/` directory
 2. Run: `cargo run ndjson` or `cargo run ndjson <directory>`
-3. Output: `json/firstbase_eudamed_*_dd.mm.yyyy.json`
+3. Output: `firstbase_json/firstbase_eudamed_*_dd.mm.yyyy.json`
 
 ### Mode 3: API Detail (NDJSON with listing merge)
 
 1. Run: `cargo run detail <details.ndjson> [listing.ndjson]`
 2. The optional listing file provides manufacturer SRN, authorised rep SRN, and risk class
-3. Output: `json/firstbase_eudamed_*_details_dd.mm.yyyy.json`
+3. Output: `firstbase_json/firstbase_eudamed_*_details_dd.mm.yyyy.json`
+
+### Mode 4: EUDAMED JSON (individual device files)
+
+1. Place EUDAMED JSON files in the `eudamed_json/` directory
+2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
+3. Output: one firstbase JSON file per input file in `firstbase_json/`
+4. Includes full manufacturer/AR contact info with addresses, email, phone
+5. Note: these are device-level records (Basic UDI-DI) — udiDiData (GTIN) is not available
 
 ## Configuration
 
@@ -66,16 +74,18 @@ cas_number = "50-28-2"
 
 ```
 src/
-  main.rs              # CLI entry point: routing for xml/ndjson/detail modes
-  config.rs            # config.toml parsing
-  eudamed.rs           # EUDAMED XML parsing (roxmltree DOM)
-  api_json.rs          # EUDAMED API listing NDJSON parsing (serde)
-  api_detail.rs        # EUDAMED API detail NDJSON parsing (serde)
-  firstbase.rs         # GS1 firstbase JSON output model (serde)
-  transform.rs         # XML -> firstbase conversion logic
-  transform_api.rs     # API listing -> firstbase conversion logic
-  transform_detail.rs  # API detail -> firstbase conversion (with listing merge)
-  mappings.rs          # Code mapping tables (country, risk class, clinical sizes, units, etc.)
+  main.rs                    # CLI entry point: routing for xml/ndjson/detail/eudamed_json modes
+  config.rs                  # config.toml parsing
+  eudamed.rs                 # EUDAMED XML parsing (roxmltree DOM)
+  api_json.rs                # EUDAMED API listing NDJSON parsing (serde)
+  api_detail.rs              # EUDAMED API detail NDJSON parsing (serde)
+  eudamed_json.rs            # EUDAMED JSON file parsing (serde, individual device files)
+  firstbase.rs               # GS1 firstbase JSON output model (serde)
+  transform.rs               # XML -> firstbase conversion logic
+  transform_api.rs           # API listing -> firstbase conversion logic
+  transform_detail.rs        # API detail -> firstbase conversion (with listing merge)
+  transform_eudamed_json.rs  # EUDAMED JSON -> firstbase conversion (1:1 file mapping)
+  mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, etc.)
 
 download.sh            # Unified download + convert script (./download.sh --N)
 download_10k.sh        # Legacy: download 10k listings

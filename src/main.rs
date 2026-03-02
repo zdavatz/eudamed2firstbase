@@ -2,11 +2,13 @@ mod api_detail;
 mod api_json;
 mod config;
 mod eudamed;
+mod eudamed_json;
 mod firstbase;
 mod mappings;
 mod transform;
 mod transform_api;
 mod transform_detail;
+mod transform_eudamed_json;
 
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -27,6 +29,11 @@ fn main() -> Result<()> {
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("ndjson");
             process_ndjson(Path::new(input_dir), &config)
         }
+        Some("eudamed_json") => {
+            // Process individual EUDAMED JSON files (one-to-one)
+            let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json");
+            process_eudamed_json_dir(Path::new(input_dir), &config)
+        }
         Some("detail") => {
             // Process detail NDJSON, optionally merging with listing data
             let detail_file = args.get(2).map(|s| s.as_str())
@@ -44,13 +51,13 @@ fn main() -> Result<()> {
             if path.exists() && path.extension().map(|e| e == "ndjson").unwrap_or(false) {
                 process_ndjson_file(path, &config)
             } else if path.exists() && path.extension().map(|e| e == "xml").unwrap_or(false) {
-                let output_dir = Path::new("json");
+                let output_dir = Path::new("firstbase_json");
                 std::fs::create_dir_all(output_dir)?;
                 let output = process_xml_file(path, output_dir, &config)?;
                 println!("  -> {}", output);
                 Ok(())
             } else {
-                eprintln!("Usage: eudamed2firstbase [xml|ndjson [dir]|detail <details.ndjson> [listing.ndjson]]");
+                eprintln!("Usage: eudamed2firstbase [xml|ndjson [dir]|detail <details.ndjson> [listing.ndjson]|eudamed_json [dir]]");
                 eprintln!("       eudamed2firstbase <file.ndjson>");
                 eprintln!("       eudamed2firstbase <file.xml>");
                 std::process::exit(1);
@@ -61,7 +68,7 @@ fn main() -> Result<()> {
 
 fn process_xml_dir(config: &config::Config) -> Result<()> {
     let input_dir = Path::new("xml");
-    let output_dir = Path::new("json");
+    let output_dir = Path::new("firstbase_json");
     std::fs::create_dir_all(output_dir)?;
 
     let mut processed = 0;
@@ -107,7 +114,7 @@ fn process_xml_file(input_path: &Path, output_dir: &Path, config: &config::Confi
 }
 
 fn process_ndjson(input_dir: &Path, config: &config::Config) -> Result<()> {
-    let output_dir = Path::new("json");
+    let output_dir = Path::new("firstbase_json");
     std::fs::create_dir_all(output_dir)?;
 
     let mut total_processed = 0;
@@ -132,7 +139,7 @@ fn process_ndjson(input_dir: &Path, config: &config::Config) -> Result<()> {
 }
 
 fn process_ndjson_file(input_path: &Path, config: &config::Config) -> Result<()> {
-    let output_dir = Path::new("json");
+    let output_dir = Path::new("firstbase_json");
     std::fs::create_dir_all(output_dir)?;
 
     let file = std::fs::File::open(input_path)
@@ -196,7 +203,7 @@ fn process_detail_ndjson(
     listing_path: Option<&Path>,
     config: &config::Config,
 ) -> Result<()> {
-    let output_dir = Path::new("json");
+    let output_dir = Path::new("firstbase_json");
     std::fs::create_dir_all(output_dir)?;
 
     // Load listing data index if provided (keyed by GTIN / primaryDi)
@@ -400,6 +407,56 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
                 communication_channels: Vec::new(),
             });
     }
+}
+
+/// Process individual EUDAMED JSON files from a directory.
+/// Each input file produces one output file (one-to-one mapping).
+fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result<()> {
+    let output_dir = Path::new("firstbase_json");
+    std::fs::create_dir_all(output_dir)?;
+
+    let mut processed = 0;
+    let mut errors = 0;
+
+    for entry in std::fs::read_dir(input_dir).context("Failed to read eudamed_json/ directory")? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().map(|e| e == "json").unwrap_or(false) {
+            let json_content = std::fs::read_to_string(&path)
+                .with_context(|| format!("Failed to read {}", path.display()))?;
+
+            match eudamed_json::parse_eudamed_json(&json_content) {
+                Ok(device) => {
+                    let trade_item =
+                        transform_eudamed_json::transform_eudamed_device(&device, config);
+                    let document = firstbase::FirstbaseDocument {
+                        trade_item,
+                        children: Vec::new(),
+                    };
+
+                    let filename = path.file_name().unwrap_or_default().to_string_lossy();
+                    let output_path = output_dir.join(filename.as_ref());
+
+                    let json = serde_json::to_string_pretty(&document)?;
+                    std::fs::write(&output_path, &json)?;
+
+                    processed += 1;
+                }
+                Err(e) => {
+                    eprintln!("  Error in {}: {:#}", path.display(), e);
+                    errors += 1;
+                }
+            }
+        }
+    }
+
+    println!(
+        "Processed {} EUDAMED JSON file(s) ({} errors) -> {}",
+        processed,
+        errors,
+        output_dir.display()
+    );
+    Ok(())
 }
 
 fn format_size(bytes: usize) -> String {
