@@ -272,7 +272,7 @@ pub struct HealthcareItemInformation {
     #[serde(rename = "DoesTradeItemContainHumanTissue", skip_serializing_if = "Option::is_none")]
     pub human_tissue: Option<String>,
     #[serde(rename = "DoesTradeItemContainAnimalTissue", skip_serializing_if = "Option::is_none")]
-    pub animal_tissue: Option<serde_json::Value>,
+    pub animal_tissue: Option<bool>,
     #[serde(rename = "ClinicalStorageHandlingInformation", skip_serializing_if = "Vec::is_empty")]
     pub storage_handling: Vec<ClinicalStorageHandling>,
     #[serde(rename = "ClinicalSize", skip_serializing_if = "Vec::is_empty")]

@@ -90,6 +90,7 @@ download.sh                # Unified download + convert script (./download.sh --
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
+push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Live/CreateMany)
 ```
 
 ## What it does
@@ -213,37 +214,45 @@ curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublicat
 
 You can publish multiple items in a single request by adding more objects to the `Items` array. The response returns a `RequestIdentifier` on success.
 
-#### 4. Bulk Workflow
+#### 4. Bulk Workflow: push_to_api.sh
 
-To create drafts and publish all files at once:
+The `push_to_api.sh` script handles the full workflow: token acquisition, batched `Live/CreateMany` with publish, and `RequestStatus/Get` for validation results.
 
 ```bash
-# 1. Get token
-TOKEN=$(curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/Account/Token' \
-  -H 'Content-Type: application/json' \
-  -d '{"UserEmail":"you@example.com","Password":"your-api-password","Gln":"7612345000480"}' | tr -d '"')
-
-# 2. Create drafts for each file
-for f in firstbase_json/*.json; do
-  [[ "$(basename $f)" == firstbase_eudamed* ]] && continue
-  curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItem/Draft/CreateOne' \
-    -H 'Content-Type: application/json' \
-    -H "Authorization: bearer $TOKEN" \
-    -d @"$f"
-done
-
-# 3. Publish all (build Items array from files with valid GTINs)
+./push_to_api.sh                    # push all UUID files in firstbase_json/ (batches of 50)
+./push_to_api.sh --dry-run          # show what would be pushed, no API calls
+./push_to_api.sh --batch 20         # use smaller batch size
+./push_to_api.sh --status <reqid>   # query status of a previous request
 ```
 
-#### API Validation Results (100 EUDAMED devices)
+Environment variables for credentials:
 
-| Result | Count | Cause |
+```bash
+export FIRSTBASE_EMAIL="you@example.com"
+export FIRSTBASE_PASSWORD="your-api-password"
+export FIRSTBASE_GLN="7612345000480"
+./push_to_api.sh
+```
+
+Each batch sends a `Live/CreateMany` request (with `DocumentCommand: "Add"` and `PublishToGln: ["4399902421386"]`), then queries `RequestStatus/Get` for validation errors.
+
+#### Validation Error Fixes Applied
+
+After initial submission of 100 devices (1341 errors, 15 patterns), the following fixes were applied:
+
+| Error | Count | Fix |
 |---|---|---|
-| Draft ACCEPTED | 70 | JSON structure valid, GS1 GTIN present |
-| Gtin is required | 6 | Non-GS1 primary DI (HIBC/IFA) — no GTIN, cannot create GDSN draft |
-| clinicalSizeTypeCode rejected | 1 | `DIRECTION_OF_VIEW` (CST63) not yet in GS1 code list (coming with GDSN May release) |
-| Other rejections | 23 | Rate limiting / token expiry during bulk upload |
-| Published to GLN | 88 | Drafts published to `4399902421386` (firstbase UDI Connector) |
+| G572 lastChangeDateTime in future | 88x | Use `version_date` from EUDAMED instead of `now()` |
+| G641 device self-replacement | 10x | Skip referenced trade items where linked DI = own DI |
+| 097.011 missing MDR boolean fields | 648x | Default to false: implantable, active, measuring, etc. |
+| 097.010 missing multiComponent/tissue | 264x | Default `DEVICE` type, tissue fields to false |
+| 097.025 missing globalModelNumber | 176x | Use primary DI code as fallback, trade name as description |
+| 097.072 missing additionalDescription | 60x | Resolved by defaulting multiComponentDeviceTypeCode to DEVICE |
+| 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | First market country becomes ORIGINAL_PLACED when no explicit match |
+| 097.074 storage description missing | 9x | Use SHC code as placeholder description |
+| 097.005 invalid risk class | 5x | Set MDR vs IVDR regulatory act based on risk class |
+| 097.022 Class I implantable conflict | 36x | Data quality issue in EUDAMED (not fixable) |
+| G541 DIRECTION_OF_VIEW | 1x | CST63 coming with GDSN May release |
 
 ## Dependencies
 
