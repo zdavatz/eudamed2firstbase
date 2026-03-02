@@ -42,7 +42,7 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
 3. Output: one firstbase JSON file per input file in `firstbase_json/`
 4. Auto-detects file type:
-   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info, storage, warnings
+   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR+EU)
    - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
 
 ## Configuration
@@ -79,14 +79,14 @@ src/
   config.rs                  # config.toml parsing
   eudamed.rs                 # EUDAMED XML parsing (roxmltree DOM)
   api_json.rs                # EUDAMED API listing NDJSON parsing (serde)
-  api_detail.rs              # EUDAMED API detail NDJSON parsing (serde)
+  api_detail.rs              # EUDAMED API detail NDJSON parsing (serde, substances, product designer, linked devices)
   eudamed_json.rs            # EUDAMED JSON file parsing (serde, individual device files)
   firstbase.rs               # GS1 firstbase JSON output model (serde)
   transform.rs               # XML -> firstbase conversion logic
   transform_api.rs           # API listing -> firstbase conversion logic
-  transform_detail.rs        # API detail -> firstbase conversion (with listing merge)
+  transform_detail.rs        # API detail -> firstbase conversion (substances, EPD contact, sales split, related devices)
   transform_eudamed_json.rs  # EUDAMED JSON -> firstbase conversion (1:1 file mapping)
-  mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, etc.)
+  mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR types)
 
 download.sh            # Unified download + convert script (./download.sh --N)
 download_10k.sh        # Legacy: download 10k listings

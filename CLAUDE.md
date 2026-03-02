@@ -21,15 +21,15 @@ No tests yet. Validate output by diffing `firstbase_json/firstbase_28.02.2026.js
 
 - **eudamed.rs**: XML parsing using `roxmltree` DOM traversal (not serde). Switched from `quick-xml` serde due to element ordering issues. Uses `local_name()` to handle namespace prefixes transparently.
 - **api_json.rs**: EUDAMED public API listing NDJSON parsing (serde). Flat `ApiDevice` struct.
-- **api_detail.rs**: EUDAMED public API detail NDJSON parsing (serde). Rich `ApiDeviceDetail` struct with clinical sizes, substances, market info, warnings.
+- **api_detail.rs**: EUDAMED public API detail NDJSON parsing (serde). Rich `ApiDeviceDetail` struct with clinical sizes, substances (CMR, endocrine, medicinal, human product), market info, warnings, product designer, secondary DI, direct marking, unit of use, linked devices.
 - **firstbase.rs**: Output JSON model with serde `Serialize`. Uses `#[serde(rename = ...)]` for GS1 field names and `skip_serializing_if` for optional fields.
 - **transform.rs**: XML -> firstbase conversion. Builds packaging hierarchy by walking parent-child DI references. Sorts languages (en, fr, de, it), substances (WHO before ECHA), market infos (ORIGINAL_PLACED first).
 - **transform_api.rs**: API listing -> firstbase conversion. Simpler mapping from flat listing data.
-- **transform_detail.rs**: API detail -> firstbase conversion. Richest output with clinical data, market info, IFU URLs. Can merge listing data for manufacturer/AR SRN and risk class.
+- **transform_detail.rs**: API detail -> firstbase conversion. Richest output with clinical data, market info, IFU URLs, substances (ChemicalRegulationModule), product designer (EPD contact), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR+EU), ORIGINAL_PLACED vs ADDITIONAL_MARKET_AVAILABILITY sales split. Can merge listing data for manufacturer/AR SRN and risk class.
 - **eudamed_json.rs**: EUDAMED JSON device-level file parsing (serde). `EudamedDevice` struct with inline manufacturer/AR objects, basicUdi, riskClass, device flags.
 - **transform_eudamed_json.rs**: EUDAMED JSON device-level -> firstbase conversion. Includes full manufacturer/AR contact info with addresses, email, phone. No GTIN (device-level records).
 - The `eudamed_json` mode auto-detects file type: UDI-DI level files (have `primaryDi` with GTIN, trade name, clinical data) use `api_detail`/`transform_detail`; device-level files (Basic UDI-DI) use `eudamed_json`/`transform_eudamed_json`.
-- **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet.
+- **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet. Includes issuing agency to type code (GS1/HIBC/ICCBBA) and CMR type mapping.
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, sterilisation method, and endocrine substance identifier lookups.
 - **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), converts to firstbase JSON.
 
@@ -50,7 +50,7 @@ No tests yet. Validate output by diffing `firstbase_json/firstbase_28.02.2026.js
 ## Known Gaps vs Reference
 
 - TradeItemSynchronisationDates: empty (meta-dates not in EUDAMED XML or API)
-- DirectPartMarkingIdentifier: not generated (value not derivable from XML; API field `deviceMarking` is empty)
+- DirectPartMarkingIdentifier: generated from `directMarkingDi` in EUDAMED JSON; not derivable from XML
 - Language ordering within multi-language arrays may differ from reference (reference is inconsistent)
 - Sales conditions country ordering for ADDITIONAL markets may differ from reference (reference uses neither numeric nor XML order)
 - CatalogueItem Identifier: generated as random v4 UUIDs (won't match reference's specific UUIDs)

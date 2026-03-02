@@ -74,6 +74,8 @@ pub struct TradeItem {
     pub gtin: String,
     #[serde(rename = "AdditionalTradeItemIdentification", skip_serializing_if = "Vec::is_empty")]
     pub additional_identification: Vec<AdditionalTradeItemIdentification>,
+    #[serde(rename = "ReferencedTradeItem", skip_serializing_if = "Vec::is_empty")]
+    pub referenced_trade_items: Vec<ReferencedTradeItem>,
 }
 
 #[derive(Serialize, Debug, Default, Clone)]
@@ -211,6 +213,8 @@ pub struct MedicalDeviceInformation {
     pub annex_xvi_types: Vec<CodeValue>,
     #[serde(rename = "MultiComponentDeviceTypeCode", skip_serializing_if = "Option::is_none")]
     pub multi_component_type: Option<CodeValue>,
+    #[serde(rename = "IsNewDevice", skip_serializing_if = "Option::is_none")]
+    pub is_new_device: Option<bool>,
     #[serde(rename = "EUMedicalDeviceStatusCode")]
     pub eu_status: CodeValue,
     #[serde(rename = "HealthcareTradeItemReusabilityInformation", skip_serializing_if = "Option::is_none")]
@@ -420,7 +424,7 @@ pub struct SalesConditionCountry {
     pub country_code: CodeValue,
     #[serde(rename = "EndAvailabilityDateTime", skip_serializing_if = "Option::is_none")]
     pub end_datetime: Option<String>,
-    #[serde(rename = "StartAvailabilityDateTime")]
+    #[serde(rename = "StartAvailabilityDateTime", skip_serializing_if = "String::is_empty")]
     pub start_datetime: String,
 }
 
@@ -488,4 +492,13 @@ pub struct CommunicationChannel {
     pub channel_code: CodeValue,
     #[serde(rename = "CommunicationValue")]
     pub value: String,
+}
+
+// --- Referenced Trade Item (related legacy/regulation device) ---
+#[derive(Serialize, Debug)]
+pub struct ReferencedTradeItem {
+    #[serde(rename = "ReferencedTradeItemTypeCode")]
+    pub type_code: CodeValue,
+    #[serde(rename = "Gtin")]
+    pub gtin: String,
 }
