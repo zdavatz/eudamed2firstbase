@@ -425,10 +425,23 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
             let json_content = std::fs::read_to_string(&path)
                 .with_context(|| format!("Failed to read {}", path.display()))?;
 
-            match eudamed_json::parse_eudamed_json(&json_content) {
-                Ok(device) => {
-                    let trade_item =
-                        transform_eudamed_json::transform_eudamed_device(&device, config);
+            // Detect file type: UDI-DI level (has primaryDi) vs device level
+            let is_udi_di = json_content.contains("\"primaryDi\"");
+
+            let result = if is_udi_di {
+                // UDI-DI level file — reuse existing api_detail parser/transformer
+                api_detail::parse_api_detail(&json_content).map(|detail| {
+                    transform_detail::transform_detail_device(&detail, config)
+                })
+            } else {
+                // Device level file (Basic UDI-DI)
+                eudamed_json::parse_eudamed_json(&json_content).map(|device| {
+                    transform_eudamed_json::transform_eudamed_device(&device, config)
+                })
+            };
+
+            match result {
+                Ok(trade_item) => {
                     let document = firstbase::FirstbaseDocument {
                         trade_item,
                         children: Vec::new(),

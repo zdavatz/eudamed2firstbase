@@ -41,8 +41,9 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 1. Place EUDAMED JSON files in the `eudamed_json/` directory
 2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
 3. Output: one firstbase JSON file per input file in `firstbase_json/`
-4. Includes full manufacturer/AR contact info with addresses, email, phone
-5. Note: these are device-level records (Basic UDI-DI) — udiDiData (GTIN) is not available
+4. Auto-detects file type:
+   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info, storage, warnings
+   - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
 
 ## Configuration
 
