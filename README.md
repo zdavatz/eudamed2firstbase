@@ -108,6 +108,8 @@ firstbase_validation.py    # Schema validation against GS1 Product API Swagger s
   - Storage handling conditions
   - Substance types (CMR, endocrine, medicinal, human product)
   - Sterilisation: sterile=true → UNSPECIFIED, false → NOT_STERILISED; sterilization-before-use=true → UNSPECIFIED, false → NO_STERILISATION_REQUIRED
+  - Issuing agency (GS1/HIBC/ICCBBA/IFA)
+- Only GS1 identifiers (GTIN/GMN) are written to the `Gtin` field; non-GS1 primary DIs (HIBC, IFA/PPN) are placed in `AdditionalTradeItemIdentification` with the appropriate type code
 - Maps substances to ChemicalRegulationInformation (WHO for medicinal/human, ECHA for CMR/endocrine)
 - Extracts contact information (manufacturer, authorised representative, product designer)
 - Generates market info with country-specific sales conditions
