@@ -187,6 +187,67 @@ fi
 DETAIL_COUNT=$(wc -l < "$DETAILS")
 echo "  Details: $DETAIL_COUNT → $DETAILS"
 
+# --- Step 3b: Download Basic UDI-DI data (MDR mandatory fields) ---
+BASIC_UDI_URL="https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData"
+BASIC_UDI_CACHE="/tmp/basic_udi_cache"
+mkdir -p "$BASIC_UDI_CACHE"
+
+# Count how many UUIDs still need Basic UDI-DI data
+NEED_BASIC=0
+HAVE_BASIC=0
+while IFS= read -r uuid; do
+    if [[ -f "$BASIC_UDI_CACHE/$uuid.json" && -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+        HAVE_BASIC=$((HAVE_BASIC + 1))
+    else
+        NEED_BASIC=$((NEED_BASIC + 1))
+    fi
+done < "$UUIDS"
+
+echo "=== Step 3b: Downloading Basic UDI-DI data ($NEED_BASIC needed, $HAVE_BASIC cached) ==="
+
+if [[ $NEED_BASIC -gt 0 ]]; then
+    TMPDIR_BDL=$(mktemp -d)
+
+    # Create fetch script for Basic UDI-DI
+    cat > "$TMPDIR_BDL/fetch_basic.sh" << 'FETCHEOF'
+#!/bin/bash
+uuid="$1"; cache_dir="$2"; base_url="$3"; ua="$4"
+[[ -f "$cache_dir/$uuid.json" && -s "$cache_dir/$uuid.json" ]] && exit 0
+url="${base_url}/${uuid}?languageIso2Code=en"
+for attempt in 1 2 3; do
+    result=$(curl -fsSL "$url" -A "$ua" --connect-timeout 10 --max-time 30 2>/dev/null) && break
+    sleep $((attempt * 2))
+done
+if [[ -n "${result:-}" ]]; then
+    echo "$result" > "$cache_dir/$uuid.json" 2>/dev/null
+fi
+FETCHEOF
+    chmod +x "$TMPDIR_BDL/fetch_basic.sh"
+
+    # Process in batches
+    BATCH_DIR="$TMPDIR_BDL/batches"
+    mkdir -p "$BATCH_DIR"
+    # Only fetch UUIDs not already cached
+    while IFS= read -r uuid; do
+        if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+            echo "$uuid"
+        fi
+    done < "$UUIDS" | split -l 50 -d -a 4 - "$BATCH_DIR/batch_"
+
+    BASIC_PROCESSED=0
+    for batch_file in "$BATCH_DIR"/batch_*; do
+        [[ -f "$batch_file" ]] || continue
+        batch_count=$(wc -l < "$batch_file")
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_BDL/fetch_basic.sh" {} "$BASIC_UDI_CACHE" "$BASIC_UDI_URL" "$USER_AGENT" < "$batch_file"
+        BASIC_PROCESSED=$((BASIC_PROCESSED + batch_count))
+        echo "  Basic UDI-DI progress: $BASIC_PROCESSED / $NEED_BASIC"
+    done
+    rm -rf "$TMPDIR_BDL"
+fi
+
+BASIC_TOTAL=$(find "$BASIC_UDI_CACHE" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
+echo "  Basic UDI-DI cache: $BASIC_TOTAL files in $BASIC_UDI_CACHE/"
+
 # --- Step 4: Convert to firstbase JSON ---
 echo "=== Step 4: Converting to firstbase JSON ==="
 cargo run --quiet -- detail "$DETAILS" "$LISTING"
