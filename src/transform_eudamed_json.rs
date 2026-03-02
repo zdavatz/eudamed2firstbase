@@ -208,7 +208,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
 
     TradeItem {
         is_brand_bank_publication: false,
-        target_sector: vec!["HEALTHCARE".to_string(), "UDI_REGISTRY".to_string()],
+        target_sector: vec!["UDI_REGISTRY".to_string()],
         chemical_regulation_module: None,
         healthcare_item_module: None,
         medical_device_module: MedicalDeviceTradeItemModule {
