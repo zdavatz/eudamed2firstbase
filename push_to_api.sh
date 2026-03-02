@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# push_to_api.sh — Push firstbase JSON files to GS1 Catalogue Item API (Live/CreateMany)
-# then query RequestStatus/Get for validation results.
+# push_to_api.sh — Push firstbase JSON files to GS1 Catalogue Item API
+# Uses Draft/CreateOne for each file, then publishes all via AddMany.
 #
 # Usage:
 #   ./push_to_api.sh                    # push all UUID files in firstbase_json/
@@ -16,7 +16,6 @@ set -euo pipefail
 
 API_BASE="https://test-webapi-firstbase.gs1.ch:5443"
 PUBLISH_GLN="4399902421386"  # firstbase UDI Connector
-BATCH_SIZE=50                # files per Live/CreateMany request
 INPUT_DIR="firstbase_json"
 
 EMAIL="${FIRSTBASE_EMAIL:-zdavatz@ywesee.com}"
@@ -33,10 +32,36 @@ while [[ $# -gt 0 ]]; do
         --dry-run)  DRY_RUN=true; shift ;;
         --status)   STATUS_MODE=true; REQUEST_ID="$2"; shift 2 ;;
         --dir)      INPUT_DIR="$2"; shift 2 ;;
-        --batch)    BATCH_SIZE="$2"; shift 2 ;;
         *)          echo "Unknown arg: $1"; exit 1 ;;
     esac
 done
+
+# --- Helper: parse RequestStatus response ---
+parse_status() {
+    python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+status = data.get('Status', 'unknown')
+print(f'Status: {status}')
+errors = []
+for item in data.get('Items', []):
+    for resp in item.get('Gs1Response', []):
+        for exc in resp.get('AttributeException', []):
+            code = exc.get('ExceptionMessageCode', '')
+            desc = exc.get('ExceptionMessageDesciption', '')[:120]
+            errors.append(f'{code}: {desc}')
+        for err in resp.get('Gs1Error', []):
+            code = err.get('ErrorCode', '')
+            desc = err.get('ErrorDescription', '')[:120]
+            errors.append(f'{code}: {desc}')
+
+print(f'Total errors: {len(errors)}')
+if errors:
+    from collections import Counter
+    for pattern, count in Counter(errors).most_common(30):
+        print(f'  {count:>4}x  {pattern}')
+" 2>/dev/null || cat
+}
 
 # --- Status query mode ---
 if $STATUS_MODE; then
@@ -56,33 +81,10 @@ if $STATUS_MODE; then
     fi
 
     echo "Querying RequestStatus for $REQUEST_ID..."
-    RESULT=$(curl -s --max-time 120 -X POST "$API_BASE/RequestStatus/Get" \
+    curl -s --max-time 120 -X POST "$API_BASE/RequestStatus/Get" \
         -H 'Content-Type: application/json' \
         -H "Authorization: bearer $TOKEN" \
-        -d "{\"RequestIdentifier\":\"$REQUEST_ID\",\"IncludeGs1Response\":true}")
-
-    echo "$RESULT" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-status = data.get('Status', 'unknown')
-print(f'Status: {status}')
-errors = []
-for item in data.get('Items', []):
-    for resp in item.get('Gs1Response', []):
-        for exc in resp.get('AttributeException', []):
-            code = exc.get('ExceptionMessageCode', '')
-            desc = exc.get('ExceptionMessageDesciption', '')[:120]
-            errors.append(f'{code}: {desc}')
-        for err in resp.get('Gs1Error', []):
-            code = err.get('ErrorCode', '')
-            desc = err.get('ErrorDescription', '')[:120]
-            errors.append(f'{code}: {desc}')
-
-print(f'Total errors: {len(errors)}')
-from collections import Counter
-for pattern, count in Counter(errors).most_common(30):
-    print(f'  {count:>4}x  {pattern}')
-" 2>/dev/null || echo "$RESULT" | python3 -m json.tool 2>/dev/null || echo "$RESULT"
+        -d "{\"RequestIdentifier\":\"$REQUEST_ID\",\"IncludeGs1Response\":true}" | parse_status
     exit 0
 fi
 
@@ -90,7 +92,6 @@ fi
 FILES=()
 for f in "$INPUT_DIR"/*.json; do
     base=$(basename "$f")
-    # Skip batch files (start with firstbase_)
     [[ "$base" == firstbase_* ]] && continue
     FILES+=("$f")
 done
@@ -122,105 +123,107 @@ if [[ ${#TOKEN} -lt 20 ]]; then
 fi
 echo "Token obtained (${#TOKEN} chars)"
 
-# --- Push in batches via Live/CreateMany ---
-REQUEST_IDS=()
+# --- Step 1: Create drafts via Draft/CreateOne ---
 ACCEPTED=0
 FAILED=0
-BATCH_NUM=0
+PUBLISH_ITEMS=()
 
-for ((i=0; i<TOTAL; i+=BATCH_SIZE)); do
-    BATCH_NUM=$((BATCH_NUM+1))
-    END=$((i+BATCH_SIZE))
-    [[ $END -gt $TOTAL ]] && END=$TOTAL
-    COUNT=$((END-i))
+for ((i=0; i<TOTAL; i++)); do
+    FILE="${FILES[$i]}"
+    BASE=$(basename "$FILE" .json)
+    NUM=$((i+1))
 
-    echo ""
-    echo "=== Batch $BATCH_NUM: files $((i+1))-$END of $TOTAL ==="
-
-    # Build LiveItem array: [{DocumentCommand: "Add", DraftItem: <file content>}, ...]
-    ITEMS="["
-    FIRST=true
-    for ((j=i; j<END; j++)); do
-        FILE="${FILES[$j]}"
-        CONTENT=$(cat "$FILE")
-        if $FIRST; then
-            FIRST=false
-        else
-            ITEMS+=","
-        fi
-        ITEMS+="{\"DocumentCommand\":\"Add\",\"DraftItem\":$( echo "$CONTENT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d['DraftItem']))" 2>/dev/null )"
-        # Add PublishToGln
-        ITEMS+=",\"PublishToGln\":[\"$PUBLISH_GLN\"]}"
-    done
-    ITEMS+="]"
-
-    RESPONSE=$(curl -s --max-time 120 -X POST "$API_BASE/CatalogueItem/Live/CreateMany" \
+    RESPONSE=$(curl -s --max-time 60 -X POST "$API_BASE/CatalogueItem/Draft/CreateOne" \
         -H 'Content-Type: application/json' \
         -H "Authorization: bearer $TOKEN" \
-        -d "$ITEMS" 2>&1)
+        -d @"$FILE" 2>&1)
 
-    # Extract RequestIdentifier
+    # Check if response is JSON with RequestIdentifier
     REQ_ID=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin).get('RequestIdentifier',''))" 2>/dev/null || echo "")
 
-    if [[ -n "$REQ_ID" && "$REQ_ID" != "None" && "$REQ_ID" != "" ]]; then
-        echo "  RequestIdentifier: $REQ_ID"
-        REQUEST_IDS+=("$REQ_ID")
-        ACCEPTED=$((ACCEPTED+COUNT))
+    if [[ -n "$REQ_ID" && "$REQ_ID" != "None" ]]; then
+        # Extract Identifier, Gtin, TargetMarket for publish step
+        ITEM_INFO=$(python3 -c "
+import json
+with open('$FILE') as f:
+    doc = json.load(f)
+di = doc['DraftItem']
+ident = di.get('Identifier', '')
+ti = di.get('TradeItem', {})
+gtin = ti.get('Gtin', '')
+tm = ti.get('TargetMarket', {}).get('TargetMarketCountryCode', {}).get('Value', '097')
+print(f'{ident}|{gtin}|{tm}')
+" 2>/dev/null || echo "")
+        PUBLISH_ITEMS+=("$ITEM_INFO")
+        ACCEPTED=$((ACCEPTED+1))
+        echo "  [$NUM/$TOTAL] OK: $BASE"
     else
-        echo "  FAILED: $RESPONSE"
-        FAILED=$((FAILED+COUNT))
+        FAILED=$((FAILED+1))
+        echo "  [$NUM/$TOTAL] FAIL: $BASE — $(echo "$RESPONSE" | head -c 200)"
     fi
 done
 
 echo ""
-echo "=== Summary ==="
-echo "Total files:  $TOTAL"
-echo "Accepted:     $ACCEPTED"
-echo "Failed:       $FAILED"
-echo "Request IDs:  ${REQUEST_IDS[*]:-none}"
-echo ""
+echo "=== Draft Creation Summary ==="
+echo "Total:    $TOTAL"
+echo "Created:  $ACCEPTED"
+echo "Failed:   $FAILED"
 
-# --- Query status for each request ---
-if [[ ${#REQUEST_IDS[@]} -gt 0 ]]; then
-    echo "Waiting 5s for processing..."
-    sleep 5
+# --- Step 2: Publish all drafts via AddMany ---
+if [[ $ACCEPTED -gt 0 ]]; then
+    echo ""
+    echo "=== Publishing $ACCEPTED drafts via AddMany ==="
 
-    for REQ_ID in "${REQUEST_IDS[@]}"; do
-        echo ""
-        echo "=== Status for $REQ_ID ==="
-        RESULT=$(curl -s --max-time 120 -X POST "$API_BASE/RequestStatus/Get" \
+    # Batch publish in groups of 100 (API limit)
+    PUB_BATCH=100
+    PUB_TOTAL=${#PUBLISH_ITEMS[@]}
+    for ((pi=0; pi<PUB_TOTAL; pi+=PUB_BATCH)); do
+        PUB_END=$((pi+PUB_BATCH))
+        [[ $PUB_END -gt $PUB_TOTAL ]] && PUB_END=$PUB_TOTAL
+        PUB_COUNT=$((PUB_END-pi))
+
+        echo "  Publishing items $((pi+1))-$PUB_END of $PUB_TOTAL..."
+
+        PUB_SLICE=("${PUBLISH_ITEMS[@]:$pi:$PUB_COUNT}")
+
+        TMPFILE=$(mktemp)
+        python3 -c "
+import json, sys
+
+gln = '$GLN'
+publish_gln = '$PUBLISH_GLN'
+items_raw = sys.argv[1:]
+items = []
+for raw in items_raw:
+    parts = raw.split('|')
+    if len(parts) != 3:
+        continue
+    ident, gtin, tm = parts
+    items.append({
+        'Identifier': ident,
+        'DataSource': gln,
+        'Gtin': gtin,
+        'TargetMarket': tm,
+        'PublishToGln': [publish_gln]
+    })
+payload = {'Items': items}
+with open('$TMPFILE', 'w') as out:
+    json.dump(payload, out)
+" "${PUB_SLICE[@]}"
+
+        RESPONSE=$(curl -s --max-time 180 -X POST "$API_BASE/CatalogueItemPublication/AddMany" \
             -H 'Content-Type: application/json' \
             -H "Authorization: bearer $TOKEN" \
-            -d "{\"RequestIdentifier\":\"$REQ_ID\",\"IncludeGs1Response\":true}" 2>&1)
+            -d @"$TMPFILE" 2>&1)
+        rm -f "$TMPFILE"
 
-        echo "$RESULT" | python3 -c "
+        echo "$RESPONSE" | python3 -c "
 import json, sys
-data = json.load(sys.stdin)
-status = data.get('Status', 'unknown')
-print(f'Status: {status}')
-errors = []
-for item in data.get('Items', []):
-    for resp in item.get('Gs1Response', []):
-        for exc in resp.get('AttributeException', []):
-            code = exc.get('ExceptionMessageCode', '')
-            desc = exc.get('ExceptionMessageDesciption', '')[:120]
-            errors.append(f'{code}: {desc}')
-        for err in resp.get('Gs1Error', []):
-            code = err.get('ErrorCode', '')
-            desc = err.get('ErrorDescription', '')[:120]
-            errors.append(f'{code}: {desc}')
-
-print(f'Total errors: {len(errors)}')
-if errors:
-    from collections import Counter
-    for pattern, count in Counter(errors).most_common(30):
-        print(f'  {count:>4}x  {pattern}')
-" 2>/dev/null || echo "$RESULT" | head -200
+try:
+    data = json.load(sys.stdin)
+    print(json.dumps(data, indent=2)[:1000])
+except:
+    print(sys.stdin.read()[:500])
+" 2>/dev/null || echo "$RESPONSE" | head -c 500
     done
 fi
-
-echo ""
-echo "To re-query status later:"
-for REQ_ID in "${REQUEST_IDS[@]}"; do
-    echo "  ./push_to_api.sh --status $REQ_ID"
-done
