@@ -17,6 +17,16 @@ cargo run eudamed_json                               # EUDAMED JSON mode: eudame
 
 No tests yet. Validate output by diffing `firstbase_json/firstbase_28.02.2026.json` against `maik/CIN_7612345000435_07612345780313_097.json`.
 
+### Schema Validation
+
+```bash
+python3 firstbase_validation.py              # validate all firstbase JSON against GS1 Swagger schema
+python3 firstbase_validation.py --verbose    # per-file detail
+python3 firstbase_validation.py --dump-schema MedicalDeviceInformation  # inspect a GDSN schema type
+```
+
+Downloads and caches the GS1 Product API Swagger spec (978 definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, types, enums, and nested structures recursively including packaging hierarchy children. Cache stored in `.swagger_cache.json`.
+
 ## Architecture
 
 - **eudamed.rs**: XML parsing using `roxmltree` DOM traversal (not serde). Switched from `quick-xml` serde due to element ordering issues. Uses `local_name()` to handle namespace prefixes transparently.
@@ -32,6 +42,7 @@ No tests yet. Validate output by diffing `firstbase_json/firstbase_28.02.2026.js
 - **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet. Includes issuing agency to type code (GS1/HIBC/ICCBBA) and CMR type mapping.
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, sterilisation method, and endocrine substance identifier lookups.
 - **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), converts to firstbase JSON.
+- **firstbase_validation.py**: Schema validation script. Downloads and caches the GS1 Product API Swagger spec (978 GDSN definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, data types, enum values, and nested structures recursively. Cache in `.swagger_cache.json`.
 
 ## Key Design Decisions
 

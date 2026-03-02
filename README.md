@@ -88,9 +88,10 @@ src/
   transform_eudamed_json.rs  # EUDAMED JSON -> firstbase conversion (1:1 file mapping)
   mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR types)
 
-download.sh            # Unified download + convert script (./download.sh --N)
-download_10k.sh        # Legacy: download 10k listings
-download_details.sh    # Legacy: download details from UUID list
+download.sh                # Unified download + convert script (./download.sh --N)
+download_10k.sh            # Legacy: download 10k listings
+download_details.sh        # Legacy: download details from UUID list
+firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
 ```
 
 ## What it does
@@ -119,6 +120,20 @@ The download script uses the EUDAMED public API at `https://ec.europa.eu/tools/e
 - **Detail endpoint**: `GET /{uuid}?languageIso2Code=en` — full device data (clinical sizes, substances, market info, warnings)
 
 The detail endpoint provides richer data but lacks manufacturer/AR SRN and risk class, which are merged from the listing data.
+
+## Validation
+
+Validate generated firstbase JSON against the GS1 Product API Swagger schema (978 GDSN definitions, 189 TradeItem properties) from `test-productapi-firstbase.gs1.ch`:
+
+```bash
+python3 firstbase_validation.py                          # validate all files in firstbase_json/
+python3 firstbase_validation.py file.json                # validate specific file(s)
+python3 firstbase_validation.py --verbose                # show per-file pass/fail detail
+python3 firstbase_validation.py --dump-schema TradeItem  # inspect a schema definition
+python3 firstbase_validation.py --refresh                # re-download Swagger spec
+```
+
+Checks field names, data types, enum values, and nested module structures recursively, including packaging hierarchy children.
 
 ## Dependencies
 
