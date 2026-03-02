@@ -194,6 +194,8 @@ The response contains `ResponseStatusCode: "ACCEPTED"` on success, or `Attribute
 
 #### 3. Publish to a Recipient
 
+After creating drafts, publish them to the firstbase UDI Connector (GLN `4399902421386`):
+
 ```bash
 curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublication/AddMany' \
   -H 'Content-Type: application/json' \
@@ -209,13 +211,39 @@ curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublicat
   }'
 ```
 
+You can publish multiple items in a single request by adding more objects to the `Items` array. The response returns a `RequestIdentifier` on success.
+
+#### 4. Bulk Workflow
+
+To create drafts and publish all files at once:
+
+```bash
+# 1. Get token
+TOKEN=$(curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/Account/Token' \
+  -H 'Content-Type: application/json' \
+  -d '{"UserEmail":"you@example.com","Password":"your-api-password","Gln":"7612345000480"}' | tr -d '"')
+
+# 2. Create drafts for each file
+for f in firstbase_json/*.json; do
+  [[ "$(basename $f)" == firstbase_eudamed* ]] && continue
+  curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItem/Draft/CreateOne' \
+    -H 'Content-Type: application/json' \
+    -H "Authorization: bearer $TOKEN" \
+    -d @"$f"
+done
+
+# 3. Publish all (build Items array from files with valid GTINs)
+```
+
 #### API Validation Results (100 EUDAMED devices)
 
 | Result | Count | Cause |
 |---|---|---|
-| ACCEPTED | 71+ | JSON structure valid |
-| Gtin is invalid | 6 | Non-numeric HIBC/IFA identifiers (e.g. `+EKKD148061%`) — correct from EUDAMED |
-| clinicalSizeTypeCode rejected | 1 | `DIRECTION_OF_VIEW` (CST63) not in GS1 code list (error G541) |
+| Draft ACCEPTED | 70 | JSON structure valid, GS1 GTIN present |
+| Gtin is required | 6 | Non-GS1 primary DI (HIBC/IFA) — no GTIN, cannot create GDSN draft |
+| clinicalSizeTypeCode rejected | 1 | `DIRECTION_OF_VIEW` (CST63) not yet in GS1 code list (coming with GDSN May release) |
+| Other rejections | 23 | Rate limiting / token expiry during bulk upload |
+| Published to GLN | 88 | Drafts published to `4399902421386` (firstbase UDI Connector) |
 
 ## Dependencies
 
