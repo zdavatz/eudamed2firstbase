@@ -8,7 +8,6 @@ pub struct Config {
     pub provider: Provider,
     pub target_market: TargetMarket,
     pub gpc: Gpc,
-    pub sterilisation_method: Option<String>,
     #[serde(default)]
     pub endocrine_substances: HashMap<String, EndocrineSubstanceIds>,
 }

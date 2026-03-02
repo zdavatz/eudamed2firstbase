@@ -22,6 +22,7 @@ pub struct EudamedDevice {
     // Boolean flags
     pub active: Option<bool>,
     pub sterile: Option<bool>,
+    pub sterilization: Option<bool>,
     pub reusable: Option<bool>,
     pub implantable: Option<bool>,
     pub measuring_function: Option<bool>,

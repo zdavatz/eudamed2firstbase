@@ -212,33 +212,25 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
     }
 }
 
-fn build_sterility(device: &ApiDeviceDetail, config: &Config) -> Option<SterilityInformation> {
+fn build_sterility(device: &ApiDeviceDetail, _config: &Config) -> Option<SterilityInformation> {
     let sterile = device.sterile?;
     let sterilization = device.sterilization.unwrap_or(false);
 
-    let manufacturer_sterilisation = if sterile {
-        vec![CodeValue {
-            value: config
-                .sterilisation_method
-                .clone()
-                .unwrap_or_else(|| "UNSPECIFIED".to_string()),
-        }]
-    } else {
-        vec![CodeValue {
-            value: "NOT_STERILISED".to_string(),
-        }]
-    };
+    let manufacturer_sterilisation = vec![CodeValue {
+        value: if sterile {
+            "UNSPECIFIED".to_string()
+        } else {
+            "NOT_STERILISED".to_string()
+        },
+    }];
 
-    let prior_to_use = if sterilization {
-        vec![CodeValue {
-            value: config
-                .sterilisation_method
-                .clone()
-                .unwrap_or_else(|| "UNSPECIFIED".to_string()),
-        }]
-    } else {
-        Vec::new()
-    };
+    let prior_to_use = vec![CodeValue {
+        value: if sterilization {
+            "UNSPECIFIED".to_string()
+        } else {
+            "NO_STERILISATION_REQUIRED".to_string()
+        },
+    }];
 
     Some(SterilityInformation {
         manufacturer_sterilisation,

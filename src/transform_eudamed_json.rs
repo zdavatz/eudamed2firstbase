@@ -167,23 +167,14 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
 
     // Sterility
     let sterility = device.sterile.map(|s| {
-        if s {
-            SterilityInformation {
-                manufacturer_sterilisation: vec![CodeValue {
-                    value: config
-                        .sterilisation_method
-                        .clone()
-                        .unwrap_or_else(|| "UNSPECIFIED".to_string()),
-                }],
-                prior_to_use: Vec::new(),
-            }
-        } else {
-            SterilityInformation {
-                manufacturer_sterilisation: vec![CodeValue {
-                    value: "NOT_STERILISED".to_string(),
-                }],
-                prior_to_use: Vec::new(),
-            }
+        let sterilization = device.sterilization.unwrap_or(false);
+        SterilityInformation {
+            manufacturer_sterilisation: vec![CodeValue {
+                value: if s { "UNSPECIFIED" } else { "NOT_STERILISED" }.to_string(),
+            }],
+            prior_to_use: vec![CodeValue {
+                value: if sterilization { "UNSPECIFIED" } else { "NO_STERILISATION_REQUIRED" }.to_string(),
+            }],
         }
     });
 
