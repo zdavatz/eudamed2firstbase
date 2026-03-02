@@ -50,7 +50,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Flat domain structs with `Option<bool>` / `Option<String>` / `Vec<T>` instead of wrapper types.
 - Packaging hierarchy reconstructed from flat package list by finding outermost package (not referenced as any child) and walking down.
 - Endocrine substance EC/CAS identifiers come from config.toml lookup table since EUDAMED XML doesn't provide them.
-- Sterilisation method is config-driven (EUDAMED only has boolean sterilization flag). Used for both `InitialManufacturerSterilisationCode` (when sterile=true) and `InitialSterilisationPriorToUseCode` (when sterilization-before-use=true).
+- Sterilisation uses UNSPECIFIED for true (actual method unknown from EUDAMED), NOT_STERILISED/NO_STERILISATION_REQUIRED for false. No config needed.
 - Output wrapped in `DraftItem` envelope with `Identifier: "Draft_<uuid>"` inside DraftItem (not top-level) for Catalogue Item API CreateOne compatibility.
 - Detail mode writes both a batch JSON file and individual `<uuid>.json` files.
 - `TargetSector` is `["UDI_REGISTRY"]` only (no `HEALTHCARE`).

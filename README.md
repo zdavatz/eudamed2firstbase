@@ -50,8 +50,6 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 `config.toml` provides values not available in the EUDAMED XML:
 
 ```toml
-sterilisation_method = "OZONE"
-
 [provider]
 gln = "7612345000480"
 party_name = "EUDAMED Public Download Importing"
@@ -109,6 +107,7 @@ firstbase_validation.py    # Schema validation against GS1 Product API Swagger s
   - Measurement units (~136 MU codes)
   - Storage handling conditions
   - Substance types (CMR, endocrine, medicinal, human product)
+  - Sterilisation: sterile=true → UNSPECIFIED, false → NOT_STERILISED; sterilization-before-use=true → UNSPECIFIED, false → NO_STERILISATION_REQUIRED
 - Maps substances to ChemicalRegulationInformation (WHO for medicinal/human, ECHA for CMR/endocrine)
 - Extracts contact information (manufacturer, authorised representative, product designer)
 - Generates market info with country-specific sales conditions
