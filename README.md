@@ -123,7 +123,10 @@ The detail endpoint provides richer data but lacks manufacturer/AR SRN and risk 
 
 ## Validation
 
-Validate generated firstbase JSON against the GS1 Product API Swagger schema (978 GDSN definitions, 189 TradeItem properties) from `test-productapi-firstbase.gs1.ch`:
+Validates generated firstbase JSON against two GS1 Swagger schemas:
+
+- **Product API** (recipient): 978 definitions, 189 TradeItem properties — `test-productapi-firstbase.gs1.ch`
+- **Catalogue Item API** (sender): 1043 definitions, 188 TradeItem properties — `test-webapi-firstbase.gs1.ch:5443`
 
 ```bash
 python3 firstbase_validation.py                          # validate all files in firstbase_json/
