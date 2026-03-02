@@ -436,3 +436,83 @@ pub fn parse_api_detail(json_line: &str) -> anyhow::Result<ApiDeviceDetail> {
     let detail: ApiDeviceDetail = serde_json::from_str(json_line)?;
     Ok(detail)
 }
+
+// --- Basic UDI-DI data (from /devices/basicUdiData/udiDiData/{uuid}) ---
+
+/// Basic UDI-DI record with MDR mandatory fields (active, implantable, etc.)
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct BasicUdiDiData {
+    pub uuid: Option<String>,
+    pub active: Option<bool>,
+    pub implantable: Option<bool>,
+    pub measuring_function: Option<bool>,
+    pub reusable: Option<bool>,
+    pub medicinal_product: Option<bool>,
+    pub administering_medicine: Option<bool>,
+    pub human_tissues: Option<bool>,
+    pub animal_tissues: Option<bool>,
+    pub human_product: Option<bool>,
+    pub device_name: Option<String>,
+    pub device_model: Option<String>,
+    pub multi_component: Option<MultiComponentInfo>,
+    pub risk_class: Option<RefCode>,
+    pub legislation: Option<LegislationInfo>,
+    pub basic_udi: Option<DiIdentifier>,
+    pub manufacturer: Option<BasicUdiManufacturer>,
+    pub authorised_representative: Option<BasicUdiAuthorisedRep>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct MultiComponentInfo {
+    pub code: Option<String>,
+    pub criterion: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct LegislationInfo {
+    pub code: Option<String>,
+    pub legacy_directive: Option<bool>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct BasicUdiManufacturer {
+    pub uuid: Option<String>,
+    pub name: Option<String>,
+    pub srn: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct BasicUdiAuthorisedRep {
+    pub name: Option<String>,
+    pub srn: Option<String>,
+}
+
+impl BasicUdiDiData {
+    /// Extract multiComponent code suffix → GS1 code
+    pub fn multi_component_code(&self) -> Option<String> {
+        self.multi_component.as_ref()?.code.as_ref().map(|c| {
+            crate::mappings::multi_component_to_gs1(c).to_string()
+        })
+    }
+
+    /// Extract risk class code suffix (e.g. "refdata.risk-class.class-iia" → "class-iia")
+    pub fn risk_class_code(&self) -> Option<String> {
+        self.risk_class.as_ref()?.code.clone()
+    }
+}
+
+/// Parse a Basic UDI-DI JSON file
+pub fn parse_basic_udi_di(json_str: &str) -> anyhow::Result<BasicUdiDiData> {
+    let data: BasicUdiDiData = serde_json::from_str(json_str)?;
+    Ok(data)
+}
