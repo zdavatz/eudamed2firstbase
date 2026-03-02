@@ -35,12 +35,12 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **firstbase.rs**: Output JSON model with serde `Serialize`. Uses `#[serde(rename = ...)]` for GS1 field names and `skip_serializing_if` for optional fields. Top-level `DraftItemDocument` wraps `FirstbaseDocument` in `{"DraftItem": {"TradeItem": ..., "Identifier": "Draft_<uuid>"}}`. Identifier is inside DraftItem (required by Catalogue Item API CreateOne).
 - **transform.rs**: XML -> firstbase conversion. Builds packaging hierarchy by walking parent-child DI references. Sorts languages (en, fr, de, it), substances (WHO before ECHA), market infos (ORIGINAL_PLACED first).
 - **transform_api.rs**: API listing -> firstbase conversion. Simpler mapping from flat listing data.
-- **transform_detail.rs**: API detail -> firstbase conversion. Richest output with clinical data, market info, IFU URLs, substances (ChemicalRegulationModule), product designer (EPD contact), secondary DI (as GTIN_14), direct marking, related devices (REPLACED/REPLACED_BY), regulatory module (MDR+EU), ORIGINAL_PLACED vs ADDITIONAL_MARKET_AVAILABILITY sales split. Sterilisation prior-to-use uses config method (not generic code). Can merge listing data for manufacturer/AR SRN and risk class.
+- **transform_detail.rs**: API detail -> firstbase conversion. Richest output with clinical data, market info, IFU URLs, substances (ChemicalRegulationModule), product designer (EPD contact), secondary DI (as GTIN_14), direct marking, related devices (REPLACED/REPLACED_BY), regulatory module (MDR+EU), ORIGINAL_PLACED vs ADDITIONAL_MARKET_AVAILABILITY sales split. Non-GS1 primary DIs (HIBC/IFA) moved to AdditionalTradeItemIdentification. Can merge listing data for manufacturer/AR SRN and risk class.
 - **eudamed_json.rs**: EUDAMED JSON device-level file parsing (serde). `EudamedDevice` struct with inline manufacturer/AR objects, basicUdi, riskClass, device flags.
 - **transform_eudamed_json.rs**: EUDAMED JSON device-level -> firstbase conversion. Includes full manufacturer/AR contact info with addresses, email, phone. No GTIN (device-level records).
 - The `eudamed_json` mode auto-detects file type: UDI-DI level files (have `primaryDi` with GTIN, trade name, clinical data) use `api_detail`/`transform_detail`; device-level files (Basic UDI-DI) use `eudamed_json`/`transform_eudamed_json`.
-- **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet. Includes issuing agency to type code (GS1/HIBC/ICCBBA), CMR type mapping, and country alpha-2 to numeric (EU+EEA countries plus common non-EU manufacturer countries).
-- **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, sterilisation method, and endocrine substance identifier lookups.
+- **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet. Includes issuing agency to type code (GS1/HIBC/ICCBBA/IFA, plus EUDAMED-assigned → IFA), CMR type mapping, and country alpha-2 to numeric (EU+EEA countries plus common non-EU manufacturer countries).
+- **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, and endocrine substance identifier lookups.
 - **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), converts to firstbase JSON.
 - **firstbase_validation.py**: Schema validation script. Downloads and caches the GS1 Product API Swagger spec (978 GDSN definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, data types, enum values, and nested structures recursively. Cache in `.swagger_cache.json`. Handles DraftItem wrapper, batch arrays, and direct TradeItem formats.
 
@@ -54,6 +54,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Output wrapped in `DraftItem` envelope with `Identifier: "Draft_<uuid>"` inside DraftItem (not top-level) for Catalogue Item API CreateOne compatibility.
 - Detail mode writes both a batch JSON file and individual `<uuid>.json` files.
 - `TargetSector` is `["UDI_REGISTRY"]` only (no `HEALTHCARE`).
+- Only GS1 identifiers go into `Gtin`; non-GS1 primary DIs (HIBC, IFA/PPN, EUDAMED-assigned) are placed in `AdditionalTradeItemIdentification`. GDSN requires a GS1 GTIN as primary identifier — devices with only HIBC/IFA DIs get an empty `Gtin` and cannot be submitted as GDSN drafts.
 
 ## Reference Files (in maik/)
 
