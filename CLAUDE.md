@@ -32,7 +32,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **eudamed.rs**: XML parsing using `roxmltree` DOM traversal (not serde). Switched from `quick-xml` serde due to element ordering issues. Uses `local_name()` to handle namespace prefixes transparently.
 - **api_json.rs**: EUDAMED public API listing NDJSON parsing (serde). Flat `ApiDevice` struct.
 - **api_detail.rs**: EUDAMED public API detail NDJSON parsing (serde). Rich `ApiDeviceDetail` struct with clinical sizes, substances (CMR, endocrine, medicinal, human product), market info, warnings, product designer, secondary DI, direct marking, unit of use, linked devices.
-- **firstbase.rs**: Output JSON model with serde `Serialize`. Uses `#[serde(rename = ...)]` for GS1 field names and `skip_serializing_if` for optional fields. Top-level `DraftItemDocument` wraps `FirstbaseDocument` in `{"DraftItem": ..., "Identifier": "Draft_<uuid>"}`.
+- **firstbase.rs**: Output JSON model with serde `Serialize`. Uses `#[serde(rename = ...)]` for GS1 field names and `skip_serializing_if` for optional fields. Top-level `DraftItemDocument` wraps `FirstbaseDocument` in `{"DraftItem": {"TradeItem": ..., "Identifier": "Draft_<uuid>"}}`. Identifier is inside DraftItem (required by Catalogue Item API CreateOne).
 - **transform.rs**: XML -> firstbase conversion. Builds packaging hierarchy by walking parent-child DI references. Sorts languages (en, fr, de, it), substances (WHO before ECHA), market infos (ORIGINAL_PLACED first).
 - **transform_api.rs**: API listing -> firstbase conversion. Simpler mapping from flat listing data.
 - **transform_detail.rs**: API detail -> firstbase conversion. Richest output with clinical data, market info, IFU URLs, substances (ChemicalRegulationModule), product designer (EPD contact), secondary DI (as GTIN_14), direct marking, related devices (REPLACED/REPLACED_BY), regulatory module (MDR+EU), ORIGINAL_PLACED vs ADDITIONAL_MARKET_AVAILABILITY sales split. Sterilisation prior-to-use uses config method (not generic code). Can merge listing data for manufacturer/AR SRN and risk class.
@@ -51,7 +51,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Packaging hierarchy reconstructed from flat package list by finding outermost package (not referenced as any child) and walking down.
 - Endocrine substance EC/CAS identifiers come from config.toml lookup table since EUDAMED XML doesn't provide them.
 - Sterilisation method is config-driven (EUDAMED only has boolean sterilization flag). Used for both `InitialManufacturerSterilisationCode` (when sterile=true) and `InitialSterilisationPriorToUseCode` (when sterilization-before-use=true).
-- Output wrapped in `DraftItem` envelope with `Identifier: "Draft_<uuid>"` for Catalogue Item API compatibility.
+- Output wrapped in `DraftItem` envelope with `Identifier: "Draft_<uuid>"` inside DraftItem (not top-level) for Catalogue Item API CreateOne compatibility.
 - Detail mode writes both a batch JSON file and individual `<uuid>.json` files.
 - `TargetSector` is `["UDI_REGISTRY"]` only (no `HEALTHCARE`).
 
@@ -68,6 +68,17 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Language ordering within multi-language arrays may differ from reference (reference is inconsistent)
 - Sales conditions country ordering for ADDITIONAL markets may differ from reference (reference uses neither numeric nor XML order)
 - CatalogueItem Identifier: generated as random v4 UUIDs (won't match reference's specific UUIDs)
+
+## GS1 firstbase Catalogue Item API (Test)
+
+- **Endpoint**: `https://test-webapi-firstbase.gs1.ch:5443`
+- **Swagger UI**: `https://test-webapi-firstbase.gs1.ch:5443/helpPages/catalogueItemApi/index`
+- **Auth**: `POST /Account/Token` with `{"UserEmail":"...","Password":"...","Gln":"7612345000480"}` → JWT bearer token (~48h validity)
+- **Password reset**: Must use "Platform Auth (UAT) password reset for API" link from M2M Quick Guide PDF (page 10), NOT the Web-UI SSO reset link
+- **Create draft**: `POST /CatalogueItem/Draft/CreateOne` — body is the DraftItem JSON file directly
+- **Publish**: `POST /CatalogueItemPublication/AddMany` — Items array with Identifier, DataSource (GLN), Gtin, TargetMarket, PublishToGln array
+- **PublishToGln**: `4399902421386` (GS1 UDI Connector recipient)
+- **API validation (100 files)**: 71+ ACCEPTED, 6 invalid GTIN (HIBC/IFA non-numeric), 1 invalid clinicalSizeTypeCode (CST63 DIRECTION_OF_VIEW → error G541)
 
 ## EUDAMED Public API
 
