@@ -322,3 +322,22 @@ pub fn regulation_from_risk_class(risk_class: &str) -> &str {
         _ => "MDR",
     }
 }
+
+/// Issuing agency refdata code → GS1 identification type code
+pub fn issuing_agency_to_type_code(agency: &str) -> &str {
+    let suffix = agency.rsplit('.').next().unwrap_or(agency);
+    match suffix {
+        "gs1" => "GS1",
+        "hibcc" => "HIBC",
+        "iccbba" => "ICCBBA",
+        "ifa" => "IFA",
+        _ => "GS1",
+    }
+}
+
+/// CMR substance type refdata suffix → GS1 CMR type code
+/// e.g. "1a" → "CMR_1A", "1b" → "CMR_1B", "2" → "CMR_2"
+pub fn cmr_type_to_gs1(code: &str) -> String {
+    let suffix = code.rsplit('.').next().unwrap_or(code);
+    format!("CMR_{}", suffix.to_uppercase())
+}

@@ -208,7 +208,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
 
     TradeItem {
         is_brand_bank_publication: false,
-        target_sector: vec!["HEALTHCARE".to_string()],
+        target_sector: vec!["HEALTHCARE".to_string(), "UDI_REGISTRY".to_string()],
         chemical_regulation_module: None,
         healthcare_item_module: None,
         medical_device_module: MedicalDeviceTradeItemModule {
@@ -225,6 +225,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
                 production_identifier_types: Vec::new(),
                 annex_xvi_types: Vec::new(),
                 multi_component_type: None,
+                is_new_device: None,
                 eu_status: CodeValue {
                     value: String::new(),
                 },
@@ -242,7 +243,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         unit_descriptor: CodeValue {
             value: "BASE_UNIT_OR_EACH".to_string(),
         },
-        trade_channel_code: Vec::new(),
+        trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
         information_provider: InformationProvider {
             gln: config.provider.gln.clone(),
             party_name: config.provider.party_name.clone(),
@@ -273,5 +274,6 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         }],
         gtin: String::new(), // No GTIN in EUDAMED JSON device-level records
         additional_identification: Vec::new(),
+        referenced_trade_items: Vec::new(),
     }
 }

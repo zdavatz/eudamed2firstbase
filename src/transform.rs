@@ -232,6 +232,7 @@ fn build_packaging_trade_item(
         }],
         gtin: gtin.to_string(),
         additional_identification: vec![],
+        referenced_trade_items: Vec::new(),
     }
 }
 
@@ -535,6 +536,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
                 production_identifier_types: production_ids,
                 annex_xvi_types: annex_xvi,
                 multi_component_type: multi_component,
+                is_new_device: None,
                 eu_status: CodeValue { value: status.to_string() },
                 reusability,
                 sterility,
@@ -573,6 +575,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         }],
         gtin: base_di.to_string(),
         additional_identification: additional_ids,
+        referenced_trade_items: Vec::new(),
     })
 }
 

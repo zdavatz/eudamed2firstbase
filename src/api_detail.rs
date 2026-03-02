@@ -23,10 +23,9 @@ pub struct ApiDeviceDetail {
     pub single_use: Option<bool>,
     pub max_number_of_reuses: Option<u32>,
     pub max_number_of_reuses_applicable: Option<bool>,
-    pub direct_marking: Option<serde_json::Value>,
     pub direct_marking_same_as_udi_di: Option<bool>,
     pub direct_marking_di: Option<DiIdentifier>,
-    pub unit_of_use: Option<serde_json::Value>,
+    pub unit_of_use: Option<DiIdentifier>,
 
     // Production identifiers
     pub udi_pi_type: Option<UdiPiType>,
@@ -52,18 +51,18 @@ pub struct ApiDeviceDetail {
     pub cnd_nomenclatures: Option<Vec<CndNomenclature>>,
 
     // Substances
-    pub medicinal_product_substances: Option<serde_json::Value>,
-    pub human_product_substances: Option<serde_json::Value>,
-    pub cmr_substances: Option<Vec<serde_json::Value>>,
-    pub cmr_substance: Option<serde_json::Value>,
-    pub endocrine_disrupting_substances: Option<serde_json::Value>,
-    pub endocrine_disruptor: Option<serde_json::Value>,
+    pub medicinal_product_substances: Option<Vec<Substance>>,
+    pub human_product_substances: Option<Vec<Substance>>,
+    pub cmr_substances: Option<Vec<CmrSubstance>>,
+    pub cmr_substance: Option<bool>,
+    pub endocrine_disrupting_substances: Option<Vec<Substance>>,
+    pub endocrine_disruptor: Option<bool>,
 
     // Annex XVI
     pub annex_xvi_applicable: Option<bool>,
 
     // Product designer
-    pub product_designer: Option<serde_json::Value>,
+    pub product_designer: Option<ProductDesigner>,
 
     // OEM
     pub oem_applicable: Option<bool>,
@@ -71,8 +70,17 @@ pub struct ApiDeviceDetail {
     // Component DIs (multi-component devices)
     pub component_dis: Option<Vec<serde_json::Value>>,
 
+    // Direct marking
+    pub direct_marking: Option<bool>,
+
+    // New device
+    pub new_device: Option<bool>,
+
+    // Related device link
+    pub linked_udi_di_view: Option<LinkedUdiDiView>,
+
     // Version info
-    pub version_number: Option<serde_json::Value>,
+    pub version_number: Option<u32>,
     pub latest_version: Option<bool>,
     pub version_date: Option<String>,
 }
@@ -201,6 +209,123 @@ pub struct DeviceStatus {
 pub struct CndNomenclature {
     pub code: Option<String>,
     pub description: Option<MultiLangText>,
+}
+
+// --- Substance types ---
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct Substance {
+    pub name: Option<MultiLangText>,
+    pub substance_type: Option<String>,
+    pub cas_number: Option<String>,
+    pub ec_number: Option<String>,
+    pub inn_code: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct CmrSubstance {
+    pub cmr_substance_type: Option<RefCode>,
+    pub name: Option<MultiLangText>,
+    pub cas_number: Option<String>,
+    pub ec_number: Option<String>,
+}
+
+// --- Product designer ---
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct ProductDesigner {
+    pub oem_actor: Option<OemActor>,
+    pub oem_organisation: Option<OemOrganisation>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct OemActor {
+    pub name: Option<String>,
+    pub srn: Option<String>,
+    pub country_iso2_code: Option<String>,
+    pub country_name: Option<String>,
+    /// Can be a plain string or a structured address object
+    pub geographical_address: Option<serde_json::Value>,
+    pub electronic_mail: Option<String>,
+    pub telephone: Option<String>,
+}
+
+impl OemActor {
+    /// Extract structured address fields if available.
+    pub fn structured_address(&self) -> Option<(String, String, String, String)> {
+        match self.geographical_address.as_ref()? {
+            serde_json::Value::Object(obj) => {
+                let street = obj.get("streetName").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let number = obj.get("buildingNumber").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let postal = obj.get("postalZone").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let city = obj.get("cityName").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                Some((street, number.unwrap_or_default(), postal, city))
+            }
+            serde_json::Value::String(s) => {
+                Some((s.clone(), String::new(), String::new(), String::new()))
+            }
+            _ => None,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct OemOrganisation {
+    pub name: Option<String>,
+    pub geographical_address: Option<serde_json::Value>,
+    pub electronic_mail: Option<String>,
+    pub telephone: Option<String>,
+}
+
+impl OemOrganisation {
+    /// Extract structured address fields if available.
+    pub fn structured_address(&self) -> Option<(String, String, String, String)> {
+        match self.geographical_address.as_ref()? {
+            serde_json::Value::Object(obj) => {
+                let street = obj.get("streetName").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let number = obj.get("buildingNumber").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let postal = obj.get("postalZone").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let city = obj.get("cityName").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                Some((street, number.unwrap_or_default(), postal, city))
+            }
+            serde_json::Value::String(s) => {
+                Some((s.clone(), String::new(), String::new(), String::new()))
+            }
+            _ => None,
+        }
+    }
+
+    /// Extract country ISO2 code from nested address object.
+    pub fn country_iso2(&self) -> Option<String> {
+        match self.geographical_address.as_ref()? {
+            serde_json::Value::Object(obj) => {
+                obj.get("country")
+                    .and_then(|c| c.get("iso2Code"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            }
+            _ => None,
+        }
+    }
+}
+
+// --- Linked UDI-DI (related legacy/regulation device) ---
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct LinkedUdiDiView {
+    pub udi_di: Option<DiIdentifier>,
+    pub basic_udi_di: Option<DiIdentifier>,
+    pub device_criterion: Option<String>,
+    pub device_linked_on_date: Option<String>,
 }
 
 impl ApiDeviceDetail {
