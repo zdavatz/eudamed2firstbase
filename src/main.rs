@@ -16,6 +16,9 @@ use std::collections::HashMap;
 use std::io::BufRead;
 use std::path::Path;
 
+/// Default directory for cached Basic UDI-DI data
+const BASIC_UDI_CACHE_DIR: &str = "/tmp/basic_udi_cache";
+
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
 
@@ -230,6 +233,12 @@ fn process_detail_ndjson(
         println!("  Loaded {} listing records for merging", listing_index.len());
     }
 
+    // Load Basic UDI-DI cache
+    let basic_udi_cache = load_basic_udi_cache(Path::new(BASIC_UDI_CACHE_DIR));
+    if !basic_udi_cache.is_empty() {
+        println!("  Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+    }
+
     let file = std::fs::File::open(detail_path)
         .with_context(|| format!("Failed to open {}", detail_path.display()))?;
     let reader = std::io::BufReader::new(file);
@@ -249,7 +258,8 @@ fn process_detail_ndjson(
         match api_detail::parse_api_detail(trimmed) {
             Ok(detail) => {
                 let uuid = detail.uuid.clone().unwrap_or_default();
-                let mut trade_item = transform_detail::transform_detail_device(&detail, config);
+                let basic_udi = basic_udi_cache.get(&uuid);
+                let mut trade_item = transform_detail::transform_detail_device(&detail, config, basic_udi);
 
                 // Merge listing data (manufacturer, AR, risk class, basic UDI)
                 let gtin = &trade_item.gtin;
@@ -399,11 +409,13 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
         }
     }
 
-    // Add manufacturer contact
-    if let Some(ref srn) = listing.manufacturer_srn {
-        trade_item
-            .contact_information
-            .push(firstbase::TradeItemContactInformation {
+    // Add manufacturer contact (if not already added by Basic UDI-DI)
+    let has_ema = trade_item.contact_information.iter().any(|c| c.contact_type.value == "EMA");
+    if !has_ema {
+        if let Some(ref srn) = listing.manufacturer_srn {
+            trade_item
+                .contact_information
+                .push(firstbase::TradeItemContactInformation {
                 contact_type: firstbase::CodeValue {
                     value: "EMA".to_string(),
                 },
@@ -415,13 +427,16 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
                 addresses: Vec::new(),
                 communication_channels: Vec::new(),
             });
+        }
     }
 
-    // Add authorised representative contact
-    if let Some(ref srn) = listing.authorised_representative_srn {
-        trade_item
-            .contact_information
-            .push(firstbase::TradeItemContactInformation {
+    // Add authorised representative contact (if not already added by Basic UDI-DI)
+    let has_ear = trade_item.contact_information.iter().any(|c| c.contact_type.value == "EAR");
+    if !has_ear {
+        if let Some(ref srn) = listing.authorised_representative_srn {
+            trade_item
+                .contact_information
+                .push(firstbase::TradeItemContactInformation {
                 contact_type: firstbase::CodeValue {
                     value: "EAR".to_string(),
                 },
@@ -433,6 +448,7 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
                 addresses: Vec::new(),
                 communication_channels: Vec::new(),
             });
+        }
     }
 }
 
@@ -441,6 +457,12 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
 fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result<()> {
     let output_dir = Path::new("firstbase_json");
     std::fs::create_dir_all(output_dir)?;
+
+    // Load Basic UDI-DI cache
+    let basic_udi_cache = load_basic_udi_cache(Path::new(BASIC_UDI_CACHE_DIR));
+    if !basic_udi_cache.is_empty() {
+        println!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+    }
 
     let mut processed = 0;
     let mut errors = 0;
@@ -457,8 +479,10 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
 
             let result = if is_udi_di {
                 // UDI-DI level file — reuse existing api_detail parser/transformer
+                let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
                 api_detail::parse_api_detail(&json_content).map(|detail| {
-                    transform_detail::transform_detail_device(&detail, config)
+                    let basic_udi = basic_udi_cache.get(&stem);
+                    transform_detail::transform_detail_device(&detail, config, basic_udi)
                 })
             } else {
                 // Device level file (Basic UDI-DI)
@@ -503,6 +527,38 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
         output_dir.display()
     );
     Ok(())
+}
+
+/// Load Basic UDI-DI cache: maps UDI-DI UUID → BasicUdiDiData
+fn load_basic_udi_cache(cache_dir: &Path) -> HashMap<String, api_detail::BasicUdiDiData> {
+    let mut cache = HashMap::new();
+    if !cache_dir.exists() {
+        return cache;
+    }
+    let entries = match std::fs::read_dir(cache_dir) {
+        Ok(e) => e,
+        Err(_) => return cache,
+    };
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        if path.extension().map(|e| e == "json").unwrap_or(false) {
+            let uuid = path.file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                match api_detail::parse_basic_udi_di(&content) {
+                    Ok(data) => { cache.insert(uuid, data); }
+                    Err(_) => {}
+                }
+            }
+        }
+    }
+    cache
 }
 
 fn format_size(bytes: usize) -> String {

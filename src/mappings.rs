@@ -359,3 +359,44 @@ pub fn cmr_type_to_gs1(code: &str) -> String {
     let suffix = code.rsplit('.').next().unwrap_or(code);
     format!("CMR_{}", suffix.to_uppercase())
 }
+
+/// Multi-component device type refdata code → GS1 code
+/// e.g. "refdata.multi-component.system" → "SYSTEM"
+pub fn multi_component_to_gs1(code: &str) -> &str {
+    let suffix = code.rsplit('.').next().unwrap_or(code);
+    match suffix {
+        "system" => "SYSTEM",
+        "procedure-pack" => "PROCEDURE_PACK",
+        "spp-procedure-pack" => "SPP_PROCEDURE_PACK",
+        _ => "DEVICE",
+    }
+}
+
+/// Risk class refdata code → GS1 risk class code
+/// e.g. "refdata.risk-class.class-iia" → "CLASS_IIA"
+pub fn risk_class_refdata_to_gs1(code: &str) -> &str {
+    let suffix = code.rsplit('.').next().unwrap_or(code);
+    match suffix {
+        "class-i" => "EU_CLASS_I",
+        "class-iia" => "EU_CLASS_IIA",
+        "class-iib" => "EU_CLASS_IIB",
+        "class-iii" => "EU_CLASS_III",
+        "class-a" => "IVD_CLASS_A",
+        "class-b" => "IVD_CLASS_B",
+        "class-c" => "IVD_CLASS_C",
+        "class-d" => "IVD_CLASS_D",
+        "ivd-general" => "IVD_GENERAL",
+        "aimdd" => "AIMDD",
+        other => risk_class_to_gs1(other),
+    }
+}
+
+/// Regulatory act from refdata risk class code
+pub fn regulation_from_risk_class_refdata(code: &str) -> &str {
+    let suffix = code.rsplit('.').next().unwrap_or(code);
+    match suffix {
+        "class-a" | "class-b" | "class-c" | "class-d" | "ivd-general" => "IVDR",
+        "aimdd" => "AIMDD",
+        _ => "MDR",
+    }
+}

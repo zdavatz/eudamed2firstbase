@@ -1,11 +1,12 @@
-use crate::api_detail::{ApiDeviceDetail, Substance, CmrSubstance};
+use crate::api_detail::{ApiDeviceDetail, BasicUdiDiData, Substance, CmrSubstance};
 use crate::config::Config;
 use crate::firstbase::*;
 use crate::mappings;
 use chrono::Local;
 
 /// Transform a full API device detail record into a firstbase TradeItem.
-pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> TradeItem {
+/// Optional `basic_udi` provides real MDR mandatory fields from the Basic UDI-DI level.
+pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_udi: Option<&BasicUdiDiData>) -> TradeItem {
     let now = Local::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
@@ -37,7 +38,45 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
     let reusability = build_reusability(device);
 
     // --- Contacts ---
-    let contacts = build_contacts(device);
+    let mut contacts = build_contacts(device);
+
+    // Add manufacturer contact from Basic UDI-DI (if not already present)
+    let has_ema = contacts.iter().any(|c| c.contact_type.value == "EMA");
+    if !has_ema {
+        if let Some(ref mfr) = basic_udi.and_then(|b| b.manufacturer.as_ref()) {
+            if let Some(ref srn) = mfr.srn {
+                contacts.push(TradeItemContactInformation {
+                contact_type: CodeValue { value: "EMA".to_string() },
+                party_identification: vec![AdditionalPartyIdentification {
+                    type_code: "SRN".to_string(),
+                    value: srn.clone(),
+                }],
+                contact_name: mfr.name.clone(),
+                addresses: Vec::new(),
+                communication_channels: Vec::new(),
+            });
+            }
+        }
+    }
+
+    // Add authorised representative contact from Basic UDI-DI (if not already present)
+    let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
+    if !has_ear {
+        if let Some(ref ar) = basic_udi.and_then(|b| b.authorised_representative.as_ref()) {
+            if let Some(ref srn) = ar.srn {
+                contacts.push(TradeItemContactInformation {
+                    contact_type: CodeValue { value: "EAR".to_string() },
+                    party_identification: vec![AdditionalPartyIdentification {
+                        type_code: "SRN".to_string(),
+                        value: srn.clone(),
+                    }],
+                    contact_name: ar.name.clone(),
+                    addresses: Vec::new(),
+                    communication_channels: Vec::new(),
+                });
+            }
+        }
+    }
 
     // --- Trade name / description ---
     let trade_names = device.trade_name_texts();
@@ -101,6 +140,17 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
 
     // --- EMDN/CND nomenclature → additional classification system 88 ---
     let mut all_classifications = Vec::new();
+
+    // Risk class from Basic UDI-DI → classification system 76
+    if let Some(ref rc) = basic_udi.and_then(|b| b.risk_class_code()) {
+        all_classifications.push(AdditionalClassification {
+            system_code: CodeValue { value: "76".to_string() },
+            values: vec![AdditionalClassificationValue {
+                code_value: mappings::risk_class_refdata_to_gs1(rc).to_string(),
+            }],
+        });
+    }
+
     if let Some(ref cnds) = device.cnd_nomenclatures {
         for cnd in cnds {
             if let Some(ref code) = cnd.code {
@@ -117,7 +167,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
     }
 
     // --- Healthcare item module (clinical sizes, storage, warnings, latex, tissue) ---
-    let healthcare_module = build_healthcare_module(device);
+    let healthcare_module = build_healthcare_module(device, basic_udi);
 
     // --- Chemical regulation module (substances) ---
     let chemical_regulation_module = build_chemical_regulation_module(device);
@@ -140,9 +190,14 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
     });
 
     // --- Regulated trade item module (regulatory act + agency) ---
+    // Use risk class from Basic UDI-DI to determine MDR vs IVDR
+    let reg_act = basic_udi
+        .and_then(|b| b.risk_class_code())
+        .map(|rc| mappings::regulation_from_risk_class_refdata(&rc).to_string())
+        .unwrap_or_else(|| "MDR".to_string());
     let regulated_trade_item_module = Some(RegulatedTradeItemModule {
         info: vec![RegulatoryInformation {
-            act: "MDR".to_string(),
+            act: reg_act,
             agency: "EU".to_string(),
         }],
     });
@@ -166,18 +221,22 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
         healthcare_item_module: healthcare_module,
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
-                is_implantable: Some("FALSE".to_string()), // Default false; Basic UDI-DI level
+                is_implantable: Some(bool_str(basic_udi.and_then(|b| b.implantable).unwrap_or(false))),
                 device_count,
                 direct_marking,
-                measuring_function: Some(false),    // Default false; Basic UDI-DI level
-                is_active: Some(false),             // Default false; Basic UDI-DI level
-                administer_medicine: Some(false),   // Default false; Basic UDI-DI level
-                is_medicinal_product: Some(false),  // Default false; Basic UDI-DI level
+                measuring_function: Some(basic_udi.and_then(|b| b.measuring_function).unwrap_or(false)),
+                is_active: Some(basic_udi.and_then(|b| b.active).unwrap_or(false)),
+                administer_medicine: Some(basic_udi.and_then(|b| b.administering_medicine).unwrap_or(false)),
+                is_medicinal_product: Some(basic_udi.and_then(|b| b.medicinal_product).unwrap_or(false)),
                 is_reprocessed: device.reprocessed,
-                is_reusable_surgical: Some(false),  // Default false; Basic UDI-DI level
+                is_reusable_surgical: Some(basic_udi.and_then(|b| b.reusable).unwrap_or(false)),
                 production_identifier_types: production_ids,
-                annex_xvi_types: Vec::new(), // Type codes at Basic UDI-DI level
-                multi_component_type: Some(CodeValue { value: "DEVICE".to_string() }), // Default DEVICE
+                annex_xvi_types: Vec::new(),
+                multi_component_type: Some(CodeValue {
+                    value: basic_udi
+                        .and_then(|b| b.multi_component_code())
+                        .unwrap_or_else(|| "DEVICE".to_string()),
+                }),
                 is_new_device: device.new_device,
                 eu_status: CodeValue {
                     value: status_code,
@@ -222,7 +281,11 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config) -> Tra
             publication: now_str,
         },
         global_model_info: vec![GlobalModelInformation {
-            number: device.primary_di_code(), // Fallback; overridden by listing merge (basicUdi)
+            number: basic_udi
+                .and_then(|b| b.basic_udi.as_ref())
+                .and_then(|di| di.code.clone())
+                .filter(|c| !c.is_empty())
+                .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
             descriptions: trade_names
                 .iter()
                 .map(|(lang, text)| LangValue {
@@ -394,19 +457,18 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
     contacts
 }
 
-fn build_healthcare_module(device: &ApiDeviceDetail) -> Option<HealthcareItemInformationModule> {
+fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>) -> Option<HealthcareItemInformationModule> {
     let clinical_sizes = build_clinical_sizes(device);
     let storage_handling = build_storage_handling(device);
     let clinical_warnings = build_clinical_warnings(device);
-    // Default latex/blood/tissue to FALSE (mandatory fields per 097.011/097.010)
     let contains_latex = Some(device.latex.map(|b| bool_str(b)).unwrap_or_else(|| "FALSE".to_string()));
 
     Some(HealthcareItemInformationModule {
         info: HealthcareItemInformation {
-            human_blood_derivative: Some("FALSE".to_string()),
+            human_blood_derivative: Some(bool_str(basic_udi.and_then(|b| b.human_product).unwrap_or(false))),
             contains_latex,
-            human_tissue: Some("FALSE".to_string()),
-            animal_tissue: Some(false),
+            human_tissue: Some(bool_str(basic_udi.and_then(|b| b.human_tissues).unwrap_or(false))),
+            animal_tissue: Some(basic_udi.and_then(|b| b.animal_tissues).unwrap_or(false)),
             storage_handling,
             clinical_sizes,
             clinical_warnings,
