@@ -161,13 +161,13 @@ fn process_ndjson_file(input_path: &Path, config: &config::Config) -> Result<()>
         match api_json::parse_api_device(trimmed) {
             Ok(device) => {
                 let trade_item = transform_api::transform_api_device(&device, config);
+                let uuid = device.uuid.as_deref().unwrap_or("unknown");
                 let document = firstbase::FirstbaseDocument {
                     trade_item,
                     children: Vec::new(),
-                };
-                let uuid = device.uuid.as_deref().unwrap_or("unknown");
-                trade_items.push(firstbase::DraftItemDocument {
                     identifier: format!("Draft_{}", uuid),
+                };
+                trade_items.push(firstbase::DraftItemDocument {
                     draft_item: document,
                 });
             }
@@ -260,9 +260,9 @@ fn process_detail_ndjson(
                 let document = firstbase::FirstbaseDocument {
                     trade_item,
                     children: Vec::new(),
+                    identifier: format!("Draft_{}", uuid),
                 };
                 let draft_doc = firstbase::DraftItemDocument {
-                    identifier: format!("Draft_{}", uuid),
                     draft_item: document,
                 };
 
@@ -461,16 +461,15 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
 
             match result {
                 Ok(trade_item) => {
+                    // Extract UUID from filename (stem without extension)
+                    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
                     let document = firstbase::FirstbaseDocument {
                         trade_item,
                         children: Vec::new(),
+                        identifier: format!("Draft_{}", stem),
                     };
-
-                    // Extract UUID from filename (stem without extension)
-                    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
                     let draft_doc = firstbase::DraftItemDocument {
                         draft_item: document,
-                        identifier: format!("Draft_{}", stem),
                     };
 
                     let filename = path.file_name().unwrap_or_default().to_string_lossy();

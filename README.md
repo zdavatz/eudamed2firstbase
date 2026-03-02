@@ -96,7 +96,7 @@ firstbase_validation.py    # Schema validation against GS1 Product API Swagger s
 
 ## What it does
 
-- Wraps output in DraftItem envelope: `{"DraftItem": {"TradeItem": ...}, "Identifier": "Draft_<uuid>"}`
+- Wraps output in DraftItem envelope: `{"DraftItem": {"TradeItem": ..., "Identifier": "Draft_<uuid>"}}`
 - Writes both batch JSON and individual per-UUID files in detail mode
 - Parses EUDAMED PullResponse XML with full namespace handling
 - Reconstructs packaging hierarchy (base unit -> intermediate -> outermost package)
@@ -125,6 +125,8 @@ The detail endpoint provides richer data but lacks manufacturer/AR SRN and risk 
 
 ## Validation
 
+### Offline: Swagger Schema Validation
+
 Validates generated firstbase JSON against two GS1 Swagger schemas:
 
 - **Product API** (recipient): 978 definitions, 189 TradeItem properties — `test-productapi-firstbase.gs1.ch`
@@ -149,6 +151,70 @@ python3 firstbase_validation.py --dump-schema MedicalDeviceInformation
 python3 firstbase_validation.py --dump-schema HealthcareItemInformation
 python3 firstbase_validation.py --dump-schema SalesInformation
 ```
+
+### Online: Catalogue Item API Validation
+
+You can upload generated JSON directly to the GS1 firstbase Catalogue Item API for server-side validation. This catches issues that the offline Swagger check misses (e.g. GTIN check digits, code list membership).
+
+#### 1. Get an Access Token
+
+The API uses token-based authentication via the GS1 Platform Auth SSO.
+
+**First-time setup — password reset:**
+
+1. Open the [M2M Quick Guide PDF](maik/5329.pdf) (page 10) in a PDF viewer
+2. Click the **"Platform Auth (UAT) password reset for API"** hyperlink — this is a different link than the Web-UI SSO reset
+3. Enter your email and set a password
+4. Use this password for API token requests
+
+**Important:** The Web-UI password reset link (`uat-sso.tradeconnectors.org/ResetPassword/ChangePassword?...redirectAfterResetPasswordUrl=https://test-firstbase.gs1.ch/`) resets the **Media API / Web-UI** password, not the REST API password. You must use the "Platform Auth (UAT) password reset for API" link from the PDF.
+
+**Request a token:**
+
+```bash
+curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/Account/Token' \
+  -H 'Content-Type: application/json' \
+  -d '{"UserEmail":"you@example.com","Password":"your-api-password","Gln":"7612345000480"}'
+```
+
+This returns a JWT bearer token (valid ~48h).
+
+#### 2. Create a Draft
+
+```bash
+TOKEN="<your-token>"
+curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItem/Draft/CreateOne' \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: bearer $TOKEN" \
+  -d @firstbase_json/<uuid>.json
+```
+
+The response contains `ResponseStatusCode: "ACCEPTED"` on success, or `AttributeException` / `GS1Error` details on validation failure.
+
+#### 3. Publish to a Recipient
+
+```bash
+curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublication/AddMany' \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: bearer $TOKEN" \
+  -d '{
+    "Items": [{
+      "Identifier": "Draft_<uuid>",
+      "DataSource": "7612345000480",
+      "Gtin": "06944233413739",
+      "TargetMarket": "097",
+      "PublishToGln": ["4399902421386"]
+    }]
+  }'
+```
+
+#### API Validation Results (100 EUDAMED devices)
+
+| Result | Count | Cause |
+|---|---|---|
+| ACCEPTED | 71+ | JSON structure valid |
+| Gtin is invalid | 6 | Non-numeric HIBC/IFA identifiers (e.g. `+EKKD148061%`) — correct from EUDAMED |
+| clinicalSizeTypeCode rejected | 1 | `DIRECTION_OF_VIEW` (CST63) not in GS1 code list (error G541) |
 
 ## Dependencies
 

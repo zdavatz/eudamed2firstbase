@@ -28,6 +28,7 @@ pub fn transform(response: &PullResponse, config: &Config) -> Result<FirstbaseDo
         return Ok(FirstbaseDocument {
             trade_item: base_trade_item,
             children: vec![],
+            identifier: format!("Draft_{}", uuid::Uuid::new_v4()),
         });
     }
 
@@ -171,6 +172,7 @@ fn build_nested_document(
     Ok(FirstbaseDocument {
         trade_item: top_trade_item,
         children: vec![inner_link],
+        identifier: format!("Draft_{}", uuid::Uuid::new_v4()),
     })
 }
 
