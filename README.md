@@ -135,6 +135,14 @@ python3 firstbase_validation.py --refresh                # re-download Swagger s
 
 Checks field names, data types, enum values, and nested module structures recursively, including packaging hierarchy children.
 
+You can drill into any nested type the same way, e.g.:
+
+```bash
+python3 firstbase_validation.py --dump-schema MedicalDeviceInformation
+python3 firstbase_validation.py --dump-schema HealthcareItemInformation
+python3 firstbase_validation.py --dump-schema SalesInformation
+```
+
 ## Dependencies
 
 - `roxmltree` - XML DOM parsing with namespace support
