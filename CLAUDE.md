@@ -79,7 +79,8 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **Create draft**: `POST /CatalogueItem/Draft/CreateOne` — body is the DraftItem JSON file directly
 - **Publish**: `POST /CatalogueItemPublication/AddMany` — Items array with Identifier, DataSource (GLN), Gtin, TargetMarket, PublishToGln array
 - **PublishToGln**: `4399902421386` (GS1 UDI Connector recipient)
-- **API validation (100 files)**: 71+ ACCEPTED, 6 invalid GTIN (HIBC/IFA non-numeric), 1 invalid clinicalSizeTypeCode (CST63 DIRECTION_OF_VIEW → error G541)
+- **Workflow**: Create drafts (CreateOne per file) → Publish all (AddMany with Items array) → Recipient sees data
+- **API validation (100 files)**: 70 drafts ACCEPTED, 6 rejected (no GS1 GTIN — HIBC/IFA only), 1 rejected (CST63 DIRECTION_OF_VIEW not yet in code list, coming GDSN May release), 88 items published to UDI Connector
 
 ## EUDAMED Public API
 
