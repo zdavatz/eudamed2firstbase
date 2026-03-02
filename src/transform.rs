@@ -396,23 +396,13 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         let sterile = udidi.sterile.unwrap_or(false);
         let sterilization = udidi.sterilization.unwrap_or(false);
 
-        let manufacturer_code = if sterile {
-            config.sterilisation_method.as_deref().unwrap_or("UNSPECIFIED").to_string()
-        } else {
-            "NOT_STERILISED".to_string()
-        };
-
-        let prior_to_use = if sterilization {
-            vec![CodeValue {
-                value: config.sterilisation_method.as_deref().unwrap_or("UNSPECIFIED").to_string(),
-            }]
-        } else {
-            vec![]
-        };
-
         Some(SterilityInformation {
-            manufacturer_sterilisation: vec![CodeValue { value: manufacturer_code }],
-            prior_to_use,
+            manufacturer_sterilisation: vec![CodeValue {
+                value: if sterile { "UNSPECIFIED" } else { "NOT_STERILISED" }.to_string(),
+            }],
+            prior_to_use: vec![CodeValue {
+                value: if sterilization { "UNSPECIFIED" } else { "NO_STERILISATION_REQUIRED" }.to_string(),
+            }],
         })
     };
 

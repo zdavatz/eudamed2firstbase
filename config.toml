@@ -1,5 +1,3 @@
-sterilisation_method = "OZONE"
-
 [provider]
 gln = "7612345000480"
 party_name = "EUDAMED Public Download Importing"

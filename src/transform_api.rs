@@ -99,23 +99,13 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
     };
 
     let sterility = sterile_bool.map(|s| {
-        if s {
-            SterilityInformation {
-                manufacturer_sterilisation: vec![CodeValue {
-                    value: config
-                        .sterilisation_method
-                        .clone()
-                        .unwrap_or_else(|| "UNSPECIFIED".to_string()),
-                }],
-                prior_to_use: Vec::new(),
-            }
-        } else {
-            SterilityInformation {
-                manufacturer_sterilisation: vec![CodeValue {
-                    value: "NOT_STERILISED".to_string(),
-                }],
-                prior_to_use: Vec::new(),
-            }
+        SterilityInformation {
+            manufacturer_sterilisation: vec![CodeValue {
+                value: if s { "UNSPECIFIED" } else { "NOT_STERILISED" }.to_string(),
+            }],
+            prior_to_use: vec![CodeValue {
+                value: "NO_STERILISATION_REQUIRED".to_string(),
+            }],
         }
     });
 
