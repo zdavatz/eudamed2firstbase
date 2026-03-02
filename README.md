@@ -42,7 +42,7 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
 3. Output: one firstbase JSON file per input file in `firstbase_json/`
 4. Auto-detects file type:
-   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR+EU)
+   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR/IVDR+EU). Merges Basic UDI-DI data from cache for MDR mandatory fields (active, implantable, measuringFunction, multiComponent, tissue, manufacturer/AR SRN, risk class).
    - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
 
 ## Configuration
@@ -77,14 +77,14 @@ src/
   config.rs                  # config.toml parsing
   eudamed.rs                 # EUDAMED XML parsing (roxmltree DOM)
   api_json.rs                # EUDAMED API listing NDJSON parsing (serde)
-  api_detail.rs              # EUDAMED API detail NDJSON parsing (serde, substances, product designer, linked devices)
+  api_detail.rs              # EUDAMED API detail + Basic UDI-DI parsing (serde, substances, MDR booleans)
   eudamed_json.rs            # EUDAMED JSON file parsing (serde, individual device files)
   firstbase.rs               # GS1 firstbase JSON output model (serde)
   transform.rs               # XML -> firstbase conversion logic
   transform_api.rs           # API listing -> firstbase conversion logic
   transform_detail.rs        # API detail -> firstbase conversion (substances, EPD contact, sales split, related devices)
   transform_eudamed_json.rs  # EUDAMED JSON -> firstbase conversion (1:1 file mapping)
-  mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR types)
+  mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR, multiComponent)
 
 download.sh                # Unified download + convert script (./download.sh --N)
 download_10k.sh            # Legacy: download 10k listings
@@ -123,7 +123,9 @@ The download script uses the EUDAMED public API at `https://ec.europa.eu/tools/e
 - **Listing with SRN filter**: `GET ?page=N&pageSize=300&srn=<SRN>` — server-side filtering by manufacturer or authorised rep SRN
 - **Detail endpoint**: `GET /{uuid}?languageIso2Code=en` — full device data (clinical sizes, substances, market info, warnings)
 
-The detail endpoint provides richer data but lacks manufacturer/AR SRN and risk class, which are merged from the listing data.
+- **Basic UDI-DI endpoint**: `GET /basicUdiData/udiDiData/{uuid}?languageIso2Code=en` — Basic UDI-DI record for a UDI-DI UUID
+
+The detail endpoint provides richer data but lacks manufacturer/AR SRN, risk class, and MDR mandatory boolean fields (active, implantable, measuringFunction, multiComponent, tissue). These are merged from the Basic UDI-DI cache (`/tmp/basic_udi_cache/`) and/or listing data.
 
 ## Validation
 
@@ -245,8 +247,8 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 |---|---|---|
 | G572 lastChangeDateTime in future | 88x | Use `version_date` from EUDAMED instead of `now()` |
 | G641 device self-replacement | 10x | Skip referenced trade items where linked DI = own DI |
-| 097.011 missing MDR boolean fields | 648x | Default to false: implantable, active, measuring, etc. |
-| 097.010 missing multiComponent/tissue | 264x | Default `DEVICE` type, tissue fields to false |
+| 097.011 missing MDR boolean fields | 648x | Use real values from Basic UDI-DI cache; fall back to false |
+| 097.010 missing multiComponent/tissue | 264x | Use real multiComponent from Basic UDI-DI; fall back to `DEVICE` |
 | 097.025 missing globalModelNumber | 176x | Use primary DI code as fallback, trade name as description |
 | 097.072 missing additionalDescription | 60x | Resolved by defaulting multiComponentDeviceTypeCode to DEVICE |
 | 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | First market country becomes ORIGINAL_PLACED when no explicit match |
