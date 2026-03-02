@@ -25,7 +25,7 @@ python3 firstbase_validation.py --verbose    # per-file detail
 python3 firstbase_validation.py --dump-schema MedicalDeviceInformation  # inspect a GDSN schema type
 ```
 
-Downloads and caches the GS1 Product API Swagger spec (978 definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, types, enums, and nested structures recursively including packaging hierarchy children. Cache stored in `.swagger_cache.json`.
+Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `test-productapi-firstbase.gs1.ch`) and Catalogue Item API (sender, 1043 defs, `test-webapi-firstbase.gs1.ch:5443`). Checks field names, types, enums, and nested structures recursively including packaging hierarchy children. Caches stored in `.swagger_cache_product.json` and `.swagger_cache_catalogue.json`. Note: `IsBrandBankPublication` exists only in Product API, not in Catalogue Item API (sender).
 
 ## Architecture
 
