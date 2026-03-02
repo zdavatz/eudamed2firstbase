@@ -155,3 +155,7 @@ python3 firstbase_validation.py --dump-schema SalesInformation
 - `anyhow` - error handling
 - `toml` - config file parsing
 - `regex` - text processing
+
+## License
+
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
