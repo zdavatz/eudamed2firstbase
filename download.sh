@@ -4,16 +4,22 @@
 #        ./download.sh --100                           # download first 100 products
 #        ./download.sh --srn CH-MF-000023141           # all products for this manufacturer SRN
 #        ./download.sh --srn CH-MF-000023141 --50      # first 50 products for this SRN
+#        ./download.sh --srn SRN1 SRN2 SRN3            # multiple SRNs into one file
+#        ./download.sh --srn SRN1 SRN2 --50            # multiple SRNs, limit per SRN
 set -euo pipefail
 
 # Parse arguments
 TOTAL=""
-SRN=""
+SRNS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --srn)
-            SRN="$2"
-            shift 2
+            shift
+            # Collect all following args that look like SRNs (not --flags)
+            while [[ $# -gt 0 && ! "$1" =~ ^-- ]]; do
+                SRNS+=("$1")
+                shift
+            done
             ;;
         --[0-9]*)
             TOTAL="${1#--}"
@@ -25,15 +31,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -z "$TOTAL" && -z "$SRN" ]]; then
-    echo "Usage: $0 [--N] [--srn <SRN>]"
+if [[ -z "$TOTAL" && ${#SRNS[@]} -eq 0 ]]; then
+    echo "Usage: $0 [--N] [--srn <SRN> [SRN2 ...]]"
     echo "  --N              Number of products to download (e.g. --10, --100, --5000)"
-    echo "  --srn <SRN>      Download all products for a manufacturer SRN"
+    echo "  --srn <SRN> ...  Download all products for one or more SRNs"
     echo ""
     echo "Examples:"
     echo "  $0 --10                            # first 10 products"
     echo "  $0 --srn CH-MF-000023141           # all products for this SRN"
     echo "  $0 --srn CH-MF-000023141 --50      # first 50 for this SRN"
+    echo "  $0 --srn SRN1 SRN2 SRN3            # multiple SRNs, combined output"
+    echo "  $0 --srn SRN1 SRN2 --50            # multiple SRNs, limit 50 per SRN"
     exit 1
 fi
 
@@ -44,8 +52,9 @@ PAGE_SIZE=300
 mkdir -p ndjson
 
 # Set output file names
-if [[ -n "$SRN" ]]; then
-    LABEL="$SRN"
+if [[ ${#SRNS[@]} -gt 0 ]]; then
+    # Join SRN codes (strip common prefixes for shorter filenames)
+    LABEL=$(IFS=_; echo "${SRNS[*]}")
 else
     LABEL="$TOTAL"
 fi
@@ -54,42 +63,47 @@ UUIDS="ndjson/uuids_${LABEL}.txt"
 DETAILS="ndjson/eudamed_${LABEL}_details.ndjson"
 
 # --- Step 1: Download listing ---
-if [[ -n "$SRN" ]]; then
-    echo "=== Step 1: Downloading listings for SRN $SRN${TOTAL:+ (limit: $TOTAL)} ==="
+if [[ ${#SRNS[@]} -gt 0 ]]; then
+    echo "=== Step 1: Downloading listings for ${#SRNS[@]} SRN(s)${TOTAL:+ (limit: $TOTAL per SRN)} ==="
     : > "$LISTING"
     collected=0
-    p=0
-    # Use server-side srn= filtering (API supports it for both manufacturer and AR SRN)
-    while true; do
-        p=$((p + 1))
-        fetch_size=$PAGE_SIZE
-        if [[ -n "$TOTAL" ]]; then
-            remaining=$((TOTAL - collected))
-            fetch_size=$((remaining < PAGE_SIZE ? remaining : PAGE_SIZE))
-        fi
-        echo -n "  Page $p (fetch $fetch_size) ... "
-        tmp=$(mktemp)
-        if ! curl -fsSL "${BASE_URL}?page=${p}&pageSize=${fetch_size}&size=${fetch_size}&srn=${SRN}&iso2Code=en&languageIso2Code=en" \
-            -A "$USER_AGENT" -o "$tmp" 2>/dev/null; then
-            echo "FAILED"
+    for SRN in "${SRNS[@]}"; do
+        echo "  --- SRN: $SRN ---"
+        srn_collected=0
+        p=0
+        # Use server-side srn= filtering (API supports it for both manufacturer and AR SRN)
+        while true; do
+            p=$((p + 1))
+            fetch_size=$PAGE_SIZE
+            if [[ -n "$TOTAL" ]]; then
+                remaining=$((TOTAL - srn_collected))
+                fetch_size=$((remaining < PAGE_SIZE ? remaining : PAGE_SIZE))
+            fi
+            echo -n "  Page $p (fetch $fetch_size) ... "
+            tmp=$(mktemp)
+            if ! curl -fsSL "${BASE_URL}?page=${p}&pageSize=${fetch_size}&size=${fetch_size}&srn=${SRN}&iso2Code=en&languageIso2Code=en" \
+                -A "$USER_AGENT" -o "$tmp" 2>/dev/null; then
+                echo "FAILED"
+                rm -f "$tmp"
+                sleep 1
+                continue
+            fi
+            count=$(jq -r '.content | length' "$tmp" 2>/dev/null || echo 0)
+            if [[ $count -eq 0 ]]; then
+                echo "empty page, done"
+                rm -f "$tmp"
+                break
+            fi
+            jq -c '.content[]' "$tmp" >> "$LISTING" 2>/dev/null
+            srn_collected=$((srn_collected + count))
+            collected=$((collected + count))
+            echo "$count records (SRN total: $srn_collected, overall: $collected)"
             rm -f "$tmp"
-            sleep 1
-            continue
-        fi
-        count=$(jq -r '.content | length' "$tmp" 2>/dev/null || echo 0)
-        if [[ $count -eq 0 ]]; then
-            echo "empty page, done"
-            rm -f "$tmp"
-            break
-        fi
-        jq -c '.content[]' "$tmp" >> "$LISTING" 2>/dev/null
-        collected=$((collected + count))
-        echo "$count records (total: $collected)"
-        rm -f "$tmp"
-        if [[ -n "$TOTAL" && $collected -ge $TOTAL ]]; then
-            break
-        fi
-        sleep 0.3
+            if [[ -n "$TOTAL" && $srn_collected -ge $TOTAL ]]; then
+                break
+            fi
+            sleep 0.3
+        done
     done
 else
     echo "=== Step 1: Downloading $TOTAL listings ==="
