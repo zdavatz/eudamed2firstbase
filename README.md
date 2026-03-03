@@ -1,6 +1,6 @@
 # eudamed2firstbase
 
-Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Supports four input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), and EUDAMED JSON (individual device files).
+Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Supports five input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), EUDAMED JSON (individual device files), and XLSX export.
 
 ## Quick Start: Download & Convert from EUDAMED API
 
@@ -276,6 +276,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 - `toml` - config file parsing
 - `regex` - text processing
 - `rust_xlsxwriter` - Excel XLSX generation
+- `rayon` - parallel processing for Basic UDI-DI cache loading and per-device transformation
 
 ## License
 
