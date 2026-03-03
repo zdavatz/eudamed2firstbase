@@ -74,7 +74,7 @@ if [[ ${#SRNS[@]} -gt 0 ]]; then
     for SRN in "${SRNS[@]}"; do
         echo "  --- SRN: $SRN ---"
         srn_collected=0
-        p=0
+        p=-1
         # Use server-side srn= filtering (API supports it for both manufacturer and AR SRN)
         while true; do
             p=$((p + 1))
@@ -114,7 +114,7 @@ else
     PAGES=$(( (TOTAL + PAGE_SIZE - 1) / PAGE_SIZE ))
     : > "$LISTING"
     collected=0
-    for ((p=1; p<=PAGES; p++)); do
+    for ((p=0; p<PAGES; p++)); do
         remaining=$((TOTAL - collected))
         fetch_size=$((remaining < PAGE_SIZE ? remaining : PAGE_SIZE))
         echo -n "  Page $p/$PAGES (fetch $fetch_size) ... "

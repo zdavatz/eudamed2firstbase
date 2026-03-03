@@ -13,6 +13,7 @@ mod xlsx_export;
 
 use anyhow::{Context, Result};
 use chrono::Local;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::path::Path;
@@ -252,49 +253,62 @@ fn process_detail_ndjson(
         .with_context(|| format!("Failed to open {}", detail_path.display()))?;
     let reader = std::io::BufReader::new(file);
 
+    // Read all lines first
+    let lines: Vec<(usize, String)> = reader.lines()
+        .enumerate()
+        .filter_map(|(i, line)| {
+            let line = line.ok()?;
+            let trimmed = line.trim().to_string();
+            if trimmed.is_empty() { None } else { Some((i + 1, trimmed)) }
+        })
+        .collect();
+
+    // Process lines in parallel
+    let results: Vec<Result<firstbase::DraftItemDocument, (usize, String)>> = lines.par_iter()
+        .map(|(line_num, trimmed)| {
+            match api_detail::parse_api_detail(trimmed) {
+                Ok(detail) => {
+                    let uuid = detail.uuid.clone().unwrap_or_default();
+                    let basic_udi = basic_udi_cache.get(&uuid);
+                    let mut trade_item = transform_detail::transform_detail_device(&detail, config, basic_udi);
+
+                    // Merge listing data (manufacturer, AR, risk class, basic UDI)
+                    let gtin = &trade_item.gtin;
+                    if let Some(listing) = listing_index.get(gtin) {
+                        merge_listing_data(&mut trade_item, listing);
+                    }
+
+                    let document = firstbase::FirstbaseDocument {
+                        trade_item,
+                        children: Vec::new(),
+                        identifier: format!("Draft_{}", uuid),
+                    };
+                    let draft_doc = firstbase::DraftItemDocument {
+                        draft_item: document,
+                    };
+
+                    // Write individual file per UUID
+                    if !uuid.is_empty() {
+                        let individual_path = output_dir.join(format!("{}.json", uuid));
+                        if let Ok(individual_json) = serde_json::to_string_pretty(&draft_doc) {
+                            let _ = std::fs::write(&individual_path, &individual_json);
+                        }
+                    }
+
+                    Ok(draft_doc)
+                }
+                Err(e) => Err((*line_num, format!("{}", e))),
+            }
+        })
+        .collect();
+
+    // Collect results preserving order
     let mut trade_items = Vec::new();
     let mut errors = 0;
-    let mut line_num = 0;
-
-    for line in reader.lines() {
-        line_num += 1;
-        let line = line?;
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        match api_detail::parse_api_detail(trimmed) {
-            Ok(detail) => {
-                let uuid = detail.uuid.clone().unwrap_or_default();
-                let basic_udi = basic_udi_cache.get(&uuid);
-                let mut trade_item = transform_detail::transform_detail_device(&detail, config, basic_udi);
-
-                // Merge listing data (manufacturer, AR, risk class, basic UDI)
-                let gtin = &trade_item.gtin;
-                if let Some(listing) = listing_index.get(gtin) {
-                    merge_listing_data(&mut trade_item, listing);
-                }
-
-                let document = firstbase::FirstbaseDocument {
-                    trade_item,
-                    children: Vec::new(),
-                    identifier: format!("Draft_{}", uuid),
-                };
-                let draft_doc = firstbase::DraftItemDocument {
-                    draft_item: document,
-                };
-
-                // Write individual file per UUID
-                if !uuid.is_empty() {
-                    let individual_path = output_dir.join(format!("{}.json", uuid));
-                    let individual_json = serde_json::to_string_pretty(&draft_doc)?;
-                    std::fs::write(&individual_path, &individual_json)?;
-                }
-
-                trade_items.push(draft_doc);
-            }
-            Err(e) => {
+    for result in results {
+        match result {
+            Ok(doc) => trade_items.push(doc),
+            Err((line_num, e)) => {
                 if errors < 10 {
                     eprintln!("  Line {}: {}", line_num, e);
                 }
@@ -540,34 +554,26 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
 
 /// Load Basic UDI-DI cache: maps UDI-DI UUID → BasicUdiDiData
 fn load_basic_udi_cache(cache_dir: &Path) -> HashMap<String, api_detail::BasicUdiDiData> {
-    let mut cache = HashMap::new();
     if !cache_dir.exists() {
-        return cache;
+        return HashMap::new();
     }
-    let entries = match std::fs::read_dir(cache_dir) {
-        Ok(e) => e,
-        Err(_) => return cache,
+    let entries: Vec<_> = match std::fs::read_dir(cache_dir) {
+        Ok(e) => e.filter_map(|e| e.ok()).collect(),
+        Err(_) => return HashMap::new(),
     };
-    for entry in entries {
-        let entry = match entry {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-        let path = entry.path();
-        if path.extension().map(|e| e == "json").unwrap_or(false) {
-            let uuid = path.file_stem()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                match api_detail::parse_basic_udi_di(&content) {
-                    Ok(data) => { cache.insert(uuid, data); }
-                    Err(_) => {}
-                }
+    entries.par_iter()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.extension().map(|e| e == "json").unwrap_or(false) {
+                let uuid = path.file_stem()?.to_string_lossy().to_string();
+                let content = std::fs::read_to_string(&path).ok()?;
+                let data = api_detail::parse_basic_udi_di(&content).ok()?;
+                Some((uuid, data))
+            } else {
+                None
             }
-        }
-    }
-    cache
+        })
+        .collect()
 }
 
 fn format_size(bytes: usize) -> String {
