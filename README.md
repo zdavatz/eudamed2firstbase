@@ -10,11 +10,13 @@ Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON 
 ./download.sh --srn IN-MF-000014457           # all products for a manufacturer SRN
 ./download.sh --srn IN-MF-000014457 --50      # first 50 products for a specific SRN
 ./download.sh --srn DE-AR-000006322           # all products for an authorised rep SRN
+./download.sh --srn SRN1 SRN2 SRN3            # multiple SRNs combined into one file
+./download.sh --srn SRN1 SRN2 --50            # multiple SRNs, limit 50 per SRN
 ```
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion.
 
-The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches both manufacturer and authorised representative SRNs.
+The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches both manufacturer and authorised representative SRNs. Multiple SRNs can be specified after `--srn` and their results are combined into a single output file.
 
 ## Manual Usage
 
@@ -35,6 +37,12 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 1. Run: `cargo run detail <details.ndjson> [listing.ndjson]`
 2. The optional listing file provides manufacturer SRN, authorised rep SRN, and risk class
 3. Output: batch file `firstbase_json/firstbase_eudamed_*_details_dd.mm.yyyy.json` plus individual `firstbase_json/<uuid>.json` per device
+
+### Mode 5: XLSX Export
+
+1. Run: `cargo run xlsx <details.ndjson>`
+2. Output: `xlsx/<input_stem>.xlsx`
+3. Flattens detail NDJSON into a spreadsheet with columns: UUID, Primary DI, Issuing Agency, Trade Name, Reference, Device Status, Sterile, Single Use, Latex, Reprocessed, Base Quantity, Direct Marking, Clinical Sizes, Markets, Additional Info URL, Version Date
 
 ### Mode 4: EUDAMED JSON (individual device files)
 
@@ -85,6 +93,7 @@ src/
   transform_detail.rs        # API detail -> firstbase conversion (substances, EPD contact, sales split, related devices)
   transform_eudamed_json.rs  # EUDAMED JSON -> firstbase conversion (1:1 file mapping)
   mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR, multiComponent)
+  xlsx_export.rs             # NDJSON detail -> XLSX spreadsheet export
 
 download.sh                # Unified download + convert script (listing + detail + Basic UDI-DI + convert)
 download_10k.sh            # Legacy: download 10k listings
@@ -266,6 +275,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 - `anyhow` - error handling
 - `toml` - config file parsing
 - `regex` - text processing
+- `rust_xlsxwriter` - Excel XLSX generation
 
 ## License
 

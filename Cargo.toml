@@ -13,3 +13,4 @@ toml = "0.8"
 regex = "1"
 roxmltree = "0.20"
 uuid = { version = "1", features = ["v4"] }
+rust_xlsxwriter = "0.82"

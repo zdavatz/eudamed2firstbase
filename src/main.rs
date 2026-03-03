@@ -9,6 +9,7 @@ mod transform;
 mod transform_api;
 mod transform_detail;
 mod transform_eudamed_json;
+mod xlsx_export;
 
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -36,6 +37,14 @@ fn main() -> Result<()> {
             // Process individual EUDAMED JSON files (one-to-one)
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json");
             process_eudamed_json_dir(Path::new(input_dir), &config)
+        }
+        Some("xlsx") => {
+            // Convert detail NDJSON to XLSX
+            let input_file = args.get(2).map(|s| s.as_str())
+                .unwrap_or("ndjson/eudamed_10k_details.ndjson");
+            let result = xlsx_export::ndjson_to_xlsx(Path::new(input_file))?;
+            println!("  -> {}", result);
+            Ok(())
         }
         Some("detail") => {
             // Process detail NDJSON, optionally merging with listing data

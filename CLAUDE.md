@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-EUDAMED to GS1 firstbase JSON converter. Four input modes: DTX PullResponse XML, EUDAMED public API listing (NDJSON), API detail (NDJSON with listing merge), and EUDAMED JSON (individual device files).
+EUDAMED to GS1 firstbase JSON converter. Five input modes: DTX PullResponse XML, EUDAMED public API listing (NDJSON), API detail (NDJSON with listing merge), EUDAMED JSON (individual device files), and XLSX export (detail NDJSON to spreadsheet).
 
 ## Build & Run
 
@@ -12,6 +12,7 @@ cargo run                                            # XML mode: xml/ -> firstba
 cargo run ndjson                                     # API listing mode: ndjson/ -> firstbase_json/
 cargo run detail <details.ndjson> [listing.ndjson]   # API detail mode with optional listing merge
 cargo run eudamed_json                               # EUDAMED JSON mode: eudamed_json/ -> firstbase_json/ (1:1)
+cargo run xlsx <details.ndjson>                      # XLSX export: detail NDJSON -> xlsx/<stem>.xlsx
 ./download.sh --10                                   # Download + convert 10 products from EUDAMED API
 ```
 
@@ -39,9 +40,10 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **eudamed_json.rs**: EUDAMED JSON device-level file parsing (serde). `EudamedDevice` struct with inline manufacturer/AR objects, basicUdi, riskClass, device flags.
 - **transform_eudamed_json.rs**: EUDAMED JSON device-level -> firstbase conversion. Includes full manufacturer/AR contact info with addresses, email, phone. No GTIN (device-level records).
 - The `eudamed_json` mode auto-detects file type: UDI-DI level files (have `primaryDi` with GTIN, trade name, clinical data) use `api_detail`/`transform_detail`; device-level files (Basic UDI-DI) use `eudamed_json`/`transform_eudamed_json`.
+- **xlsx_export.rs**: Detail NDJSON -> XLSX spreadsheet export. Flattens `ApiDeviceDetail` into columns (UUID, Primary DI, Issuing Agency, Trade Name, Reference, Device Status, booleans, markets, etc.). Uses `rust_xlsxwriter`.
 - **mappings.rs**: All code translation tables as match statements. Derived from the UDID_CodeLists sheet of the GS1 UDI Connector Profile spreadsheet. Includes issuing agency to type code (GS1/HIBC/ICCBBA/IFA, plus EUDAMED-assigned → IFA), CMR type mapping, country alpha-2 to numeric (EU+EEA countries plus common non-EU manufacturer countries), multi-component refdata codes (system/procedure-pack/spp-procedure-pack → GS1), and risk class refdata codes (class-i through class-d, ivd-general, aimdd → GS1 + regulatory act MDR/IVDR).
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, and endocrine substance identifier lookups.
-- **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), downloads Basic UDI-DI data for MDR mandatory fields (cached in `/tmp/basic_udi_cache/`), converts to firstbase JSON.
+- **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [SRN2 ...] [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter; supports multiple SRNs combined into one output), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), downloads Basic UDI-DI data for MDR mandatory fields (cached in `/tmp/basic_udi_cache/`), converts to firstbase JSON.
 - **firstbase_validation.py**: Schema validation script. Downloads and caches the GS1 Product API Swagger spec (978 GDSN definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, data types, enum values, and nested structures recursively. Cache in `.swagger_cache.json`. Handles DraftItem wrapper, batch arrays, and direct TradeItem formats.
 - **push_to_api.sh**: Pushes firstbase JSON files to GS1 Catalogue Item API via `Draft/CreateOne` (per file) then publishes via `AddMany` (batches of 100). Handles token acquisition, publish to GLN. Usage: `./push_to_api.sh` or `./push_to_api.sh --status <reqid>`.
 
