@@ -53,8 +53,12 @@ mkdir -p ndjson
 
 # Set output file names
 if [[ ${#SRNS[@]} -gt 0 ]]; then
-    # Join SRN codes (strip common prefixes for shorter filenames)
-    LABEL=$(IFS=_; echo "${SRNS[*]}")
+    if [[ ${#SRNS[@]} -eq 1 ]]; then
+        LABEL="${SRNS[0]}"
+    else
+        # Use first SRN + count to keep filename short
+        LABEL="${SRNS[0]}_+$((${#SRNS[@]} - 1))srns"
+    fi
 else
     LABEL="$TOTAL"
 fi

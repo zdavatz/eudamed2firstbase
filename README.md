@@ -16,7 +16,7 @@ Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON 
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion.
 
-The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches both manufacturer and authorised representative SRNs. Multiple SRNs can be specified after `--srn` and their results are combined into a single output file.
+The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches both manufacturer and authorised representative SRNs. Multiple SRNs can be specified after `--srn` and their results are combined into a single output file. Output is named `eudamed_<first-SRN>_+<N>srns.ndjson` for multi-SRN runs.
 
 ## Manual Usage
 
