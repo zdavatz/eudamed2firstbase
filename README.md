@@ -277,6 +277,8 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.054 non-EU needs EAR contact | — | Add EAR contact for non-EU manufacturers (detected from SRN prefix) |
 | 097.046 IVDR boolean fields missing | — | Add 7 IVDR fields (reagent, instrument, self-testing, etc.) default false |
 | 097.047 IVDR isNewDevice missing | — | Default `IsNewDevice` to false for IVDR devices |
+| 097.080 CMR/endocrine missing description | — | Always include `regulatedChemicalDescription` with `languageCode: "en"` for CMR/endocrine substances |
+| 097.081 endocrine missing description | — | ENDOCRINE_SUBSTANCE always gets description even when CAS/EC identifiers present |
 | G541 DIRECTION_OF_VIEW | 1x | CST63 coming with GDSN May release |
 
 ## Dependencies
