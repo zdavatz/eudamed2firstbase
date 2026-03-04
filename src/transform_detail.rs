@@ -71,20 +71,23 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     if is_non_eu {
         let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
         if !has_ear {
-            if let Some(ref ar) = basic_udi.and_then(|b| b.authorised_representative.as_ref()) {
-                if let Some(ref srn) = ar.srn {
-                    contacts.push(TradeItemContactInformation {
-                        contact_type: CodeValue { value: "EAR".to_string() },
-                        party_identification: vec![AdditionalPartyIdentification {
-                            type_code: "SRN".to_string(),
-                            value: srn.clone(),
-                        }],
-                        contact_name: ar.name.clone(),
-                        addresses: Vec::new(),
-                        communication_channels: Vec::new(),
-                    });
-                }
-            }
+            let (ar_srn, ar_name) = basic_udi
+                .and_then(|b| b.authorised_representative.as_ref())
+                .map(|ar| (
+                    ar.srn.clone().unwrap_or_else(|| "UNKNOWN".to_string()),
+                    ar.name.clone(),
+                ))
+                .unwrap_or_else(|| ("UNKNOWN".to_string(), None));
+            contacts.push(TradeItemContactInformation {
+                contact_type: CodeValue { value: "EAR".to_string() },
+                party_identification: vec![AdditionalPartyIdentification {
+                    type_code: "SRN".to_string(),
+                    value: ar_srn,
+                }],
+                contact_name: ar_name,
+                addresses: Vec::new(),
+                communication_channels: Vec::new(),
+            });
         }
     }
 
@@ -421,8 +424,7 @@ fn is_eu_eea_srn(srn: &str) -> bool {
         "AT" | "BE" | "BG" | "HR" | "CY" | "CZ" | "DK" | "EE" | "FI" | "FR" |
         "DE" | "GR" | "HU" | "IE" | "IT" | "LV" | "LT" | "LU" | "MT" | "NL" |
         "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE" |
-        "IS" | "LI" | "NO" | // EEA
-        "TR" // EU_EXTENDED (candidate country, no AR required in EUDAMED)
+        "IS" | "LI" | "NO" // EEA
     )
 }
 
