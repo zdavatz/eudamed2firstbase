@@ -1,0 +1,42 @@
+Found 20 individual JSON files in /tmp/tmp.IzgEyVRXeI/
+Getting token...
+Token obtained (1211 chars)
+  [1/20] OK: 000ccc98-bd2a-4d58-895d-9196d14064bb
+  [2/20] OK: 000ce53c-c84a-4935-8259-c82a41ec3f86
+  [3/20] OK: 000ce803-6d98-414c-9839-788f53926f2c
+  [4/20] OK: 000d09cb-3ca7-424e-8f96-c8cc00aff654
+  [5/20] OK: 000d0fc6-00f3-4d68-8be9-090b99003f7b
+  [6/20] FAIL: 000d11d9-b65d-43e4-b131-71191dca7bda — {"Message":"The request is invalid.","ModelState":{"request.DraftItem":["Gtin is required"]}}
+  [7/20] FAIL: 000d1b02-95d8-441d-b7d9-cf8387398a03 — 
+  [8/20] FAIL: 000d25fc-6618-4dc2-a869-c81103bd4b7a — 
+  [9/20] FAIL: 000d284b-6959-4047-9c05-0919b3099dc5 — 
+  [10/20] FAIL: 000d2c54-d72b-4f4f-9676-6db1eb93fc34 — 
+  [11/20] OK: 000d2ffb-4d88-49ce-a0e7-de32eeea81f9
+  [12/20] OK: 000d5531-0fba-407f-9f2b-5f320e2be08f
+  [13/20] OK: 000d6a09-ac0d-4562-94a8-d6376b60d84d
+  [14/20] OK: 000d6f8d-228e-40fa-8773-f9da458282ec
+  [15/20] OK: 000d7e6b-36c8-42e6-88af-8c393f19dfdd
+  [16/20] OK: 000d869f-fca0-49a4-86d9-4831cc6d327a
+  [17/20] OK: 000d8707-b698-4254-ac9e-50b6175e5bee
+  [18/20] OK: 000d942d-ad52-489c-bd5e-d22ed3635bb7
+  [19/20] OK: 000d976d-cee8-4275-8b9a-f6c9d4f48d23
+  [20/20] OK: 000dad06-a54c-4666-b26d-b5275526a432
+
+=== Draft Creation Summary ===
+Total:    20
+Created:  15
+Failed:   5
+
+=== Publishing 15 drafts via AddMany ===
+  Publishing items 1-15 of 15...
+{
+  "RequestIdentifier": "PublicationAddRequest_70d946b8-a261-46a4-9deb-d44fde07905e"
+}
+Getting token...
+Querying RequestStatus for PublicationAddRequest_70d946b8-a261-46a4-9deb-d44fde07905e...
+Status: Running
+Total errors: 0
+Getting token...
+Querying RequestStatus for PublicationAddRequest_70d946b8-a261-46a4-9deb-d44fde07905e...
+Status: Done
+Total errors: 0

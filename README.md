@@ -100,6 +100,7 @@ download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
 push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Draft/CreateOne + AddMany publish)
+log/                       # API push logs (log_dd.mm.yyyy.log)
 ```
 
 ## What it does
@@ -231,6 +232,7 @@ The `push_to_api.sh` script handles the full workflow: token acquisition, draft 
 
 ```bash
 ./push_to_api.sh                    # push all UUID files in firstbase_json/
+./push_to_api.sh --dir /path/to/dir # push files from a custom directory
 ./push_to_api.sh --dry-run          # show what would be pushed, no API calls
 ./push_to_api.sh --status <reqid>   # query status of a previous request
 ```

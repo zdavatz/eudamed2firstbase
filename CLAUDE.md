@@ -45,7 +45,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, and endocrine substance identifier lookups.
 - **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [SRN2 ...] [--N]`. Downloads listing (with optional server-side SRN filtering via API `srn=` parameter; supports multiple SRNs combined into one output, named `<first-SRN>_+<N>srns`), extracts UUIDs, fetches details in parallel (10 concurrent, with retry and resume), downloads Basic UDI-DI data for MDR mandatory fields (cached in `/tmp/basic_udi_cache/`), converts to firstbase JSON. Note: EUDAMED API uses 0-based pagination (page=0 is first page).
 - **firstbase_validation.py**: Schema validation script. Downloads and caches the GS1 Product API Swagger spec (978 GDSN definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, data types, enum values, and nested structures recursively. Cache in `.swagger_cache.json`. Handles DraftItem wrapper, batch arrays, and direct TradeItem formats.
-- **push_to_api.sh**: Pushes firstbase JSON files to GS1 Catalogue Item API via `Draft/CreateOne` (per file) then publishes via `AddMany` (batches of 100). Handles token acquisition, publish to GLN. Usage: `./push_to_api.sh` or `./push_to_api.sh --status <reqid>`.
+- **push_to_api.sh**: Pushes firstbase JSON files to GS1 Catalogue Item API via `Draft/CreateOne` (per file) then publishes via `AddMany` (batches of 100). Handles token acquisition, publish to GLN. Usage: `./push_to_api.sh`, `./push_to_api.sh --dir /path/to/dir`, or `./push_to_api.sh --status <reqid>`. Log output to `log/log_dd.mm.yyyy.log`.
 
 ## Key Design Decisions
 
