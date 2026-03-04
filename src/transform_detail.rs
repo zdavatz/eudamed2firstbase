@@ -650,6 +650,10 @@ fn build_sales_module(device: &ApiDeviceDetail) -> Option<SalesInformationModule
             Some(c) => c,
             None => continue,
         };
+        // Skip GB/XI — not valid GDSN market countries post-Brexit (G541)
+        if !mappings::is_valid_gdsn_market_country(iso2) {
+            continue;
+        }
         let numeric = mappings::country_alpha2_to_numeric(iso2);
         let country = SalesConditionCountry {
             country_code: CodeValue {

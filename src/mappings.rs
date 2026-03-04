@@ -34,7 +34,7 @@ pub fn country_alpha2_to_numeric(code: &str) -> &str {
         "CH" => "756",
         "TR" => "792",
         "GB" => "826",
-        "XI" => "826", // Northern Ireland (UK)
+        "XI" => "826", // Northern Ireland
         // Non-EU countries (for manufacturer/product designer contacts)
         "AU" => "036",
         "BR" => "076",
@@ -56,6 +56,12 @@ pub fn country_alpha2_to_numeric(code: &str) -> &str {
             other
         }
     }
+}
+
+/// Whether a country alpha-2 code is valid for GDSN market sales conditions.
+/// GB/XI are excluded post-Brexit (G541: invalid country code in GDSN).
+pub fn is_valid_gdsn_market_country(iso2: &str) -> bool {
+    !matches!(iso2, "GB" | "XI")
 }
 
 /// Risk class: EUDAMED → GS1 (additionalTradeItemClassificationSystemCode = 76)

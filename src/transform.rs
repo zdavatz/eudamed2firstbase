@@ -837,7 +837,12 @@ fn transform_market_info(udidi: &MdrUdidiData) -> Option<SalesInformationModule>
         return None;
     }
 
-    let mut conditions: Vec<TargetMarketSalesCondition> = udidi.market_infos.iter().map(|mi| {
+    let mut conditions: Vec<TargetMarketSalesCondition> = udidi.market_infos.iter()
+        .filter(|mi| {
+            // Skip GB/XI — not valid GDSN market countries post-Brexit (G541)
+            mi.country.as_deref().map_or(true, |c| mappings::is_valid_gdsn_market_country(c))
+        })
+        .map(|mi| {
         let is_original = mi.original_placed.unwrap_or(false);
         let condition_code = if is_original {
             "ORIGINAL_PLACED"
