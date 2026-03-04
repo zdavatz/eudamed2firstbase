@@ -279,6 +279,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.047 IVDR isNewDevice missing | — | Default `IsNewDevice` to false for IVDR devices |
 | 097.080 CMR/endocrine missing description | — | Always include `regulatedChemicalDescription` with `languageCode: "en"` for CMR/endocrine substances |
 | 097.081 endocrine missing description | — | ENDOCRINE_SUBSTANCE always gets description even when CAS/EC identifiers present |
+| 097.101 MDR Class III certificate | — | Parse `deviceCertificateInfoListForDisplay` from Basic UDI-DI; map MDR/IVDR certificate types to GS1 `CertificationStandard` |
 | G541 DIRECTION_OF_VIEW | 1x | CST63 coming with GDSN May release |
 
 ## Dependencies
