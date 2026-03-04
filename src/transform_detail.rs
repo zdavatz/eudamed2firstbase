@@ -147,14 +147,17 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let mut all_classifications = Vec::new();
 
     // Risk class from Basic UDI-DI → classification system 76
-    if let Some(ref rc) = basic_udi.and_then(|b| b.risk_class_code()) {
-        all_classifications.push(AdditionalClassification {
-            system_code: CodeValue { value: "76".to_string() },
-            values: vec![AdditionalClassificationValue {
-                code_value: mappings::risk_class_refdata_to_gs1(rc).to_string(),
-            }],
-        });
-    }
+    // 097.003: MDR/IVDR devices must have system 76 with risk class value
+    let risk_class_gs1 = basic_udi
+        .and_then(|b| b.risk_class_code())
+        .map(|rc| mappings::risk_class_refdata_to_gs1(&rc).to_string())
+        .unwrap_or_else(|| "EU_CLASS_I".to_string());
+    all_classifications.push(AdditionalClassification {
+        system_code: CodeValue { value: "76".to_string() },
+        values: vec![AdditionalClassificationValue {
+            code_value: risk_class_gs1,
+        }],
+    });
 
     if let Some(ref cnds) = device.cnd_nomenclatures {
         for cnd in cnds {
