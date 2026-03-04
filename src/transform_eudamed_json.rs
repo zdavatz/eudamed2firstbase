@@ -218,6 +218,12 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
                 annex_xvi_types: Vec::new(),
                 multi_component_type: None,
                 is_new_device: None,
+                is_reagent: None,
+                is_instrument: None,
+                is_patient_self_testing: None,
+                is_near_patient_testing: None,
+                is_professional_testing: None,
+                is_companion_diagnostic: None,
                 eu_status: CodeValue {
                     value: String::new(),
                 },

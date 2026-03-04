@@ -226,6 +226,19 @@ pub struct MedicalDeviceInformation {
     pub multi_component_type: Option<CodeValue>,
     #[serde(rename = "IsNewDevice", skip_serializing_if = "Option::is_none")]
     pub is_new_device: Option<bool>,
+    // IVDR-specific fields (097.046)
+    #[serde(rename = "IsDeviceReagent", skip_serializing_if = "Option::is_none")]
+    pub is_reagent: Option<bool>,
+    #[serde(rename = "IsDeviceInstrument", skip_serializing_if = "Option::is_none")]
+    pub is_instrument: Option<bool>,
+    #[serde(rename = "IsDevicePatientSelfTesting", skip_serializing_if = "Option::is_none")]
+    pub is_patient_self_testing: Option<bool>,
+    #[serde(rename = "IsDeviceNearPatientTesting", skip_serializing_if = "Option::is_none")]
+    pub is_near_patient_testing: Option<bool>,
+    #[serde(rename = "IsDeviceDesignedForProfessionalTesting", skip_serializing_if = "Option::is_none")]
+    pub is_professional_testing: Option<bool>,
+    #[serde(rename = "IsDeviceCompanionDiagnostic", skip_serializing_if = "Option::is_none")]
+    pub is_companion_diagnostic: Option<bool>,
     #[serde(rename = "EUMedicalDeviceStatusCode")]
     pub eu_status: CodeValue,
     #[serde(rename = "HealthcareTradeItemReusabilityInformation", skip_serializing_if = "Option::is_none")]
@@ -267,6 +280,8 @@ pub struct HealthcareItemInformationModule {
 
 #[derive(Serialize, Debug)]
 pub struct HealthcareItemInformation {
+    #[serde(rename = "DoesTradeItemContainMicrobialSubstance", skip_serializing_if = "Option::is_none")]
+    pub contains_microbial_substance: Option<bool>,
     #[serde(rename = "DoesTradeItemContainHumanBloodDerivative", skip_serializing_if = "Option::is_none")]
     pub human_blood_derivative: Option<String>,
     #[serde(rename = "DoesTradeItemContainLatex", skip_serializing_if = "Option::is_none")]

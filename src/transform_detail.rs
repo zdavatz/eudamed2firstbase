@@ -64,8 +64,29 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
-    // 097.026: contactTypeCode must be EMA or EPP — EAR not accepted by Swiss validation
-    // Authorised representative SRN is not emitted as a separate contact
+    // 097.054: Non-EU manufacturers must also have EAR (Authorised Representative) contact
+    // Detect non-EU from manufacturer SRN prefix (e.g. CN-MF-..., US-MF-...)
+    let mfr_srn = basic_udi.and_then(|b| b.manufacturer.as_ref()).and_then(|m| m.srn.as_ref());
+    let is_non_eu = mfr_srn.map(|srn| !is_eu_eea_srn(srn)).unwrap_or(false);
+    if is_non_eu {
+        let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
+        if !has_ear {
+            if let Some(ref ar) = basic_udi.and_then(|b| b.authorised_representative.as_ref()) {
+                if let Some(ref srn) = ar.srn {
+                    contacts.push(TradeItemContactInformation {
+                        contact_type: CodeValue { value: "EAR".to_string() },
+                        party_identification: vec![AdditionalPartyIdentification {
+                            type_code: "SRN".to_string(),
+                            value: srn.clone(),
+                        }],
+                        contact_name: ar.name.clone(),
+                        addresses: Vec::new(),
+                        communication_channels: Vec::new(),
+                    });
+                }
+            }
+        }
+    }
 
     // --- Trade name / description ---
     let trade_names = device.trade_name_texts();
@@ -158,8 +179,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
+    // --- Regulated trade item module (regulatory act + agency) ---
+    // Use risk class from Basic UDI-DI to determine MDR vs IVDR
+    let reg_act = basic_udi
+        .and_then(|b| b.risk_class_code())
+        .map(|rc| mappings::regulation_from_risk_class_refdata(&rc).to_string())
+        .unwrap_or_else(|| "MDR".to_string());
+    let is_ivdr = reg_act == "IVDR" || reg_act == "IVDD";
+
     // --- Healthcare item module (clinical sizes, storage, warnings, latex, tissue) ---
-    let healthcare_module = build_healthcare_module(device, basic_udi);
+    let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr);
 
     // --- Chemical regulation module (substances) ---
     let chemical_regulation_module = build_chemical_regulation_module(device);
@@ -181,12 +210,6 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     });
 
-    // --- Regulated trade item module (regulatory act + agency) ---
-    // Use risk class from Basic UDI-DI to determine MDR vs IVDR
-    let reg_act = basic_udi
-        .and_then(|b| b.risk_class_code())
-        .map(|rc| mappings::regulation_from_risk_class_refdata(&rc).to_string())
-        .unwrap_or_else(|| "MDR".to_string());
     let regulated_trade_item_module = Some(RegulatedTradeItemModule {
         info: vec![RegulatoryInformation {
             act: reg_act,
@@ -238,7 +261,15 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                         .and_then(|b| b.multi_component_code())
                         .unwrap_or_else(|| "DEVICE".to_string()),
                 }),
-                is_new_device: device.new_device,
+                // 097.047: isNewDevice mandatory for IVDR
+                is_new_device: if is_ivdr { Some(device.new_device.unwrap_or(false)) } else { device.new_device },
+                // 097.046: IVDR-specific boolean fields, default to false
+                is_reagent: if is_ivdr { Some(false) } else { None },
+                is_instrument: if is_ivdr { Some(false) } else { None },
+                is_patient_self_testing: if is_ivdr { Some(false) } else { None },
+                is_near_patient_testing: if is_ivdr { Some(false) } else { None },
+                is_professional_testing: if is_ivdr { Some(false) } else { None },
+                is_companion_diagnostic: if is_ivdr { Some(false) } else { None },
                 eu_status: CodeValue {
                     value: status_code,
                 },
@@ -374,6 +405,18 @@ fn build_reusability(device: &ApiDeviceDetail) -> Option<ReusabilityInformation>
     }
 }
 
+/// Check if an SRN prefix indicates an EU/EEA country.
+/// SRN format: CC-XX-NNNNNN where CC is the country code.
+fn is_eu_eea_srn(srn: &str) -> bool {
+    let prefix = srn.split('-').next().unwrap_or("");
+    matches!(prefix,
+        "AT" | "BE" | "BG" | "HR" | "CY" | "CZ" | "DK" | "EE" | "FI" | "FR" |
+        "DE" | "GR" | "HU" | "IE" | "IT" | "LV" | "LT" | "LU" | "MT" | "NL" |
+        "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE" |
+        "IS" | "LI" | "NO" // EEA
+    )
+}
+
 /// Build contacts: product designer → EPD contact
 fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> {
     let mut contacts = Vec::new();
@@ -484,7 +527,7 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
     contacts
 }
 
-fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>) -> Option<HealthcareItemInformationModule> {
+fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>, is_ivdr: bool) -> Option<HealthcareItemInformationModule> {
     let clinical_sizes = build_clinical_sizes(device);
     let storage_handling = build_storage_handling(device);
     let clinical_warnings = build_clinical_warnings(device);
@@ -492,6 +535,8 @@ fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdi
 
     Some(HealthcareItemInformationModule {
         info: HealthcareItemInformation {
+            // 097.046: microbial substance mandatory for IVDR/IVDD
+            contains_microbial_substance: if is_ivdr { Some(false) } else { None },
             human_blood_derivative: Some(bool_str(basic_udi.and_then(|b| b.human_product).unwrap_or(false))),
             contains_latex,
             human_tissue: Some(bool_str(basic_udi.and_then(|b| b.human_tissues).unwrap_or(false))),

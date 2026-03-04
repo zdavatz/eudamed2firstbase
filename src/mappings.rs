@@ -71,10 +71,10 @@ pub fn risk_class_to_gs1(code: &str) -> &str {
         "CLASS_IIA" => "EU_CLASS_IIA",
         "CLASS_IIB" => "EU_CLASS_IIB",
         "CLASS_III" => "EU_CLASS_III",
-        "CLASS_A" => "EU_CLASS_A",
-        "CLASS_B" => "EU_CLASS_B",
-        "CLASS_C" => "EU_CLASS_C",
-        "CLASS_D" => "EU_CLASS_D",
+        "CLASS_A" => "IVD_CLASS_A",
+        "CLASS_B" => "IVD_CLASS_B",
+        "CLASS_C" => "IVD_CLASS_C",
+        "CLASS_D" => "IVD_CLASS_D",
         other => other,
     }
 }
