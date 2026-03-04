@@ -649,6 +649,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                 let min_val: f64 = size.minimum.as_deref().and_then(|v| v.parse().ok()).unwrap_or(0.0);
                 let max_val: f64 = size.maximum.as_deref().and_then(|v| v.parse().ok()).unwrap_or(0.0);
                 ClinicalSizeOutput {
+                    descriptions: Vec::new(),
                     type_code: CodeValue { value: gs1_type.to_string() },
                     values: vec![MeasurementValue { unit_code: unit.to_string(), value: min_val }],
                     maximums: vec![MeasurementValue { unit_code: unit.to_string(), value: max_val }],
@@ -657,7 +658,14 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                 }
             }
             "TextClinicalSizeType" => {
+                let descriptions = if gs1_type == "DEVICE_SIZE_TEXT_SPECIFY" {
+                    let desc = size.text.as_deref().unwrap_or("Other");
+                    vec![LangValue { language_code: "en".to_string(), value: desc.to_string() }]
+                } else {
+                    Vec::new()
+                };
                 ClinicalSizeOutput {
+                    descriptions,
                     type_code: CodeValue { value: gs1_type.to_string() },
                     values: vec![],
                     maximums: vec![],
@@ -668,6 +676,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
             "ValueClinicalSizeType" | _ => {
                 let val: f64 = size.value.as_deref().and_then(|v| v.parse().ok()).unwrap_or(0.0);
                 ClinicalSizeOutput {
+                    descriptions: Vec::new(),
                     type_code: CodeValue { value: gs1_type.to_string() },
                     values: vec![MeasurementValue { unit_code: unit.to_string(), value: val }],
                     maximums: vec![],

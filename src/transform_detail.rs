@@ -619,7 +619,19 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
                 });
             }
 
+            // 097.070: DEVICE_SIZE_TEXT_SPECIFY requires clinicalSizeDescription
+            let descriptions = if gs1_type == "DEVICE_SIZE_TEXT_SPECIFY" {
+                let desc = cs.text.as_deref().unwrap_or("Other");
+                vec![LangValue {
+                    language_code: "en".to_string(),
+                    value: desc.to_string(),
+                }]
+            } else {
+                Vec::new()
+            };
+
             Some(ClinicalSizeOutput {
+                descriptions,
                 type_code: CodeValue {
                     value: gs1_type.to_string(),
                 },
