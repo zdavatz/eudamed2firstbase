@@ -269,6 +269,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.074 storage description missing | 9x | Use SHC code as placeholder description |
 | 097.005 invalid risk class | 5x | Set MDR vs IVDR regulatory act based on risk class |
 | 097.022 Class I implantable conflict | 36x | Data quality issue in EUDAMED (not fixable) |
+| 097.009 EMA contact with SRN required | 16x | Already generated from Basic UDI-DI cache (99.2% coverage); remaining files lack cache entries |
 | G541 DIRECTION_OF_VIEW | 1x | CST63 coming with GDSN May release |
 
 ## Dependencies
