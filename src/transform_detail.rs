@@ -25,11 +25,15 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         .unwrap_or_default();
 
     // --- Production identifiers ---
-    let production_ids: Vec<CodeValue> = device
+    // MDR/IVDR require at least one (097.013). Default to BATCH_NUMBER when EUDAMED has none.
+    let mut production_ids: Vec<CodeValue> = device
         .production_identifiers()
         .into_iter()
         .map(|id| CodeValue { value: id })
         .collect();
+    if production_ids.is_empty() {
+        production_ids.push(CodeValue { value: "BATCH_NUMBER".to_string() });
+    }
 
     // --- Sterility ---
     let sterility = build_sterility(device, config);
@@ -286,13 +290,30 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                 .and_then(|di| di.code.clone())
                 .filter(|c| !c.is_empty())
                 .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
-            descriptions: trade_names
-                .iter()
-                .map(|(lang, text)| LangValue {
-                    language_code: lang.clone(),
-                    value: text.clone(),
-                })
-                .collect(),
+            descriptions: {
+                // 097.025: GlobalModelDescription with languageCode 'en' is required
+                let mut descs: Vec<LangValue> = trade_names
+                    .iter()
+                    .map(|(lang, text)| LangValue {
+                        language_code: lang.clone(),
+                        value: text.clone(),
+                    })
+                    .collect();
+                let has_en = descs.iter().any(|d| d.language_code == "en");
+                if !has_en {
+                    // Fall back to first available trade name, or Basic UDI-DI device name
+                    let fallback = trade_names
+                        .first()
+                        .map(|(_, text)| text.clone())
+                        .or_else(|| basic_udi.and_then(|b| b.device_name.clone()))
+                        .unwrap_or_else(|| device.primary_di_code());
+                    descs.insert(0, LangValue {
+                        language_code: "en".to_string(),
+                        value: fallback,
+                    });
+                }
+                descs
+            },
         }],
         gtin,
         additional_identification,
