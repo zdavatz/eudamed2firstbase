@@ -47,6 +47,8 @@ pub struct TradeItem {
     pub healthcare_item_module: Option<HealthcareItemInformationModule>,
     #[serde(rename = "MedicalDeviceTradeItemModule")]
     pub medical_device_module: MedicalDeviceTradeItemModule,
+    #[serde(rename = "CertificationInformationModule", skip_serializing_if = "Option::is_none")]
+    pub certification_module: Option<CertificationInformationModule>,
     #[serde(rename = "ReferencedFileDetailInformationModule", skip_serializing_if = "Option::is_none")]
     pub referenced_file_module: Option<ReferencedFileDetailInformationModule>,
     #[serde(rename = "RegulatedTradeItemModule", skip_serializing_if = "Option::is_none")]
@@ -406,6 +408,35 @@ pub struct ReferencedFileHeader {
     pub uri: String,
     #[serde(rename = "IsPrimaryFile")]
     pub is_primary: String,
+}
+
+// --- Certification Information Module ---
+#[derive(Serialize, Debug)]
+pub struct CertificationInformationModule {
+    #[serde(rename = "CertificationInformation")]
+    pub infos: Vec<CertificationInformation>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct CertificationInformation {
+    #[serde(rename = "CertificationAgency", skip_serializing_if = "Option::is_none")]
+    pub agency: Option<String>,
+    #[serde(rename = "CertificationOrganisationIdentifier", skip_serializing_if = "Option::is_none")]
+    pub organisation_identifier: Option<String>,
+    #[serde(rename = "CertificationStandard")]
+    pub standard: String,
+    #[serde(rename = "Certification", skip_serializing_if = "Vec::is_empty")]
+    pub certifications: Vec<Certification>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct Certification {
+    #[serde(rename = "CertificationIdentification", skip_serializing_if = "Option::is_none")]
+    pub identification: Option<String>,
+    #[serde(rename = "CertificationEffectiveEndDateTime", skip_serializing_if = "Option::is_none")]
+    pub effective_end: Option<String>,
+    #[serde(rename = "CertificationEffectiveStartDateTime", skip_serializing_if = "Option::is_none")]
+    pub effective_start: Option<String>,
 }
 
 // --- Regulated Trade Item Module ---

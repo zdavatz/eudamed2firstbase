@@ -231,6 +231,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
                 sterility,
             },
         },
+        certification_module: None,
         referenced_file_module: None,
         regulated_trade_item_module: None,
         sales_module: None,

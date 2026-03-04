@@ -223,6 +223,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- Direct marking DI ---
     let direct_marking = build_direct_marking(device);
 
+    // --- Certification module (097.101: MDR Class III needs certificate) ---
+    let certification_module = build_certification_module(basic_udi);
+
     // --- Related devices (REPLACED/REPLACED_BY) ---
     let referenced_trade_items = build_referenced_trade_items(device);
 
@@ -277,6 +280,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                 sterility,
             },
         },
+        certification_module,
         referenced_file_module,
         regulated_trade_item_module,
         sales_module,
@@ -819,6 +823,65 @@ fn build_referenced_trade_items(device: &ApiDeviceDetail) -> Vec<ReferencedTrade
 }
 
 /// Build chemical regulation module from substances.
+/// Build certification module from Basic UDI-DI certificate list.
+/// Maps MDR/IVDR certificate types to GS1 CertificationStandard codes.
+fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<CertificationInformationModule> {
+    let certs = basic_udi?.device_certificate_info_list_for_display.as_ref()?;
+    let mut infos = Vec::new();
+
+    for cert in certs {
+        let type_code = cert.certificate_type.as_ref()?.code.as_ref()?;
+        let suffix = type_code.rsplit('.').next().unwrap_or(type_code);
+
+        // Map EUDAMED certificate types to GS1 CertificationStandard
+        let standard = match suffix {
+            "technical-documentation" => {
+                if type_code.contains("mdr") {
+                    "MDR_TECHNICAL_DOCUMENTATION"
+                } else if type_code.contains("ivdr") {
+                    "IVDR_TECHNICAL_DOCUMENTATION"
+                } else {
+                    continue;
+                }
+            }
+            "type-examination" => {
+                if type_code.contains("mdr") {
+                    "MDR_TYPE_EXAMINATION"
+                } else if type_code.contains("ivdr") {
+                    "IVDR_TYPE_EXAMINATION"
+                } else {
+                    continue;
+                }
+            }
+            _ => continue, // Skip legacy MDD/IVDD certificates
+        };
+
+        let nb = cert.notified_body.as_ref();
+        infos.push(CertificationInformation {
+            agency: nb.and_then(|n| n.name.clone()),
+            organisation_identifier: nb.and_then(|n| n.srn.clone()),
+            standard: standard.to_string(),
+            certifications: {
+                let mut cs = Vec::new();
+                if cert.certificate_number.is_some() || cert.certificate_expiry.is_some() || cert.starting_validity_date.is_some() {
+                    cs.push(Certification {
+                        identification: cert.certificate_number.clone(),
+                        effective_end: cert.certificate_expiry.clone(),
+                        effective_start: cert.starting_validity_date.clone(),
+                    });
+                }
+                cs
+            },
+        });
+    }
+
+    if infos.is_empty() {
+        None
+    } else {
+        Some(CertificationInformationModule { infos })
+    }
+}
+
 fn build_chemical_regulation_module(device: &ApiDeviceDetail) -> Option<ChemicalRegulationInformationModule> {
     let mut who_chemicals = Vec::new();
     let mut echa_chemicals = Vec::new();
