@@ -497,8 +497,9 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
             let json_content = std::fs::read_to_string(&path)
                 .with_context(|| format!("Failed to read {}", path.display()))?;
 
-            // Detect file type: UDI-DI level (has primaryDi) vs device level
-            let is_udi_di = json_content.contains("\"primaryDi\"");
+            // Detect file type: UDI-DI level (has primaryDi with actual data) vs device level
+            // Check for "primaryDi":{  (object) — exclude "primaryDi":null
+            let is_udi_di = json_content.contains("\"primaryDi\":{");
 
             let result = if is_udi_di {
                 // UDI-DI level file — reuse existing api_detail parser/transformer

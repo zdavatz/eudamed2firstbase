@@ -228,7 +228,7 @@ You can publish multiple items in a single request by adding more objects to the
 
 #### 4. Bulk Workflow: push_to_api.sh
 
-The `push_to_api.sh` script handles the full workflow: token acquisition, draft creation via `Draft/CreateOne` (per file), and publish via `AddMany` (batches of 100).
+The `push_to_api.sh` script handles the full workflow: token acquisition, draft creation via `Draft/CreateOne` (per file), and publish via `AddMany` (batches of 100). Includes automatic throttling (1s for ≤60 files, 8s for larger batches) and HTTP 429 retry with `retry-after` backoff.
 
 ```bash
 ./push_to_api.sh                    # push all UUID files in firstbase_json/
@@ -263,7 +263,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.025 missing globalModelNumber | 176x | Use primary DI code as fallback, trade name as description |
 | 097.025 missing globalModelDescription en | — | Treat `allLanguagesApplicable` as English; fallback to first trade name or Basic UDI-DI device name |
 | 097.013 missing uDIProductionIdentifierTypeCode | — | Default to `BATCH_NUMBER` when EUDAMED has no production identifiers (MDR/IVDR mandatory) |
-| G541 invalid country code 826 (UK/NI) | — | Skip GB/XI from market sales conditions post-Brexit; not valid GDSN market countries |
+| G541 invalid country code 826 (UK/NI) | — | Skip GB/XI from market sales conditions post-Brexit; XI will become valid with GDSN March/May 2026 release |
 | 097.072 missing additionalDescription | 60x | Resolved by defaulting multiComponentDeviceTypeCode to DEVICE |
 | 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | First market country becomes ORIGINAL_PLACED when no explicit match |
 | 097.074 storage description missing | 9x | Use SHC code as placeholder description |

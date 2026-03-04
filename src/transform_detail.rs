@@ -359,12 +359,21 @@ fn build_reusability(device: &ApiDeviceDetail) -> Option<ReusabilityInformation>
         })
     } else {
         let max = device.max_number_of_reuses;
-        Some(ReusabilityInformation {
-            reusability_type: CodeValue {
-                value: "LIMITED_REUSABLE".to_string(),
-            },
-            max_cycles: max,
-        })
+        if max.is_some() {
+            Some(ReusabilityInformation {
+                reusability_type: CodeValue {
+                    value: "LIMITED_REUSABLE".to_string(),
+                },
+                max_cycles: max,
+            })
+        } else {
+            Some(ReusabilityInformation {
+                reusability_type: CodeValue {
+                    value: "REUSABLE".to_string(),
+                },
+                max_cycles: None,
+            })
+        }
     }
 }
 
