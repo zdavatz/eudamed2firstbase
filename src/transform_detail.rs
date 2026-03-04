@@ -45,20 +45,21 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let mut contacts = build_contacts(device);
 
     // Add manufacturer contact from Basic UDI-DI (if not already present)
+    // 097.009: EMA contact with SRN is mandatory for non-system/procedure-pack devices
     let has_ema = contacts.iter().any(|c| c.contact_type.value == "EMA");
     if !has_ema {
         if let Some(ref mfr) = basic_udi.and_then(|b| b.manufacturer.as_ref()) {
             if let Some(ref srn) = mfr.srn {
                 contacts.push(TradeItemContactInformation {
-                contact_type: CodeValue { value: "EMA".to_string() },
-                party_identification: vec![AdditionalPartyIdentification {
-                    type_code: "SRN".to_string(),
-                    value: srn.clone(),
-                }],
-                contact_name: mfr.name.clone(),
-                addresses: Vec::new(),
-                communication_channels: Vec::new(),
-            });
+                    contact_type: CodeValue { value: "EMA".to_string() },
+                    party_identification: vec![AdditionalPartyIdentification {
+                        type_code: "SRN".to_string(),
+                        value: srn.clone(),
+                    }],
+                    contact_name: mfr.name.clone(),
+                    addresses: Vec::new(),
+                    communication_channels: Vec::new(),
+                });
             }
         }
     }
