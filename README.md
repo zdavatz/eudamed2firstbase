@@ -274,7 +274,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.005 risk class system/code mapping | — | System 76 (MDR/IVDR): EU_CLASS_A/B/C/D for IVDR; System 85 (IVDD/AIMDD): IVDD_GENERAL, IVDD_DEVICES_SELF_TESTING, IVDD_ANNEX_II_LIST_A/B, AIMDD |
 | 097.015 implantable IIB exempt field | — | Add `IsDeviceExemptFromImplantObligations` (default false) for implantable + EU_CLASS_IIB |
 | 097.026 invalid Actor contactTypeCode | — | Remove EAR for EU manufacturers; only EMA/EPP allowed as Actor types |
-| 097.054 non-EU needs EAR contact | — | Add EAR contact for non-EU manufacturers (detected from SRN prefix); TR (Turkey) exempt as EU_EXTENDED |
+| 097.054 non-EU needs EAR contact | — | Add EAR contact for all non-EU manufacturers (detected from SRN prefix); fallback SRN=UNKNOWN when no AR data in EUDAMED |
 | 097.046 IVDR boolean fields missing | — | Add 7 IVDR fields (reagent, instrument, self-testing, etc.) default false |
 | 097.047 IVDR isNewDevice missing | — | Default `IsNewDevice` to false for IVDR devices |
 | 097.080 CMR/endocrine missing description | — | Always include `regulatedChemicalDescription` with `languageCode: "en"` for CMR/endocrine substances |
