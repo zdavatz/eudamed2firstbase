@@ -474,6 +474,7 @@ pub struct BasicUdiDiData {
     pub basic_udi: Option<DiIdentifier>,
     pub manufacturer: Option<BasicUdiManufacturer>,
     pub authorised_representative: Option<BasicUdiAuthorisedRep>,
+    pub device_certificate_info_list_for_display: Option<Vec<DeviceCertificate>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -505,6 +506,26 @@ pub struct BasicUdiManufacturer {
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct BasicUdiAuthorisedRep {
+    pub name: Option<String>,
+    pub srn: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct DeviceCertificate {
+    pub certificate_number: Option<String>,
+    pub certificate_expiry: Option<String>,
+    pub certificate_type: Option<RefCode>,
+    pub notified_body: Option<CertificateNotifiedBody>,
+    pub issue_date: Option<String>,
+    pub starting_validity_date: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct CertificateNotifiedBody {
     pub name: Option<String>,
     pub srn: Option<String>,
 }

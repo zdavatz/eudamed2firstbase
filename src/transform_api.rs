@@ -143,6 +143,7 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
                 sterility,
             },
         },
+        certification_module: None,
         referenced_file_module: None,
         regulated_trade_item_module: None,
         sales_module: None,

@@ -194,6 +194,7 @@ fn build_packaging_trade_item(
                 ..Default::default()
             },
         },
+        certification_module: None,
         referenced_file_module: None,
         regulated_trade_item_module: None,
         sales_module: None,
@@ -541,6 +542,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
                 sterility,
             },
         },
+        certification_module: None,
         referenced_file_module,
         regulated_trade_item_module: regulated_module,
         sales_module,
