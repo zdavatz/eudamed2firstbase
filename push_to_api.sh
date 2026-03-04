@@ -104,8 +104,17 @@ if [[ $TOTAL -eq 0 ]]; then
     exit 0
 fi
 
+# Throttle: Draft/CreateOne is limited to 1/sec, 60/min, 500/hour
+# Small batches (<=60): 1s delay. Large batches: 8s delay to stay within 500/hour.
+if [[ $TOTAL -le 60 ]]; then
+    THROTTLE=1
+else
+    THROTTLE=8
+fi
+echo "Throttle: ${THROTTLE}s between requests (${TOTAL} files)"
+
 if $DRY_RUN; then
-    echo "[DRY RUN] Would push $TOTAL files in batches of $BATCH_SIZE"
+    echo "[DRY RUN] Would push $TOTAL files with ${THROTTLE}s throttle"
     echo "First file: ${FILES[0]}"
     echo "Last file:  ${FILES[$((TOTAL-1))]}"
     exit 0
@@ -133,13 +142,37 @@ for ((i=0; i<TOTAL; i++)); do
     BASE=$(basename "$FILE" .json)
     NUM=$((i+1))
 
-    RESPONSE=$(curl -s --max-time 60 -X POST "$API_BASE/CatalogueItem/Draft/CreateOne" \
-        -H 'Content-Type: application/json' \
-        -H "Authorization: bearer $TOKEN" \
-        -d @"$FILE" 2>&1)
+    # Retry loop for 429 rate limiting
+    for attempt in 1 2 3; do
+        RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 60 -X POST "$API_BASE/CatalogueItem/Draft/CreateOne" \
+            -H 'Content-Type: application/json' \
+            -H "Authorization: bearer $TOKEN" \
+            -d @"$FILE" 2>&1)
+
+        HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+
+        if [[ "$HTTP_CODE" == "429" ]]; then
+            RETRY_AFTER=$(curl -sI --max-time 10 -X POST "$API_BASE/CatalogueItem/Draft/CreateOne" \
+                -H 'Content-Type: application/json' \
+                -H "Authorization: bearer $TOKEN" \
+                -d '{}' 2>&1 | grep -i 'retry-after' | tr -d '\r' | awk '{print $2}')
+            RETRY_AFTER=${RETRY_AFTER:-60}
+            echo "  [$NUM/$TOTAL] 429 rate limited — waiting ${RETRY_AFTER}s (attempt $attempt/3)"
+            sleep "$RETRY_AFTER"
+            continue
+        fi
+        break
+    done
+
+    if [[ "$HTTP_CODE" == "429" ]]; then
+        FAILED=$((FAILED+1))
+        echo "  [$NUM/$TOTAL] FAIL: $BASE — 429 rate limited after 3 retries"
+        continue
+    fi
 
     # Check if response is JSON with RequestIdentifier
-    REQ_ID=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin).get('RequestIdentifier',''))" 2>/dev/null || echo "")
+    REQ_ID=$(echo "$BODY" | python3 -c "import json,sys; print(json.load(sys.stdin).get('RequestIdentifier',''))" 2>/dev/null || echo "")
 
     if [[ -n "$REQ_ID" && "$REQ_ID" != "None" ]]; then
         # Extract Identifier, Gtin, TargetMarket for publish step
@@ -159,7 +192,12 @@ print(f'{ident}|{gtin}|{tm}')
         echo "  [$NUM/$TOTAL] OK: $BASE"
     else
         FAILED=$((FAILED+1))
-        echo "  [$NUM/$TOTAL] FAIL: $BASE — $(echo "$RESPONSE" | head -c 200)"
+        echo "  [$NUM/$TOTAL] FAIL: $BASE — $(echo "$BODY" | head -c 200)"
+    fi
+
+    # Throttle between requests
+    if [[ $i -lt $((TOTAL-1)) ]]; then
+        sleep "$THROTTLE"
     fi
 done
 
@@ -225,5 +263,8 @@ try:
 except:
     print(sys.stdin.read()[:500])
 " 2>/dev/null || echo "$RESPONSE" | head -c 500
+
+        # Throttle between publish batches
+        sleep "$THROTTLE"
     done
 fi
