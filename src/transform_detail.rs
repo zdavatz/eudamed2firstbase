@@ -64,24 +64,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
-    // Add authorised representative contact from Basic UDI-DI (if not already present)
-    let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
-    if !has_ear {
-        if let Some(ref ar) = basic_udi.and_then(|b| b.authorised_representative.as_ref()) {
-            if let Some(ref srn) = ar.srn {
-                contacts.push(TradeItemContactInformation {
-                    contact_type: CodeValue { value: "EAR".to_string() },
-                    party_identification: vec![AdditionalPartyIdentification {
-                        type_code: "SRN".to_string(),
-                        value: srn.clone(),
-                    }],
-                    contact_name: ar.name.clone(),
-                    addresses: Vec::new(),
-                    communication_channels: Vec::new(),
-                });
-            }
-        }
-    }
+    // 097.026: contactTypeCode must be EMA or EPP — EAR not accepted by Swiss validation
+    // Authorised representative SRN is not emitted as a separate contact
 
     // --- Trade name / description ---
     let trade_names = device.trade_name_texts();
