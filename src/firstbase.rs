@@ -310,6 +310,8 @@ pub struct ClinicalStorageHandling {
 
 #[derive(Serialize, Debug)]
 pub struct ClinicalSizeOutput {
+    #[serde(rename = "ClinicalSizeDescription", skip_serializing_if = "Vec::is_empty")]
+    pub descriptions: Vec<LangValue>,
     #[serde(rename = "ClinicalSizeTypeCode")]
     pub type_code: CodeValue,
     #[serde(rename = "ClinicalSizeValue", skip_serializing_if = "Vec::is_empty")]
