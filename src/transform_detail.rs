@@ -640,12 +640,6 @@ fn build_clinical_warnings(device: &ApiDeviceDetail) -> Vec<ClinicalWarningOutpu
 
 /// Build sales module with ORIGINAL_PLACED vs ADDITIONAL_MARKET_AVAILABILITY distinction.
 fn build_sales_module(device: &ApiDeviceDetail) -> Option<SalesInformationModule> {
-    let market_info = device.market_info_link.as_ref()?;
-    let markets = market_info.ms_where_available.as_ref()?;
-    if markets.is_empty() {
-        return None;
-    }
-
     // Determine which country is the "original placed" market
     let original_iso2 = device.placed_on_the_market.as_ref()
         .and_then(|c| c.iso2_code.as_ref())
@@ -654,35 +648,59 @@ fn build_sales_module(device: &ApiDeviceDetail) -> Option<SalesInformationModule
     let mut original_countries = Vec::new();
     let mut additional_countries = Vec::new();
 
-    for ma in markets {
-        let iso2 = match ma.country.as_ref().and_then(|c| c.iso2_code.as_ref()) {
-            Some(c) => c,
-            None => continue,
-        };
-        // Skip GB/XI — not valid GDSN market countries post-Brexit (G541)
-        if !mappings::is_valid_gdsn_market_country(iso2) {
-            continue;
-        }
-        let numeric = mappings::country_alpha2_to_numeric(iso2);
-        let country = SalesConditionCountry {
-            country_code: CodeValue {
-                value: numeric.to_string(),
-            },
-            start_datetime: ma.start_date.clone().unwrap_or_default(),
-            end_datetime: ma.end_date.clone(),
-        };
+    let markets = device.market_info_link.as_ref()
+        .and_then(|m| m.ms_where_available.as_ref());
 
-        if original_iso2 == Some(iso2.as_str()) {
-            original_countries.push(country);
-        } else {
-            additional_countries.push(country);
+    if let Some(markets) = markets {
+        for ma in markets {
+            let iso2 = match ma.country.as_ref().and_then(|c| c.iso2_code.as_ref()) {
+                Some(c) => c,
+                None => continue,
+            };
+            // Skip GB/XI — not valid GDSN market countries post-Brexit (G541)
+            if !mappings::is_valid_gdsn_market_country(iso2) {
+                continue;
+            }
+            let numeric = mappings::country_alpha2_to_numeric(iso2);
+            let country = SalesConditionCountry {
+                country_code: CodeValue {
+                    value: numeric.to_string(),
+                },
+                start_datetime: ma.start_date.clone().unwrap_or_default(),
+                end_datetime: ma.end_date.clone(),
+            };
+
+            if original_iso2 == Some(iso2.as_str()) {
+                original_countries.push(country);
+            } else {
+                additional_countries.push(country);
+            }
         }
     }
 
-    // If no ORIGINAL_PLACED match found but we have markets, use the first as ORIGINAL_PLACED
-    // (097.020: ON_MARKET status requires at least one ORIGINAL_PLACED country)
+    // 097.020: ON_MARKET requires exactly one ORIGINAL_PLACED country.
+    // If no match from msWhereAvailable, use placedOnTheMarket directly.
+    if original_countries.is_empty() {
+        if let Some(iso2) = original_iso2 {
+            if mappings::is_valid_gdsn_market_country(iso2) {
+                let numeric = mappings::country_alpha2_to_numeric(iso2);
+                original_countries.push(SalesConditionCountry {
+                    country_code: CodeValue { value: numeric.to_string() },
+                    start_datetime: String::new(),
+                    end_datetime: None,
+                });
+            }
+        }
+    }
+
+    // Last resort: use the first additional country as ORIGINAL_PLACED
     if original_countries.is_empty() && !additional_countries.is_empty() {
         original_countries.push(additional_countries.remove(0));
+    }
+
+    // Ensure only one country in ORIGINAL_PLACED (097.020: only one allowed)
+    while original_countries.len() > 1 {
+        additional_countries.push(original_countries.pop().unwrap());
     }
 
     let mut conditions = Vec::new();

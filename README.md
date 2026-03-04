@@ -265,7 +265,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.013 missing uDIProductionIdentifierTypeCode | — | Default to `BATCH_NUMBER` when EUDAMED has no production identifiers (MDR/IVDR mandatory) |
 | G541 invalid country code 826 (UK/NI) | — | Skip GB/XI from market sales conditions post-Brexit; XI will become valid with GDSN March/May 2026 release |
 | 097.072 missing additionalDescription | 60x | Resolved by defaulting multiComponentDeviceTypeCode to DEVICE |
-| 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | First market country becomes ORIGINAL_PLACED when no explicit match |
+| 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | Use `placedOnTheMarket` country when `marketInfoLink` is null; enforce exactly one ORIGINAL_PLACED country |
 | 097.074 storage description missing | 9x | Use SHC code as placeholder description |
 | 097.005 invalid risk class | 5x | Set MDR vs IVDR regulatory act based on risk class |
 | 097.022 Class I implantable conflict | 36x | Data quality issue in EUDAMED (not fixable) |
