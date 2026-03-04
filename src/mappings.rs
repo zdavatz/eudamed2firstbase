@@ -71,10 +71,10 @@ pub fn risk_class_to_gs1(code: &str) -> &str {
         "CLASS_IIA" => "EU_CLASS_IIA",
         "CLASS_IIB" => "EU_CLASS_IIB",
         "CLASS_III" => "EU_CLASS_III",
-        "CLASS_A" => "IVD_CLASS_A",
-        "CLASS_B" => "IVD_CLASS_B",
-        "CLASS_C" => "IVD_CLASS_C",
-        "CLASS_D" => "IVD_CLASS_D",
+        "CLASS_A" => "EU_CLASS_A",
+        "CLASS_B" => "EU_CLASS_B",
+        "CLASS_C" => "EU_CLASS_C",
+        "CLASS_D" => "EU_CLASS_D",
         other => other,
     }
 }
@@ -379,21 +379,39 @@ pub fn multi_component_to_gs1(code: &str) -> &str {
 }
 
 /// Risk class refdata code → GS1 risk class code
-/// e.g. "refdata.risk-class.class-iia" → "CLASS_IIA"
+/// System 76 (MDR/IVDR Regulation): EU_CLASS_I/IIA/IIB/III, EU_CLASS_A/B/C/D
+/// System 85 (MDD/AIMDD/IVDD Directive): EU_CLASS_I/IIA/IIB/III, AIMDD, IVDD_*
 pub fn risk_class_refdata_to_gs1(code: &str) -> &str {
     let suffix = code.rsplit('.').next().unwrap_or(code);
     match suffix {
+        // MDR (system 76)
         "class-i" => "EU_CLASS_I",
         "class-iia" => "EU_CLASS_IIA",
         "class-iib" => "EU_CLASS_IIB",
         "class-iii" => "EU_CLASS_III",
-        "class-a" => "IVD_CLASS_A",
-        "class-b" => "IVD_CLASS_B",
-        "class-c" => "IVD_CLASS_C",
-        "class-d" => "IVD_CLASS_D",
-        "ivd-general" => "IVD_GENERAL",
+        // IVDR (system 76)
+        "class-a" => "EU_CLASS_A",
+        "class-b" => "EU_CLASS_B",
+        "class-c" => "EU_CLASS_C",
+        "class-d" => "EU_CLASS_D",
+        // IVDD old directive (system 85)
+        "ivd-general" => "IVDD_GENERAL",
+        "ivd-devices-self-testing" => "IVDD_DEVICES_SELF_TESTING",
+        "ivd-annex-ii-list-a" => "IVDD_ANNEX_II_LIST_A",
+        "ivd-annex-ii-list-b" => "IVDD_ANNEX_II_LIST_B",
+        // AIMDD old directive (system 85)
         "aimdd" => "AIMDD",
         other => risk_class_to_gs1(other),
+    }
+}
+
+/// Classification system code for risk class: "76" for MDR/IVDR, "85" for MDD/AIMDD/IVDD
+pub fn risk_class_system_code(code: &str) -> &str {
+    let suffix = code.rsplit('.').next().unwrap_or(code);
+    match suffix {
+        "aimdd" | "ivd-general" | "ivd-devices-self-testing"
+        | "ivd-annex-ii-list-a" | "ivd-annex-ii-list-b" => "85",
+        _ => "76",
     }
 }
 
@@ -401,7 +419,9 @@ pub fn risk_class_refdata_to_gs1(code: &str) -> &str {
 pub fn regulation_from_risk_class_refdata(code: &str) -> &str {
     let suffix = code.rsplit('.').next().unwrap_or(code);
     match suffix {
-        "class-a" | "class-b" | "class-c" | "class-d" | "ivd-general" => "IVDR",
+        "class-a" | "class-b" | "class-c" | "class-d" => "IVDR",
+        "ivd-general" | "ivd-devices-self-testing"
+        | "ivd-annex-ii-list-a" | "ivd-annex-ii-list-b" => "IVDD",
         "aimdd" => "AIMDD",
         _ => "MDR",
     }

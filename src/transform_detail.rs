@@ -151,14 +151,17 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- EMDN/CND nomenclature → additional classification system 88 ---
     let mut all_classifications = Vec::new();
 
-    // Risk class from Basic UDI-DI → classification system 76
-    // 097.003: MDR/IVDR devices must have system 76 with risk class value
-    let risk_class_gs1 = basic_udi
-        .and_then(|b| b.risk_class_code())
-        .map(|rc| mappings::risk_class_refdata_to_gs1(&rc).to_string())
+    // Risk class from Basic UDI-DI → classification system 76 (MDR/IVDR) or 85 (MDD/AIMDD/IVDD)
+    // 097.003/097.005: risk class value must match the local code list for the system
+    let risk_class_refdata = basic_udi.and_then(|b| b.risk_class_code());
+    let risk_class_gs1 = risk_class_refdata.as_ref()
+        .map(|rc| mappings::risk_class_refdata_to_gs1(rc).to_string())
         .unwrap_or_else(|| "EU_CLASS_I".to_string());
+    let risk_class_system = risk_class_refdata.as_ref()
+        .map(|rc| mappings::risk_class_system_code(rc).to_string())
+        .unwrap_or_else(|| "76".to_string());
     all_classifications.push(AdditionalClassification {
-        system_code: CodeValue { value: "76".to_string() },
+        system_code: CodeValue { value: risk_class_system },
         values: vec![AdditionalClassificationValue {
             code_value: risk_class_gs1.clone(),
         }],
