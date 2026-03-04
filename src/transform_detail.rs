@@ -139,7 +139,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     all_classifications.push(AdditionalClassification {
         system_code: CodeValue { value: "76".to_string() },
         values: vec![AdditionalClassificationValue {
-            code_value: risk_class_gs1,
+            code_value: risk_class_gs1.clone(),
         }],
     });
 
@@ -214,6 +214,15 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
                 is_implantable: Some(bool_str(basic_udi.and_then(|b| b.implantable).unwrap_or(false))),
+                // 097.015: required when implantable=true and risk class=EU_CLASS_IIB
+                is_exempt_from_implant_obligations: {
+                    let implantable = basic_udi.and_then(|b| b.implantable).unwrap_or(false);
+                    if implantable && risk_class_gs1 == "EU_CLASS_IIB" {
+                        Some(false)
+                    } else {
+                        None
+                    }
+                },
                 device_count,
                 direct_marking,
                 measuring_function: Some(basic_udi.and_then(|b| b.measuring_function).unwrap_or(false)),

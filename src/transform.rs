@@ -516,6 +516,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
             info: MedicalDeviceInformation {
                 is_implantable: basic_udi.implantable
                     .map(|b| if b { "TRUE" } else { "FALSE" }.to_string()),
+                is_exempt_from_implant_obligations: None,
                 device_count: udidi.base_quantity,
                 direct_marking: vec![],
                 measuring_function: basic_udi.measuring_function,
