@@ -14,9 +14,9 @@ Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON 
 ./download.sh --srn SRN1 SRN2 --50            # multiple SRNs, limit 50 per SRN
 ```
 
-The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion.
+The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run eudamed_json`.
 
-The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches both manufacturer and authorised representative SRNs. Multiple SRNs can be specified after `--srn` and their results are combined into a single output file. Output is named `eudamed_<first-SRN>_+<N>srns.ndjson` for multi-SRN runs.
+The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches both manufacturer and authorised representative SRNs. Multiple SRNs can be specified after `--srn` and their results are combined. Listing data is stored in temp files (only used for UUID extraction) — device details are saved directly as `eudamed_json/<uuid>.json`.
 
 ## Manual Usage
 
@@ -26,13 +26,22 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 2. Run: `cargo run`
 3. Output: `firstbase_json/firstbase_dd.mm.yyyy.json`
 
-### Mode 2: API Listing (NDJSON)
+### Mode 2: EUDAMED JSON (individual device files) — primary mode
 
-1. Place listing NDJSON files in the `ndjson/` directory
+1. Place EUDAMED JSON files in the `eudamed_json/` directory
+2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
+3. Output: one firstbase JSON file per input file in `firstbase_json/`
+4. Auto-detects file type:
+   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR/IVDR+EU). Merges Basic UDI-DI data from cache for MDR mandatory fields (active, implantable, measuringFunction, multiComponent, tissue, manufacturer/AR SRN, risk class). On cache miss, fetches Basic UDI-DI on demand from EUDAMED API.
+   - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
+
+### Mode 3: API Listing (NDJSON, legacy)
+
+1. Place listing NDJSON files in a directory
 2. Run: `cargo run ndjson` or `cargo run ndjson <directory>`
 3. Output: `firstbase_json/firstbase_eudamed_*_dd.mm.yyyy.json`
 
-### Mode 3: API Detail (NDJSON with listing merge)
+### Mode 4: API Detail (NDJSON with listing merge, legacy)
 
 1. Run: `cargo run detail <details.ndjson> [listing.ndjson]`
 2. The optional listing file provides manufacturer SRN, authorised rep SRN, and risk class
@@ -43,15 +52,6 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 1. Run: `cargo run xlsx <details.ndjson>`
 2. Output: `xlsx/<input_stem>.xlsx`
 3. Flattens detail NDJSON into a spreadsheet with columns: UUID, Primary DI, Issuing Agency, Trade Name, Reference, Device Status, Sterile, Single Use, Latex, Reprocessed, Base Quantity, Direct Marking, Clinical Sizes, Markets, Additional Info URL, Version Date
-
-### Mode 4: EUDAMED JSON (individual device files)
-
-1. Place EUDAMED JSON files in the `eudamed_json/` directory
-2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
-3. Output: one firstbase JSON file per input file in `firstbase_json/`
-4. Auto-detects file type:
-   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR/IVDR+EU). Merges Basic UDI-DI data from cache for MDR mandatory fields (active, implantable, measuringFunction, multiComponent, tissue, manufacturer/AR SRN, risk class). On cache miss, fetches Basic UDI-DI on demand from EUDAMED API.
-   - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
 
 ## Configuration
 

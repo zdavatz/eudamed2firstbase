@@ -1,5 +1,5 @@
 #!/bin/bash
-# Download EUDAMED devices (listing + details) and convert to firstbase JSON
+# Download EUDAMED devices and convert to firstbase JSON
 # Usage: ./download.sh --10                            # download first 10 products
 #        ./download.sh --100                           # download first 100 products
 #        ./download.sh --srn CH-MF-000023141           # all products for this manufacturer SRN
@@ -49,22 +49,13 @@ BASE_URL="https://ec.europa.eu/tools/eudamed/api/devices/udiDiData"
 USER_AGENT="Mozilla/5.0 (compatible; EUDAMED-downloader/2.0)"
 PARALLEL=10
 PAGE_SIZE=300
-mkdir -p ndjson
+EUDAMED_JSON_DIR="eudamed_json"
+mkdir -p "$EUDAMED_JSON_DIR"
 
-# Set output file names
-if [[ ${#SRNS[@]} -gt 0 ]]; then
-    if [[ ${#SRNS[@]} -eq 1 ]]; then
-        LABEL="${SRNS[0]}"
-    else
-        # Use first SRN + count to keep filename short
-        LABEL="${SRNS[0]}_+$((${#SRNS[@]} - 1))srns"
-    fi
-else
-    LABEL="$TOTAL"
-fi
-LISTING="ndjson/eudamed_${LABEL}.ndjson"
-UUIDS="ndjson/uuids_${LABEL}.txt"
-DETAILS="ndjson/eudamed_${LABEL}_details.ndjson"
+# Temp files for listing/UUIDs (not persisted)
+LISTING=$(mktemp /tmp/eudamed_listing_XXXXXX.ndjson)
+UUIDS=$(mktemp /tmp/eudamed_uuids_XXXXXX.txt)
+trap "rm -f '$LISTING' '$UUIDS'" EXIT
 
 # --- Step 1: Download listing ---
 if [[ ${#SRNS[@]} -gt 0 ]]; then
@@ -136,7 +127,7 @@ else
         sleep 0.3
     done
 fi
-echo "  Listings: $collected → $LISTING"
+echo "  Listings: $collected records"
 
 if [[ $collected -eq 0 ]]; then
     echo "No products found. Exiting."
@@ -147,34 +138,40 @@ fi
 echo "=== Step 2: Extracting UUIDs ==="
 jq -r '.uuid' "$LISTING" > "$UUIDS"
 UUID_COUNT=$(wc -l < "$UUIDS")
-echo "  $UUID_COUNT UUIDs → $UUIDS"
+echo "  $UUID_COUNT UUIDs extracted"
 
-# --- Step 3: Download details ---
-echo "=== Step 3: Downloading $UUID_COUNT details ($PARALLEL parallel) ==="
+# --- Step 3: Download details as individual JSON files ---
+echo "=== Step 3: Downloading details to $EUDAMED_JSON_DIR/ ($PARALLEL parallel) ==="
 TMPDIR_DL=$(mktemp -d)
 
-# Resume support
-DONE=0
-if [[ -f "$DETAILS" ]]; then
-    DONE=$(wc -l < "$DETAILS")
-    echo "  Resuming: $DONE already downloaded"
+# Resume support: count already downloaded files
+NEED_DETAIL=0
+HAVE_DETAIL=0
+while IFS= read -r uuid; do
+    if [[ -f "$EUDAMED_JSON_DIR/$uuid.json" && -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+        HAVE_DETAIL=$((HAVE_DETAIL + 1))
+    else
+        NEED_DETAIL=$((NEED_DETAIL + 1))
+    fi
+done < "$UUIDS"
+
+if [[ $HAVE_DETAIL -gt 0 ]]; then
+    echo "  Resuming: $HAVE_DETAIL already downloaded, $NEED_DETAIL remaining"
 fi
 
-REMAINING=$((UUID_COUNT - DONE))
-if [[ $REMAINING -le 0 ]]; then
-    echo "  All details already downloaded"
-else
-    # Create fetch script
+if [[ $NEED_DETAIL -gt 0 ]]; then
+    # Create fetch script — saves directly to eudamed_json/
     cat > "$TMPDIR_DL/fetch.sh" << 'FETCHEOF'
 #!/bin/bash
 uuid="$1"; outdir="$2"; base_url="$3"; ua="$4"
+[[ -f "$outdir/$uuid.json" && -s "$outdir/$uuid.json" ]] && exit 0
 url="${base_url}/${uuid}?languageIso2Code=en"
 for attempt in 1 2 3; do
     result=$(curl -fsSL "$url" -A "$ua" --connect-timeout 10 --max-time 30 2>/dev/null) && break
     sleep $((attempt * 2))
 done
 if [[ -n "${result:-}" ]]; then
-    echo "$result" | jq -c '.' > "$outdir/$uuid.json" 2>/dev/null
+    echo "$result" | jq '.' > "$outdir/$uuid.json" 2>/dev/null
 fi
 FETCHEOF
     chmod +x "$TMPDIR_DL/fetch.sh"
@@ -183,27 +180,26 @@ FETCHEOF
     BATCH_SIZE=50
     BATCH_DIR="$TMPDIR_DL/batches"
     mkdir -p "$BATCH_DIR"
-    tail -n +"$((DONE + 1))" "$UUIDS" | split -l "$BATCH_SIZE" -d -a 4 - "$BATCH_DIR/batch_"
+    # Only fetch UUIDs not already downloaded
+    while IFS= read -r uuid; do
+        if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+            echo "$uuid"
+        fi
+    done < "$UUIDS" | split -l "$BATCH_SIZE" -d -a 4 - "$BATCH_DIR/batch_"
 
     PROCESSED=0
     for batch_file in "$BATCH_DIR"/batch_*; do
         [[ -f "$batch_file" ]] || continue
         batch_count=$(wc -l < "$batch_file")
-        xargs -P "$PARALLEL" -I{} "$TMPDIR_DL/fetch.sh" {} "$TMPDIR_DL" "$BASE_URL" "$USER_AGENT" < "$batch_file"
-        while IFS= read -r uuid; do
-            if [[ -f "$TMPDIR_DL/$uuid.json" ]]; then
-                cat "$TMPDIR_DL/$uuid.json" >> "$DETAILS"
-                rm -f "$TMPDIR_DL/$uuid.json"
-            fi
-        done < "$batch_file"
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_DL/fetch.sh" {} "$EUDAMED_JSON_DIR" "$BASE_URL" "$USER_AGENT" < "$batch_file"
         PROCESSED=$((PROCESSED + batch_count))
-        echo "  Progress: $((DONE + PROCESSED)) / $UUID_COUNT"
+        echo "  Progress: $((HAVE_DETAIL + PROCESSED)) / $UUID_COUNT"
     done
-    rm -rf "$TMPDIR_DL"
 fi
+rm -rf "$TMPDIR_DL"
 
-DETAIL_COUNT=$(wc -l < "$DETAILS")
-echo "  Details: $DETAIL_COUNT → $DETAILS"
+DETAIL_COUNT=$(find "$EUDAMED_JSON_DIR" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
+echo "  Details: $DETAIL_COUNT files in $EUDAMED_JSON_DIR/"
 
 # --- Step 3b: Download Basic UDI-DI data (MDR mandatory fields) ---
 BASIC_UDI_URL="https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData"
@@ -268,6 +264,6 @@ echo "  Basic UDI-DI cache: $BASIC_TOTAL files in $BASIC_UDI_CACHE/"
 
 # --- Step 4: Convert to firstbase JSON ---
 echo "=== Step 4: Converting to firstbase JSON ==="
-cargo run --quiet -- detail "$DETAILS" "$LISTING"
+cargo run --quiet -- eudamed_json
 
 echo "=== Done! ==="
