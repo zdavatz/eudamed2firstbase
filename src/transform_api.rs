@@ -117,6 +117,7 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
                 is_implantable: None,
+                is_exempt_from_implant_obligations: None,
                 device_count: None,
                 direct_marking: Vec::new(),
                 measuring_function: None,

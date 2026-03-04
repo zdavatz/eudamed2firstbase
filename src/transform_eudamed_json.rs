@@ -205,6 +205,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
                 is_implantable: device.implantable.map(|b| if b { "TRUE".to_string() } else { "FALSE".to_string() }),
+                is_exempt_from_implant_obligations: None,
                 device_count: None,
                 direct_marking: Vec::new(),
                 measuring_function: device.measuring_function,

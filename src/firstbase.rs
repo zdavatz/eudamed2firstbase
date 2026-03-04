@@ -200,6 +200,8 @@ pub struct MedicalDeviceTradeItemModule {
 pub struct MedicalDeviceInformation {
     #[serde(rename = "IsTradeItemImplantable", skip_serializing_if = "Option::is_none")]
     pub is_implantable: Option<String>,
+    #[serde(rename = "IsDeviceExemptFromImplantObligations", skip_serializing_if = "Option::is_none")]
+    pub is_exempt_from_implant_obligations: Option<bool>,
     #[serde(rename = "UdidDeviceCount", skip_serializing_if = "Option::is_none")]
     pub device_count: Option<u32>,
     #[serde(rename = "DirectPartMarkingIdentifier", skip_serializing_if = "Vec::is_empty")]
