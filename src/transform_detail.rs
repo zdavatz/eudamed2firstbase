@@ -906,12 +906,20 @@ fn build_substance_chemical(sub: &Substance, chemical_type: &str) -> RegulatedCh
     // Use CAS if available, else EC
     let identifier_ref = cas_ref.or(ec_ref);
 
-    // Description from name texts (when no INN/CAS/EC)
-    let descriptions = if identifier_ref.is_none() && inn.is_none() {
-        name_text.as_ref().map(|name| vec![LangValue {
+    // 097.081/097.080: ENDOCRINE_SUBSTANCE and CMR_SUBSTANCE always need description
+    // For other types, only when no INN/CAS/EC
+    let needs_description = chemical_type == "ENDOCRINE_SUBSTANCE"
+        || chemical_type == "CMR_SUBSTANCE"
+        || (identifier_ref.is_none() && inn.is_none());
+    let descriptions = if needs_description {
+        let desc = name_text.as_ref()
+            .map(|n| n.trim().to_string())
+            .or_else(|| inn.clone())
+            .unwrap_or_else(|| chemical_type.to_string());
+        vec![LangValue {
             language_code: "en".to_string(),
-            value: name.trim().to_string(),
-        }]).unwrap_or_default()
+            value: desc,
+        }]
     } else {
         Vec::new()
     };
@@ -955,14 +963,15 @@ fn build_cmr_chemical(sub: &CmrSubstance) -> RegulatedChemical {
         .and_then(|t| t.code.as_ref())
         .map(|c| CodeValue { value: mappings::cmr_type_to_gs1(c) });
 
-    // Description from name (when no CAS/EC identifier)
-    let descriptions = if identifier_ref.is_none() {
-        name_text.as_ref().map(|name| vec![LangValue {
+    // 097.081/097.080: CMR_SUBSTANCE always needs description with languageCode "en"
+    let descriptions = {
+        let desc = name_text.as_ref()
+            .map(|n| n.trim().to_string())
+            .unwrap_or_else(|| "CMR_SUBSTANCE".to_string());
+        vec![LangValue {
             language_code: "en".to_string(),
-            value: name.trim().to_string(),
-        }]).unwrap_or_default()
-    } else {
-        Vec::new()
+            value: desc,
+        }]
     };
 
     RegulatedChemical {
