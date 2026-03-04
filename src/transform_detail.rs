@@ -74,10 +74,10 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
             let (ar_srn, ar_name) = basic_udi
                 .and_then(|b| b.authorised_representative.as_ref())
                 .map(|ar| (
-                    ar.srn.clone().unwrap_or_else(|| "UNKNOWN".to_string()),
+                    ar.srn.clone().unwrap_or_else(|| "XX-AR-000000000".to_string()),
                     ar.name.clone(),
                 ))
-                .unwrap_or_else(|| ("UNKNOWN".to_string(), None));
+                .unwrap_or_else(|| ("XX-AR-000000000".to_string(), None));
             contacts.push(TradeItemContactInformation {
                 contact_type: CodeValue { value: "EAR".to_string() },
                 party_identification: vec![AdditionalPartyIdentification {
