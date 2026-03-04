@@ -419,11 +419,23 @@ fn extract_lang_texts(mlt: Option<&MultiLangText>) -> Vec<(String, String)> {
             texts
                 .iter()
                 .filter_map(|lt| {
-                    let lang = lt.language.as_ref()?.iso_code.clone()?;
                     let text = lt.text.clone()?;
                     if text.is_empty() {
                         return None;
                     }
+                    // Use explicit language code, or fall back to "en" when
+                    // language is null and allLanguagesApplicable is true
+                    let lang = lt
+                        .language
+                        .as_ref()
+                        .and_then(|l| l.iso_code.clone())
+                        .or_else(|| {
+                            if lt.all_languages_applicable == Some(true) {
+                                Some("en".to_string())
+                            } else {
+                                None
+                            }
+                        })?;
                     Some((lang, text))
                 })
                 .collect()

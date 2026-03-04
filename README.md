@@ -261,6 +261,8 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.011 missing MDR boolean fields | 648x | Use real values from Basic UDI-DI cache; fall back to false |
 | 097.010 missing multiComponent/tissue | 264x | Use real multiComponent from Basic UDI-DI; fall back to `DEVICE` |
 | 097.025 missing globalModelNumber | 176x | Use primary DI code as fallback, trade name as description |
+| 097.025 missing globalModelDescription en | — | Treat `allLanguagesApplicable` as English; fallback to first trade name or Basic UDI-DI device name |
+| 097.013 missing uDIProductionIdentifierTypeCode | — | Default to `BATCH_NUMBER` when EUDAMED has no production identifiers (MDR/IVDR mandatory) |
 | 097.072 missing additionalDescription | 60x | Resolved by defaulting multiComponentDeviceTypeCode to DEVICE |
 | 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | First market country becomes ORIGINAL_PLACED when no explicit match |
 | 097.074 storage description missing | 9x | Use SHC code as placeholder description |
