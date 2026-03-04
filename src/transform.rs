@@ -427,6 +427,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
 
         Some(HealthcareItemInformationModule {
             info: HealthcareItemInformation {
+                contains_microbial_substance: None,
                 human_blood_derivative: human_blood,
                 contains_latex: latex,
                 human_tissue,
@@ -529,6 +530,12 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
                 annex_xvi_types: annex_xvi,
                 multi_component_type: multi_component,
                 is_new_device: None,
+                is_reagent: None,
+                is_instrument: None,
+                is_patient_self_testing: None,
+                is_near_patient_testing: None,
+                is_professional_testing: None,
+                is_companion_diagnostic: None,
                 eu_status: CodeValue { value: status.to_string() },
                 reusability,
                 sterility,

@@ -130,6 +130,12 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
                 annex_xvi_types: Vec::new(),
                 multi_component_type: None,
                 is_new_device: None,
+                is_reagent: None,
+                is_instrument: None,
+                is_patient_self_testing: None,
+                is_near_patient_testing: None,
+                is_professional_testing: None,
+                is_companion_diagnostic: None,
                 eu_status: CodeValue {
                     value: status_code,
                 },
