@@ -271,7 +271,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.022 Class I implantable conflict | 36x | Data quality issue in EUDAMED (not fixable) |
 | 097.009 EMA contact with SRN required | 16x | Already generated from Basic UDI-DI cache (99.2% coverage); remaining files lack cache entries |
 | 097.003 missing risk class system 76 | — | Always emit classification system 76; fallback to EU_CLASS_I |
-| 097.005 invalid IVD risk class codes | — | Fix IVD mapping: CLASS_A/B/C/D → IVD_CLASS_A/B/C/D (not EU_CLASS_*) |
+| 097.005 risk class system/code mapping | — | System 76 (MDR/IVDR): EU_CLASS_A/B/C/D for IVDR; System 85 (IVDD/AIMDD): IVDD_GENERAL, IVDD_DEVICES_SELF_TESTING, IVDD_ANNEX_II_LIST_A/B, AIMDD |
 | 097.015 implantable IIB exempt field | — | Add `IsDeviceExemptFromImplantObligations` (default false) for implantable + EU_CLASS_IIB |
 | 097.026 invalid Actor contactTypeCode | — | Remove EAR for EU manufacturers; only EMA/EPP allowed as Actor types |
 | 097.054 non-EU needs EAR contact | — | Add EAR contact for non-EU manufacturers (detected from SRN prefix); TR (Turkey) exempt as EU_EXTENDED |
