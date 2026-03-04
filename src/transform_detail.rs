@@ -409,15 +409,17 @@ fn build_reusability(device: &ApiDeviceDetail) -> Option<ReusabilityInformation>
     }
 }
 
-/// Check if an SRN prefix indicates an EU/EEA country.
+/// Check if an SRN prefix indicates an EU/EEA/EU-extended country.
 /// SRN format: CC-XX-NNNNNN where CC is the country code.
+/// Includes TR (Turkey) as EU_EXTENDED — Turkish manufacturers don't register ARs in EUDAMED.
 fn is_eu_eea_srn(srn: &str) -> bool {
     let prefix = srn.split('-').next().unwrap_or("");
     matches!(prefix,
         "AT" | "BE" | "BG" | "HR" | "CY" | "CZ" | "DK" | "EE" | "FI" | "FR" |
         "DE" | "GR" | "HU" | "IE" | "IT" | "LV" | "LT" | "LU" | "MT" | "NL" |
         "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE" |
-        "IS" | "LI" | "NO" // EEA
+        "IS" | "LI" | "NO" | // EEA
+        "TR" // EU_EXTENDED (candidate country, no AR required in EUDAMED)
     )
 }
 
