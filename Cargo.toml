@@ -15,3 +15,4 @@ roxmltree = "0.20"
 uuid = { version = "1", features = ["v4"] }
 rust_xlsxwriter = "0.82"
 rayon = "1.10"
+ureq = "3"

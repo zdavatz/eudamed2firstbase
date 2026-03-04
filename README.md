@@ -50,7 +50,7 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
 3. Output: one firstbase JSON file per input file in `firstbase_json/`
 4. Auto-detects file type:
-   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR/IVDR+EU). Merges Basic UDI-DI data from cache for MDR mandatory fields (active, implantable, measuringFunction, multiComponent, tissue, manufacturer/AR SRN, risk class).
+   - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR/IVDR+EU). Merges Basic UDI-DI data from cache for MDR mandatory fields (active, implantable, measuringFunction, multiComponent, tissue, manufacturer/AR SRN, risk class). On cache miss, fetches Basic UDI-DI on demand from EUDAMED API.
    - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
 
 ## Configuration
@@ -283,6 +283,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 - `regex` - text processing
 - `rust_xlsxwriter` - Excel XLSX generation
 - `rayon` - parallel processing for Basic UDI-DI cache loading and per-device transformation
+- `ureq` - lightweight HTTP client for on-demand Basic UDI-DI API fetches
 
 ## License
 
