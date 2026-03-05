@@ -82,9 +82,11 @@ fn main() -> Result<()> {
 fn process_xml_dir(config: &config::Config) -> Result<()> {
     let input_dir = Path::new("xml");
     let output_dir = Path::new("firstbase_json");
+    let processed_dir = input_dir.join("processed");
     std::fs::create_dir_all(output_dir)?;
 
     let mut processed = 0;
+    let mut processed_files = Vec::new();
     for entry in std::fs::read_dir(input_dir).context("Failed to read xml/ directory")? {
         let entry = entry?;
         let path = entry.path();
@@ -94,12 +96,25 @@ fn process_xml_dir(config: &config::Config) -> Result<()> {
                 Ok(output_path) => {
                     println!("  -> {}", output_path);
                     processed += 1;
+                    processed_files.push(path);
                 }
                 Err(e) => {
                     eprintln!("  Error: {:#}", e);
                 }
             }
         }
+    }
+
+    // Move successfully processed files to xml/processed/
+    if !processed_files.is_empty() {
+        std::fs::create_dir_all(&processed_dir)?;
+        for path in &processed_files {
+            let dest = processed_dir.join(path.file_name().unwrap());
+            if let Err(e) = std::fs::rename(path, &dest) {
+                eprintln!("  Warning: could not move {} to processed/: {}", path.display(), e);
+            }
+        }
+        println!("Moved {} file(s) to {}", processed_files.len(), processed_dir.display());
     }
 
     println!("\nProcessed {} XML file(s)", processed);
@@ -479,6 +494,7 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
 /// Each input file produces one output file (one-to-one mapping).
 fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result<()> {
     let output_dir = Path::new("firstbase_json");
+    let processed_dir = input_dir.join("processed");
     std::fs::create_dir_all(output_dir)?;
 
     // Load Basic UDI-DI cache
@@ -490,6 +506,7 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
 
     let mut processed = 0;
     let mut errors = 0;
+    let mut processed_files = Vec::new();
 
     for entry in std::fs::read_dir(input_dir).context("Failed to read eudamed_json/ directory")? {
         let entry = entry?;
@@ -545,6 +562,7 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                     std::fs::write(&output_path, &json)?;
 
                     processed += 1;
+                    processed_files.push(path);
                 }
                 Err(e) => {
                     eprintln!("  Error in {}: {:#}", path.display(), e);
@@ -552,6 +570,18 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                 }
             }
         }
+    }
+
+    // Move successfully processed files to eudamed_json/processed/
+    if !processed_files.is_empty() {
+        std::fs::create_dir_all(&processed_dir)?;
+        for path in &processed_files {
+            let dest = processed_dir.join(path.file_name().unwrap());
+            if let Err(e) = std::fs::rename(path, &dest) {
+                eprintln!("  Warning: could not move {} to processed/: {}", path.display(), e);
+            }
+        }
+        println!("Moved {} file(s) to {}", processed_files.len(), processed_dir.display());
     }
 
     println!(
