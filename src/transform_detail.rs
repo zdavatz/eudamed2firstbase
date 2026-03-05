@@ -98,7 +98,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     }
 
     // 097.054: Non-EU manufacturers must also have EAR (Authorised Representative) contact
-    let is_non_eu = !is_eu_eea_srn(&mfr_srn_val);
+    let is_non_eu = !is_eu_srn(&mfr_srn_val);
     if is_non_eu {
         let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
         if !has_ear {
@@ -510,15 +510,16 @@ fn build_reusability(device: &ApiDeviceDetail) -> Option<ReusabilityInformation>
     }
 }
 
-/// Check if an SRN prefix indicates an EU/EEA country.
+/// Check if an SRN prefix indicates an EU member state.
 /// SRN format: CC-XX-NNNNNN where CC is the country code.
-fn is_eu_eea_srn(srn: &str) -> bool {
+/// Note: EEA-only countries (IS, LI, NO) are excluded — EUDAMED treats them
+/// as non-EU for EAR (authorised representative) purposes (097.054).
+fn is_eu_srn(srn: &str) -> bool {
     let prefix = srn.split('-').next().unwrap_or("");
     matches!(prefix,
         "AT" | "BE" | "BG" | "HR" | "CY" | "CZ" | "DK" | "EE" | "FI" | "FR" |
         "DE" | "GR" | "HU" | "IE" | "IT" | "LV" | "LT" | "LU" | "MT" | "NL" |
-        "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE" |
-        "IS" | "LI" | "NO" // EEA
+        "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE"
     )
 }
 
