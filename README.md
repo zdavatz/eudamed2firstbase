@@ -266,7 +266,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | G541 invalid country code 826 (UK/NI) | — | Skip GB/XI from market sales conditions post-Brexit; XI will become valid with GDSN March/May 2026 release |
 | 097.072 missing additionalDescription | 60x | Resolved by defaulting multiComponentDeviceTypeCode to DEVICE |
 | 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | Use `placedOnTheMarket` country when `marketInfoLink` is null; enforce exactly one ORIGINAL_PLACED country |
-| 097.074 storage description missing | 9x | Use SHC code as placeholder description |
+| 097.074 storage description missing (BR-UDID-028) | 9x | Fix `extract_descriptions` to handle `language: null` (default to "en"). SHC codes requiring description per BR-UDID-028: SHC06/07/08/09/10/13/21/22/23/25/45 — fallback to code as placeholder only when EUDAMED provides no text |
 | 097.005 invalid risk class | 5x | Set MDR vs IVDR regulatory act based on risk class |
 | 097.022 Class I implantable conflict | 36x | Data quality issue in EUDAMED (not fixable) |
 | 097.009 EMA contact with SRN required | 16x | Already generated from Basic UDI-DI cache (99.2% coverage); remaining files lack cache entries |

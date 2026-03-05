@@ -757,8 +757,12 @@ fn build_storage_handling(device: &ApiDeviceDetail) -> Vec<ClinicalStorageHandli
             let gs1_code = mappings::storage_handling_to_gs1(&shc_code);
 
             let mut descriptions = extract_descriptions(&shc.description);
-            // 097.074: Some SHC codes require a description; use code as placeholder
-            if descriptions.is_empty() {
+            // 097.074 / BR-UDID-028: these SHC codes require a description
+            let needs_description = matches!(gs1_code.as_str(),
+                "SHC06" | "SHC07" | "SHC08" | "SHC09" | "SHC10" |
+                "SHC13" | "SHC21" | "SHC22" | "SHC23" | "SHC25" | "SHC45"
+            );
+            if descriptions.is_empty() && needs_description {
                 descriptions.push(LangValue {
                     language_code: "en".to_string(),
                     value: gs1_code.clone(),
@@ -1222,11 +1226,14 @@ fn extract_descriptions(
             texts
                 .iter()
                 .filter_map(|lt| {
-                    let lang = lt.language.as_ref()?.iso_code.clone()?;
                     let text = lt.text.clone()?;
                     if text.is_empty() {
                         return None;
                     }
+                    // language: null → default to "en" (same as allLanguagesApplicable)
+                    let lang = lt.language.as_ref()
+                        .and_then(|l| l.iso_code.clone())
+                        .unwrap_or_else(|| "en".to_string());
                     Some(LangValue {
                         language_code: lang,
                         value: text,
