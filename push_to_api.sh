@@ -164,6 +164,8 @@ else
 fi
 echo "Throttle: ${THROTTLE}s between requests"
 
+PROCESSED_DIR="$INPUT_DIR/processed"
+
 if $DRY_RUN; then
     echo "[DRY RUN] Would push $LIVE_TOTAL MDR/IVDR files via Live/CreateMany + AddMany"
     echo "[DRY RUN] Would push $DRAFT_TOTAL legacy files via Draft/CreateOne (no publish)"
@@ -171,6 +173,9 @@ if $DRY_RUN; then
     [[ $DRAFT_TOTAL -gt 0 ]] && echo "First draft: ${DRAFT_FILES[0]}"
     exit 0
 fi
+
+# Track successfully sent files for moving to processed/
+SENT_FILES=()
 
 # --- Get token ---
 echo "Getting token..."
@@ -219,6 +224,7 @@ if [[ $DRAFT_TOTAL -gt 0 ]]; then
         if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "201" ]]; then
             echo "    Draft created"
             DRAFT_CREATED=$((DRAFT_CREATED+1))
+            SENT_FILES+=("$FILE")
         else
             echo "    FAIL ($HTTP_CODE): $(echo "$BODY" | head -c 200)"
             DRAFT_FAILED=$((DRAFT_FAILED+1))
@@ -314,7 +320,7 @@ print(f'Built payload with {len(items)} items')
         echo "    Submitted: $REQ_ID"
         LIVE_REQUEST_IDS+=("$REQ_ID")
 
-        # Collect publish items from this batch
+        # Collect publish items from this batch and track sent files
         for FILE in "${BATCH_FILES[@]}"; do
             ITEM_INFO=$(python3 -c "
 import json
@@ -328,6 +334,7 @@ tm = ti.get('TargetMarket', {}).get('TargetMarketCountryCode', {}).get('Value', 
 print(f'{ident}|{gtin}|{tm}')
 " 2>/dev/null || echo "")
             [[ -n "$ITEM_INFO" ]] && PUBLISH_ITEMS+=("$ITEM_INFO")
+            SENT_FILES+=("$FILE")
         done
         LIVE_ACCEPTED=$((LIVE_ACCEPTED+BATCH_COUNT))
     else
@@ -424,4 +431,20 @@ except:
         # Throttle between publish batches
         sleep "$THROTTLE"
     done
+fi
+
+# --- Move successfully sent files to processed/ ---
+if [[ ${#SENT_FILES[@]} -gt 0 ]]; then
+    mkdir -p "$PROCESSED_DIR"
+    MOVED=0
+    for FILE in "${SENT_FILES[@]}"; do
+        BASE=$(basename "$FILE")
+        if mv "$FILE" "$PROCESSED_DIR/$BASE" 2>/dev/null; then
+            MOVED=$((MOVED+1))
+        else
+            echo "  Warning: could not move $BASE to processed/"
+        fi
+    done
+    echo ""
+    echo "Moved $MOVED file(s) to $PROCESSED_DIR/"
 fi
