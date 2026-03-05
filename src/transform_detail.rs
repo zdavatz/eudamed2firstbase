@@ -76,26 +76,50 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let mut contacts = build_contacts(device);
 
     // 097.009/097.026: EMA contact with SRN is mandatory for non-system/procedure-pack devices.
-    // Actor contactTypeCode must be 'EMA' or 'EPP' only (097.026) — EAR is not valid.
     let has_ema = contacts.iter().any(|c| c.contact_type.value == "EMA");
+    let mfr_srn_val = basic_udi
+        .and_then(|b| b.manufacturer.as_ref())
+        .and_then(|m| m.srn.clone())
+        .unwrap_or_else(|| "XX-MF-000000000".to_string());
     if !has_ema {
-        let (mfr_srn_val, mfr_name) = basic_udi
+        let mfr_name = basic_udi
             .and_then(|b| b.manufacturer.as_ref())
-            .map(|mfr| (
-                mfr.srn.clone().unwrap_or_else(|| "XX-MF-000000000".to_string()),
-                mfr.name.clone(),
-            ))
-            .unwrap_or_else(|| ("XX-MF-000000000".to_string(), None));
+            .and_then(|m| m.name.clone());
         contacts.push(TradeItemContactInformation {
             contact_type: CodeValue { value: "EMA".to_string() },
             party_identification: vec![AdditionalPartyIdentification {
                 type_code: "SRN".to_string(),
-                value: mfr_srn_val,
+                value: mfr_srn_val.clone(),
             }],
             contact_name: mfr_name,
             addresses: Vec::new(),
             communication_channels: Vec::new(),
         });
+    }
+
+    // 097.054: Non-EU manufacturers must also have EAR (Authorised Representative) contact
+    let is_non_eu = !is_eu_eea_srn(&mfr_srn_val);
+    if is_non_eu {
+        let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
+        if !has_ear {
+            let (ar_srn, ar_name) = basic_udi
+                .and_then(|b| b.authorised_representative.as_ref())
+                .map(|ar| (
+                    ar.srn.clone().unwrap_or_else(|| "XX-AR-000000000".to_string()),
+                    ar.name.clone(),
+                ))
+                .unwrap_or_else(|| ("XX-AR-000000000".to_string(), None));
+            contacts.push(TradeItemContactInformation {
+                contact_type: CodeValue { value: "EAR".to_string() },
+                party_identification: vec![AdditionalPartyIdentification {
+                    type_code: "SRN".to_string(),
+                    value: ar_srn,
+                }],
+                contact_name: ar_name,
+                addresses: Vec::new(),
+                communication_channels: Vec::new(),
+            });
+        }
     }
 
     // --- Trade name / description ---
@@ -158,18 +182,38 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
+    // 097.025: Legacy devices (no globalModelInformation) need MODEL_NUMBER as alternative
+    if is_legacy {
+        let model_number = basic_udi
+            .and_then(|b| b.basic_udi.as_ref())
+            .and_then(|di| di.code.clone())
+            .filter(|c| !c.is_empty())
+            .unwrap_or_else(|| device.primary_di_code());
+        if !model_number.is_empty() {
+            additional_identification.push(AdditionalTradeItemIdentification {
+                type_code: "MODEL_NUMBER".to_string(),
+                value: model_number,
+            });
+        }
+    }
+
     // --- EMDN/CND nomenclature → additional classification system 88 ---
     let mut all_classifications = Vec::new();
 
     // Risk class from Basic UDI-DI → classification system 76 (MDR/IVDR) or 85 (MDD/AIMDD/IVDD)
-    // 097.003/097.005: risk class value must match the local code list for the system
+    // 097.002/097.003/097.005: risk class value must match the local code list for the system
     let risk_class_refdata = basic_udi.and_then(|b| b.risk_class_code());
     let risk_class_gs1 = risk_class_refdata.as_ref()
         .map(|rc| mappings::risk_class_refdata_to_gs1(rc).to_string())
         .unwrap_or_else(|| "EU_CLASS_I".to_string());
-    let risk_class_system = risk_class_refdata.as_ref()
-        .map(|rc| mappings::risk_class_system_code(rc).to_string())
-        .unwrap_or_else(|| "76".to_string());
+    // 097.002: Legacy devices (MDD/AIMDD/IVDD) must use system 85, not 76
+    let risk_class_system = if is_legacy {
+        "85".to_string()
+    } else {
+        risk_class_refdata.as_ref()
+            .map(|rc| mappings::risk_class_system_code(rc).to_string())
+            .unwrap_or_else(|| "76".to_string())
+    };
     all_classifications.push(AdditionalClassification {
         system_code: CodeValue { value: risk_class_system },
         values: vec![AdditionalClassificationValue {
@@ -251,6 +295,19 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         if !has_required_cert {
             eprintln!("Warning: {} is MDR Class III but has no MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate (097.101)",
                 device.uuid.as_deref().unwrap_or("unknown"));
+        }
+    }
+
+    // 097.105: MDD + Class IIA/IIB/III requires MDD certificate
+    if reg_act == "MDD" && matches!(risk_class_gs1.as_str(), "EU_CLASS_IIA" | "EU_CLASS_IIB" | "EU_CLASS_III") {
+        let has_mdd_cert = certification_module.as_ref().map_or(false, |cm| {
+            cm.infos.iter().any(|ci| {
+                ci.standard.starts_with("MDD_")
+            })
+        });
+        if !has_mdd_cert {
+            eprintln!("Warning: {} is MDD {} but has no MDD certificate (097.105)",
+                device.uuid.as_deref().unwrap_or("unknown"), risk_class_gs1);
         }
     }
 
@@ -442,6 +499,18 @@ fn build_reusability(device: &ApiDeviceDetail) -> Option<ReusabilityInformation>
             })
         }
     }
+}
+
+/// Check if an SRN prefix indicates an EU/EEA country.
+/// SRN format: CC-XX-NNNNNN where CC is the country code.
+fn is_eu_eea_srn(srn: &str) -> bool {
+    let prefix = srn.split('-').next().unwrap_or("");
+    matches!(prefix,
+        "AT" | "BE" | "BG" | "HR" | "CY" | "CZ" | "DK" | "EE" | "FI" | "FR" |
+        "DE" | "GR" | "HU" | "IE" | "IT" | "LV" | "LT" | "LU" | "MT" | "NL" |
+        "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE" |
+        "IS" | "LI" | "NO" // EEA
+    )
 }
 
 /// Build contacts: product designer → EPD contact
@@ -826,6 +895,13 @@ fn build_direct_marking(device: &ApiDeviceDetail) -> Vec<DirectPartMarking> {
         .map(|c| mappings::issuing_agency_to_type_code(c))
         .unwrap_or("GS1");
 
+    // 097.118: GS1 direct marking DI must be exactly 14 digits
+    if agency == "GS1" && (code.len() != 14 || !code.chars().all(|c| c.is_ascii_digit())) {
+        eprintln!("Warning: {} has invalid GS1 direct marking DI '{}' (not 14 digits), skipping (097.118)",
+            device.uuid.as_deref().unwrap_or("unknown"), code);
+        return Vec::new();
+    }
+
     vec![DirectPartMarking {
         agency_code: agency.to_string(),
         value: code.clone(),
@@ -888,7 +964,14 @@ fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<Cert
                     continue;
                 }
             }
-            _ => continue, // Skip legacy MDD/IVDD certificates
+            // MDD legacy certificates (097.105)
+            "ii-4" => "MDD_II_4",
+            "ii-excluding-4" => "MDD_II_EX_4",
+            "iii" if type_code.contains("mdd") => "MDD_III",
+            "iv" => "MDD_IV",
+            "v" => "MDD_V",
+            "vi" => "MDD_VI",
+            _ => continue,
         };
 
         let nb = cert.notified_body.as_ref();
