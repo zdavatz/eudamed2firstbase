@@ -149,14 +149,17 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     };
 
     // --- Reference → additional identification ---
+    // 097.006: MANUFACTURER_PART_NUMBER is mandatory. Use reference, fallback to primary DI code.
     let mut additional_identification = Vec::new();
-    if let Some(ref reference) = device.reference {
-        if reference != "-" && !reference.is_empty() {
-            additional_identification.push(AdditionalTradeItemIdentification {
-                type_code: "MANUFACTURER_PART_NUMBER".to_string(),
-                value: reference.clone(),
-            });
-        }
+    let mfr_part = device.reference.as_ref()
+        .filter(|r| r != &"-" && !r.is_empty())
+        .cloned()
+        .unwrap_or_else(|| device.primary_di_code());
+    if !mfr_part.is_empty() {
+        additional_identification.push(AdditionalTradeItemIdentification {
+            type_code: "MANUFACTURER_PART_NUMBER".to_string(),
+            value: mfr_part,
+        });
     }
 
     // --- Non-GS1 primary DI → additional identification (GDSN only allows GS1 as Gtin) ---
@@ -172,11 +175,17 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
-    // --- Secondary DI → additional identification as GTIN_14 ---
+    // --- Secondary DI → additional identification ---
+    // 097.087: Only one secondary DI with type HIBC/ICCBBA/PPN/PZN allowed under MDR/IVDR.
+    // Use issuing agency to determine the correct type code.
     if let Some(ref secondary) = device.secondary_di {
         if let Some(ref code) = secondary.code {
+            let sec_type = secondary.issuing_agency.as_ref()
+                .and_then(|a| a.code.as_ref())
+                .map(|c| mappings::issuing_agency_to_type_code(c))
+                .unwrap_or("GTIN_14");
             additional_identification.push(AdditionalTradeItemIdentification {
-                type_code: "GTIN_14".to_string(),
+                type_code: sec_type.to_string(),
                 value: code.clone(),
             });
         }
