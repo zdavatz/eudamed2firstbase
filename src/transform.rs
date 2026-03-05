@@ -529,6 +529,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
                 is_reusable_surgical: basic_udi.reusable,
                 production_identifier_types: production_ids,
                 annex_xvi_types: annex_xvi,
+                special_device_type: None,
                 multi_component_type: multi_component,
                 is_new_device: None,
                 is_reagent: None,

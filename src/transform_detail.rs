@@ -24,16 +24,47 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         .map(|s| mappings::device_status_to_gs1(&s).to_string())
         .unwrap_or_default();
 
+    // --- Regulatory act (needed early for legacy detection) ---
+    // Prefer legislation field (more accurate: distinguishes MDD from MDR for same risk classes)
+    // Fall back to risk class inference
+    let reg_act = basic_udi
+        .and_then(|b| b.regulatory_act())
+        .or_else(|| basic_udi
+            .and_then(|b| b.risk_class_code())
+            .map(|rc| mappings::regulation_from_risk_class_refdata(&rc).to_string()))
+        .unwrap_or_else(|| "MDR".to_string());
+    let is_legacy = matches!(reg_act.as_str(), "MDD" | "AIMDD" | "IVDD");
+    let is_ivdr = reg_act == "IVDR" || reg_act == "IVDD";
+
+    // 097.096: Legacy devices (MDD/AIMDD/IVDD) cannot be published yet
+    if is_legacy {
+        eprintln!("Warning: {} is a legacy {} device — cannot be published until UDI connect service is released (097.096)",
+            device.uuid.as_deref().unwrap_or("unknown"), reg_act);
+    }
+
     // --- Production identifiers ---
     // MDR/IVDR require at least one (097.013). Default to BATCH_NUMBER when EUDAMED has none.
-    let mut production_ids: Vec<CodeValue> = device
-        .production_identifiers()
-        .into_iter()
-        .map(|id| CodeValue { value: id })
-        .collect();
-    if production_ids.is_empty() {
-        production_ids.push(CodeValue { value: "BATCH_NUMBER".to_string() });
-    }
+    // 097.095: Legacy devices (MDD/AIMDD/IVDD) must NOT have production identifiers.
+    let raw_production_ids: Vec<String> = device.production_identifiers();
+    let production_ids: Vec<CodeValue> = if is_legacy {
+        Vec::new()
+    } else {
+        let mut ids: Vec<CodeValue> = raw_production_ids
+            .iter()
+            .map(|id| CodeValue { value: id.clone() })
+            .collect();
+        if ids.is_empty() {
+            ids.push(CodeValue { value: "BATCH_NUMBER".to_string() });
+        }
+        ids
+    };
+
+    // 097.091: SOFTWARE_IDENTIFICATION requires specialDeviceTypeCode = SOFTWARE
+    let special_device_type = if raw_production_ids.iter().any(|id| id == "SOFTWARE_IDENTIFICATION") {
+        Some(CodeValue { value: "SOFTWARE".to_string() })
+    } else {
+        None
+    };
 
     // --- Sterility ---
     let sterility = build_sterility(device, config);
@@ -185,19 +216,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
-    // --- Regulated trade item module (regulatory act + agency) ---
-    // Use risk class from Basic UDI-DI to determine MDR vs IVDR
-    let reg_act = basic_udi
-        .and_then(|b| b.risk_class_code())
-        .map(|rc| mappings::regulation_from_risk_class_refdata(&rc).to_string())
-        .unwrap_or_else(|| "MDR".to_string());
-    let is_ivdr = reg_act == "IVDR" || reg_act == "IVDD";
-
     // --- Healthcare item module (clinical sizes, storage, warnings, latex, tissue) ---
     let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr);
 
     // --- Chemical regulation module (substances) ---
-    let chemical_regulation_module = build_chemical_regulation_module(device);
+    // 097.095: Legacy devices must not have CMR_SUBSTANCE or ENDOCRINE_SUBSTANCE
+    let chemical_regulation_module = if is_legacy {
+        None
+    } else {
+        build_chemical_regulation_module(device)
+    };
 
     // --- Referenced file module (IFU URL) ---
     let referenced_file_module = device.additional_information_url.as_ref().map(|url| {
@@ -218,7 +246,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
 
     let regulated_trade_item_module = Some(RegulatedTradeItemModule {
         info: vec![RegulatoryInformation {
-            act: reg_act,
+            act: reg_act.clone(),
             agency: "EU".to_string(),
         }],
     });
@@ -227,16 +255,35 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let sales_module = build_sales_module(device);
 
     // --- Direct marking DI ---
-    let direct_marking = build_direct_marking(device);
+    // 097.095: Legacy devices must not have directPartMarkingIdentifier
+    let direct_marking = if is_legacy {
+        Vec::new()
+    } else {
+        build_direct_marking(device)
+    };
 
     // --- Certification module (097.101: MDR Class III needs certificate) ---
     let certification_module = build_certification_module(basic_udi);
+
+    // 097.101: MDR + EU_CLASS_III requires MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION
+    if reg_act == "MDR" && risk_class_gs1 == "EU_CLASS_III" {
+        let has_required_cert = certification_module.as_ref().map_or(false, |cm| {
+            cm.infos.iter().any(|ci| {
+                ci.standard == "MDR_TECHNICAL_DOCUMENTATION" || ci.standard == "MDR_TYPE_EXAMINATION"
+            })
+        });
+        if !has_required_cert {
+            eprintln!("Warning: {} is MDR Class III but has no MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate (097.101)",
+                device.uuid.as_deref().unwrap_or("unknown"));
+        }
+    }
 
     // --- Related devices (REPLACED/REPLACED_BY) ---
     let referenced_trade_items = build_referenced_trade_items(device);
 
     // --- Base quantity → device count ---
-    let device_count = device.base_quantity;
+    // 097.095: Legacy devices must not have udidDeviceCount
+    let device_count = if is_legacy { None } else { device.base_quantity };
 
     TradeItem {
         is_brand_bank_publication: false,
@@ -265,6 +312,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                 is_reusable_surgical: Some(basic_udi.and_then(|b| b.reusable).unwrap_or(false)),
                 production_identifier_types: production_ids,
                 annex_xvi_types: Vec::new(),
+                special_device_type,
                 multi_component_type: Some(CodeValue {
                     value: basic_udi
                         .and_then(|b| b.multi_component_code())
@@ -322,37 +370,42 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
             effective: now_str.clone(),
             publication: now_str,
         },
-        global_model_info: vec![GlobalModelInformation {
-            number: basic_udi
-                .and_then(|b| b.basic_udi.as_ref())
-                .and_then(|di| di.code.clone())
-                .filter(|c| !c.is_empty())
-                .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
-            descriptions: {
-                // 097.025: GlobalModelDescription with languageCode 'en' is required
-                let mut descs: Vec<LangValue> = trade_names
-                    .iter()
-                    .map(|(lang, text)| LangValue {
-                        language_code: lang.clone(),
-                        value: text.clone(),
-                    })
-                    .collect();
-                let has_en = descs.iter().any(|d| d.language_code == "en");
-                if !has_en {
-                    // Fall back to first available trade name, or Basic UDI-DI device name
-                    let fallback = trade_names
-                        .first()
-                        .map(|(_, text)| text.clone())
-                        .or_else(|| basic_udi.and_then(|b| b.device_name.clone()))
-                        .unwrap_or_else(|| device.primary_di_code());
-                    descs.insert(0, LangValue {
-                        language_code: "en".to_string(),
-                        value: fallback,
-                    });
-                }
-                descs
-            },
-        }],
+        // 097.095: Legacy devices must not have globalModelNumber
+        global_model_info: if is_legacy {
+            Vec::new()
+        } else {
+            vec![GlobalModelInformation {
+                number: basic_udi
+                    .and_then(|b| b.basic_udi.as_ref())
+                    .and_then(|di| di.code.clone())
+                    .filter(|c| !c.is_empty())
+                    .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
+                descriptions: {
+                    // 097.025: GlobalModelDescription with languageCode 'en' is required
+                    let mut descs: Vec<LangValue> = trade_names
+                        .iter()
+                        .map(|(lang, text)| LangValue {
+                            language_code: lang.clone(),
+                            value: text.clone(),
+                        })
+                        .collect();
+                    let has_en = descs.iter().any(|d| d.language_code == "en");
+                    if !has_en {
+                        // Fall back to first available trade name, or Basic UDI-DI device name
+                        let fallback = trade_names
+                            .first()
+                            .map(|(_, text)| text.clone())
+                            .or_else(|| basic_udi.and_then(|b| b.device_name.clone()))
+                            .unwrap_or_else(|| device.primary_di_code());
+                        descs.insert(0, LangValue {
+                            language_code: "en".to_string(),
+                            value: fallback,
+                        });
+                    }
+                    descs
+                },
+            }]
+        },
         gtin,
         additional_identification,
         referenced_trade_items,

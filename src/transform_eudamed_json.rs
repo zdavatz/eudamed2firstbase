@@ -216,6 +216,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
                 is_reusable_surgical: None,
                 production_identifier_types: Vec::new(),
                 annex_xvi_types: Vec::new(),
+                special_device_type: None,
                 multi_component_type: None,
                 is_new_device: None,
                 is_reagent: None,
