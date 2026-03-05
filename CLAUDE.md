@@ -49,7 +49,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **config.rs**: Loads `config.toml` for provider GLN, GPC codes, target market, and endocrine substance identifier lookups.
 - **download.sh**: Unified download + convert script. Usage: `./download.sh --N` or `./download.sh --srn <SRN> [SRN2 ...] [--N]`. Downloads listing to temp file (for UUID extraction only), fetches device details in parallel (10 concurrent, with retry and resume) saving individual JSON files directly to `eudamed_json/<uuid>.json`, downloads Basic UDI-DI data for MDR mandatory fields (cached in `/tmp/basic_udi_cache/`), converts via `cargo run eudamed_json`. Note: EUDAMED API uses 0-based pagination (page=0 is first page).
 - **firstbase_validation.py**: Schema validation script. Downloads and caches the GS1 Product API Swagger spec (978 GDSN definitions) from `test-productapi-firstbase.gs1.ch`. Validates field names, data types, enum values, and nested structures recursively. Cache in `.swagger_cache.json`. Handles DraftItem wrapper, batch arrays, and direct TradeItem formats.
-- **push_to_api.sh**: Pushes firstbase JSON files to GS1 Catalogue Item API via `Draft/CreateOne` (per file) then publishes via `AddMany` (batches of 100). Handles token acquisition, publish to GLN. Usage: `./push_to_api.sh`, `./push_to_api.sh --dir /path/to/dir`, or `./push_to_api.sh --status <reqid>`. Log output to `log/log_dd.mm.yyyy.log`.
+- **push_to_api.sh**: Pushes firstbase JSON files to GS1 Catalogue Item API. Routes by regulatory act: MDD/AIMDD/IVDD → `Draft/CreateOne` (draft only); MDR/IVDR → `Live/CreateMany` + `AddMany` (publish). Successfully sent files move to `firstbase_json/processed/`. Usage: `./push_to_api.sh`, `./push_to_api.sh --dir /path/to/dir`, or `./push_to_api.sh --status <reqid>`. Log output to `log/log_dd.mm.yyyy.log`.
 
 ## Key Design Decisions
 
@@ -63,6 +63,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - `TargetSector` is `["UDI_REGISTRY"]` only (no `HEALTHCARE`).
 - Only GS1 identifiers go into `Gtin`; non-GS1 primary DIs (HIBC, IFA/PPN, EUDAMED-assigned) are placed in `AdditionalTradeItemIdentification`. GDSN requires a GS1 GTIN as primary identifier — devices with only HIBC/IFA DIs get an empty `Gtin` and cannot be submitted as GDSN drafts.
 - `rayon` parallel processing for Basic UDI-DI cache loading (125K+ files) and per-device transformation (parse, transform, write individual JSON). ~5x speedup on multi-core machines.
+- Successfully processed files move to `*/processed/` subdirectories: `xml/processed/`, `eudamed_json/processed/`, `firstbase_json/processed/`. Failed files stay in place for investigation.
 
 ## Reference Files (in maik/)
 
