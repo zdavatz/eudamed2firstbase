@@ -542,6 +542,14 @@ impl BasicUdiDiData {
     pub fn risk_class_code(&self) -> Option<String> {
         self.risk_class.as_ref()?.code.clone()
     }
+
+    /// Get the regulatory act from the legislation field (more accurate than risk class).
+    /// Returns e.g. "MDR", "IVDR", "MDD", "AIMDD", "IVDD".
+    pub fn regulatory_act(&self) -> Option<String> {
+        let code = self.legislation.as_ref()?.code.as_ref()?;
+        let suffix = code.rsplit('.').next().unwrap_or(code);
+        Some(suffix.to_uppercase())
+    }
 }
 
 /// Parse a Basic UDI-DI JSON file

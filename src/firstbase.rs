@@ -79,7 +79,7 @@ pub struct TradeItem {
     pub contact_information: Vec<TradeItemContactInformation>,
     #[serde(rename = "TradeItemSynchronisationDates")]
     pub synchronisation_dates: TradeItemSynchronisationDates,
-    #[serde(rename = "GlobalModelInformation")]
+    #[serde(rename = "GlobalModelInformation", skip_serializing_if = "Vec::is_empty")]
     pub global_model_info: Vec<GlobalModelInformation>,
     #[serde(rename = "Gtin")]
     pub gtin: String,
@@ -224,6 +224,8 @@ pub struct MedicalDeviceInformation {
     pub production_identifier_types: Vec<CodeValue>,
     #[serde(rename = "AnnexXVIIntendedPurposeTypeCode", skip_serializing_if = "Vec::is_empty")]
     pub annex_xvi_types: Vec<CodeValue>,
+    #[serde(rename = "SpecialDeviceTypeCode", skip_serializing_if = "Option::is_none")]
+    pub special_device_type: Option<CodeValue>,
     #[serde(rename = "MultiComponentDeviceTypeCode", skip_serializing_if = "Option::is_none")]
     pub multi_component_type: Option<CodeValue>,
     #[serde(rename = "IsNewDevice", skip_serializing_if = "Option::is_none")]

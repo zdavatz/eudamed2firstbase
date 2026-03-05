@@ -282,6 +282,10 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.081 endocrine missing description | — | ENDOCRINE_SUBSTANCE always gets description even when CAS/EC identifiers present |
 | 097.101 MDR Class III certificate | — | Parse `deviceCertificateInfoListForDisplay` from Basic UDI-DI; map MDR/IVDR certificate types to GS1 `CertificationStandard` |
 | 097.070 DEVICE_SIZE_TEXT_SPECIFY description | — | Add `ClinicalSizeDescription` with text value when `ClinicalSizeTypeCode` is `DEVICE_SIZE_TEXT_SPECIFY` (BR-UDID-722) |
+| 097.095 legacy device forbidden fields | — | Strip globalModelNumber, directPartMarkingIdentifier, udidDeviceCount, uDIProductionIdentifierTypeCode, annexXVIIntendedPurposeTypeCode, CMR/endocrine substances for MDD/AIMDD/IVDD devices (BR-DTX-UDID-089) |
+| 097.096 legacy device publication block | — | Warning emitted for legacy (MDD/AIMDD/IVDD) devices; cannot be published until UDI connect service is released |
+| 097.091 SOFTWARE_IDENTIFICATION needs SOFTWARE | — | Add `SpecialDeviceTypeCode: SOFTWARE` when production identifiers include `SOFTWARE_IDENTIFICATION` (BR-DTX-UDI-104) |
+| 097.101 MDR Class III certificate required | — | Warning emitted for MDR EU_CLASS_III devices missing MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate |
 | G541 DIRECTION_OF_VIEW | 1x | CST63 coming with GDSN May release |
 
 ## Dependencies
