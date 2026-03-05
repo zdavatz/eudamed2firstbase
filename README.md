@@ -207,7 +207,7 @@ The response contains `ResponseStatusCode: "ACCEPTED"` on success, or `Attribute
 
 #### 3. Publish to a Recipient
 
-After creating drafts, publish them to the firstbase UDI Connector (GLN `4399902421386`):
+After creating drafts, publish them to the SuperAdmin Company CH (GLN `7612345000350`):
 
 ```bash
 curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublication/AddMany' \
@@ -219,7 +219,7 @@ curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublicat
       "DataSource": "7612345000480",
       "Gtin": "06944233413739",
       "TargetMarket": "097",
-      "PublishToGln": ["4399902421386"]
+      "PublishToGln": ["7612345000350"]
     }]
   }'
 ```
@@ -246,7 +246,7 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh
 ```
 
-The script creates live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`, no `DataRecipient`), checks async results via `RequestStatus/Get`, then publishes all accepted items to GLN `4399902421386` via `AddMany`. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
+The script creates live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`, no `DataRecipient`), checks async results via `RequestStatus/Get`, then publishes all accepted items to GLN `7612345000350` via `AddMany`. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
 
 **Important:** `Draft/CreateOne` only creates editable drafts visible in the web UI. To make products "Live" and publishable, you must use `Live/CreateMany`. `AddMany` only works on live products — it will fail with 910.033 "Product doesn't exist" on draft-only items. Do NOT pass `DataRecipient` in `Live/CreateMany` — it causes 910.031 "not allowed to create private version".
 

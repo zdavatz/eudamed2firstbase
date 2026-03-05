@@ -17,7 +17,7 @@
 set -euo pipefail
 
 API_BASE="https://test-webapi-firstbase.gs1.ch:5443"
-PUBLISH_GLN="4399902421386"  # firstbase UDI Connector
+PUBLISH_GLN="7612345000350"  # SuperAdmin Company CH
 INPUT_DIR="firstbase_json"
 
 EMAIL="${FIRSTBASE_EMAIL:-zdavatz@ywesee.com}"
