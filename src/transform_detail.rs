@@ -988,14 +988,20 @@ fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<Cert
         };
 
         let nb = cert.notified_body.as_ref();
+        let nb_srn = nb.and_then(|n| n.srn.clone());
         infos.push(CertificationInformation {
+            additional_org_ids: nb_srn.map(|srn| vec![AdditionalPartyIdentification {
+                type_code: "SRN".to_string(),
+                value: srn,
+            }]).unwrap_or_default(),
             agency: nb.and_then(|n| n.name.clone()),
-            organisation_identifier: nb.and_then(|n| n.srn.clone()),
+            organisation_identifier: None,
             standard: standard.to_string(),
             certifications: {
                 let mut cs = Vec::new();
                 if cert.certificate_number.is_some() || cert.certificate_expiry.is_some() || cert.starting_validity_date.is_some() {
                     cs.push(Certification {
+                        value: None,
                         identification: cert.certificate_number.clone(),
                         effective_end: cert.certificate_expiry.clone(),
                         effective_start: cert.starting_validity_date.clone(),

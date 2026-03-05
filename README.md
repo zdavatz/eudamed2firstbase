@@ -228,7 +228,7 @@ You can publish multiple items in a single request by adding more objects to the
 
 #### 4. Bulk Workflow: push_to_api.sh
 
-The `push_to_api.sh` script handles the full workflow: token acquisition, draft creation via `Draft/CreateOne` (per file), and publish via `AddMany` (batches of 100). Includes automatic throttling (1s for ≤60 files, 8s for larger batches) and HTTP 429 retry with `retry-after` backoff.
+The `push_to_api.sh` script handles the full workflow: token acquisition, live product creation via `Live/CreateMany` (batches of 100), async result checking via `RequestStatus/Get`, and publish to recipient via `AddMany`. Includes automatic throttling (1s for ≤60 files, 8s for larger batches) and HTTP 429 retry with `retry-after` backoff.
 
 ```bash
 ./push_to_api.sh                    # push all UUID files in firstbase_json/
@@ -246,9 +246,9 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh
 ```
 
-The script creates each draft individually via `Draft/CreateOne`, then publishes all successful drafts to GLN `4399902421386` via `AddMany` in batches of 100. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at draft creation — this is expected.
+The script creates live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`, no `DataRecipient`), checks async results via `RequestStatus/Get`, then publishes all accepted items to GLN `4399902421386` via `AddMany`. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
 
-**Note:** The `Live/CreateMany` endpoint currently returns HTTP 500 on the test server, so the script uses the `Draft/CreateOne` + `AddMany` workflow instead.
+**Important:** `Draft/CreateOne` only creates editable drafts visible in the web UI. To make products "Live" and publishable, you must use `Live/CreateMany`. `AddMany` only works on live products — it will fail with 910.033 "Product doesn't exist" on draft-only items. Do NOT pass `DataRecipient` in `Live/CreateMany` — it causes 910.031 "not allowed to create private version".
 
 #### Validation Error Fixes Applied
 
@@ -293,6 +293,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.101 MDR Class III certificate required | — | Warning emitted for MDR EU_CLASS_III devices missing MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate |
 | 097.006 missing MANUFACTURER_PART_NUMBER | — | Always emit `MANUFACTURER_PART_NUMBER` in additionalTradeItemIdentification; falls back to primary DI code when device reference is empty |
 | 097.087 secondary DI type code | — | Secondary DI uses correct type code from issuing agency (HIBC/IFA/ICCBBA/GS1) instead of hardcoded GTIN_14 (BR-UDID-020) |
+| SCHEMA certificationOrganisationIdentifier GLN | — | Notified body SRN (e.g. "0197") is not a valid GLN; moved to `AdditionalCertificationOrganisationIdentifier` with type `SRN` |
 | G541 DIRECTION_OF_VIEW | 1x | CST63 coming with GDSN May release |
 
 ## Dependencies
