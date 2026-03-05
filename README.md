@@ -99,7 +99,7 @@ download.sh                # Unified download + convert script (listing + detail
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
-push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Draft/CreateOne + AddMany publish)
+push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (MDR/IVDR: Live+Publish, MDD: Draft only)
 log/                       # API push logs (log_dd.mm.yyyy.log)
 ```
 
@@ -228,7 +228,12 @@ You can publish multiple items in a single request by adding more objects to the
 
 #### 4. Bulk Workflow: push_to_api.sh
 
-The `push_to_api.sh` script handles the full workflow: token acquisition, live product creation via `Live/CreateMany` (batches of 100), async result checking via `RequestStatus/Get`, and publish to recipient via `AddMany`. Includes automatic throttling (1s for ≤60 files, 8s for larger batches) and HTTP 429 retry with `retry-after` backoff.
+The `push_to_api.sh` script handles the full workflow with regulatory act routing. It classifies each file by `RegulatoryAct`:
+
+- **MDR/IVDR devices** → `Live/CreateMany` (batches of 100) → `RequestStatus/Get` → `AddMany` (publish to recipient)
+- **MDD/AIMDD/IVDD devices** → `Draft/CreateOne` (draft only, no publish — loaded for review in web UI)
+
+Includes automatic throttling (1s for ≤60 files, 8s for larger batches) and HTTP 429 retry with `retry-after` backoff.
 
 ```bash
 ./push_to_api.sh                    # push all UUID files in firstbase_json/
@@ -246,9 +251,9 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh
 ```
 
-The script creates live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`, no `DataRecipient`), checks async results via `RequestStatus/Get`, then publishes all accepted items to GLN `7612345000350` via `AddMany`. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
+The script classifies each file by its `RegulatoryAct` field: MDR/IVDR devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`) and published to GLN `7612345000350` via `AddMany`. Legacy devices (MDD/AIMDD/IVDD) are loaded as drafts via `Draft/CreateOne` — they appear in the web UI for review but are not published (097.096 blocks publication of legacy devices). Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
 
-**Important:** `Draft/CreateOne` only creates editable drafts visible in the web UI. To make products "Live" and publishable, you must use `Live/CreateMany`. `AddMany` only works on live products — it will fail with 910.033 "Product doesn't exist" on draft-only items. Do NOT pass `DataRecipient` in `Live/CreateMany` — it causes 910.031 "not allowed to create private version".
+**Important:** Do NOT pass `DataRecipient` in `Live/CreateMany` — it causes 910.031 "not allowed to create private version". `AddMany` only works on live products — it will fail with 910.033 on draft-only items.
 
 #### Validation Error Fixes Applied
 
