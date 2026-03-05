@@ -274,14 +274,19 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.005 risk class system/code mapping | — | System 76 (MDR/IVDR): EU_CLASS_A/B/C/D for IVDR; System 85 (IVDD/AIMDD): IVDD_GENERAL, IVDD_DEVICES_SELF_TESTING, IVDD_ANNEX_II_LIST_A/B, AIMDD |
 | 097.015 implantable IIB exempt field | — | Add `IsDeviceExemptFromImplantObligations` (default false) for implantable + EU_CLASS_IIB |
 | 097.009 missing EMA contact with SRN | — | Always emit EMA contact with manufacturer SRN; fallback `XX-MF-000000000` when no Basic UDI-DI data available |
-| 097.026 invalid Actor contactTypeCode | — | Only EMA/EPP allowed as Actor contactTypeCodes; EAR removed (was incorrectly emitted for non-EU manufacturers) |
+| 097.026 missing Actor contactTypeCode | — | EMA always emitted (was sometimes missing when no Basic UDI-DI cache) |
+| 097.054 non-EU needs EAR contact | — | Add EAR contact for all non-EU manufacturers (detected from SRN prefix); fallback `XX-AR-000000000` when no AR data in EUDAMED |
 | 097.046 IVDR boolean fields missing | — | Add 7 IVDR fields (reagent, instrument, self-testing, etc.) default false |
 | 097.047 IVDR isNewDevice missing | — | Default `IsNewDevice` to false for IVDR devices |
 | 097.080 CMR/endocrine missing description | — | Always include `regulatedChemicalDescription` with `languageCode: "en"` for CMR/endocrine substances |
 | 097.081 endocrine missing description | — | ENDOCRINE_SUBSTANCE always gets description even when CAS/EC identifiers present |
 | 097.101 MDR Class III certificate | — | Parse `deviceCertificateInfoListForDisplay` from Basic UDI-DI; map MDR/IVDR certificate types to GS1 `CertificationStandard` |
 | 097.070 DEVICE_SIZE_TEXT_SPECIFY description | — | Add `ClinicalSizeDescription` with text value when `ClinicalSizeTypeCode` is `DEVICE_SIZE_TEXT_SPECIFY` (BR-UDID-722) |
+| 097.002 legacy risk class system 85 | — | MDD/AIMDD/IVDD devices use classification system 85 (not 76) per BR-DTX-UDID-002 |
+| 097.025 legacy MODEL_NUMBER | — | Legacy devices (no globalModelInformation) get `MODEL_NUMBER` in additionalTradeItemIdentification as Basic UDI-DI reference |
 | 097.095 legacy device forbidden fields | — | Strip globalModelNumber, directPartMarkingIdentifier, udidDeviceCount, uDIProductionIdentifierTypeCode, annexXVIIntendedPurposeTypeCode, CMR/endocrine substances for MDD/AIMDD/IVDD devices (BR-DTX-UDID-089) |
+| 097.105 MDD certificate required | — | Map MDD legacy certificates (ii-4→MDD_II_4, ii-excluding-4→MDD_II_EX_4, iii→MDD_III, iv→MDD_IV, v→MDD_V, vi→MDD_VI); warn when missing |
+| 097.118 GS1 direct marking 14 digits | — | Skip GS1 direct marking DI if not exactly 14 digits (BR-UDID-003) |
 | 097.096 legacy device publication block | — | Warning emitted for legacy (MDD/AIMDD/IVDD) devices; cannot be published until UDI connect service is released |
 | 097.091 SOFTWARE_IDENTIFICATION needs SOFTWARE | — | Add `SpecialDeviceTypeCode: SOFTWARE` when production identifiers include `SOFTWARE_IDENTIFICATION` (BR-DTX-UDI-104) |
 | 097.101 MDR Class III certificate required | — | Warning emitted for MDR EU_CLASS_III devices missing MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate |
