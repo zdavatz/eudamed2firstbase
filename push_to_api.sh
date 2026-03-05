@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # push_to_api.sh — Push firstbase JSON files to GS1 Catalogue Item API
-# Uses Draft/CreateOne for each file, then publishes all via AddMany.
+# Step 1: Live/CreateMany (batches of 100) — creates live products
+# Step 2: AddMany — publishes to recipient GLN
 #
 # Usage:
 #   ./push_to_api.sh                    # push all UUID files in firstbase_json/
+#   ./push_to_api.sh --dir /path/to/dir # push files from a custom directory
 #   ./push_to_api.sh --dry-run          # show what would be pushed, no API calls
 #   ./push_to_api.sh --status <reqid>   # query status of a previous request
 #
@@ -36,7 +38,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# --- Helper: parse RequestStatus response ---
+# --- Helper: parse RequestStatus response (with full GS1 error details) ---
 parse_status() {
     python3 -c "
 import json, sys
@@ -44,15 +46,41 @@ data = json.load(sys.stdin)
 status = data.get('Status', 'unknown')
 print(f'Status: {status}')
 errors = []
+gs1 = data.get('Gs1ResponseMessage', {})
+for resp in gs1.get('GS1Response', []):
+    # Check TransactionResponse for ACCEPTED items
+    for tr in resp.get('TransactionResponse', []):
+        rsc = tr.get('ResponseStatusCode', '')
+        ident = tr.get('TransactionIdentifier', {}).get('Value', '')
+        if rsc == 'ACCEPTED':
+            print(f'  ACCEPTED: {ident}')
+    # Check TransactionException for errors
+    for te in resp.get('TransactionException', []):
+        for ce in te.get('CommandException', []):
+            for de in ce.get('DocumentException', []):
+                for ae in de.get('AttributeException', []):
+                    for err in ae.get('GS1Error', []):
+                        errors.append(f\"{err.get('ErrorCode','')}: {err.get('ErrorDescription','')[:150]}\")
+    # Check MessageException
+    for me in resp.get('MessageException', []):
+        for err in me.get('GS1Error', []):
+            errors.append(f\"{err.get('ErrorCode','')}: {err.get('ErrorDescription','')[:150]}\")
+    # Check GS1Exception
+    for ge in resp.get('GS1Exception', []):
+        if isinstance(ge, dict):
+            for err in ge.get('GS1Error', []):
+                errors.append(f\"{err.get('ErrorCode','')}: {err.get('ErrorDescription','')[:150]}\")
+            for ce in ge.get('CommandException', []):
+                for de in ce.get('DocumentException', []):
+                    for ae in de.get('AttributeException', []):
+                        for err in ae.get('GS1Error', []):
+                            errors.append(f\"{err.get('ErrorCode','')}: {err.get('ErrorDescription','')[:150]}\")
+# Also check old-style Items format
 for item in data.get('Items', []):
     for resp in item.get('Gs1Response', []):
         for exc in resp.get('AttributeException', []):
             code = exc.get('ExceptionMessageCode', '')
             desc = exc.get('ExceptionMessageDesciption', '')[:120]
-            errors.append(f'{code}: {desc}')
-        for err in resp.get('Gs1Error', []):
-            code = err.get('ErrorCode', '')
-            desc = err.get('ErrorDescription', '')[:120]
             errors.append(f'{code}: {desc}')
 
 print(f'Total errors: {len(errors)}')
@@ -104,7 +132,7 @@ if [[ $TOTAL -eq 0 ]]; then
     exit 0
 fi
 
-# Throttle: Draft/CreateOne is limited to 1/sec, 60/min, 500/hour
+# Throttle: Live/CreateMany is limited to 1/sec, 60/min, 500/hour
 # Small batches (<=60): 1s delay. Large batches: 8s delay to stay within 500/hour.
 if [[ $TOTAL -le 60 ]]; then
     THROTTLE=1
@@ -132,51 +160,85 @@ if [[ ${#TOKEN} -lt 20 ]]; then
 fi
 echo "Token obtained (${#TOKEN} chars)"
 
-# --- Step 1: Create drafts via Draft/CreateOne ---
-ACCEPTED=0
-FAILED=0
+# --- Step 1: Create live products via Live/CreateMany (batches of 100) ---
+BATCH_SIZE=100
+LIVE_ACCEPTED=0
+LIVE_FAILED=0
+LIVE_REQUEST_IDS=()
 PUBLISH_ITEMS=()
 
-for ((i=0; i<TOTAL; i++)); do
-    FILE="${FILES[$i]}"
-    BASE=$(basename "$FILE" .json)
-    NUM=$((i+1))
+echo ""
+echo "=== Step 1: Live/CreateMany (batches of $BATCH_SIZE) ==="
+
+for ((bi=0; bi<TOTAL; bi+=BATCH_SIZE)); do
+    BATCH_END=$((bi+BATCH_SIZE))
+    [[ $BATCH_END -gt $TOTAL ]] && BATCH_END=$TOTAL
+    BATCH_COUNT=$((BATCH_END-bi))
+    BATCH_FILES=("${FILES[@]:$bi:$BATCH_COUNT}")
+
+    echo "  Batch $((bi/BATCH_SIZE+1)): items $((bi+1))-$BATCH_END of $TOTAL"
+
+    # Build the Live/CreateMany payload
+    TMPFILE=$(mktemp)
+    python3 -c "
+import json, sys
+
+files = sys.argv[1:]
+items = []
+for fpath in files:
+    with open(fpath) as f:
+        doc = json.load(f)
+    draft = doc['DraftItem']
+    items.append({
+        'Identifier': draft['Identifier'],
+        'TradeItem': draft['TradeItem']
+    })
+
+payload = {
+    'DocumentCommand': 'Add',
+    'Items': items
+}
+with open('$TMPFILE', 'w') as out:
+    json.dump(payload, out)
+print(f'Built payload with {len(items)} items')
+" "${BATCH_FILES[@]}"
 
     # Retry loop for 429 rate limiting
     for attempt in 1 2 3; do
-        RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 60 -X POST "$API_BASE/CatalogueItem/Draft/CreateOne" \
+        RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 300 -X POST "$API_BASE/CatalogueItem/Live/CreateMany" \
             -H 'Content-Type: application/json' \
             -H "Authorization: bearer $TOKEN" \
-            -d @"$FILE" 2>&1)
+            -d @"$TMPFILE" 2>&1)
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -1)
         BODY=$(echo "$RESPONSE" | sed '$d')
 
         if [[ "$HTTP_CODE" == "429" ]]; then
-            RETRY_AFTER=$(curl -sI --max-time 10 -X POST "$API_BASE/CatalogueItem/Draft/CreateOne" \
-                -H 'Content-Type: application/json' \
-                -H "Authorization: bearer $TOKEN" \
-                -d '{}' 2>&1 | grep -i 'retry-after' | tr -d '\r' | awk '{print $2}')
-            RETRY_AFTER=${RETRY_AFTER:-60}
-            echo "  [$NUM/$TOTAL] 429 rate limited — waiting ${RETRY_AFTER}s (attempt $attempt/3)"
+            RETRY_AFTER=$(echo "$BODY" | python3 -c "import json,sys; print(json.load(sys.stdin).get('retryAfter',60))" 2>/dev/null || echo 60)
+            echo "    429 rate limited — waiting ${RETRY_AFTER}s (attempt $attempt/3)"
             sleep "$RETRY_AFTER"
             continue
         fi
         break
     done
+    rm -f "$TMPFILE"
 
     if [[ "$HTTP_CODE" == "429" ]]; then
-        FAILED=$((FAILED+1))
-        echo "  [$NUM/$TOTAL] FAIL: $BASE — 429 rate limited after 3 retries"
+        echo "    FAIL: 429 rate limited after 3 retries"
+        LIVE_FAILED=$((LIVE_FAILED+BATCH_COUNT))
         continue
     fi
 
-    # Check if response is JSON with RequestIdentifier
+    # Extract RequestIdentifier
     REQ_ID=$(echo "$BODY" | python3 -c "import json,sys; print(json.load(sys.stdin).get('RequestIdentifier',''))" 2>/dev/null || echo "")
 
     if [[ -n "$REQ_ID" && "$REQ_ID" != "None" ]]; then
-        # Extract Identifier, Gtin, TargetMarket for publish step
-        ITEM_INFO=$(python3 -c "
+        echo "    Submitted: $REQ_ID"
+        LIVE_REQUEST_IDS+=("$REQ_ID")
+
+        # Collect publish items from this batch
+        for FILE in "${BATCH_FILES[@]}"; do
+            ITEM_INFO=$(python3 -c "
 import json
 with open('$FILE') as f:
     doc = json.load(f)
@@ -187,32 +249,47 @@ gtin = ti.get('Gtin', '')
 tm = ti.get('TargetMarket', {}).get('TargetMarketCountryCode', {}).get('Value', '097')
 print(f'{ident}|{gtin}|{tm}')
 " 2>/dev/null || echo "")
-        PUBLISH_ITEMS+=("$ITEM_INFO")
-        ACCEPTED=$((ACCEPTED+1))
-        echo "  [$NUM/$TOTAL] OK: $BASE"
+            [[ -n "$ITEM_INFO" ]] && PUBLISH_ITEMS+=("$ITEM_INFO")
+        done
+        LIVE_ACCEPTED=$((LIVE_ACCEPTED+BATCH_COUNT))
     else
-        FAILED=$((FAILED+1))
-        echo "  [$NUM/$TOTAL] FAIL: $BASE — $(echo "$BODY" | head -c 200)"
+        echo "    FAIL: $(echo "$BODY" | head -c 300)"
+        LIVE_FAILED=$((LIVE_FAILED+BATCH_COUNT))
     fi
 
-    # Throttle between requests
-    if [[ $i -lt $((TOTAL-1)) ]]; then
+    # Throttle between batches
+    if [[ $bi -lt $((TOTAL-BATCH_SIZE)) ]]; then
         sleep "$THROTTLE"
     fi
 done
 
 echo ""
-echo "=== Draft Creation Summary ==="
+echo "=== Live Creation Summary ==="
 echo "Total:    $TOTAL"
-echo "Created:  $ACCEPTED"
-echo "Failed:   $FAILED"
+echo "Submitted: $LIVE_ACCEPTED"
+echo "Failed:   $LIVE_FAILED"
+echo "Request IDs: ${LIVE_REQUEST_IDS[*]}"
 
-# --- Step 2: Publish all drafts via AddMany ---
-if [[ $ACCEPTED -gt 0 ]]; then
+# --- Wait for async processing and check results ---
+if [[ ${#LIVE_REQUEST_IDS[@]} -gt 0 ]]; then
     echo ""
-    echo "=== Publishing $ACCEPTED drafts via AddMany ==="
+    echo "=== Checking Live/CreateMany results (waiting for async processing) ==="
+    sleep 15
 
-    # Batch publish in groups of 100 (API limit)
+    for REQ_ID in "${LIVE_REQUEST_IDS[@]}"; do
+        echo "  $REQ_ID:"
+        curl -s --max-time 120 -X POST "$API_BASE/RequestStatus/Get" \
+            -H 'Content-Type: application/json' \
+            -H "Authorization: bearer $TOKEN" \
+            -d "{\"RequestIdentifier\":\"$REQ_ID\",\"IncludeGs1Response\":true}" | parse_status
+    done
+fi
+
+# --- Step 2: Publish all live items via AddMany ---
+if [[ ${#PUBLISH_ITEMS[@]} -gt 0 ]]; then
+    echo ""
+    echo "=== Step 2: Publishing ${#PUBLISH_ITEMS[@]} items via AddMany ==="
+
     PUB_BATCH=100
     PUB_TOTAL=${#PUBLISH_ITEMS[@]}
     for ((pi=0; pi<PUB_TOTAL; pi+=PUB_BATCH)); do

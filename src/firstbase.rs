@@ -423,6 +423,8 @@ pub struct CertificationInformationModule {
 
 #[derive(Serialize, Debug)]
 pub struct CertificationInformation {
+    #[serde(rename = "AdditionalCertificationOrganisationIdentifier", skip_serializing_if = "Vec::is_empty")]
+    pub additional_org_ids: Vec<AdditionalPartyIdentification>,
     #[serde(rename = "CertificationAgency", skip_serializing_if = "Option::is_none")]
     pub agency: Option<String>,
     #[serde(rename = "CertificationOrganisationIdentifier", skip_serializing_if = "Option::is_none")]
@@ -435,6 +437,8 @@ pub struct CertificationInformation {
 
 #[derive(Serialize, Debug)]
 pub struct Certification {
+    #[serde(rename = "CertificationValue", skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
     #[serde(rename = "CertificationIdentification", skip_serializing_if = "Option::is_none")]
     pub identification: Option<String>,
     #[serde(rename = "CertificationEffectiveEndDateTime", skip_serializing_if = "Option::is_none")]
