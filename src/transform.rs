@@ -3,6 +3,7 @@ use crate::eudamed::*;
 use crate::firstbase::*;
 use crate::mappings;
 use anyhow::{Context, Result};
+use chrono::Utc;
 use std::collections::HashMap;
 
 pub fn transform(response: &PullResponse, config: &Config) -> Result<FirstbaseDocument> {
@@ -203,7 +204,7 @@ fn build_packaging_trade_item(
         is_despatch_unit: is_top_level,
         is_orderable_unit: true,
         unit_descriptor: CodeValue { value: "CASE".to_string() },
-        trade_channel_code: vec![],
+        trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
         information_provider: InformationProvider {
             gln: config.provider.gln.clone(),
             party_name: config.provider.party_name.clone(),
@@ -228,7 +229,14 @@ fn build_packaging_trade_item(
             country_code: CodeValue { value: config.target_market.country_code.clone() },
         },
         contact_information: vec![],
-        synchronisation_dates: TradeItemSynchronisationDates::default(),
+        synchronisation_dates: {
+            let now_str = Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+            TradeItemSynchronisationDates {
+                last_change: now_str.clone(),
+                effective: now_str.clone(),
+                publication: now_str,
+            }
+        },
         global_model_info: vec![GlobalModelInformation {
             number: basic_udi_di.to_string(),
             descriptions: vec![],
@@ -570,7 +578,14 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
             country_code: CodeValue { value: config.target_market.country_code.clone() },
         },
         contact_information: contacts,
-        synchronisation_dates: TradeItemSynchronisationDates::default(),
+        synchronisation_dates: {
+            let now_str = Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+            TradeItemSynchronisationDates {
+                last_change: now_str.clone(),
+                effective: now_str.clone(),
+                publication: now_str,
+            }
+        },
         global_model_info: vec![GlobalModelInformation {
             number: basic_udi_di.to_string(),
             descriptions: model_desc,
@@ -584,7 +599,8 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
 fn transform_lang_names(names: &Option<Vec<LanguageSpecificName>>) -> Vec<LangValue> {
     let mut result: Vec<LangValue> = names.as_ref()
         .map(|n| n.iter().filter_map(|name| {
-            let lang = name.language.as_deref()?.to_lowercase();
+            let raw_lang = name.language.as_deref()?.to_lowercase();
+            let lang = if raw_lang == "any" { "en".to_string() } else { raw_lang };
             let val = name.text_value.as_deref()?;
             Some(LangValue {
                 language_code: lang,
@@ -599,9 +615,10 @@ fn transform_lang_names(names: &Option<Vec<LanguageSpecificName>>) -> Vec<LangVa
 fn transform_lang_names_vec(names: &[LanguageSpecificName]) -> Vec<LangValue> {
     let mut result: Vec<LangValue> = names.iter().filter_map(|name| {
         let val = name.text_value.as_deref()?;
-        let lang = name.language.as_deref()
+        let raw_lang = name.language.as_deref()
             .map(|l| l.to_lowercase())
             .unwrap_or_else(|| "en".to_string());
+        let lang = if raw_lang == "any" { "en".to_string() } else { raw_lang };
         Some(LangValue {
             language_code: lang,
             value: val.to_string(),
