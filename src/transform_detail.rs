@@ -191,8 +191,14 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
-    // 097.025: Legacy devices (no globalModelInformation) need MODEL_NUMBER as alternative
-    if is_legacy {
+    // MODEL_NUMBER from Basic UDI-DI deviceModel (FLD-UDID-20)
+    if let Some(model) = basic_udi.and_then(|b| b.device_model.as_ref()).filter(|m| !m.is_empty()) {
+        additional_identification.push(AdditionalTradeItemIdentification {
+            type_code: "MODEL_NUMBER".to_string(),
+            value: model.clone(),
+        });
+    } else if is_legacy {
+        // 097.025: Legacy devices (no globalModelInformation) need MODEL_NUMBER as fallback
         let model_number = basic_udi
             .and_then(|b| b.basic_udi.as_ref())
             .and_then(|di| di.code.clone())
@@ -423,28 +429,21 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                     .filter(|c| !c.is_empty())
                     .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
                 descriptions: {
-                    // 097.025: GlobalModelDescription with languageCode 'en' is required
-                    let mut descs: Vec<LangValue> = trade_names
-                        .iter()
-                        .map(|(lang, text)| LangValue {
-                            language_code: lang.clone(),
-                            value: text.clone(),
-                        })
-                        .collect();
-                    let has_en = descs.iter().any(|d| d.language_code == "en");
-                    if !has_en {
-                        // Fall back to first available trade name, or Basic UDI-DI device name
-                        let fallback = trade_names
-                            .first()
-                            .map(|(_, text)| text.clone())
-                            .or_else(|| basic_udi.and_then(|b| b.device_name.clone()))
-                            .unwrap_or_else(|| device.primary_di_code());
-                        descs.insert(0, LangValue {
-                            language_code: "en".to_string(),
-                            value: fallback,
+                    // 097.025: GlobalModelDescription uses deviceName (FLD-UDID-22) from Basic UDI-DI
+                    // languageCode 'en' is required
+                    let device_name = basic_udi.and_then(|b| b.device_name.as_ref())
+                        .filter(|n| !n.is_empty())
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            // Fallback: first trade name, then primary DI code
+                            trade_names.first()
+                                .map(|(_, text)| text.clone())
+                                .unwrap_or_else(|| device.primary_di_code())
                         });
-                    }
-                    descs
+                    vec![LangValue {
+                        language_code: "en".to_string(),
+                        value: device_name,
+                    }]
                 },
             }]
         },
