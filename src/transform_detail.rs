@@ -75,51 +75,27 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- Contacts ---
     let mut contacts = build_contacts(device);
 
-    // Add manufacturer contact from Basic UDI-DI (if not already present)
-    // 097.009: EMA contact with SRN is mandatory for non-system/procedure-pack devices
+    // 097.009/097.026: EMA contact with SRN is mandatory for non-system/procedure-pack devices.
+    // Actor contactTypeCode must be 'EMA' or 'EPP' only (097.026) — EAR is not valid.
     let has_ema = contacts.iter().any(|c| c.contact_type.value == "EMA");
     if !has_ema {
-        if let Some(ref mfr) = basic_udi.and_then(|b| b.manufacturer.as_ref()) {
-            if let Some(ref srn) = mfr.srn {
-                contacts.push(TradeItemContactInformation {
-                    contact_type: CodeValue { value: "EMA".to_string() },
-                    party_identification: vec![AdditionalPartyIdentification {
-                        type_code: "SRN".to_string(),
-                        value: srn.clone(),
-                    }],
-                    contact_name: mfr.name.clone(),
-                    addresses: Vec::new(),
-                    communication_channels: Vec::new(),
-                });
-            }
-        }
-    }
-
-    // 097.054: Non-EU manufacturers must also have EAR (Authorised Representative) contact
-    // Detect non-EU from manufacturer SRN prefix (e.g. CN-MF-..., US-MF-...)
-    let mfr_srn = basic_udi.and_then(|b| b.manufacturer.as_ref()).and_then(|m| m.srn.as_ref());
-    let is_non_eu = mfr_srn.map(|srn| !is_eu_eea_srn(srn)).unwrap_or(false);
-    if is_non_eu {
-        let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
-        if !has_ear {
-            let (ar_srn, ar_name) = basic_udi
-                .and_then(|b| b.authorised_representative.as_ref())
-                .map(|ar| (
-                    ar.srn.clone().unwrap_or_else(|| "XX-AR-000000000".to_string()),
-                    ar.name.clone(),
-                ))
-                .unwrap_or_else(|| ("XX-AR-000000000".to_string(), None));
-            contacts.push(TradeItemContactInformation {
-                contact_type: CodeValue { value: "EAR".to_string() },
-                party_identification: vec![AdditionalPartyIdentification {
-                    type_code: "SRN".to_string(),
-                    value: ar_srn,
-                }],
-                contact_name: ar_name,
-                addresses: Vec::new(),
-                communication_channels: Vec::new(),
-            });
-        }
+        let (mfr_srn_val, mfr_name) = basic_udi
+            .and_then(|b| b.manufacturer.as_ref())
+            .map(|mfr| (
+                mfr.srn.clone().unwrap_or_else(|| "XX-MF-000000000".to_string()),
+                mfr.name.clone(),
+            ))
+            .unwrap_or_else(|| ("XX-MF-000000000".to_string(), None));
+        contacts.push(TradeItemContactInformation {
+            contact_type: CodeValue { value: "EMA".to_string() },
+            party_identification: vec![AdditionalPartyIdentification {
+                type_code: "SRN".to_string(),
+                value: mfr_srn_val,
+            }],
+            contact_name: mfr_name,
+            addresses: Vec::new(),
+            communication_channels: Vec::new(),
+        });
     }
 
     // --- Trade name / description ---
@@ -466,19 +442,6 @@ fn build_reusability(device: &ApiDeviceDetail) -> Option<ReusabilityInformation>
             })
         }
     }
-}
-
-/// Check if an SRN prefix indicates an EU/EEA/EU-extended country.
-/// SRN format: CC-XX-NNNNNN where CC is the country code.
-/// Includes TR (Turkey) as EU_EXTENDED — Turkish manufacturers don't register ARs in EUDAMED.
-fn is_eu_eea_srn(srn: &str) -> bool {
-    let prefix = srn.split('-').next().unwrap_or("");
-    matches!(prefix,
-        "AT" | "BE" | "BG" | "HR" | "CY" | "CZ" | "DK" | "EE" | "FI" | "FR" |
-        "DE" | "GR" | "HU" | "IE" | "IT" | "LV" | "LT" | "LU" | "MT" | "NL" |
-        "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE" |
-        "IS" | "LI" | "NO" // EEA
-    )
 }
 
 /// Build contacts: product designer → EPD contact
