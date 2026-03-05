@@ -86,7 +86,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - **Password reset**: Must use "Platform Auth (UAT) password reset for API" link from M2M Quick Guide PDF (page 10), NOT the Web-UI SSO reset link
 - **Create draft**: `POST /CatalogueItem/Draft/CreateOne` — body is the DraftItem JSON file directly
 - **Publish**: `POST /CatalogueItemPublication/AddMany` — Items array with Identifier, DataSource (GLN), Gtin, TargetMarket, PublishToGln array
-- **PublishToGln**: `4399902421386` (GS1 UDI Connector recipient)
+- **PublishToGln**: `7612345000350` (SuperAdmin Company CH)
 - **Workflow (preferred)**: `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`, no `DataRecipient`) → `RequestStatus/Get` (with `IncludeGs1Response: true`) to verify ACCEPTED → `AddMany` to publish to recipient GLN
 - **Workflow (draft-only)**: `Draft/CreateOne` per file → editable in web UI, but NOT published. `AddMany` on drafts fails with 910.033 "Product doesn't exist".
 - **push_to_api.sh**: Automates the preferred workflow. Step 1: `Live/CreateMany` in batches of 100 (`DocumentCommand: "Add"`, no `DataRecipient`), waits 15s, checks results via `RequestStatus/Get`. Step 2: `AddMany` to publish accepted items to recipient GLN. Auto-throttles: 1s delay for ≤60 files, 8s for larger batches. Retries HTTP 429. Query status with `--status <reqid>`.
