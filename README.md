@@ -25,13 +25,15 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 1. Place EUDAMED XML files in the `xml/` directory
 2. Run: `cargo run`
 3. Output: `firstbase_json/firstbase_dd.mm.yyyy.json`
+4. Successfully processed XML files move to `xml/processed/`
 
 ### Mode 2: EUDAMED JSON (individual device files) — primary mode
 
 1. Place EUDAMED JSON files in the `eudamed_json/` directory
 2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
 3. Output: one firstbase JSON file per input file in `firstbase_json/`
-4. Auto-detects file type:
+4. Successfully processed files move to `eudamed_json/processed/`
+5. Auto-detects file type:
    - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR/IVDR+EU). Merges Basic UDI-DI data from cache for MDR mandatory fields (active, implantable, measuringFunction, multiComponent, tissue, manufacturer/AR SRN, risk class). On cache miss, fetches Basic UDI-DI on demand from EUDAMED API.
    - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
 
@@ -251,7 +253,7 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh
 ```
 
-The script classifies each file by its `RegulatoryAct` field: MDR/IVDR devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`) and published to GLN `7612345000350` via `AddMany`. Legacy devices (MDD/AIMDD/IVDD) are loaded as drafts via `Draft/CreateOne` — they appear in the web UI for review but are not published (097.096 blocks publication of legacy devices). Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
+The script classifies each file by its `RegulatoryAct` field: MDR/IVDR devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`) and published to GLN `7612345000350` via `AddMany`. Legacy devices (MDD/AIMDD/IVDD) are loaded as drafts via `Draft/CreateOne` — they appear in the web UI for review but are not published (097.096 blocks publication of legacy devices). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
 
 **Important:** Do NOT pass `DataRecipient` in `Live/CreateMany` — it causes 910.031 "not allowed to create private version". `AddMany` only works on live products — it will fail with 910.033 on draft-only items.
 
