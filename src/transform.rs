@@ -36,6 +36,8 @@ pub fn transform(response: &PullResponse, config: &Config) -> Result<FirstbaseDo
     }
 
     // Build nested structure from outermost package down to base unit
+    // Pass base unit contacts so package DIs get EMA/EAR for SRN filtering
+    let base_contacts = base_trade_item.contact_information.clone();
     build_nested_document(
         &hierarchy,
         &top_gtin,
@@ -43,6 +45,7 @@ pub fn transform(response: &PullResponse, config: &Config) -> Result<FirstbaseDo
         base_trade_item,
         basic_udi_di,
         config,
+        &base_contacts,
     )
 }
 
@@ -92,6 +95,7 @@ fn build_nested_document(
     base_trade_item: TradeItem,
     basic_udi_di: &str,
     config: &Config,
+    contacts: &[TradeItemContactInformation],
 ) -> Result<FirstbaseDocument> {
     // Map from parent DI → PackageInfo
     let pkg_map: HashMap<&str, &PackageInfo> = hierarchy.iter()
@@ -141,6 +145,7 @@ fn build_nested_document(
             basic_udi_di,
             config,
             false,
+            contacts,
         );
 
         inner_link = CatalogueItemChildItemLink {
@@ -170,6 +175,7 @@ fn build_nested_document(
         basic_udi_di,
         config,
         true,
+        contacts,
     );
 
     Ok(FirstbaseDocument {
@@ -185,7 +191,14 @@ fn build_packaging_trade_item(
     basic_udi_di: &str,
     config: &Config,
     is_top_level: bool,
+    contacts: &[TradeItemContactInformation],
 ) -> TradeItem {
+    // Package DIs get EMA/EAR contacts (SRN only) so CH-REPs can filter by SRN
+    let pkg_contacts: Vec<TradeItemContactInformation> = contacts.iter()
+        .filter(|c| c.contact_type.value == "EMA" || c.contact_type.value == "EAR")
+        .cloned()
+        .collect();
+
     TradeItem {
         is_brand_bank_publication: false,
         target_sector: vec!["UDI_REGISTRY".to_string()],
@@ -230,7 +243,7 @@ fn build_packaging_trade_item(
         target_market: TargetMarketObj {
             country_code: CodeValue { value: config.target_market.country_code.clone() },
         },
-        contact_information: vec![],
+        contact_information: pkg_contacts,
         synchronisation_dates: {
             let now_str = Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
             TradeItemSynchronisationDates {
