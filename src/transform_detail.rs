@@ -414,8 +414,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         },
         contact_information: contacts,
         synchronisation_dates: TradeItemSynchronisationDates {
-            last_change,
-            effective: now_str.clone(),
+            last_change: last_change.clone(),
+            effective: last_change,
             publication: now_str,
         },
         // 097.095: Legacy devices must not have globalModelNumber

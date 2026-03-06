@@ -264,8 +264,8 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         },
         contact_information: contacts,
         synchronisation_dates: TradeItemSynchronisationDates {
-            last_change: now_str.clone(),
-            effective: now_str.clone(),
+            last_change: device.version_date.clone().unwrap_or_else(|| now_str.clone()),
+            effective: device.version_date.clone().unwrap_or_else(|| now_str.clone()),
             publication: now_str,
         },
         global_model_info: vec![GlobalModelInformation {
