@@ -19,10 +19,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let gtin = device.gtin();
 
     // --- Device status ---
-    let status_code = device
-        .status_code()
-        .map(|s| mappings::device_status_to_gs1(&s).to_string())
-        .unwrap_or_default();
+    let eudamed_status = device.status_code().unwrap_or_default();
+    let status_code = mappings::device_status_to_gs1(&eudamed_status).to_string();
+
+    // discontinuedDateTime: today+1 day when NO_LONGER_ON_THE_MARKET
+    let discontinued = if eudamed_status == "NO_LONGER_PLACED_ON_THE_MARKET" || eudamed_status == "NO_LONGER_ON_THE_MARKET" {
+        let tomorrow = now + chrono::Duration::days(1);
+        Some(tomorrow.format("%Y-%m-%dT%H:%M:%S").to_string())
+    } else {
+        None
+    };
 
     // --- Regulatory act (needed early for legacy detection) ---
     // Prefer legislation field (more accurate: distinguishes MDD from MDR for same risk classes)
@@ -388,7 +394,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         sales_module,
         description_module,
         is_base_unit: true,
-        is_despatch_unit: false,
+        is_despatch_unit: true,  // BASE_UNIT_OR_EACH is highest level = despatch unit
         is_orderable_unit: true,
         unit_descriptor: CodeValue {
             value: "BASE_UNIT_OR_EACH".to_string(),
@@ -417,6 +423,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
             last_change: last_change.clone(),
             effective: last_change,
             publication: now_str,
+            discontinued,
         },
         // 097.095: Legacy devices must not have globalModelNumber
         global_model_info: if is_legacy {

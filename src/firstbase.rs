@@ -165,6 +165,8 @@ pub struct TradeItemSynchronisationDates {
     pub effective: String,
     #[serde(rename = "PublicationDateTime")]
     pub publication: String,
+    #[serde(rename = "DiscontinuedDateTime", skip_serializing_if = "Option::is_none")]
+    pub discontinued: Option<String>,
 }
 
 #[derive(Serialize, Debug)]

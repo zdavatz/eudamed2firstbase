@@ -263,7 +263,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 
 | Error | Count | Fix |
 |---|---|---|
-| G572 lastChangeDateTime in future | 88x | Use `version_date` from EUDAMED for lastChangeDateTime and effectiveDateTime |
+| G572 lastChangeDateTime in future | 88x | Use `version_date` from EUDAMED for lastChangeDateTime and effectiveDateTime; discontinuedDateTime=today+1 for NO_LONGER_ON_THE_MARKET |
 | G641 device self-replacement | 10x | Skip referenced trade items where linked DI = own DI |
 | 097.011 missing MDR boolean fields | 648x | Use real values from Basic UDI-DI cache; fall back to false |
 | 097.010 missing multiComponent/tissue | 264x | Use real multiComponent from Basic UDI-DI; fall back to `DEVICE` |

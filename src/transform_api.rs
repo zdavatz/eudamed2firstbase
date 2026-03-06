@@ -150,7 +150,7 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
         sales_module: None,
         description_module,
         is_base_unit: true,
-        is_despatch_unit: false,
+        is_despatch_unit: true,  // BASE_UNIT_OR_EACH is highest level = despatch unit
         is_orderable_unit: true,
         unit_descriptor: CodeValue {
             value: "BASE_UNIT_OR_EACH".to_string(),
@@ -179,6 +179,7 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
             last_change: now_str.clone(),
             effective: now_str.clone(),
             publication: now_str,
+            discontinued: None,
         },
         global_model_info: vec![GlobalModelInformation {
             number: basic_udi,
