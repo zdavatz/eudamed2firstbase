@@ -329,6 +329,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         }
     }
 
+    // --- Unit of Use DI (FLD-UDDI-135) ---
+    let trade_item_information = build_unit_of_use(device);
+
     // --- Related devices (REPLACED/REPLACED_BY) ---
     let referenced_trade_items = build_referenced_trade_items(device);
 
@@ -454,6 +457,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         gtin,
         additional_identification,
         referenced_trade_items,
+        trade_item_information,
     }
 }
 
@@ -922,6 +926,38 @@ fn build_direct_marking(device: &ApiDeviceDetail) -> Vec<DirectPartMarking> {
     vec![DirectPartMarking {
         agency_code: agency.to_string(),
         value: code.clone(),
+    }]
+}
+
+/// Build unit of use DI as TradeItemInformation > TradeItemComponents > ComponentInformation.
+/// FLD-UDDI-135: componentNumber=1, componentIdentification=GTIN, schemeAgencyCode=issuing agency.
+fn build_unit_of_use(device: &ApiDeviceDetail) -> Vec<TradeItemInformation> {
+    let uou = match device.unit_of_use.as_ref() {
+        Some(u) => u,
+        None => return Vec::new(),
+    };
+    let code = match uou.code.as_ref() {
+        Some(c) if !c.is_empty() => c,
+        _ => return Vec::new(),
+    };
+    let agency = uou.issuing_agency.as_ref()
+        .and_then(|a| a.code.as_ref())
+        .map(|c| mappings::issuing_agency_to_type_code(c))
+        .unwrap_or("GS1");
+
+    vec![TradeItemInformation {
+        components: TradeItemComponents {
+            total_number_of_components: 1,
+            number_of_pieces_in_set: device.base_quantity,
+            component_information: vec![ComponentInformation {
+                component_number: 1,
+                component_identification: ComponentIdentifier {
+                    agency_code: agency.to_string(),
+                    value: code.clone(),
+                },
+                component_quantity: device.base_quantity,
+            }],
+        },
     }]
 }
 

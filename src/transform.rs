@@ -260,6 +260,7 @@ fn build_packaging_trade_item(
         gtin: gtin.to_string(),
         additional_identification: vec![],
         referenced_trade_items: Vec::new(),
+        trade_item_information: Vec::new(),
     }
 }
 
@@ -610,6 +611,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         gtin: base_di.to_string(),
         additional_identification: additional_ids,
         referenced_trade_items: Vec::new(),
+        trade_item_information: Vec::new(),
     })
 }
 

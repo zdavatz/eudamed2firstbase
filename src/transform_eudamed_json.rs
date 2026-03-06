@@ -276,5 +276,6 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         gtin: String::new(), // No GTIN in EUDAMED JSON device-level records
         additional_identification: Vec::new(),
         referenced_trade_items: Vec::new(),
+        trade_item_information: Vec::new(),
     }
 }
