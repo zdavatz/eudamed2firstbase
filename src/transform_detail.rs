@@ -10,8 +10,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let now = Local::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
-    // Use version_date for lastChangeDateTime (avoids G572 "future date" error)
-    let last_change = device.version_date.as_ref()
+    // Use version_date for effectiveDateTime; lastChangeDateTime uses current time (avoids SYS25 on re-uploads)
+    let effective_date = device.version_date.as_ref()
         .filter(|d| !d.is_empty())
         .cloned()
         .unwrap_or_else(|| now_str.clone());
@@ -417,8 +417,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         },
         contact_information: contacts,
         synchronisation_dates: TradeItemSynchronisationDates {
-            last_change: last_change.clone(),
-            effective: last_change,
+            last_change: now_str.clone(),
+            effective: effective_date,
             publication: now_str,
             discontinued,
         },
