@@ -323,6 +323,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | versionDate | effectiveDateTime | EUDAMED last update date |
 | status=NO_LONGER_ON_THE_MARKET | discontinuedDateTime | today + 1 day |
 | languageCode=ANY (allLanguagesApplicable) | languageCode | "en" (single entry, no additional languages) |
+| unitOfUse (FLD-UDDI-135) | TradeItemInformation.TradeItemComponents.ComponentInformation | ComponentNumber=1, ComponentIdentification=GTIN with issuing agency, ComponentQuantity=baseQuantity |
 
 ## Dependencies
 

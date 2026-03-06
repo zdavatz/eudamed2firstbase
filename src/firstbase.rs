@@ -87,6 +87,8 @@ pub struct TradeItem {
     pub additional_identification: Vec<AdditionalTradeItemIdentification>,
     #[serde(rename = "ReferencedTradeItem", skip_serializing_if = "Vec::is_empty")]
     pub referenced_trade_items: Vec<ReferencedTradeItem>,
+    #[serde(rename = "TradeItemInformation", skip_serializing_if = "Vec::is_empty")]
+    pub trade_item_information: Vec<TradeItemInformation>,
 }
 
 #[derive(Serialize, Debug, Default, Clone)]
@@ -568,4 +570,39 @@ pub struct ReferencedTradeItem {
     pub type_code: CodeValue,
     #[serde(rename = "Gtin")]
     pub gtin: String,
+}
+
+// --- Trade Item Information (Unit of Use DI / FLD-UDDI-135) ---
+#[derive(Serialize, Debug)]
+pub struct TradeItemInformation {
+    #[serde(rename = "TradeItemComponents")]
+    pub components: TradeItemComponents,
+}
+
+#[derive(Serialize, Debug)]
+pub struct TradeItemComponents {
+    #[serde(rename = "TotalNumberOfComponents")]
+    pub total_number_of_components: u32,
+    #[serde(rename = "NumberOfPiecesInSet", skip_serializing_if = "Option::is_none")]
+    pub number_of_pieces_in_set: Option<u32>,
+    #[serde(rename = "ComponentInformation")]
+    pub component_information: Vec<ComponentInformation>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct ComponentInformation {
+    #[serde(rename = "ComponentNumber")]
+    pub component_number: u32,
+    #[serde(rename = "ComponentIdentification")]
+    pub component_identification: ComponentIdentifier,
+    #[serde(rename = "ComponentQuantity", skip_serializing_if = "Option::is_none")]
+    pub component_quantity: Option<u32>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct ComponentIdentifier {
+    #[serde(rename = "IdentificationSchemeAgencyCode")]
+    pub agency_code: String,
+    #[serde(rename = "Value")]
+    pub value: String,
 }

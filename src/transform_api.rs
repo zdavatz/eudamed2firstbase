@@ -188,5 +188,6 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
         gtin,
         additional_identification,
         referenced_trade_items: Vec::new(),
+        trade_item_information: Vec::new(),
     }
 }
