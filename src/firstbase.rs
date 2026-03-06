@@ -511,7 +511,7 @@ pub struct TradeItemDescriptionInformation {
 }
 
 // --- Contact Information ---
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct TradeItemContactInformation {
     #[serde(rename = "ContactTypeCode")]
     pub contact_type: CodeValue,
@@ -525,7 +525,7 @@ pub struct TradeItemContactInformation {
     pub communication_channels: Vec<TargetMarketCommunicationChannel>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct AdditionalPartyIdentification {
     #[serde(rename = "AdditionalPartyIdentificationTypeCode")]
     pub type_code: String,
@@ -533,7 +533,7 @@ pub struct AdditionalPartyIdentification {
     pub value: String,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct StructuredAddress {
     #[serde(rename = "City")]
     pub city: String,
@@ -547,13 +547,13 @@ pub struct StructuredAddress {
     pub street_number: Option<String>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct TargetMarketCommunicationChannel {
     #[serde(rename = "CommunicationChannel")]
     pub channels: Vec<CommunicationChannel>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct CommunicationChannel {
     #[serde(rename = "CommunicationChannelCode")]
     pub channel_code: CodeValue,
