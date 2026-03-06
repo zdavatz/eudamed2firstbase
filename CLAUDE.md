@@ -78,6 +78,8 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Language ordering within multi-language arrays may differ from reference (reference is inconsistent)
 - Sales conditions country ordering for ADDITIONAL markets may differ from reference (reference uses neither numeric nor XML order)
 - CatalogueItem Identifier: generated as random v4 UUIDs (won't match reference's specific UUIDs)
+- TradeItemUnitDescriptorCode: UDI-DI → BASE_UNIT_OR_EACH, Package DI → CASE or PACK_OR_INNER_PACK. No PALLET (not derivable from EUDAMED). IsTradeItemADespatchUnit=true for highest level, IsTradeItemAnOrderableUnit=true for all.
+- ManufacturerDeclaredReusabilityTypeCode: SINGLE_USE (singleUse=true), LIMITED_REUSABLE (numberOfReuses>0 + max_cycles), REUSABLE (not singleUse, no numberOfReuses). REUSABLE_SAME_PATIENT not derivable from EUDAMED.
 
 ## GS1 firstbase Catalogue Item API (Test)
 
