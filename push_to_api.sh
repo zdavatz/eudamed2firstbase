@@ -116,29 +116,40 @@ if $STATUS_MODE; then
     exit 0
 fi
 
-# --- Helper: detect regulatory act from firstbase JSON ---
-get_regulatory_act() {
+# --- Helper: detect regulatory act and GTIN from firstbase JSON ---
+# Prints "ACT GTIN" (e.g. "MDR 08680941160296" or "UNKNOWN ")
+get_file_info() {
     python3 -c "
 import json, sys
 with open(sys.argv[1]) as f:
     doc = json.load(f)
 ti = doc.get('DraftItem', {}).get('TradeItem', {})
+gtin = ti.get('Gtin', '')
+act = 'UNKNOWN'
 for ri in ti.get('RegulatedTradeItemModule', {}).get('RegulatoryInformation', []):
-    act = ri.get('RegulatoryAct', '')
-    if act:
-        print(act)
-        sys.exit(0)
-print('UNKNOWN')
-" "$1" 2>/dev/null || echo "UNKNOWN"
+    a = ri.get('RegulatoryAct', '')
+    if a:
+        act = a
+        break
+print(f'{act} {gtin}')
+" "$1" 2>/dev/null || echo "UNKNOWN "
 }
 
 # --- Collect and classify files ---
 LIVE_FILES=()
 DRAFT_FILES=()
+SKIPPED=0
 for f in "$INPUT_DIR"/*.json; do
     base=$(basename "$f")
     [[ "$base" == firstbase_* ]] && continue
-    ACT=$(get_regulatory_act "$f")
+    INFO=$(get_file_info "$f")
+    ACT="${INFO%% *}"
+    GTIN="${INFO#* }"
+    # Skip files without GTIN (device-level / Basic UDI-DI records)
+    if [[ -z "$GTIN" ]]; then
+        ((SKIPPED++)) || true
+        continue
+    fi
     case "$ACT" in
         MDD|AIMDD|IVDD) DRAFT_FILES+=("$f") ;;
         *)              LIVE_FILES+=("$f") ;;
@@ -148,7 +159,7 @@ done
 LIVE_TOTAL=${#LIVE_FILES[@]}
 DRAFT_TOTAL=${#DRAFT_FILES[@]}
 TOTAL=$((LIVE_TOTAL + DRAFT_TOTAL))
-echo "Found $TOTAL JSON files in $INPUT_DIR/ ($LIVE_TOTAL MDR/IVDR live, $DRAFT_TOTAL MDD/AIMDD/IVDD draft)"
+echo "Found $TOTAL JSON files in $INPUT_DIR/ ($LIVE_TOTAL MDR/IVDR live, $DRAFT_TOTAL MDD/AIMDD/IVDD draft, $SKIPPED skipped no GTIN)"
 
 if [[ $TOTAL -eq 0 ]]; then
     echo "No files to push."
