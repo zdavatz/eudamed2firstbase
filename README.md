@@ -303,6 +303,25 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | SCHEMA certificationOrganisationIdentifier GLN | — | Notified body SRN (e.g. "0197") is not a valid GLN; moved to `AdditionalCertificationOrganisationIdentifier` with type `SRN` |
 | G541 DIRECTION_OF_VIEW | 1x | CST63 coming with GDSN May release |
 
+#### UDID → GDSN Mapping Decisions
+
+| EUDAMED field | GDSN field | Mapping |
+|---|---|---|
+| singleUse=true, numberOfReuses=0 | ManufacturerDeclaredReusabilityTypeCode | SINGLE_USE |
+| singleUse=false, numberOfReuses>0 | ManufacturerDeclaredReusabilityTypeCode | LIMITED_REUSABLE + MaximumUsageCycleNumber |
+| singleUse=false, no numberOfReuses | ManufacturerDeclaredReusabilityTypeCode | REUSABLE |
+| — (not derivable) | ManufacturerDeclaredReusabilityTypeCode | REUSABLE_SAME_PATIENT — cannot be derived from EUDAMED |
+| UDI-DI | TradeItemUnitDescriptorCode | BASE_UNIT_OR_EACH |
+| Package DI (inner) | TradeItemUnitDescriptorCode | PACK_OR_INNER_PACK |
+| Package DI (outer) | TradeItemUnitDescriptorCode | CASE |
+| — (not derivable) | TradeItemUnitDescriptorCode | PALLET — not used, cannot be derived from EUDAMED |
+| highest level unit | IsTradeItemADespatchUnit | true (BASE_UNIT_OR_EACH when no packaging, CASE for outermost) |
+| all units | IsTradeItemAnOrderableUnit | true |
+| BASE_UNIT_OR_EACH | IsTradeItemABaseUnit | true |
+| versionDate | effectiveDateTime | EUDAMED last update date |
+| status=NO_LONGER_ON_THE_MARKET | discontinuedDateTime | today + 1 day |
+| languageCode=ANY (allLanguagesApplicable) | languageCode | "en" (single entry, no additional languages) |
+
 ## Dependencies
 
 - `roxmltree` - XML DOM parsing with namespace support
