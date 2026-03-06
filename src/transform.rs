@@ -25,9 +25,11 @@ pub fn transform(response: &PullResponse, config: &Config) -> Result<FirstbaseDo
     let (top_gtin, hierarchy) = build_packaging_hierarchy(udidi, base_unit_di)?;
 
     if hierarchy.is_empty() {
-        // No packages - base unit is the root
+        // No packages - base unit is the root and highest level
+        let mut item = base_trade_item;
+        item.is_despatch_unit = true;
         return Ok(FirstbaseDocument {
-            trade_item: base_trade_item,
+            trade_item: item,
             children: vec![],
             identifier: format!("Draft_{}", uuid::Uuid::new_v4()),
         });
@@ -235,6 +237,7 @@ fn build_packaging_trade_item(
                 last_change: now_str.clone(),
                 effective: now_str.clone(),
                 publication: now_str,
+                discontinued: None,
             }
         },
         global_model_info: vec![GlobalModelInformation {
@@ -557,8 +560,8 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         sales_module,
         description_module,
         is_base_unit: true,
-        is_despatch_unit: false,
-        is_orderable_unit: false,
+        is_despatch_unit: false,  // set to true later if no packaging hierarchy
+        is_orderable_unit: true,
         unit_descriptor: CodeValue { value: "BASE_UNIT_OR_EACH".to_string() },
         trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
         information_provider: InformationProvider {
@@ -584,6 +587,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
                 last_change: now_str.clone(),
                 effective: now_str.clone(),
                 publication: now_str,
+                discontinued: None,
             }
         },
         global_model_info: vec![GlobalModelInformation {
