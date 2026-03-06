@@ -16,7 +16,7 @@ Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON 
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run eudamed_json`.
 
-The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches both manufacturer and authorised representative SRNs. Multiple SRNs can be specified after `--srn` and their results are combined. Listing data is stored in temp files (only used for UUID extraction) — device details are saved directly as `eudamed_json/<uuid>.json`.
+The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches manufacturer SRN (`manufacturerSrn`) and authorised representative SRN (`authorisedRepresentativeSrn`). **Note:** Swiss SRNs (`CH-MF-*`, `CH-AR-*`) are not registered in EUDAMED — use the actual EU/EEA manufacturer SRNs (e.g. `DE-MF-*`, `BE-MF-*`) instead. Multiple SRNs can be specified after `--srn` and their results are combined. Listing data is stored in temp files (only used for UUID extraction) — device details are saved directly as `eudamed_json/<uuid>.json`.
 
 ## Manual Usage
 
@@ -263,7 +263,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 
 | Error | Count | Fix |
 |---|---|---|
-| G572 lastChangeDateTime in future | 88x | Use `version_date` from EUDAMED for lastChangeDateTime and effectiveDateTime; discontinuedDateTime=today+1 for NO_LONGER_ON_THE_MARKET |
+| G572 lastChangeDateTime in future | 88x | lastChangeDateTime uses current time (avoids SYS25 on re-uploads); effectiveDateTime uses `version_date` from EUDAMED; discontinuedDateTime=today+1 for NO_LONGER_ON_THE_MARKET |
 | G641 device self-replacement | 10x | Skip referenced trade items where linked DI = own DI |
 | 097.011 missing MDR boolean fields | 648x | Use real values from Basic UDI-DI cache; fall back to false |
 | 097.010 missing multiComponent/tissue | 264x | Use real multiComponent from Basic UDI-DI; fall back to `DEVICE` |
@@ -319,6 +319,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | highest level unit | IsTradeItemADespatchUnit | true (BASE_UNIT_OR_EACH when no packaging, CASE for outermost) |
 | all units | IsTradeItemAnOrderableUnit | true |
 | BASE_UNIT_OR_EACH | IsTradeItemABaseUnit | true |
+| (current time) | lastChangeDateTime | Current time at conversion (avoids SYS25 on re-uploads) |
 | versionDate | effectiveDateTime | EUDAMED last update date |
 | status=NO_LONGER_ON_THE_MARKET | discontinuedDateTime | today + 1 day |
 | languageCode=ANY (allLanguagesApplicable) | languageCode | "en" (single entry, no additional languages) |
