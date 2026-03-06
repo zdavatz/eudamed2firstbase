@@ -103,28 +103,25 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         });
     }
 
-    // 097.054: Non-EU manufacturers must also have EAR (Authorised Representative) contact
+    // 097.054: Non-EU manufacturers need EAR contact — only if AR exists in EUDAMED
     let is_non_eu = !is_eu_srn(&mfr_srn_val);
     if is_non_eu {
         let has_ear = contacts.iter().any(|c| c.contact_type.value == "EAR");
         if !has_ear {
-            let (ar_srn, ar_name) = basic_udi
-                .and_then(|b| b.authorised_representative.as_ref())
-                .map(|ar| (
-                    ar.srn.clone().unwrap_or_else(|| "XX-AR-000000000".to_string()),
-                    ar.name.clone(),
-                ))
-                .unwrap_or_else(|| ("XX-AR-000000000".to_string(), None));
-            contacts.push(TradeItemContactInformation {
-                contact_type: CodeValue { value: "EAR".to_string() },
-                party_identification: vec![AdditionalPartyIdentification {
-                    type_code: "SRN".to_string(),
-                    value: ar_srn,
-                }],
-                contact_name: ar_name,
-                addresses: Vec::new(),
-                communication_channels: Vec::new(),
-            });
+            if let Some(ar) = basic_udi.and_then(|b| b.authorised_representative.as_ref()) {
+                if let Some(ref ar_srn) = ar.srn {
+                    contacts.push(TradeItemContactInformation {
+                        contact_type: CodeValue { value: "EAR".to_string() },
+                        party_identification: vec![AdditionalPartyIdentification {
+                            type_code: "SRN".to_string(),
+                            value: ar_srn.clone(),
+                        }],
+                        contact_name: ar.name.clone(),
+                        addresses: Vec::new(),
+                        communication_channels: Vec::new(),
+                    });
+                }
+            }
         }
     }
 
