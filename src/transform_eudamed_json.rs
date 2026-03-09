@@ -2,11 +2,11 @@ use crate::config::Config;
 use crate::eudamed_json::EudamedDevice;
 use crate::firstbase::*;
 use crate::mappings;
-use chrono::Local;
+use chrono::Utc;
 
 /// Transform an EUDAMED JSON device record into a firstbase TradeItem.
 pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> TradeItem {
-    let now = Local::now();
+    let now = Utc::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
     let basic_udi = device.basic_udi_code();

@@ -2,12 +2,12 @@ use crate::api_detail::{ApiDeviceDetail, BasicUdiDiData, Substance, CmrSubstance
 use crate::config::Config;
 use crate::firstbase::*;
 use crate::mappings;
-use chrono::Local;
+use chrono::Utc;
 
 /// Transform a full API device detail record into a firstbase TradeItem.
 /// Optional `basic_udi` provides real MDR mandatory fields from the Basic UDI-DI level.
 pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_udi: Option<&BasicUdiDiData>) -> TradeItem {
-    let now = Local::now();
+    let now = Utc::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
     // Use version_date for effectiveDateTime; lastChangeDateTime uses current time (avoids SYS25 on re-uploads)

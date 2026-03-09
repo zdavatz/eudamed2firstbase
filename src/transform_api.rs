@@ -2,13 +2,13 @@ use crate::api_json::ApiDevice;
 use crate::config::Config;
 use crate::firstbase::*;
 use crate::mappings;
-use chrono::Local;
+use chrono::Utc;
 
 /// Transform an API device listing record into a firstbase TradeItem.
 /// This is a "best-effort" mapping from the flat listing data - the listing
 /// has limited fields compared to the full DTX XML / detail endpoint.
 pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
-    let now = Local::now();
+    let now = Utc::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
     let gtin = device.primary_di.clone().unwrap_or_default();
