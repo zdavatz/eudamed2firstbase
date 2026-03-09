@@ -288,7 +288,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.047 IVDR isNewDevice missing | — | Default `IsNewDevice` to false for IVDR devices |
 | 097.080 CMR/endocrine missing description | — | Always include `regulatedChemicalDescription` with `languageCode: "en"` for CMR/endocrine substances |
 | 097.081 endocrine missing description | — | ENDOCRINE_SUBSTANCE always gets description even when CAS/EC identifiers present |
-| 097.101 MDR Class III certificate | — | Parse `deviceCertificateInfoListForDisplay` from Basic UDI-DI; map MDR/IVDR certificate types to GS1 `CertificationStandard` |
+| 097.101 MDR/IVDR certificates | — | Parse `deviceCertificateInfoListForDisplay` from Basic UDI-DI; maps both DeviceCertificateInfo (manufacturer, FLD-UDID-60..64) and CertificateLink (NB-provided, FLD-UDID-344..361) certificate types: MDR/IVDR technical-documentation, type-examination, quality-management-system, quality-assurance; `certificateRevision` → `CertificationIdentification`; `issueDate` fallback for `startingValidityDate` |
 | 097.070 DEVICE_SIZE_TEXT_SPECIFY description | — | Add `ClinicalSizeDescription` with text value when `ClinicalSizeTypeCode` is `DEVICE_SIZE_TEXT_SPECIFY` (BR-UDID-722) |
 | 097.002 legacy risk class system 85 | — | MDD/AIMDD/IVDD devices use classification system 85 (not 76) per BR-DTX-UDID-002 |
 | 097.025 legacy MODEL_NUMBER | — | Legacy devices (no globalModelInformation) get `MODEL_NUMBER` in additionalTradeItemIdentification as Basic UDI-DI reference |

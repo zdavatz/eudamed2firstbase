@@ -515,11 +515,14 @@ pub struct BasicUdiAuthorisedRep {
 #[allow(dead_code)]
 pub struct DeviceCertificate {
     pub certificate_number: Option<String>,
+    pub certificate_revision: Option<String>,
     pub certificate_expiry: Option<String>,
     pub certificate_type: Option<RefCode>,
     pub notified_body: Option<CertificateNotifiedBody>,
     pub issue_date: Option<String>,
     pub starting_validity_date: Option<String>,
+    pub status: Option<RefCode>,
+    pub nb_provided_certificate: Option<bool>,
 }
 
 #[derive(Deserialize, Debug)]

@@ -998,6 +998,7 @@ fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<Cert
         let suffix = type_code.rsplit('.').next().unwrap_or(type_code);
 
         // Map EUDAMED certificate types to GS1 CertificationStandard
+        // DeviceCertificateInfo (manufacturer-provided) + CertificateLink (NB-provided)
         let standard = match suffix {
             "technical-documentation" => {
                 if type_code.contains("mdr") {
@@ -1013,6 +1014,25 @@ fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<Cert
                     "MDR_TYPE_EXAMINATION"
                 } else if type_code.contains("ivdr") {
                     "IVDR_TYPE_EXAMINATION"
+                } else {
+                    continue;
+                }
+            }
+            // NB-provided MDR/IVDR certificates (CertificateLink: FLD-UDID-360)
+            "quality-management-system" => {
+                if type_code.contains("mdr") {
+                    "MDR_QUALITY_MANAGEMENT_SYSTEM"
+                } else if type_code.contains("ivdr") {
+                    "IVDR_QUALITY_MANAGEMENT_SYSTEM"
+                } else {
+                    continue;
+                }
+            }
+            "quality-assurance" => {
+                if type_code.contains("mdr") {
+                    "MDR_QUALITY_ASSURANCE"
+                } else if type_code.contains("ivdr") {
+                    "IVDR_QUALITY_ASSURANCE"
                 } else {
                     continue;
                 }
@@ -1040,13 +1060,18 @@ fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<Cert
             standard: standard.to_string(),
             certifications: {
                 let mut cs = Vec::new();
-                if cert.certificate_number.is_some() || cert.certificate_expiry.is_some() || cert.starting_validity_date.is_some() {
+                // FLD-UDID-347/346: startingValidityDate, fallback to issueDate
+                let start = cert.starting_validity_date.clone()
+                    .or_else(|| cert.issue_date.clone());
+                if cert.certificate_number.is_some() || cert.certificate_expiry.is_some() || start.is_some() {
                     cs.push(Certification {
-                        // 097.105: CertificationValue required for MDD certificates
+                        // FLD-UDID-61/344 (097.105): CertificationValue = certificate number
                         value: cert.certificate_number.clone(),
-                        identification: cert.certificate_number.clone(),
+                        // FLD-UDID-62/345: CertificationIdentification = revision number
+                        identification: cert.certificate_revision.clone(),
+                        // FLD-UDID-64/348: CertificationEffectiveEndDateTime = expiry date
                         effective_end: cert.certificate_expiry.clone(),
-                        effective_start: cert.starting_validity_date.clone(),
+                        effective_start: start,
                     });
                 }
                 cs
