@@ -53,7 +53,7 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 
 1. Run: `cargo run xlsx <details.ndjson>`
 2. Output: `xlsx/<input_stem>.xlsx`
-3. Flattens detail NDJSON into a spreadsheet with columns: UUID, Primary DI, Issuing Agency, Trade Name, Reference, Device Status, Sterile, Single Use, Latex, Reprocessed, Base Quantity, Direct Marking, Clinical Sizes, Markets, Additional Info URL, Version Date
+3. Flattens detail NDJSON into a spreadsheet with columns: UUID, Primary DI, Issuing Agency, Trade Name, Reference, Device Status, Sterile, Single Use, Latex, Reprocessed, Base Quantity, Direct Marking, Clinical Sizes, Markets, Additional Info URL, Version Date, plus certificate columns from Basic UDI-DI cache: Cert Type, Cert Number, Cert Revision, Cert Expiry, Cert Start, Cert Issue Date, Cert NB Name, Cert NB Number, Cert NB Provided (MFR/NB), Cert Status (issued/supplemented/amended). Multiple certificates per device are newline-separated within cells.
 
 ## Configuration
 
