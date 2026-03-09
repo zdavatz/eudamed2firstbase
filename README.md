@@ -126,6 +126,24 @@ log/                       # API push logs (log_dd.mm.yyyy.log)
 - Maps substances to ChemicalRegulationInformation (WHO for medicinal/human, ECHA for CMR/endocrine)
 - Extracts contact information (manufacturer, authorised representative, product designer)
 - Generates market info with country-specific sales conditions
+- Maps Notified Body certificates (CertificateLink) to `CertificationInformationModule` — see [EUDAMED UDI Registration Process](#eudamed-udi-registration-process) below
+
+## EUDAMED UDI Registration Process
+
+Per the [EUDAMED UDI Registration Process](https://health.ec.europa.eu/document/download/c3231845-228e-437a-8d77-510ecc3a548b_de?filename=md_eudamed-udi-registration-process_en.pdf), high-risk class devices follow a two-phase registration:
+
+1. **Manufacturer registers** the device: Basic UDI-DI → UDI-DI information → **Certificate information** (DeviceCertificateInfo, FLD-UDID-60..64). Certificate information is required for MDR Class III and Class IIb, and IVDR Class D, C, and B with Self-testing or Near patient testing. After submission, the device is "SUBMITTED" but **not yet publicly available**.
+
+2. **Notified Body confirms** the device data by registering the relevant product certificate (**CertificateLink**, FLD-UDID-344..361). Only after NB confirmation does the device become **REGISTERED** and publicly available in EUDAMED (MDR Art 29(3), IVDR Art 26(2)).
+
+Both certificate types are stored in `deviceCertificateInfoListForDisplay` in the Basic UDI-DI record, distinguished by the `nbProvidedCertificate` flag:
+
+| Source | Entity | EUDAMED Fields | GS1 CertificationStandard examples |
+|---|---|---|---|
+| Manufacturer | DeviceCertificateInfo | FLD-UDID-60..64 | MDR_TECHNICAL_DOCUMENTATION, MDR_TYPE_EXAMINATION |
+| Notified Body | CertificateLink | FLD-UDID-344..361 | MDR_QUALITY_MANAGEMENT_SYSTEM, MDR_QUALITY_ASSURANCE |
+
+For hospital customers receiving the EUDAMED data dump via GS1 firstbase, the CertificateLink data provides proof that the Notified Body has confirmed the device — essential for high-risk device procurement decisions.
 
 ## EUDAMED Public API
 
