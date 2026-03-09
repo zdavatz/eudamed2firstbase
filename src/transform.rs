@@ -132,6 +132,13 @@ fn build_nested_document(
         let pkg = chain[i];
         let child_pkg = chain[i + 1];
 
+        // Innermost package (last before base unit) = PACK_OR_INNER_PACK when 2+ levels
+        let is_innermost = i + 1 == chain.len() - 1;
+        let descriptor = if is_innermost && chain.len() >= 2 {
+            "PACK_OR_INNER_PACK"
+        } else {
+            "CASE"
+        };
         let intermediate_trade_item = build_packaging_trade_item(
             &child_pkg.gtin,
             Some(&NextLowerLevel {
@@ -146,6 +153,7 @@ fn build_nested_document(
             config,
             false,
             contacts,
+            descriptor,
         );
 
         inner_link = CatalogueItemChildItemLink {
@@ -169,6 +177,13 @@ fn build_nested_document(
         }],
     });
 
+    // Top-level is always CASE; if only 1 level, also CASE
+    // If only 1 package level and it's the innermost too, it's CASE (not PACK_OR_INNER_PACK)
+    let top_descriptor = if chain.len() == 1 {
+        "CASE"
+    } else {
+        "CASE"
+    };
     let top_trade_item = build_packaging_trade_item(
         top_gtin,
         top_next_lower.as_ref(),
@@ -176,6 +191,7 @@ fn build_nested_document(
         config,
         true,
         contacts,
+        top_descriptor,
     );
 
     Ok(FirstbaseDocument {
@@ -192,6 +208,7 @@ fn build_packaging_trade_item(
     config: &Config,
     is_top_level: bool,
     contacts: &[TradeItemContactInformation],
+    descriptor: &str,
 ) -> TradeItem {
     // Package DIs get EMA/EAR contacts (SRN only) so CH-REPs can filter by SRN
     let pkg_contacts: Vec<TradeItemContactInformation> = contacts.iter()
@@ -218,7 +235,7 @@ fn build_packaging_trade_item(
         is_base_unit: false,
         is_despatch_unit: is_top_level,
         is_orderable_unit: true,
-        unit_descriptor: CodeValue { value: "CASE".to_string() },
+        unit_descriptor: CodeValue { value: descriptor.to_string() },
         trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
         information_provider: InformationProvider {
             gln: config.provider.gln.clone(),

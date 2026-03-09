@@ -289,19 +289,14 @@ fn process_detail_ndjson(
                 Ok(detail) => {
                     let uuid = detail.uuid.clone().unwrap_or_default();
                     let basic_udi = basic_udi_cache.get(&uuid);
-                    let mut trade_item = transform_detail::transform_detail_device(&detail, config, basic_udi);
+                    let mut document = transform_detail::transform_detail_document(&detail, config, basic_udi, &uuid);
 
                     // Merge listing data (manufacturer, AR, risk class, basic UDI)
-                    let gtin = &trade_item.gtin;
+                    let gtin = &document.trade_item.gtin;
                     if let Some(listing) = listing_index.get(gtin) {
-                        merge_listing_data(&mut trade_item, listing);
+                        merge_listing_data(&mut document.trade_item, listing);
                     }
 
-                    let document = firstbase::FirstbaseDocument {
-                        trade_item,
-                        children: Vec::new(),
-                        identifier: format!("Draft_{}", uuid),
-                    };
                     let draft_doc = firstbase::DraftItemDocument {
                         draft_item: document,
                     };
@@ -525,9 +520,9 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                 && !json_content.contains("\"primaryDi\":null")
                 && !json_content.contains("\"primaryDi\": null");
 
-            let result = if is_udi_di {
+            let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+            let result: anyhow::Result<firstbase::FirstbaseDocument> = if is_udi_di {
                 // UDI-DI level file — reuse existing api_detail parser/transformer
-                let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
                 // Fetch Basic UDI-DI on demand if not cached
                 if !basic_udi_cache.contains_key(&stem) {
                     if let Some(data) = fetch_basic_udi_di(&stem, cache_dir) {
@@ -537,24 +532,22 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                 }
                 api_detail::parse_api_detail(&json_content).map(|detail| {
                     let basic_udi = basic_udi_cache.get(&stem);
-                    transform_detail::transform_detail_device(&detail, config, basic_udi)
+                    transform_detail::transform_detail_document(&detail, config, basic_udi, &stem)
                 })
             } else {
                 // Device level file (Basic UDI-DI)
                 eudamed_json::parse_eudamed_json(&json_content).map(|device| {
-                    transform_eudamed_json::transform_eudamed_device(&device, config)
+                    let trade_item = transform_eudamed_json::transform_eudamed_device(&device, config);
+                    firstbase::FirstbaseDocument {
+                        trade_item,
+                        children: Vec::new(),
+                        identifier: format!("Draft_{}", stem),
+                    }
                 })
             };
 
             match result {
-                Ok(trade_item) => {
-                    // Extract UUID from filename (stem without extension)
-                    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-                    let document = firstbase::FirstbaseDocument {
-                        trade_item,
-                        children: Vec::new(),
-                        identifier: format!("Draft_{}", stem),
-                    };
+                Ok(document) => {
                     let draft_doc = firstbase::DraftItemDocument {
                         draft_item: document,
                     };

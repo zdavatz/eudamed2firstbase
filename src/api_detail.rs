@@ -79,6 +79,9 @@ pub struct ApiDeviceDetail {
     // Related device link
     pub linked_udi_di_view: Option<LinkedUdiDiView>,
 
+    // Packaging hierarchy (containedItem)
+    pub contained_item: Option<ContainedItemNode>,
+
     // Version info
     pub version_number: Option<u32>,
     pub latest_version: Option<bool>,
@@ -99,6 +102,19 @@ pub struct DiIdentifier {
 #[derive(Deserialize, Debug)]
 pub struct RefCode {
     pub code: Option<String>,
+}
+
+/// Recursive packaging hierarchy node from containedItem
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct ContainedItemNode {
+    pub uuid: Option<String>,
+    pub item_identifier: Option<DiIdentifier>,
+    pub parent_uuid: Option<String>,
+    pub contained_items: Option<Vec<ContainedItemNode>>,
+    pub number_of_items: Option<u32>,
+    pub item_status: Option<RefCode>,
 }
 
 #[derive(Deserialize, Debug)]

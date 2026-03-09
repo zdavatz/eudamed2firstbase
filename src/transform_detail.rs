@@ -1,4 +1,4 @@
-use crate::api_detail::{ApiDeviceDetail, BasicUdiDiData, Substance, CmrSubstance};
+use crate::api_detail::{ApiDeviceDetail, BasicUdiDiData, ContainedItemNode, Substance, CmrSubstance};
 use crate::config::Config;
 use crate::firstbase::*;
 use crate::mappings;
@@ -1314,4 +1314,201 @@ fn extract_descriptions(
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Package level info extracted from containedItem hierarchy.
+struct PackageLevel {
+    code: String,
+    issuing_agency: String,
+    quantity: u32, // quantity of items this package contains
+}
+
+/// Flatten the recursive containedItem tree into a list of package levels.
+/// Returns levels from innermost to outermost.
+fn flatten_package_levels(root: &ContainedItemNode) -> Vec<PackageLevel> {
+    let mut levels = Vec::new();
+    let mut current_children = root.contained_items.as_deref().unwrap_or(&[]);
+
+    while !current_children.is_empty() {
+        let node = &current_children[0]; // take first child at each level
+        let code = node.item_identifier.as_ref()
+            .and_then(|id| id.code.as_deref())
+            .unwrap_or("")
+            .to_string();
+        let agency = node.item_identifier.as_ref()
+            .and_then(|id| id.issuing_agency.as_ref())
+            .and_then(|a| a.code.as_deref())
+            .unwrap_or("")
+            .to_string();
+        let qty = node.number_of_items.unwrap_or(1);
+        levels.push(PackageLevel { code, issuing_agency: agency, quantity: qty });
+        current_children = node.contained_items.as_deref().unwrap_or(&[]);
+    }
+
+    levels
+}
+
+/// Transform a device detail into a full FirstbaseDocument with packaging hierarchy.
+pub fn transform_detail_document(
+    device: &ApiDeviceDetail,
+    config: &Config,
+    basic_udi: Option<&BasicUdiDiData>,
+    stem: &str,
+) -> FirstbaseDocument {
+    let mut base_trade_item = transform_detail_device(device, config, basic_udi);
+
+    // Check for packaging hierarchy
+    let levels = device.contained_item.as_ref()
+        .map(|ci| flatten_package_levels(ci))
+        .unwrap_or_default();
+
+    if levels.is_empty() {
+        // No packaging — simple document, base unit is despatch unit
+        return FirstbaseDocument {
+            trade_item: base_trade_item,
+            children: Vec::new(),
+            identifier: format!("Draft_{}", stem),
+        };
+    }
+
+    // Base unit is no longer the despatch unit when packages exist
+    base_trade_item.is_despatch_unit = false;
+
+    // Extract EMA/EAR contacts for package DIs (SRN only, for CH-REP filtering)
+    let pkg_contacts: Vec<TradeItemContactInformation> = base_trade_item.contact_information.iter()
+        .filter(|c| c.contact_type.value == "EMA" || c.contact_type.value == "EAR")
+        .cloned()
+        .collect();
+
+    // Basic UDI-DI code for globalModelNumber on packages
+    let basic_udi_code = basic_udi
+        .and_then(|b| b.basic_udi.as_ref())
+        .and_then(|bu| bu.code.as_deref())
+        .unwrap_or("");
+
+    let base_gtin = base_trade_item.gtin.clone();
+
+    // Build innermost child link (base unit)
+    let mut inner_link = CatalogueItemChildItemLink {
+        quantity: levels[0].quantity,
+        catalogue_item: CatalogueItem {
+            identifier: uuid::Uuid::new_v4().to_string(),
+            trade_item: base_trade_item,
+            children: vec![],
+        },
+    };
+
+    // Build package levels from innermost to outermost
+    // levels[0] = innermost package, levels[last] = outermost package
+    let total_pkg_levels = levels.len();
+    for (i, level) in levels.iter().enumerate() {
+        let is_outermost = i == total_pkg_levels - 1;
+        let is_innermost = i == 0;
+
+        // Descriptor logic: innermost = PACK_OR_INNER_PACK when 2+ levels, else CASE
+        let descriptor = if is_innermost && total_pkg_levels >= 2 {
+            "PACK_OR_INNER_PACK"
+        } else {
+            "CASE"
+        };
+
+        // Next lower level points to the child
+        let child_gtin = if i == 0 {
+            base_gtin.clone()
+        } else {
+            levels[i - 1].code.clone()
+        };
+        // levels[i].quantity = numberOfItems = how many children this package contains
+        let child_qty = levels[i].quantity;
+
+        // This package's quantity (how many fit in the NEXT outer package)
+        let next_qty = if is_outermost {
+            1 // outermost has no parent
+        } else {
+            levels[i + 1].quantity
+        };
+
+        let next_lower = NextLowerLevel {
+            quantity_of_children: 1,
+            total_quantity: child_qty,
+            child_items: vec![ChildTradeItem {
+                quantity: child_qty,
+                gtin: child_gtin,
+            }],
+        };
+
+        let now_str = Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+
+        let pkg_trade_item = TradeItem {
+            is_brand_bank_publication: false,
+            target_sector: vec!["UDI_REGISTRY".to_string()],
+            chemical_regulation_module: None,
+            healthcare_item_module: None,
+            medical_device_module: MedicalDeviceTradeItemModule {
+                info: MedicalDeviceInformation {
+                    eu_status: CodeValue { value: "ON_MARKET".to_string() },
+                    ..Default::default()
+                },
+            },
+            certification_module: None,
+            referenced_file_module: None,
+            regulated_trade_item_module: None,
+            sales_module: None,
+            description_module: None,
+            is_base_unit: false,
+            is_despatch_unit: is_outermost,
+            is_orderable_unit: true,
+            unit_descriptor: CodeValue { value: descriptor.to_string() },
+            trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
+            information_provider: InformationProvider {
+                gln: config.provider.gln.clone(),
+                party_name: config.provider.party_name.clone(),
+            },
+            classification: GdsnClassification {
+                segment_code: config.gpc.segment_code.clone(),
+                class_code: config.gpc.class_code.clone(),
+                family_code: config.gpc.family_code.clone(),
+                category_code: config.gpc.category_code.clone(),
+                category_name: config.gpc.category_name.clone(),
+                additional_classifications: vec![],
+            },
+            next_lower_level: Some(next_lower),
+            target_market: TargetMarketObj {
+                country_code: CodeValue { value: config.target_market.country_code.clone() },
+            },
+            contact_information: pkg_contacts.clone(),
+            synchronisation_dates: TradeItemSynchronisationDates {
+                last_change: now_str.clone(),
+                effective: now_str.clone(),
+                publication: now_str,
+                discontinued: None,
+            },
+            global_model_info: vec![GlobalModelInformation {
+                number: basic_udi_code.to_string(),
+                descriptions: vec![],
+            }],
+            gtin: level.code.clone(),
+            additional_identification: vec![],
+            referenced_trade_items: Vec::new(),
+            trade_item_information: Vec::new(),
+        };
+
+        inner_link = CatalogueItemChildItemLink {
+            quantity: next_qty,
+            catalogue_item: CatalogueItem {
+                identifier: uuid::Uuid::new_v4().to_string(),
+                trade_item: pkg_trade_item,
+                children: vec![inner_link],
+            },
+        };
+    }
+
+    // The outermost package is the top-level trade item
+    let top_catalogue = inner_link.catalogue_item;
+
+    FirstbaseDocument {
+        trade_item: top_catalogue.trade_item,
+        children: top_catalogue.children,
+        identifier: format!("Draft_{}", stem),
+    }
 }
