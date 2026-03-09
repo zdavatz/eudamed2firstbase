@@ -143,6 +143,23 @@ Both certificate types are stored in `deviceCertificateInfoListForDisplay` in th
 | Manufacturer | DeviceCertificateInfo | FLD-UDID-60..64 | MDR_TECHNICAL_DOCUMENTATION, MDR_TYPE_EXAMINATION |
 | Notified Body | CertificateLink | FLD-UDID-344..361 | MDR_QUALITY_MANAGEMENT_SYSTEM, MDR_QUALITY_ASSURANCE |
 
+CertificateLink field mapping status (7 of 10 mapped):
+
+| FLD-UDID | Field | GS1 Mapping | Status |
+|---|---|---|---|
+| 360 | Certificate Type | CertificationStandard | ✅ mapped |
+| 344 | Certificate Number | CertificationValue | ✅ mapped |
+| 345 | Revision Number | CertificationIdentification | ✅ mapped |
+| 346 | Issue Date | (fallback for StartingValidityDate) | ✅ mapped |
+| 347 | Starting Validity Date | CertificationEffectiveStartDateTime | ✅ mapped |
+| 348 | Expiry Date | CertificationEffectiveEndDateTime | ✅ mapped |
+| 349 | Notified Body | EU_NOTIFIED_BODY_NUMBER | ✅ mapped |
+| 350 | Certificate Status | — | ❌ no GDSN pendant |
+| 357 | Decision Date | — | ❌ no GDSN pendant |
+| 361 | Starting Decision Applicability Date | — | ❌ no GDSN pendant |
+
+The 3 unmapped fields (Certificate Status, Decision Date, Starting Decision Applicability Date) are deserialized from EUDAMED but have no corresponding GDSN attribute. Possible options: AvpList (GS1 extension mechanism), XLSX export column, or not needed. Needs clarification with GS1.
+
 For hospital customers receiving the EUDAMED data dump via GS1 firstbase, the CertificateLink data provides proof that the Notified Body has confirmed the device — essential for high-risk device procurement decisions.
 
 ## EUDAMED Public API
