@@ -125,6 +125,9 @@ with open(sys.argv[1]) as f:
     doc = json.load(f)
 ti = doc.get('DraftItem', {}).get('TradeItem', {})
 gtin = ti.get('Gtin', '')
+# Only accept numeric GTINs (reject HIBC/IFA identifiers like +B976...)
+if gtin and not gtin.isdigit():
+    gtin = ''
 act = 'UNKNOWN'
 for ri in ti.get('RegulatedTradeItemModule', {}).get('RegulatoryInformation', []):
     a = ri.get('RegulatoryAct', '')
@@ -273,7 +276,7 @@ for ((bi=0; bi<LIVE_TOTAL; bi+=BATCH_SIZE)); do
 
     echo "  Batch $((bi/BATCH_SIZE+1)): items $((bi+1))-$BATCH_END of $LIVE_TOTAL"
 
-    # Build the Live/CreateMany payload
+    # Build the Live/CreateMany payload (keep packaging hierarchy nested)
     TMPFILE=$(mktemp)
     python3 -c "
 import json, sys
@@ -284,10 +287,14 @@ for fpath in files:
     with open(fpath) as f:
         doc = json.load(f)
     draft = doc['DraftItem']
-    items.append({
+    item = {
         'Identifier': draft['Identifier'],
         'TradeItem': draft['TradeItem']
-    })
+    }
+    # Keep CatalogueItemChildItemLink nested (API requires children inline)
+    if 'CatalogueItemChildItemLink' in draft:
+        item['CatalogueItemChildItemLink'] = draft['CatalogueItemChildItemLink']
+    items.append(item)
 
 payload = {
     'DocumentCommand': 'Add',
@@ -295,7 +302,8 @@ payload = {
 }
 with open('$TMPFILE', 'w') as out:
     json.dump(payload, out)
-print(f'Built payload with {len(items)} items')
+children = sum(len(doc.get('DraftItem',{}).get('CatalogueItemChildItemLink',[])) for fpath in files for doc in [json.load(open(fpath))])
+print(f'    Payload: {len(items)} items ({children} with children)')
 " "${BATCH_FILES[@]}"
 
     # Retry loop for 429 rate limiting
@@ -331,20 +339,30 @@ print(f'Built payload with {len(items)} items')
         echo "    Submitted: $REQ_ID"
         LIVE_REQUEST_IDS+=("$REQ_ID")
 
-        # Collect publish items from this batch and track sent files
+        # Collect publish items from this batch (including children) and track sent files
         for FILE in "${BATCH_FILES[@]}"; do
-            ITEM_INFO=$(python3 -c "
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && PUBLISH_ITEMS+=("$line")
+            done < <(python3 -c "
 import json
 with open('$FILE') as f:
     doc = json.load(f)
 di = doc['DraftItem']
-ident = di.get('Identifier', '')
-ti = di.get('TradeItem', {})
-gtin = ti.get('Gtin', '')
-tm = ti.get('TargetMarket', {}).get('TargetMarketCountryCode', {}).get('Value', '097')
-print(f'{ident}|{gtin}|{tm}')
-" 2>/dev/null || echo "")
-            [[ -n "$ITEM_INFO" ]] && PUBLISH_ITEMS+=("$ITEM_INFO")
+
+def emit(ident, ti):
+    gtin = ti.get('Gtin', '') or ti.get('TradeItemIdentification', {}).get('Gtin', '')
+    tm = ti.get('TargetMarket', {}).get('TargetMarketCountryCode', {}).get('Value', '097')
+    if gtin:
+        print(f'{ident}|{gtin}|{tm}')
+
+emit(di.get('Identifier', ''), di.get('TradeItem', {}))
+for child in di.get('CatalogueItemChildItemLink', []):
+    cat = child.get('CatalogueItem', {})
+    emit(cat.get('Identifier', ''), cat.get('TradeItem', {}))
+    for gc in cat.get('CatalogueItemChildItemLink', []):
+        g = gc.get('CatalogueItem', {})
+        emit(g.get('Identifier', ''), g.get('TradeItem', {}))
+" 2>/dev/null)
             SENT_FILES+=("$FILE")
         done
         LIVE_ACCEPTED=$((LIVE_ACCEPTED+BATCH_COUNT))
