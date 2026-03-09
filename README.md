@@ -288,7 +288,9 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh
 ```
 
-The script classifies each file by its `RegulatoryAct` field: MDR/IVDR devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`) and published to GLN `7612345000350` via `AddMany`. Legacy devices (MDD/AIMDD/IVDD) are loaded as drafts via `Draft/CreateOne` — they appear in the web UI for review but are not published (097.096 blocks publication of legacy devices). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid GS1 GTIN (HIBC/IFA devices) will fail at live creation — this is expected.
+The script classifies each file by its `RegulatoryAct` field: MDR/IVDR devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`) and published to GLN `7612345000350` via `AddMany`. Legacy devices (MDD/AIMDD/IVDD) are loaded as drafts via `Draft/CreateOne` — they appear in the web UI for review but are not published (097.096 blocks publication of legacy devices). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
+
+**Packaging hierarchy handling:** Files with `CatalogueItemChildItemLink` (packaging hierarchy) are sent with children nested inline — the GS1 API requires parent and child items in the same document structure. Flattening children into separate `Items` array entries causes G472 ("corresponding item record must be populated inside the same CIN document"). Both parent and child GTINs are published via `AddMany`.
 
 **Important:** Do NOT pass `DataRecipient` in `Live/CreateMany` — it causes 910.031 "not allowed to create private version". `AddMany` only works on live products — it will fail with 910.033 on draft-only items.
 
