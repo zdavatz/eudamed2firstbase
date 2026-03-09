@@ -43,7 +43,11 @@ fn main() -> Result<()> {
             // Convert detail NDJSON to XLSX
             let input_file = args.get(2).map(|s| s.as_str())
                 .unwrap_or("ndjson/eudamed_10k_details.ndjson");
-            let result = xlsx_export::ndjson_to_xlsx(Path::new(input_file))?;
+            let basic_udi_cache = load_basic_udi_cache(Path::new(BASIC_UDI_CACHE_DIR));
+            if !basic_udi_cache.is_empty() {
+                println!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+            }
+            let result = xlsx_export::ndjson_to_xlsx(Path::new(input_file), &basic_udi_cache)?;
             println!("  -> {}", result);
             Ok(())
         }

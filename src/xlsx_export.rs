@@ -1,12 +1,14 @@
 use anyhow::{Context, Result};
 use rust_xlsxwriter::{Format, Workbook};
+use std::collections::HashMap;
 use std::io::BufRead;
 use std::path::Path;
 
-use crate::api_detail;
+use crate::api_detail::{self, BasicUdiDiData};
 
 /// Convert a detail NDJSON file to XLSX, writing to xlsx/<stem>.xlsx
-pub fn ndjson_to_xlsx(input_path: &Path) -> Result<String> {
+/// Optional basic_udi_cache adds certificate columns from Basic UDI-DI data.
+pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, BasicUdiDiData>) -> Result<String> {
     let output_dir = Path::new("xlsx");
     std::fs::create_dir_all(output_dir)?;
 
@@ -38,6 +40,17 @@ pub fn ndjson_to_xlsx(input_path: &Path) -> Result<String> {
         "Markets",
         "Additional Info URL",
         "Version Date",
+        // Certificate columns (from Basic UDI-DI)
+        "Cert Type",
+        "Cert Number",
+        "Cert Revision",
+        "Cert Expiry",
+        "Cert Start",
+        "Cert Issue Date",
+        "Cert NB Name",
+        "Cert NB Number",
+        "Cert NB Provided",
+        "Cert Status",
     ];
     for (col, header) in headers.iter().enumerate() {
         worksheet.write_string_with_format(0, col as u16, *header, &header_fmt)?;
@@ -55,7 +68,8 @@ pub fn ndjson_to_xlsx(input_path: &Path) -> Result<String> {
 
         match api_detail::parse_api_detail(trimmed) {
             Ok(detail) => {
-                worksheet.write_string(row, 0, detail.uuid.as_deref().unwrap_or(""))?;
+                let uuid_str = detail.uuid.as_deref().unwrap_or("");
+                worksheet.write_string(row, 0, uuid_str)?;
 
                 if let Some(ref di) = detail.primary_di {
                     worksheet.write_string(row, 1, di.code.as_deref().unwrap_or(""))?;
@@ -123,6 +137,67 @@ pub fn ndjson_to_xlsx(input_path: &Path) -> Result<String> {
 
                 worksheet.write_string(row, 14, detail.additional_information_url.as_deref().unwrap_or(""))?;
                 worksheet.write_string(row, 15, detail.version_date.as_deref().unwrap_or(""))?;
+
+                // Certificate columns from Basic UDI-DI cache
+                if let Some(basic) = uuid_str.strip_prefix("").and_then(|_| basic_udi_cache.get(uuid_str)) {
+                    if let Some(ref certs) = basic.device_certificate_info_list_for_display {
+                        // Collect all certificates into multi-line strings
+                        let mut types = Vec::new();
+                        let mut numbers = Vec::new();
+                        let mut revisions = Vec::new();
+                        let mut expiries = Vec::new();
+                        let mut starts = Vec::new();
+                        let mut issue_dates = Vec::new();
+                        let mut nb_names = Vec::new();
+                        let mut nb_numbers = Vec::new();
+                        let mut nb_provided = Vec::new();
+                        let mut statuses = Vec::new();
+
+                        for cert in certs {
+                            let type_code = cert.certificate_type.as_ref()
+                                .and_then(|t| t.code.as_deref())
+                                .unwrap_or("");
+                            // Shorten the refdata prefix
+                            let short_type = type_code
+                                .strip_prefix("refdata.certificate-mdr-type.")
+                                .or_else(|| type_code.strip_prefix("refdata.certificate-ivdr-type."))
+                                .or_else(|| type_code.strip_prefix("refdata.legacy.mdd-certificate-type."))
+                                .or_else(|| type_code.strip_prefix("refdata.legacy.ivdd-certificate-type."))
+                                .or_else(|| type_code.strip_prefix("refdata.legacy.aimdd-certificate-type."))
+                                .unwrap_or(type_code);
+                            types.push(short_type.to_string());
+                            numbers.push(cert.certificate_number.clone().unwrap_or_default());
+                            revisions.push(cert.certificate_revision.clone().unwrap_or_default());
+                            expiries.push(cert.certificate_expiry.clone().unwrap_or_default());
+                            starts.push(cert.starting_validity_date.clone().unwrap_or_default());
+                            issue_dates.push(cert.issue_date.clone().unwrap_or_default());
+
+                            let nb = cert.notified_body.as_ref();
+                            nb_names.push(nb.and_then(|n| n.name.clone()).unwrap_or_default());
+                            nb_numbers.push(nb.and_then(|n| n.srn.clone()).unwrap_or_default());
+                            nb_provided.push(if cert.nb_provided_certificate == Some(true) { "NB" } else { "MFR" }.to_string());
+
+                            let status_code = cert.status.as_ref()
+                                .and_then(|s| s.code.as_deref())
+                                .unwrap_or("");
+                            let short_status = status_code
+                                .strip_prefix("refdata.certificate-status.")
+                                .unwrap_or(status_code);
+                            statuses.push(short_status.to_string());
+                        }
+
+                        worksheet.write_string(row, 16, &types.join("\n"))?;
+                        worksheet.write_string(row, 17, &numbers.join("\n"))?;
+                        worksheet.write_string(row, 18, &revisions.join("\n"))?;
+                        worksheet.write_string(row, 19, &expiries.join("\n"))?;
+                        worksheet.write_string(row, 20, &starts.join("\n"))?;
+                        worksheet.write_string(row, 21, &issue_dates.join("\n"))?;
+                        worksheet.write_string(row, 22, &nb_names.join("\n"))?;
+                        worksheet.write_string(row, 23, &nb_numbers.join("\n"))?;
+                        worksheet.write_string(row, 24, &nb_provided.join("\n"))?;
+                        worksheet.write_string(row, 25, &statuses.join("\n"))?;
+                    }
+                }
 
                 row += 1;
             }
