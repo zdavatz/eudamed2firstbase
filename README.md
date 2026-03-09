@@ -263,7 +263,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 
 | Error | Count | Fix |
 |---|---|---|
-| G572 lastChangeDateTime in future | 88x | lastChangeDateTime uses current time (avoids SYS25 on re-uploads); effectiveDateTime uses `version_date` from EUDAMED; discontinuedDateTime=today+1 for NO_LONGER_ON_THE_MARKET |
+| G572 lastChangeDateTime in future | 88x | lastChangeDateTime uses current UTC time (avoids SYS25 on re-uploads and G572 future-date rejection from timezone mismatch); effectiveDateTime uses `version_date` from EUDAMED; discontinuedDateTime=today+1 for NO_LONGER_ON_THE_MARKET |
 | G641 device self-replacement | 10x | Skip referenced trade items where linked DI = own DI |
 | 097.011 missing MDR boolean fields | 648x | Use real values from Basic UDI-DI cache; fall back to false |
 | 097.010 missing multiComponent/tissue | 264x | Use real multiComponent from Basic UDI-DI; fall back to `DEVICE` |
@@ -319,7 +319,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | highest level unit | IsTradeItemADespatchUnit | true (BASE_UNIT_OR_EACH when no packaging, CASE for outermost) |
 | all units | IsTradeItemAnOrderableUnit | true |
 | BASE_UNIT_OR_EACH | IsTradeItemABaseUnit | true |
-| (current time) | lastChangeDateTime | Current time at conversion (avoids SYS25 on re-uploads) |
+| (current UTC time) | lastChangeDateTime | Current UTC time at conversion (avoids SYS25 on re-uploads and G572 future-date rejection) |
 | versionDate | effectiveDateTime | EUDAMED last update date |
 | status=NO_LONGER_ON_THE_MARKET | discontinuedDateTime | today + 1 day |
 | languageCode=ANY (allLanguagesApplicable) | languageCode | "en" (single entry, no additional languages) |

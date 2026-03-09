@@ -74,7 +74,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 
 ## Known Gaps vs Reference
 
-- TradeItemSynchronisationDates: lastChangeDateTime uses current time (avoids SYS25 on re-uploads); effectiveDateTime uses EUDAMED version_date; publicationDateTime uses current time; discontinuedDateTime set to today+1 day when status is NO_LONGER_ON_THE_MARKET
+- TradeItemSynchronisationDates: lastChangeDateTime uses current UTC time (avoids SYS25 on re-uploads and G572 future-date rejection); effectiveDateTime uses EUDAMED version_date; publicationDateTime uses current UTC time; discontinuedDateTime set to today+1 day when status is NO_LONGER_ON_THE_MARKET
 - DirectPartMarkingIdentifier: generated from `directMarkingDi` in EUDAMED JSON; not derivable from XML
 - Language ordering within multi-language arrays may differ from reference (reference is inconsistent)
 - Sales conditions country ordering for ADDITIONAL markets may differ from reference (reference uses neither numeric nor XML order)
