@@ -101,7 +101,7 @@ download.sh                # Unified download + convert script (listing + detail
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
-push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (MDR/IVDR: Live+Publish, MDD: Draft only)
+push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
 log/                       # API push logs (log_dd.mm.yyyy.log)
 ```
 
@@ -265,12 +265,11 @@ You can publish multiple items in a single request by adding more objects to the
 
 #### 4. Bulk Workflow: push_to_api.sh
 
-The `push_to_api.sh` script handles the full workflow with regulatory act routing. It classifies each file by `RegulatoryAct`:
+The `push_to_api.sh` script handles the full workflow:
 
-- **MDR/IVDR devices** → `Live/CreateMany` (batches of 100) → `RequestStatus/Get` → `AddMany` (publish to recipient)
-- **MDD/AIMDD/IVDD devices** → `Draft/CreateOne` (draft only, no publish — loaded for review in web UI)
+- **All devices** (MDR/IVDR/MDD/AIMDD/IVDD) → `Live/CreateMany` (batches of 100) → poll `RequestStatus/Get` until Done → `AddMany` (publish to recipient)
 
-Includes automatic throttling (1s for ≤60 files, 8s for larger batches) and HTTP 429 retry with `retry-after` backoff.
+Since 2026-03-10, GS1 rule 097.096 was downgraded from error to warning — legacy devices (MDD/AIMDD/IVDD) can now be published too. Includes automatic throttling (1s for ≤60 files, 8s for larger batches), HTTP 429 retry with `retry-after` backoff, and polling for async CreateMany completion before publishing.
 
 ```bash
 ./push_to_api.sh                    # push all UUID files in firstbase_json/
@@ -288,7 +287,7 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh
 ```
 
-The script classifies each file by its `RegulatoryAct` field: MDR/IVDR devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`) and published to GLN `7612345000350` via `AddMany`. Legacy devices (MDD/AIMDD/IVDD) are loaded as drafts via `Draft/CreateOne` — they appear in the web UI for review but are not published (097.096 blocks publication of legacy devices). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
+All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), then publishes to GLN `7612345000350` via `AddMany`. Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
 
 **Packaging hierarchy handling:** Files with `CatalogueItemChildItemLink` (packaging hierarchy) are sent with children nested inline — the GS1 API requires parent and child items in the same document structure. Flattening children into separate `Items` array entries causes G472 ("corresponding item record must be populated inside the same CIN document"). Both parent and child GTINs are published via `AddMany`.
 
@@ -332,7 +331,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.095 legacy device forbidden fields | — | Strip globalModelNumber, directPartMarkingIdentifier, udidDeviceCount, uDIProductionIdentifierTypeCode, annexXVIIntendedPurposeTypeCode, CMR/endocrine substances for MDD/AIMDD/IVDD devices (BR-DTX-UDID-089) |
 | 097.105 MDD certificate required | — | Map MDD legacy certificates (ii-4→MDD_II_4, ii-excluding-4→MDD_II_EX_4, iii→MDD_III, iv→MDD_IV, v→MDD_V, vi→MDD_VI); warn when missing |
 | 097.118 GS1 direct marking 14 digits | — | Skip GS1 direct marking DI if not exactly 14 digits (BR-UDID-003) |
-| 097.096 legacy device publication block | — | Warning emitted for legacy (MDD/AIMDD/IVDD) devices; cannot be published until UDI connect service is released |
+| 097.096 legacy device publication | — | Since 2026-03-10 downgraded from error to warning — legacy devices now publishable via Live/CreateMany + AddMany |
 | 097.091 SOFTWARE_IDENTIFICATION needs SOFTWARE | — | Add `SpecialDeviceTypeCode: SOFTWARE` when production identifiers include `SOFTWARE_IDENTIFICATION` (BR-DTX-UDI-104) |
 | 097.101 MDR Class III certificate required | — | Warning emitted for MDR EU_CLASS_III devices missing MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate |
 | 097.006 missing MANUFACTURER_PART_NUMBER | — | Always emit `MANUFACTURER_PART_NUMBER` in additionalTradeItemIdentification; falls back to primary DI code when device reference is empty |
