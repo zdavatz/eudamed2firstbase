@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # push_to_api.sh — Push firstbase JSON files to GS1 Catalogue Item API
-# MDR/IVDR devices: Live/CreateMany (batches of 100) → AddMany (publish)
-# MDD/AIMDD/IVDD devices: Draft/CreateOne (draft only, no publish)
+# All devices: Live/CreateMany (batches of 100) → AddMany (publish)
+# Since 2026-03-10: 097.096 downgraded to warning — legacy devices publishable too
 #
 # Usage:
 #   ./push_to_api.sh                    # push all UUID files in firstbase_json/
@@ -139,8 +139,9 @@ print(f'{act} {gtin}')
 }
 
 # --- Collect and classify files ---
+# Since 2026-03-10: 097.096 downgraded from error to warning — legacy devices
+# (MDD/AIMDD/IVDD) can now be published via Live/CreateMany + AddMany too.
 LIVE_FILES=()
-DRAFT_FILES=()
 SKIPPED=0
 for f in "$INPUT_DIR"/*.json; do
     base=$(basename "$f")
@@ -153,16 +154,12 @@ for f in "$INPUT_DIR"/*.json; do
         ((SKIPPED++)) || true
         continue
     fi
-    case "$ACT" in
-        MDD|AIMDD|IVDD) DRAFT_FILES+=("$f") ;;
-        *)              LIVE_FILES+=("$f") ;;
-    esac
+    LIVE_FILES+=("$f")
 done
 
 LIVE_TOTAL=${#LIVE_FILES[@]}
-DRAFT_TOTAL=${#DRAFT_FILES[@]}
-TOTAL=$((LIVE_TOTAL + DRAFT_TOTAL))
-echo "Found $TOTAL JSON files in $INPUT_DIR/ ($LIVE_TOTAL MDR/IVDR live, $DRAFT_TOTAL MDD/AIMDD/IVDD draft, $SKIPPED skipped no GTIN)"
+TOTAL=$LIVE_TOTAL
+echo "Found $TOTAL JSON files in $INPUT_DIR/ ($LIVE_TOTAL live, $SKIPPED skipped no GTIN)"
 
 if [[ $TOTAL -eq 0 ]]; then
     echo "No files to push."
@@ -181,10 +178,8 @@ echo "Throttle: ${THROTTLE}s between requests"
 PROCESSED_DIR="$INPUT_DIR/processed"
 
 if $DRY_RUN; then
-    echo "[DRY RUN] Would push $LIVE_TOTAL MDR/IVDR files via Live/CreateMany + AddMany"
-    echo "[DRY RUN] Would push $DRAFT_TOTAL legacy files via Draft/CreateOne (no publish)"
-    [[ $LIVE_TOTAL -gt 0 ]] && echo "First live: ${LIVE_FILES[0]}"
-    [[ $DRAFT_TOTAL -gt 0 ]] && echo "First draft: ${DRAFT_FILES[0]}"
+    echo "[DRY RUN] Would push $LIVE_TOTAL files via Live/CreateMany + AddMany"
+    [[ $LIVE_TOTAL -gt 0 ]] && echo "First: ${LIVE_FILES[0]}"
     exit 0
 fi
 
@@ -202,60 +197,6 @@ if [[ ${#TOKEN} -lt 20 ]]; then
     exit 1
 fi
 echo "Token obtained (${#TOKEN} chars)"
-
-# --- Step 0: Create drafts for legacy (MDD/AIMDD/IVDD) devices ---
-DRAFT_CREATED=0
-DRAFT_FAILED=0
-
-if [[ $DRAFT_TOTAL -gt 0 ]]; then
-    echo ""
-    echo "=== Step 0: Draft/CreateOne for $DRAFT_TOTAL legacy devices ==="
-
-    for ((di=0; di<DRAFT_TOTAL; di++)); do
-        FILE="${DRAFT_FILES[$di]}"
-        BASE=$(basename "$FILE")
-        echo "  [$((di+1))/$DRAFT_TOTAL] $BASE"
-
-        # Retry loop for 429
-        for attempt in 1 2 3; do
-            RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 120 -X POST "$API_BASE/CatalogueItem/Draft/CreateOne" \
-                -H 'Content-Type: application/json' \
-                -H "Authorization: bearer $TOKEN" \
-                -d @"$FILE" 2>&1)
-
-            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-            BODY=$(echo "$RESPONSE" | sed '$d')
-
-            if [[ "$HTTP_CODE" == "429" ]]; then
-                RETRY_AFTER=$(echo "$BODY" | python3 -c "import json,sys; print(json.load(sys.stdin).get('retryAfter',60))" 2>/dev/null || echo 60)
-                echo "    429 rate limited — waiting ${RETRY_AFTER}s (attempt $attempt/3)"
-                sleep "$RETRY_AFTER"
-                continue
-            fi
-            break
-        done
-
-        if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "201" ]]; then
-            echo "    Draft created"
-            DRAFT_CREATED=$((DRAFT_CREATED+1))
-            SENT_FILES+=("$FILE")
-        else
-            echo "    FAIL ($HTTP_CODE): $(echo "$BODY" | head -c 200)"
-            DRAFT_FAILED=$((DRAFT_FAILED+1))
-        fi
-
-        # Throttle
-        if [[ $di -lt $((DRAFT_TOTAL-1)) ]]; then
-            sleep "$THROTTLE"
-        fi
-    done
-
-    echo ""
-    echo "=== Draft Summary ==="
-    echo "Total legacy: $DRAFT_TOTAL"
-    echo "Created:      $DRAFT_CREATED"
-    echo "Failed:       $DRAFT_FAILED"
-fi
 
 # --- Step 1: Create live products via Live/CreateMany (batches of 100) ---
 BATCH_SIZE=100
@@ -379,7 +320,7 @@ done
 
 echo ""
 echo "=== Live Creation Summary ==="
-echo "Total MDR/IVDR: $LIVE_TOTAL"
+echo "Total: $LIVE_TOTAL"
 echo "Submitted:      $LIVE_ACCEPTED"
 echo "Failed:         $LIVE_FAILED"
 echo "Request IDs:    ${LIVE_REQUEST_IDS[*]}"
