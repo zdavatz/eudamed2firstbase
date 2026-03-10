@@ -153,6 +153,10 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
 
     // --- Reference → additional identification ---
     // 097.006: MANUFACTURER_PART_NUMBER is mandatory. Use reference, fallback to primary DI code.
+    // GDSN limits additionalTradeItemIdentificationValue to 80 characters.
+    let truncate_id = |s: String| -> String {
+        if s.len() <= 80 { s } else { s.chars().take(80).collect() }
+    };
     let mut additional_identification = Vec::new();
     let mfr_part = device.reference.as_ref()
         .filter(|r| r != &"-" && !r.is_empty())
@@ -161,7 +165,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     if !mfr_part.is_empty() {
         additional_identification.push(AdditionalTradeItemIdentification {
             type_code: "MANUFACTURER_PART_NUMBER".to_string(),
-            value: mfr_part,
+            value: truncate_id(mfr_part),
         });
     }
 
@@ -198,7 +202,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     if let Some(model) = basic_udi.and_then(|b| b.device_model.as_ref()).filter(|m| !m.is_empty()) {
         additional_identification.push(AdditionalTradeItemIdentification {
             type_code: "MODEL_NUMBER".to_string(),
-            value: model.clone(),
+            value: truncate_id(model.clone()),
         });
     } else if is_legacy {
         // 097.025: Legacy devices (no globalModelInformation) need MODEL_NUMBER as fallback
@@ -210,7 +214,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         if !model_number.is_empty() {
             additional_identification.push(AdditionalTradeItemIdentification {
                 type_code: "MODEL_NUMBER".to_string(),
-                value: model_number,
+                value: truncate_id(model_number),
             });
         }
     }
