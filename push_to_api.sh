@@ -325,18 +325,30 @@ echo "Submitted:      $LIVE_ACCEPTED"
 echo "Failed:         $LIVE_FAILED"
 echo "Request IDs:    ${LIVE_REQUEST_IDS[*]}"
 
-# --- Wait for async processing and check results ---
+# --- Wait for async processing until all requests are Done ---
 if [[ ${#LIVE_REQUEST_IDS[@]} -gt 0 ]]; then
     echo ""
-    echo "=== Checking Live/CreateMany results (waiting for async processing) ==="
-    sleep 15
+    echo "=== Waiting for Live/CreateMany async processing ==="
 
+    MAX_POLLS=24  # 24 * 15s = 6 minutes max wait
     for REQ_ID in "${LIVE_REQUEST_IDS[@]}"; do
         echo "  $REQ_ID:"
-        curl -s --max-time 120 -X POST "$API_BASE/RequestStatus/Get" \
-            -H 'Content-Type: application/json' \
-            -H "Authorization: bearer $TOKEN" \
-            -d "{\"RequestIdentifier\":\"$REQ_ID\",\"IncludeGs1Response\":true}" | parse_status
+        for ((poll=1; poll<=MAX_POLLS; poll++)); do
+            sleep 15
+            STATUS_OUT=$(curl -s --max-time 120 -X POST "$API_BASE/RequestStatus/Get" \
+                -H 'Content-Type: application/json' \
+                -H "Authorization: bearer $TOKEN" \
+                -d "{\"RequestIdentifier\":\"$REQ_ID\",\"IncludeGs1Response\":true}")
+            STATUS=$(echo "$STATUS_OUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('Status','unknown'))" 2>/dev/null || echo "unknown")
+            echo "    Poll $poll: $STATUS"
+            if [[ "$STATUS" == "Done" || "$STATUS" == "Failed" ]]; then
+                echo "$STATUS_OUT" | parse_status
+                break
+            fi
+        done
+        if [[ "$STATUS" != "Done" && "$STATUS" != "Failed" ]]; then
+            echo "    WARNING: Request still not done after $((MAX_POLLS*15))s — AddMany may fail"
+        fi
     done
 fi
 
