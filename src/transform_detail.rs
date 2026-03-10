@@ -42,9 +42,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let is_legacy = matches!(reg_act.as_str(), "MDD" | "AIMDD" | "IVDD");
     let is_ivdr = reg_act == "IVDR" || reg_act == "IVDD";
 
-    // 097.096: Legacy devices (MDD/AIMDD/IVDD) cannot be published yet
+    // 097.096: Since 2026-03-10, downgraded from error to warning — legacy devices publishable
     if is_legacy {
-        eprintln!("Warning: {} is a legacy {} device — cannot be published until UDI connect service is released (097.096)",
+        eprintln!("Info: {} is a legacy {} device (097.096 now warning only)",
             device.uuid.as_deref().unwrap_or("unknown"), reg_act);
     }
 
