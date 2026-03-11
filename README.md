@@ -244,7 +244,7 @@ The response contains `ResponseStatusCode: "ACCEPTED"` on success, or `Attribute
 
 #### 3. Publish to a Recipient
 
-After creating drafts, publish them to the SuperAdmin Company CH (GLN `7612345000350`):
+After creating drafts, publish them to a recipient GLN (e.g. `7612345000527` for GS1 Switzerland UDI Data Dump):
 
 ```bash
 curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublication/AddMany' \
@@ -256,7 +256,7 @@ curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublicat
       "DataSource": "7612345000480",
       "Gtin": "06944233413739",
       "TargetMarket": "097",
-      "PublishToGln": ["7612345000350"]
+      "PublishToGln": ["7612345000527"]
     }]
   }'
 ```
@@ -272,11 +272,13 @@ The `push_to_api.sh` script handles the full workflow:
 Since 2026-03-10, GS1 rule 097.096 was downgraded from error to warning — legacy devices (MDD/AIMDD/IVDD) can now be published too. Includes automatic throttling (1s for ≤60 files, 8s for larger batches), HTTP 429 retry with `retry-after` backoff, and polling for async CreateMany completion before publishing.
 
 ```bash
-./push_to_api.sh                    # push all UUID files in firstbase_json/
-./push_to_api.sh --dir /path/to/dir # push files from a custom directory
-./push_to_api.sh --dry-run          # show what would be pushed, no API calls
-./push_to_api.sh --status <reqid>   # query status of a previous request
+./push_to_api.sh 7612345000527                    # push all UUID files in firstbase_json/
+./push_to_api.sh 7612345000527 --dir /path/to/dir # push files from a custom directory
+./push_to_api.sh 7612345000527 --dry-run          # show what would be pushed, no API calls
+./push_to_api.sh --status <reqid>                  # query status of a previous request
 ```
+
+The first positional argument is the recipient GLN (PublishToGln) — the GLN of the data pool or company to publish to (e.g. `7612345000527` for GS1 Switzerland UDI Data Dump, `7612345000350` for SuperAdmin Company CH).
 
 Environment variables for credentials:
 
@@ -284,10 +286,10 @@ Environment variables for credentials:
 export FIRSTBASE_EMAIL="you@example.com"
 export FIRSTBASE_PASSWORD="your-api-password"
 export FIRSTBASE_GLN="7612345000480"
-./push_to_api.sh
+./push_to_api.sh 7612345000527
 ```
 
-All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), then publishes to GLN `7612345000350` via `AddMany`. Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
+All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), then publishes to the specified recipient GLN via `AddMany`. Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
 
 **Packaging hierarchy handling:** Files with `CatalogueItemChildItemLink` (packaging hierarchy) are sent with children nested inline — the GS1 API requires parent and child items in the same document structure. Flattening children into separate `Items` array entries causes G472 ("corresponding item record must be populated inside the same CIN document"). Both parent and child GTINs are published via `AddMany`.
 
