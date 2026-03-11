@@ -4,10 +4,10 @@
 # Since 2026-03-10: 097.096 downgraded to warning — legacy devices publishable too
 #
 # Usage:
-#   ./push_to_api.sh                    # push all UUID files in firstbase_json/
-#   ./push_to_api.sh --dir /path/to/dir # push files from a custom directory
-#   ./push_to_api.sh --dry-run          # show what would be pushed, no API calls
-#   ./push_to_api.sh --status <reqid>   # query status of a previous request
+#   ./push_to_api.sh <PublishToGln>                    # push all UUID files in firstbase_json/
+#   ./push_to_api.sh <PublishToGln> --dir /path/to/dir # push files from a custom directory
+#   ./push_to_api.sh <PublishToGln> --dry-run          # show what would be pushed, no API calls
+#   ./push_to_api.sh --status <reqid>                  # query status of a previous request
 #
 # Environment:
 #   FIRSTBASE_EMAIL    (default: zdavatz@ywesee.com)
@@ -17,7 +17,6 @@
 set -euo pipefail
 
 API_BASE="https://test-webapi-firstbase.gs1.ch:5443"
-PUBLISH_GLN="7612345000350"  # SuperAdmin Company CH
 INPUT_DIR="firstbase_json"
 
 EMAIL="${FIRSTBASE_EMAIL:-zdavatz@ywesee.com}"
@@ -27,16 +26,31 @@ GLN="${FIRSTBASE_GLN:-7612345000480}"
 DRY_RUN=false
 STATUS_MODE=false
 REQUEST_ID=""
+PUBLISH_GLN=""
 
-# Parse args
+# Parse args — first positional arg is PublishToGln (unless --status mode)
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)  DRY_RUN=true; shift ;;
         --status)   STATUS_MODE=true; REQUEST_ID="$2"; shift 2 ;;
         --dir)      INPUT_DIR="$2"; shift 2 ;;
-        *)          echo "Unknown arg: $1"; exit 1 ;;
+        *)
+            if [[ -z "$PUBLISH_GLN" && "$1" =~ ^[0-9]+$ ]]; then
+                PUBLISH_GLN="$1"; shift
+            else
+                echo "Unknown arg: $1"; exit 1
+            fi
+            ;;
     esac
 done
+
+if ! $STATUS_MODE && [[ -z "$PUBLISH_GLN" ]]; then
+    echo "Usage: $0 <PublishToGln> [--dir /path/to/dir] [--dry-run]"
+    echo "       $0 --status <reqid>"
+    echo ""
+    echo "Example: $0 7612345000527"
+    exit 1
+fi
 
 # --- Helper: parse RequestStatus response (with full GS1 error details) ---
 parse_status() {
