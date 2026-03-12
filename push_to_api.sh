@@ -112,85 +112,65 @@ if errors:
 log_push_results() {
     local req_id="$1"
     local pub_gln="$2"
-    python3 << 'PYEOF' "$DB_PATH" "$req_id" "$pub_gln"
-import json, sys, sqlite3, os
+    local json_file
+    json_file=$(mktemp)
+    cat > "$json_file"
+    python3 -c "
+import json, sqlite3, os, sys
 from datetime import datetime, timezone
 
-db_path = sys.argv[1]
-req_id = sys.argv[2]
-pub_gln = sys.argv[3]
-now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+db_path, req_id, pub_gln, json_file = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-data = json.load(sys.stdin)
+with open(json_file) as f:
+    data = json.load(f)
 
-# Ensure DB and table exist
-os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+os.makedirs(os.path.dirname(db_path) or '.', exist_ok=True)
 conn = sqlite3.connect(db_path)
-conn.execute("""CREATE TABLE IF NOT EXISTS push_log (
+conn.execute('''CREATE TABLE IF NOT EXISTS push_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    uuid TEXT NOT NULL,
-    gtin TEXT NOT NULL DEFAULT '',
-    pushed_at TEXT NOT NULL,
-    request_id TEXT,
-    status TEXT NOT NULL,
-    error_code TEXT,
-    error_msg TEXT,
-    publish_gln TEXT
-)""")
-conn.execute("CREATE INDEX IF NOT EXISTS idx_push_log_uuid ON push_log(uuid)")
-conn.execute("CREATE INDEX IF NOT EXISTS idx_push_log_status ON push_log(status)")
+    uuid TEXT NOT NULL, gtin TEXT NOT NULL DEFAULT '',
+    pushed_at TEXT NOT NULL, request_id TEXT, status TEXT NOT NULL,
+    error_code TEXT, error_msg TEXT, publish_gln TEXT
+)''')
+conn.execute('CREATE INDEX IF NOT EXISTS idx_push_log_uuid ON push_log(uuid)')
+conn.execute('CREATE INDEX IF NOT EXISTS idx_push_log_status ON push_log(status)')
 
 rows = []
-
-gs1 = data.get("Gs1ResponseMessage", {})
-for resp in gs1.get("GS1Response", []):
-    # ACCEPTED items
-    for tr in resp.get("TransactionResponse", []):
-        rsc = tr.get("ResponseStatusCode", "")
-        ident = tr.get("TransactionIdentifier", {}).get("Value", "")
-        if rsc == "ACCEPTED" and ident.startswith("Draft_"):
-            uuid = ident[6:]  # strip "Draft_"
-            rows.append((uuid, "", now, req_id, "ACCEPTED", None, None, pub_gln))
-
-    # REJECTED items — extract from DocumentException
-    for te in resp.get("TransactionException", []):
-        for ce in te.get("CommandException", []):
-            for de in ce.get("DocumentException", []):
-                # Try to find the draft identifier from the exception context
-                doc_id = de.get("DocumentIdentifier", {}).get("Value", "")
-                uuid = doc_id[6:] if doc_id.startswith("Draft_") else ""
-                for ae in de.get("AttributeException", []):
-                    for err in ae.get("GS1Error", []):
-                        code = err.get("ErrorCode", "")
-                        desc = err.get("ErrorDescription", "")[:200]
-                        rows.append((uuid, "", now, req_id, "REJECTED", code, desc, pub_gln))
-
-    # GS1Exception errors
-    for ge in resp.get("GS1Exception", []):
-        if not isinstance(ge, dict):
-            continue
-        for ce in ge.get("CommandException", []):
-            for de in ce.get("DocumentException", []):
-                doc_id = de.get("DocumentIdentifier", {}).get("Value", "")
-                uuid = doc_id[6:] if doc_id.startswith("Draft_") else ""
-                for ae in de.get("AttributeException", []):
-                    for err in ae.get("GS1Error", []):
-                        code = err.get("ErrorCode", "")
-                        desc = err.get("ErrorDescription", "")[:200]
-                        rows.append((uuid, "", now, req_id, "REJECTED", code, desc, pub_gln))
+gs1 = data.get('Gs1ResponseMessage', {})
+for resp in gs1.get('GS1Response', []):
+    for tr in resp.get('TransactionResponse', []):
+        rsc = tr.get('ResponseStatusCode', '')
+        ident = tr.get('TransactionIdentifier', {}).get('Value', '')
+        if rsc == 'ACCEPTED' and ident.startswith('Draft_'):
+            rows.append((ident[6:], '', now, req_id, 'ACCEPTED', None, None, pub_gln))
+    for te in resp.get('TransactionException', []):
+        for ce in te.get('CommandException', []):
+            for de in ce.get('DocumentException', []):
+                doc_id = de.get('DocumentIdentifier', {}).get('Value', '')
+                uuid = doc_id[6:] if doc_id.startswith('Draft_') else ''
+                for ae in de.get('AttributeException', []):
+                    for err in ae.get('GS1Error', []):
+                        rows.append((uuid, '', now, req_id, 'REJECTED', err.get('ErrorCode',''), err.get('ErrorDescription','')[:200], pub_gln))
+    for ge in resp.get('GS1Exception', []):
+        if not isinstance(ge, dict): continue
+        for ce in ge.get('CommandException', []):
+            for de in ce.get('DocumentException', []):
+                doc_id = de.get('DocumentIdentifier', {}).get('Value', '')
+                uuid = doc_id[6:] if doc_id.startswith('Draft_') else ''
+                for ae in de.get('AttributeException', []):
+                    for err in ae.get('GS1Error', []):
+                        rows.append((uuid, '', now, req_id, 'REJECTED', err.get('ErrorCode',''), err.get('ErrorDescription','')[:200], pub_gln))
 
 if rows:
-    conn.executemany(
-        "INSERT INTO push_log (uuid, gtin, pushed_at, request_id, status, error_code, error_msg, publish_gln) VALUES (?,?,?,?,?,?,?,?)",
-        rows
-    )
+    conn.executemany('INSERT INTO push_log (uuid,gtin,pushed_at,request_id,status,error_code,error_msg,publish_gln) VALUES (?,?,?,?,?,?,?,?)', rows)
     conn.commit()
-    accepted = sum(1 for r in rows if r[4] == "ACCEPTED")
-    rejected = sum(1 for r in rows if r[4] == "REJECTED")
-    print(f"  DB logged: {accepted} ACCEPTED, {rejected} REJECTED", file=sys.stderr)
-
+    accepted = sum(1 for r in rows if r[4] == 'ACCEPTED')
+    rejected = sum(1 for r in rows if r[4] == 'REJECTED')
+    print(f'  DB logged: {accepted} ACCEPTED, {rejected} REJECTED', file=sys.stderr)
 conn.close()
-PYEOF
+" "$DB_PATH" "$req_id" "$pub_gln" "$json_file"
+    rm -f "$json_file"
 }
 
 # --- Status query mode ---
