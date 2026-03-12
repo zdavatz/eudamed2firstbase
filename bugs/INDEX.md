@@ -28,3 +28,20 @@ Reports for SANTE ticket submission. Each documents an EUDAMED data quality issu
 | 097.101 | 6 | MDR Class III without certificate | 4 |
 | SYS25 | 2 | Timestamp conflict on re-upload | (operational, not EUDAMED bug) |
 | **Total** | **392** | | |
+
+## Error summary (from re-push 12.03.2026, 2485 items)
+
+| GS1 Error | Count | Change | Root Cause | Report # |
+|---|---|---|---|---|
+| 097.021 | ~216 | new | NOT_INTENDED + country data (BR-UDID-073 cascade) | 1 |
+| 097.039 | ~108 | -108 | NOT_INTENDED + MDR/IVDR (CH-exclusive) | 1, 5 |
+| 097.040 | 4 | -36 | NO_LONGER status propagation | 1 |
+| 910.004 | 4 | -36 | Children can't be discontinued | 1 |
+| 097.020 | 0 | **-18** | **Fixed by fallback workaround** | 2 |
+| 097.010 | 4 | -14 | Null MDR mandatory fields | 2, 3 |
+| 097.011 | 4 | -14 | Null MDR mandatory fields | 2, 3 |
+| G541 | 4 | -14 | Invalid code values | 2 |
+| 097.054 | 2 | -8 | Missing AR SRN | — |
+| 097.101 | 0 | **-6** | **Potentially resolved** | 4 |
+| G485 | 2 | new | discontinuedDateTime on re-upload | (operational) |
+| **Total** | **~348** | **-44** | | |

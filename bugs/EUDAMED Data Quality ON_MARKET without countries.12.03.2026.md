@@ -56,4 +56,13 @@ These 7 devices plus their 11 package DIs are rejected entirely from GS1 firstba
 
 ## Workaround
 
-None possible. Market country and MDR booleans must be provided by EUDAMED.
+**Implemented 12.03.2026:** Default ORIGINAL_PLACED country fallback — uses manufacturer's country if EU/EEA, otherwise DE (276). This prevents 097.020 rejection. The underlying EUDAMED data quality issue remains (no market countries in the source data). Member State info is OOS for swissdamed.
+
+MDR boolean null values (097.010, 097.011) still cause rejections for the subset of devices also missing Basic UDI-DI data.
+
+## Status (12.03.2026 re-push)
+
+- 097.020: **resolved** by fallback workaround
+- 097.010/097.011: 4 rejections remaining (down from 18, due to better Basic UDI-DI cache coverage)
+- G541: 4 rejections remaining
+- EUDAMED data issue: **still present** — needs SANTE ticket
