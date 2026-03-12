@@ -9,6 +9,7 @@ mod transform;
 mod transform_api;
 mod transform_detail;
 mod transform_eudamed_json;
+mod version_db;
 mod xlsx_export;
 
 use anyhow::{Context, Result};
@@ -491,10 +492,18 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
 
 /// Process individual EUDAMED JSON files from a directory.
 /// Each input file produces one output file (one-to-one mapping).
+/// Uses version tracking DB to skip unchanged devices.
 fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result<()> {
     let output_dir = Path::new("firstbase_json");
     let processed_dir = input_dir.join("processed");
     std::fs::create_dir_all(output_dir)?;
+
+    // Open version tracking database
+    let db_path = Path::new(version_db::VERSION_DB_PATH);
+    let conn = version_db::open_db(db_path)
+        .context("Failed to open version tracking DB")?;
+    let existing_count = version_db::count_records(&conn)?;
+    println!("Version DB: {} existing records ({})", existing_count, db_path.display());
 
     // Load Basic UDI-DI cache
     let cache_dir = Path::new(BASIC_UDI_CACHE_DIR);
@@ -503,9 +512,13 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
         println!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
     }
 
+    let now_str = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+
     let mut processed = 0;
+    let mut skipped = 0;
     let mut errors = 0;
     let mut processed_files = Vec::new();
+    let mut change_summary: HashMap<String, u32> = HashMap::new();
 
     for entry in std::fs::read_dir(input_dir).context("Failed to read eudamed_json/ directory")? {
         let entry = entry?;
@@ -521,6 +534,41 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                 && !json_content.contains("\"primaryDi\": null");
 
             let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+
+            // --- Version tracking: extract versions and check for changes ---
+            let mut version_rec = if is_udi_di {
+                version_db::extract_detail_versions(&json_content)
+            } else {
+                // Device-level files: use hash-only tracking (no sub-section versions)
+                let mut rec = version_db::VersionRecord::default();
+                rec.uuid = stem.clone();
+                rec.detail_hash = version_db::hash_json(&json_content);
+                rec
+            };
+
+            // Merge BUDI versions if cache file exists
+            if is_udi_di {
+                let budi_cache_path = cache_dir.join(format!("{}.json", stem));
+                if let Ok(budi_json) = std::fs::read_to_string(&budi_cache_path) {
+                    version_db::merge_budi_versions(&mut version_rec, &budi_json);
+                }
+            }
+
+            version_rec.last_synced = Some(now_str.clone());
+
+            // Detect changes
+            let changes = version_db::detect_changes(&conn, &version_rec)?;
+            if !changes.has_any_change() {
+                // Unchanged — skip conversion, just move file
+                skipped += 1;
+                processed_files.push(path);
+                continue;
+            }
+
+            let change_label = changes.summary();
+            *change_summary.entry(change_label.clone()).or_insert(0) += 1;
+
+            // --- Convert ---
             let result: anyhow::Result<firstbase::FirstbaseDocument> = if is_udi_di {
                 // UDI-DI level file — reuse existing api_detail parser/transformer
                 // Fetch Basic UDI-DI on demand if not cached
@@ -528,6 +576,11 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                     if let Some(data) = fetch_basic_udi_di(&stem, cache_dir) {
                         println!("  Fetched Basic UDI-DI for {}", stem);
                         basic_udi_cache.insert(stem.clone(), data);
+                        // Re-merge BUDI versions after fetch
+                        let budi_cache_path = cache_dir.join(format!("{}.json", stem));
+                        if let Ok(budi_json) = std::fs::read_to_string(&budi_cache_path) {
+                            version_db::merge_budi_versions(&mut version_rec, &budi_json);
+                        }
                     }
                 }
                 api_detail::parse_api_detail(&json_content).map(|detail| {
@@ -558,6 +611,9 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                     let json = serde_json::to_string_pretty(&draft_doc)?;
                     std::fs::write(&output_path, &json)?;
 
+                    // Update version DB after successful conversion
+                    version_db::upsert_version(&conn, &version_rec)?;
+
                     processed += 1;
                     processed_files.push(path);
                 }
@@ -581,9 +637,20 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
         println!("Moved {} file(s) to {}", processed_files.len(), processed_dir.display());
     }
 
+    // Print change summary
+    if !change_summary.is_empty() {
+        println!("\nChange summary:");
+        let mut sorted: Vec<_> = change_summary.iter().collect();
+        sorted.sort_by(|a, b| b.1.cmp(a.1));
+        for (label, count) in sorted {
+            println!("  {:>5}x  {}", count, label);
+        }
+    }
+
     println!(
-        "Processed {} EUDAMED JSON file(s) ({} errors) -> {}",
+        "\nProcessed {} converted, {} skipped (unchanged), {} errors -> {}",
         processed,
+        skipped,
         errors,
         output_dir.display()
     );

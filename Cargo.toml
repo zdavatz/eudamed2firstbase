@@ -16,3 +16,5 @@ uuid = { version = "1", features = ["v4"] }
 rust_xlsxwriter = "0.82"
 rayon = "1.10"
 ureq = "3"
+rusqlite = { version = "0.31", features = ["bundled"] }
+sha2 = "0.10"
