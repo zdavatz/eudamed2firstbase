@@ -31,3 +31,8 @@ These devices are rejected by GS1 097.101 validation because the certificate dat
 ## Workaround
 
 None. Certificate data must come from EUDAMED. We cannot fabricate certificate numbers.
+
+## Status (12.03.2026 re-push)
+
+- 097.101: **0 rejections** (down from 6) — potentially resolved in EUDAMED, or affected devices now have certificates via updated Basic UDI-DI cache
+- EUDAMED data issue: **potentially resolved** — monitor on next push
