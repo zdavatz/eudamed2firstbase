@@ -10,7 +10,7 @@ Reports for SANTE ticket submission. Each documents an EUDAMED data quality issu
 | 2 | 12.03.2026 | Data Quality | [ON_MARKET without country information](EUDAMED%20Data%20Quality%20ON_MARKET%20without%20countries.12.03.2026.md) | 097.020, 097.010, 097.011, G541 (92 total) | 18 | — |
 | 3 | 12.03.2026 | Data Quality | [Null MDR mandatory boolean fields](EUDAMED%20Data%20Quality%20null%20MDR%20booleans.12.03.2026.md) | 097.010, 097.011 | ~2% of MDR devices | — |
 | 4 | 12.03.2026 | Data Quality | [MDR Class III missing certificate](EUDAMED%20Data%20Quality%20MDR%20Class%20III%20missing%20certificate.12.03.2026.md) | 097.101 (6x) | 3+ | — |
-| 5 | 12.03.2026 | GS1 Rule | [NOT_INTENDED_FOR_EU_MARKET rejected for CH-exclusive devices](EUDAMED%20GS1%20097.039%20NOT_INTENDED_FOR_EU_MARKET%20rejection.12.03.2026.md) | 097.039 (216x) | 111 | — |
+| 5 | 12.03.2026 | GS1 Rule | [NOT_INTENDED_FOR_EU_MARKET rejected for non-EU market devices](EUDAMED%20GS1%20097.039%20NOT_INTENDED_FOR_EU_MARKET%20rejection.12.03.2026.md) | 097.039 (216x) | 111 | — |
 
 ## Error summary (from log_11.03.2026.log)
 
