@@ -69,6 +69,10 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Successfully processed files move to `*/processed/` subdirectories: `xml/processed/`, `eudamed_json/processed/`, `firstbase_json/processed/`. Failed files stay in place for investigation.
 - SQLite version tracking DB (`version_tracking.db`) stores per-section version numbers for each UDI-DI. On re-run, unchanged devices (same SHA256 hash) are skipped. Change summary shows what changed per device (UDI, BUDI, MFR, AR, CERT, PKG, MARKET, STATUS, DESIGNER).
 
+## Known EUDAMED Bugs (in bugs/)
+
+- **BR-UDID-073**: EUDAMED does not propagate NOT_INTENDED_FOR_EU_MARKET / NO_LONGER_PLACED_ON_THE_MARKET status from Base Unit to Container Packages. 110/111 affected devices have Package DIs = ON_MARKET while Base Unit = NOT_INTENDED. Causes GS1 097.039 (216x), 097.040 (40x), 910.004 (40x). Also 7 ON_MARKET devices with null marketInfoLink + null placedOnTheMarket (097.020, 18x).
+
 ## Reference Files (in maik/)
 
 - `EUDAMED_APP-DTX-000084634.xml` - Input reference

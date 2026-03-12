@@ -394,6 +394,12 @@ Tracked sections per UDI-DI (UUID):
 sqlite3 version_tracking.db "SELECT uuid, gtin, udi_version, mfr_version, device_status FROM udi_versions LIMIT 10"
 ```
 
+## Known EUDAMED Bugs
+
+Bug reports are in the `bugs/` directory.
+
+- **BR-UDID-073 Status Propagation** (`bugs/EUDAMED BR-UDID-073 Bug Report.12.03.2026.md`): EUDAMED does not propagate `NOT_INTENDED_FOR_EU_MARKET` and `NO_LONGER_PLACED_ON_THE_MARKET` status from Base Unit to Container Packages as required by BR-UDID-073. 110 of 111 affected devices have inconsistent status (Package DIs = ON_MARKET, Base Unit = NOT_INTENDED). Causes 216 GS1 097.039 rejections + 80 from 097.040/910.004. Additionally, 7 ON_MARKET devices have no country data at all (both `marketInfoLink` and `placedOnTheMarket` are null).
+
 ## Dependencies
 
 - `roxmltree` - XML DOM parsing with namespace support
