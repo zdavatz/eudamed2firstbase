@@ -96,6 +96,7 @@ src/
   transform_eudamed_json.rs  # EUDAMED JSON -> firstbase conversion (1:1 file mapping)
   mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR, multiComponent)
   xlsx_export.rs             # NDJSON detail -> XLSX spreadsheet export
+  version_db.rs              # SQLite version tracking DB (per-section change detection)
 
 download.sh                # Unified download + convert script (listing + detail + Basic UDI-DI + convert)
 download_10k.sh            # Legacy: download 10k listings
@@ -364,6 +365,35 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | languageCode=ANY (allLanguagesApplicable) | languageCode | "en" (single entry, no additional languages) |
 | unitOfUse (FLD-UDDI-135) | TradeItemInformation.TradeItemComponents.ComponentInformation | ComponentNumber=1, ComponentIdentification=GTIN with issuing agency, ComponentQuantity=baseQuantity |
 
+## Version Tracking
+
+The `eudamed_json` mode uses a SQLite database (`version_tracking.db`) to track per-section version numbers for each UDI-DI. EUDAMED versions each section independently — a manufacturer address change increments `manufacturer.versionNumber` without touching the UDI-DI root version.
+
+On each run, the converter:
+1. Computes SHA256 of the Detail API JSON (fast path: if hash unchanged → skip)
+2. If hash differs, compares per-section version numbers to identify what changed
+3. Logs a change summary: `NEW`, `MFR+CERT`, `STATUS+MARKET`, etc.
+4. Updates the DB after successful conversion
+
+Tracked sections per UDI-DI (UUID):
+
+| Section | Source | Version fields |
+|---|---|---|
+| UDI-DI root | Detail API `/{uuid}` | `versionNumber`, `versionDate` |
+| Basic UDI-DI | BUDI API | `versionNumber`, `versionDate` |
+| Manufacturer | BUDI → `manufacturer` | `versionNumber`, `lastUpdateDate` |
+| Authorised Rep | BUDI → `authorisedRepresentative` | `versionNumber`, `lastUpdateDate` |
+| Certificates | BUDI → `deviceCertificateInfoList[*]` | `[versionNumber, ...]` |
+| Package | Detail → `containedItem` | `versionNumber`, `versionDate` |
+| MarketInfo | Detail → `marketInfoLink` | `versionNumber`, `versionDate` |
+| DeviceStatus | Detail → `deviceStatus` | status code, `statusDate` |
+| ProductDesigner | Detail → `productDesigner` | `versionNumber`, `versionDate` |
+
+```bash
+# Inspect the version DB
+sqlite3 version_tracking.db "SELECT uuid, gtin, udi_version, mfr_version, device_status FROM udi_versions LIMIT 10"
+```
+
 ## Dependencies
 
 - `roxmltree` - XML DOM parsing with namespace support
@@ -376,6 +406,8 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 - `rust_xlsxwriter` - Excel XLSX generation
 - `rayon` - parallel processing for Basic UDI-DI cache loading and per-device transformation
 - `ureq` - lightweight HTTP client for on-demand Basic UDI-DI API fetches
+- `rusqlite` - SQLite database for version tracking (bundled)
+- `sha2` - SHA256 hashing for change detection
 
 ## License
 
