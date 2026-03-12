@@ -294,7 +294,12 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     });
 
     // --- Sales module (market availability with ORIGINAL_PLACED distinction) ---
-    let sales_module = build_sales_module(device, basic_udi);
+    // 097.021: NOT_INTENDED_FOR_EU_MARKET must not have country/sales data
+    let sales_module = if eudamed_status == "NOT_INTENDED_FOR_EU_MARKET" {
+        None
+    } else {
+        build_sales_module(device, basic_udi)
+    };
 
     // --- Direct marking DI ---
     // 097.095: Legacy devices must not have directPartMarkingIdentifier
