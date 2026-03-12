@@ -290,7 +290,9 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh 7612345000527
 ```
 
-All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), then publishes to the specified recipient GLN via `AddMany`. Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
+All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), then publishes to the specified recipient GLN via `AddMany`. Per-UUID ACCEPTED/REJECTED results are logged to the `push_log` table in `db/version_tracking.db` (with error codes, request ID, publish GLN). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
+
+**Credentials:** `FIRSTBASE_EMAIL` and `FIRSTBASE_PASSWORD` must be set as environment variables (in `~/.bashrc`). The script will abort if they are not set.
 
 **Packaging hierarchy handling:** Files with `CatalogueItemChildItemLink` (packaging hierarchy) are sent with children nested inline — the GS1 API requires parent and child items in the same document structure. Flattening children into separate `Items` array entries causes G472 ("corresponding item record must be populated inside the same CIN document"). Both parent and child GTINs are published via `AddMany`.
 
@@ -367,7 +369,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 
 ## Version Tracking
 
-The `eudamed_json` mode uses a SQLite database (`version_tracking.db`) to track per-section version numbers for each UDI-DI. EUDAMED versions each section independently — a manufacturer address change increments `manufacturer.versionNumber` without touching the UDI-DI root version.
+The `eudamed_json` mode uses a SQLite database (`db/version_tracking.db`) to track per-section version numbers for each UDI-DI. EUDAMED versions each section independently — a manufacturer address change increments `manufacturer.versionNumber` without touching the UDI-DI root version.
 
 On each run, the converter:
 1. Computes SHA256 of the Detail API JSON (fast path: if hash unchanged → skip)
@@ -391,7 +393,13 @@ Tracked sections per UDI-DI (UUID):
 
 ```bash
 # Inspect the version DB
-sqlite3 version_tracking.db "SELECT uuid, gtin, udi_version, mfr_version, device_status FROM udi_versions LIMIT 10"
+sqlite3 db/version_tracking.db "SELECT uuid, gtin, udi_version, mfr_version, device_status FROM udi_versions LIMIT 10"
+
+# Query push history for a UUID
+sqlite3 db/version_tracking.db "SELECT pushed_at, status, error_code, error_msg FROM push_log WHERE uuid='<uuid>' ORDER BY pushed_at DESC"
+
+# Summary of last push
+sqlite3 db/version_tracking.db "SELECT status, COUNT(*) FROM push_log WHERE request_id='<req_id>' GROUP BY status"
 ```
 
 ## Known EUDAMED Bugs

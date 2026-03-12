@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use std::path::Path;
 
 /// Default database path
-pub const VERSION_DB_PATH: &str = "version_tracking.db";
+pub const VERSION_DB_PATH: &str = "db/version_tracking.db";
 
 /// Version record for one UDI-DI (keyed by UUID)
 #[derive(Debug, Clone, Default)]
@@ -127,7 +127,22 @@ pub fn open_db(path: &Path) -> Result<Connection> {
             last_synced TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_gtin ON udi_versions(gtin);
-        CREATE INDEX IF NOT EXISTS idx_last_synced ON udi_versions(last_synced);",
+        CREATE INDEX IF NOT EXISTS idx_last_synced ON udi_versions(last_synced);
+
+        CREATE TABLE IF NOT EXISTS push_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT NOT NULL,
+            gtin TEXT NOT NULL DEFAULT '',
+            pushed_at TEXT NOT NULL,
+            request_id TEXT,
+            status TEXT NOT NULL,
+            error_code TEXT,
+            error_msg TEXT,
+            publish_gln TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_push_log_uuid ON push_log(uuid);
+        CREATE INDEX IF NOT EXISTS idx_push_log_status ON push_log(status);
+        CREATE INDEX IF NOT EXISTS idx_push_log_pushed_at ON push_log(pushed_at);",
     )?;
 
     Ok(conn)
