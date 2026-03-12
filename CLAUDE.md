@@ -71,7 +71,13 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 
 ## Known EUDAMED Bugs (in bugs/)
 
-- **BR-UDID-073**: EUDAMED does not propagate NOT_INTENDED_FOR_EU_MARKET / NO_LONGER_PLACED_ON_THE_MARKET status from Base Unit to Container Packages. 110/111 affected devices have Package DIs = ON_MARKET while Base Unit = NOT_INTENDED. Causes GS1 097.039 (216x), 097.040 (40x), 910.004 (40x). Also 7 ON_MARKET devices with null marketInfoLink + null placedOnTheMarket (097.020, 18x).
+Bug reports for SANTE ticket submission. Index: `bugs/INDEX.md`. Template: `bugs/TEMPLATE.md`.
+
+- **BR-UDID-073**: Status not propagated from Base Unit to Container Packages. 110/111 affected devices have Package DIs = ON_MARKET while Base Unit = NOT_INTENDED. Causes 097.039 (216x), 097.040 (40x), 910.004 (40x).
+- **Data Quality: ON_MARKET without countries**: 7 devices have ON_MARKET status but null marketInfoLink + null placedOnTheMarket + null MDR booleans. Triggers 92 errors (097.020, 097.010, 097.011, G541) for 18 items.
+- **Data Quality: null MDR booleans**: ~2% of MDR Basic UDI-DI records have null active/implantable/measuringFunction. We default to false (permits import but semantically incorrect).
+- **Data Quality: MDR Class III missing certificate**: Public Class III devices without required MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate. Triggers 097.101.
+- **GS1 097.039: NOT_INTENDED_FOR_EU_MARKET**: GS1 rejects this status for MDR/IVDR devices, but these are CH-exclusive devices (not intended for EU market, but available in Switzerland). Need GS1 rule relaxation for CH.
 
 ## Reference Files (in maik/)
 
