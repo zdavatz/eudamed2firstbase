@@ -410,6 +410,8 @@ Bug reports are tracked in `bugs/INDEX.md`. All 392 GS1 rejections from the 11.0
 
 Re-push 12.03.2026: 2,485 items → ~348 errors (down from 392). 097.020 eliminated by fallback workaround. 097.101 no longer seen.
 
+**Note on Target Market:** Pilot runs with TM=097 (Austria). The 097.xxx validation rules (097.038/039/040/020) must remain as errors — they prevent DRIFT before EUDAMED M2M errors are produced. The 756.xxx (Swiss) rules are not yet fully implemented. Only 097.040 has a Swiss equivalent (756.540). A TM=097→756 swap to bypass blocking rules is deferred.
+
 ## Dependencies
 
 - `roxmltree` - XML DOM parsing with namespace support
