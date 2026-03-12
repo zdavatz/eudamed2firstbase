@@ -294,7 +294,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     });
 
     // --- Sales module (market availability with ORIGINAL_PLACED distinction) ---
-    let sales_module = build_sales_module(device);
+    let sales_module = build_sales_module(device, basic_udi);
 
     // --- Direct marking DI ---
     // 097.095: Legacy devices must not have directPartMarkingIdentifier
@@ -814,7 +814,7 @@ fn build_clinical_warnings(device: &ApiDeviceDetail) -> Vec<ClinicalWarningOutpu
 }
 
 /// Build sales module with ORIGINAL_PLACED vs ADDITIONAL_MARKET_AVAILABILITY distinction.
-fn build_sales_module(device: &ApiDeviceDetail) -> Option<SalesInformationModule> {
+fn build_sales_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>) -> Option<SalesInformationModule> {
     // Determine which country is the "original placed" market
     let original_iso2 = device.placed_on_the_market.as_ref()
         .and_then(|c| c.iso2_code.as_ref())
@@ -871,6 +871,29 @@ fn build_sales_module(device: &ApiDeviceDetail) -> Option<SalesInformationModule
     // Last resort: use the first additional country as ORIGINAL_PLACED
     if original_countries.is_empty() && !additional_countries.is_empty() {
         original_countries.push(additional_countries.remove(0));
+    }
+
+    // 097.020 fallback: if still no country, use manufacturer country from BUDI (if EU/EEA),
+    // otherwise default to DE. Member State info is OOS for swissdamed.
+    if original_countries.is_empty() {
+        let fallback_iso2 = basic_udi
+            .and_then(|b| b.manufacturer.as_ref())
+            .and_then(|m| m.srn.as_ref())
+            .and_then(|srn| {
+                let prefix = &srn[..2.min(srn.len())];
+                if mappings::is_eu_eea_country(prefix) {
+                    Some(prefix.to_string())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| "DE".to_string());
+        let numeric = mappings::country_alpha2_to_numeric(&fallback_iso2);
+        original_countries.push(SalesConditionCountry {
+            country_code: CodeValue { value: numeric.to_string() },
+            start_datetime: String::new(),
+            end_datetime: None,
+        });
     }
 
     // Ensure only one country in ORIGINAL_PLACED (097.020: only one allowed)
