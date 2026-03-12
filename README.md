@@ -406,7 +406,7 @@ Bug reports are tracked in `bugs/INDEX.md`. All 392 GS1 rejections from the 11.0
 | 2 | Data Quality | ON_MARKET without country information | 097.020, 097.010, 097.011, G541 | 097.020 fixed (fallback) |
 | 3 | Data Quality | Null MDR mandatory boolean fields | 097.010, 097.011 | Open (reduced) |
 | 4 | Data Quality | MDR Class III missing certificate | 097.101 | Potentially resolved |
-| 5 | GS1 Rule | NOT_INTENDED_FOR_EU_MARKET rejected for CH-exclusive devices | 097.039 | Open |
+| 5 | GS1 Rule | NOT_INTENDED_FOR_EU_MARKET rejected for non-EU market devices | 097.039 | Open |
 
 Re-push 12.03.2026: 2,485 items → ~348 errors (down from 392). 097.020 eliminated by fallback workaround. 097.021 fixed by skipping sales module for NOT_INTENDED devices. 097.101 no longer seen.
 
