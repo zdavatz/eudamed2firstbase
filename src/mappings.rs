@@ -64,6 +64,18 @@ pub fn is_valid_gdsn_market_country(iso2: &str) -> bool {
     !matches!(iso2, "GB" | "XI")
 }
 
+/// Whether a country alpha-2 code is an EU or EEA member state.
+/// Used for 097.020 fallback: ORIGINAL_PLACED should be an EU/EEA country.
+pub fn is_eu_eea_country(iso2: &str) -> bool {
+    matches!(
+        iso2,
+        "AT" | "BE" | "BG" | "CY" | "CZ" | "DE" | "DK" | "EE" | "ES" | "FI"
+            | "FR" | "GR" | "HR" | "HU" | "IE" | "IT" | "LT" | "LU" | "LV" | "MT"
+            | "NL" | "PL" | "PT" | "RO" | "SE" | "SI" | "SK"
+            | "IS" | "LI" | "NO"
+    )
+}
+
 /// Risk class: EUDAMED → GS1 (additionalTradeItemClassificationSystemCode = 76)
 pub fn risk_class_to_gs1(code: &str) -> &str {
     match code {
