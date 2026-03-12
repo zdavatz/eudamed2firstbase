@@ -70,15 +70,15 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Successfully processed files move to `*/processed/` subdirectories: `xml/processed/`, `eudamed_json/processed/`, `firstbase_json/processed/`. Failed files stay in place for investigation.
 - SQLite version tracking DB (`version_tracking.db`) stores per-section version numbers for each UDI-DI. On re-run, unchanged devices (same SHA256 hash) are skipped. Change summary shows what changed per device (UDI, BUDI, MFR, AR, CERT, PKG, MARKET, STATUS, DESIGNER).
 
-## Known EUDAMED Bugs (in bugs/)
+## Known EUDAMED Bugs (GitHub Issues)
 
-Bug reports for SANTE ticket submission. Index: `bugs/INDEX.md`. Template: `bugs/TEMPLATE.md`.
+Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 
-- **BR-UDID-073**: Status not propagated from Base Unit to Container Packages. 110/111 affected devices have Package DIs = ON_MARKET while Base Unit = NOT_INTENDED. Causes 097.039 (216x), 097.040 (40x), 910.004 (40x).
-- **Data Quality: ON_MARKET without countries**: 7 devices have ON_MARKET status but null marketInfoLink + null placedOnTheMarket + null MDR booleans. Triggers 92 errors (097.020, 097.010, 097.011, G541) for 18 items. **Workaround:** 097.020 fallback sets ORIGINAL_PLACED to manufacturer country (if EU/EEA) or DE. Member State info is OOS for swissdamed. **Status (12.03.2026):** 097.020 resolved by workaround; 097.010/097.011 reduced to 4 (better BUDI coverage).
-- **Data Quality: null MDR booleans**: ~2% of MDR Basic UDI-DI records have null active/implantable/measuringFunction. We default to false (permits import but semantically incorrect).
-- **Data Quality: MDR Class III missing certificate**: Public Class III devices without required MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate. Triggers 097.101. **Status (12.03.2026):** Potentially resolved — 0 rejections on re-push.
-- **GS1 097.039: NOT_INTENDED_FOR_EU_MARKET**: GS1 rejects this status for MDR/IVDR devices, but these are non-EU market devices (CH, UK, etc.) — EUDAMED only tracks EU/EEA markets, so NOT_INTENDED doesn't specify which non-EU market. Need GS1 rule relaxation for non-EU use cases.
+- **#1 BR-UDID-073**: Status not propagated from Base Unit to Container Packages. 110/111 affected devices have Package DIs = ON_MARKET while Base Unit = NOT_INTENDED. Causes 097.039 (216x), 097.040 (40x), 910.004 (40x).
+- **#2 Data Quality: ON_MARKET without countries**: 7 devices have ON_MARKET status but null marketInfoLink + null placedOnTheMarket + null MDR booleans. Triggers 92 errors (097.020, 097.010, 097.011, G541) for 18 items. **Workaround:** 097.020 fallback sets ORIGINAL_PLACED to manufacturer country (if EU/EEA) or DE. Member State info is OOS for swissdamed. **Status (12.03.2026):** 097.020 resolved by workaround; 097.010/097.011 reduced to 4 (better BUDI coverage).
+- **#3 Data Quality: null MDR booleans**: ~2% of MDR Basic UDI-DI records have null active/implantable/measuringFunction. We default to false (permits import but semantically incorrect).
+- **#4 Data Quality: MDR Class III missing certificate**: Public Class III devices without required MDR_TECHNICAL_DOCUMENTATION or MDR_TYPE_EXAMINATION certificate. Triggers 097.101. **Status (12.03.2026):** Potentially resolved — 0 rejections on re-push.
+- **#5 GS1 097.039: NOT_INTENDED_FOR_EU_MARKET**: GS1 rejects this status for MDR/IVDR devices, but these are non-EU market devices (CH, UK, etc.) — EUDAMED only tracks EU/EEA markets, so NOT_INTENDED doesn't specify which non-EU market. Need GS1 rule relaxation for non-EU use cases.
 
 ## Reference Files (in maik/)
 
