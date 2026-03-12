@@ -64,6 +64,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 - Output wrapped in `DraftItem` envelope with `Identifier: "Draft_<uuid>"` inside DraftItem (not top-level) for Catalogue Item API CreateOne compatibility.
 - Detail mode writes both a batch JSON file and individual `<uuid>.json` files.
 - `TargetSector` is `["UDI_REGISTRY"]` only (no `HEALTHCARE`).
+- `TargetMarket` is `"097"` (Austria) for pilot. The 756.xxx (Swiss) validation rules are not yet fully implemented and cannot be cleanly tested. The 097.xxx rules (097.038/039/040/020) must remain errors — they prevent DRIFT before EUDAMED M2M errors. TM=097→756 swap idea deferred (distinguishing swissdamed vs native 756 items unsolved).
 - Only GS1 identifiers go into `Gtin`; non-GS1 primary DIs (HIBC, IFA/PPN, EUDAMED-assigned) are placed in `AdditionalTradeItemIdentification`. GDSN requires a GS1 GTIN as primary identifier — devices with only HIBC/IFA DIs get an empty `Gtin` and cannot be submitted as GDSN drafts.
 - `rayon` parallel processing for Basic UDI-DI cache loading (125K+ files) and per-device transformation (parse, transform, write individual JSON). ~5x speedup on multi-core machines.
 - Successfully processed files move to `*/processed/` subdirectories: `xml/processed/`, `eudamed_json/processed/`, `firstbase_json/processed/`. Failed files stay in place for investigation.
