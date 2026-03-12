@@ -18,9 +18,10 @@ set -euo pipefail
 
 API_BASE="https://test-webapi-firstbase.gs1.ch:5443"
 INPUT_DIR="firstbase_json"
+DB_PATH="db/version_tracking.db"
 
-EMAIL="${FIRSTBASE_EMAIL:-zdavatz@ywesee.com}"
-PASSWORD="${FIRSTBASE_PASSWORD:-PrvggFj9Xj52DpU}"
+EMAIL="${FIRSTBASE_EMAIL:?Set FIRSTBASE_EMAIL in ~/.bashrc}"
+PASSWORD="${FIRSTBASE_PASSWORD:?Set FIRSTBASE_PASSWORD in ~/.bashrc}"
 GLN="${FIRSTBASE_GLN:-7612345000480}"
 
 DRY_RUN=false
@@ -103,6 +104,93 @@ if errors:
     for pattern, count in Counter(errors).most_common(30):
         print(f'  {count:>4}x  {pattern}')
 " 2>/dev/null || cat
+}
+
+# --- Helper: log push results to SQLite DB ---
+# Parses RequestStatus response JSON and logs per-item ACCEPTED/REJECTED to push_log table.
+# Args: $1 = request_id, $2 = publish_gln, stdin = full RequestStatus JSON
+log_push_results() {
+    local req_id="$1"
+    local pub_gln="$2"
+    python3 << 'PYEOF' "$DB_PATH" "$req_id" "$pub_gln"
+import json, sys, sqlite3, os
+from datetime import datetime, timezone
+
+db_path = sys.argv[1]
+req_id = sys.argv[2]
+pub_gln = sys.argv[3]
+now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+data = json.load(sys.stdin)
+
+# Ensure DB and table exist
+os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+conn = sqlite3.connect(db_path)
+conn.execute("""CREATE TABLE IF NOT EXISTS push_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT NOT NULL,
+    gtin TEXT NOT NULL DEFAULT '',
+    pushed_at TEXT NOT NULL,
+    request_id TEXT,
+    status TEXT NOT NULL,
+    error_code TEXT,
+    error_msg TEXT,
+    publish_gln TEXT
+)""")
+conn.execute("CREATE INDEX IF NOT EXISTS idx_push_log_uuid ON push_log(uuid)")
+conn.execute("CREATE INDEX IF NOT EXISTS idx_push_log_status ON push_log(status)")
+
+rows = []
+
+gs1 = data.get("Gs1ResponseMessage", {})
+for resp in gs1.get("GS1Response", []):
+    # ACCEPTED items
+    for tr in resp.get("TransactionResponse", []):
+        rsc = tr.get("ResponseStatusCode", "")
+        ident = tr.get("TransactionIdentifier", {}).get("Value", "")
+        if rsc == "ACCEPTED" and ident.startswith("Draft_"):
+            uuid = ident[6:]  # strip "Draft_"
+            rows.append((uuid, "", now, req_id, "ACCEPTED", None, None, pub_gln))
+
+    # REJECTED items — extract from DocumentException
+    for te in resp.get("TransactionException", []):
+        for ce in te.get("CommandException", []):
+            for de in ce.get("DocumentException", []):
+                # Try to find the draft identifier from the exception context
+                doc_id = de.get("DocumentIdentifier", {}).get("Value", "")
+                uuid = doc_id[6:] if doc_id.startswith("Draft_") else ""
+                for ae in de.get("AttributeException", []):
+                    for err in ae.get("GS1Error", []):
+                        code = err.get("ErrorCode", "")
+                        desc = err.get("ErrorDescription", "")[:200]
+                        rows.append((uuid, "", now, req_id, "REJECTED", code, desc, pub_gln))
+
+    # GS1Exception errors
+    for ge in resp.get("GS1Exception", []):
+        if not isinstance(ge, dict):
+            continue
+        for ce in ge.get("CommandException", []):
+            for de in ce.get("DocumentException", []):
+                doc_id = de.get("DocumentIdentifier", {}).get("Value", "")
+                uuid = doc_id[6:] if doc_id.startswith("Draft_") else ""
+                for ae in de.get("AttributeException", []):
+                    for err in ae.get("GS1Error", []):
+                        code = err.get("ErrorCode", "")
+                        desc = err.get("ErrorDescription", "")[:200]
+                        rows.append((uuid, "", now, req_id, "REJECTED", code, desc, pub_gln))
+
+if rows:
+    conn.executemany(
+        "INSERT INTO push_log (uuid, gtin, pushed_at, request_id, status, error_code, error_msg, publish_gln) VALUES (?,?,?,?,?,?,?,?)",
+        rows
+    )
+    conn.commit()
+    accepted = sum(1 for r in rows if r[4] == "ACCEPTED")
+    rejected = sum(1 for r in rows if r[4] == "REJECTED")
+    print(f"  DB logged: {accepted} ACCEPTED, {rejected} REJECTED", file=sys.stderr)
+
+conn.close()
+PYEOF
 }
 
 # --- Status query mode ---
@@ -357,6 +445,7 @@ if [[ ${#LIVE_REQUEST_IDS[@]} -gt 0 ]]; then
             echo "    Poll $poll: $STATUS"
             if [[ "$STATUS" == "Done" || "$STATUS" == "Failed" ]]; then
                 echo "$STATUS_OUT" | parse_status
+                echo "$STATUS_OUT" | log_push_results "$REQ_ID" "$PUBLISH_GLN"
                 break
             fi
         done
