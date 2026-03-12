@@ -398,7 +398,15 @@ sqlite3 version_tracking.db "SELECT uuid, gtin, udi_version, mfr_version, device
 
 Bug reports are in the `bugs/` directory.
 
-- **BR-UDID-073 Status Propagation** (`bugs/EUDAMED BR-UDID-073 Bug Report.12.03.2026.md`): EUDAMED does not propagate `NOT_INTENDED_FOR_EU_MARKET` and `NO_LONGER_PLACED_ON_THE_MARKET` status from Base Unit to Container Packages as required by BR-UDID-073. 110 of 111 affected devices have inconsistent status (Package DIs = ON_MARKET, Base Unit = NOT_INTENDED). Causes 216 GS1 097.039 rejections + 80 from 097.040/910.004. Additionally, 7 ON_MARKET devices have no country data at all (both `marketInfoLink` and `placedOnTheMarket` are null).
+Bug reports are tracked in `bugs/INDEX.md`. All 392 GS1 rejections from the 11.03.2026 push are documented:
+
+| # | Category | Title | GS1 Errors | Items |
+|---|---|---|---|---|
+| 1 | BR-UDID-073 | Status propagation to container packages | 097.039, 097.040, 910.004 | 296 |
+| 2 | Data Quality | ON_MARKET without country information | 097.020, 097.010, 097.011, G541 | 18 |
+| 3 | Data Quality | Null MDR mandatory boolean fields | 097.010, 097.011 | ~2% of MDR |
+| 4 | Data Quality | MDR Class III missing certificate | 097.101 | 3+ |
+| 5 | GS1 Rule | NOT_INTENDED_FOR_EU_MARKET rejected for CH-exclusive devices | 097.039 | 111 |
 
 ## Dependencies
 
