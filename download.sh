@@ -262,6 +262,117 @@ fi
 BASIC_TOTAL=$(find "$BASIC_UDI_CACHE" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
 echo "  Basic UDI-DI cache: $BASIC_TOTAL files in $BASIC_UDI_CACHE/"
 
+# --- Step 3c: Completeness check — verify all 3 data levels exist ---
+echo "=== Step 3c: Completeness check ==="
+MISSING_DETAIL=0
+MISSING_BASIC=0
+MISSING_DETAIL_UUIDS=""
+MISSING_BASIC_UUIDS=""
+while IFS= read -r uuid; do
+    if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+        MISSING_DETAIL=$((MISSING_DETAIL + 1))
+        [[ $MISSING_DETAIL -le 5 ]] && MISSING_DETAIL_UUIDS="$MISSING_DETAIL_UUIDS    $uuid (Detail)\n"
+    fi
+    if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+        MISSING_BASIC=$((MISSING_BASIC + 1))
+        [[ $MISSING_BASIC -le 5 ]] && MISSING_BASIC_UUIDS="$MISSING_BASIC_UUIDS    $uuid (Basic UDI-DI)\n"
+    fi
+done < "$UUIDS"
+
+if [[ $MISSING_DETAIL -gt 0 || $MISSING_BASIC -gt 0 ]]; then
+    echo "  WARNING: Incomplete data!"
+    [[ $MISSING_DETAIL -gt 0 ]] && echo "    Missing Detail JSON: $MISSING_DETAIL"
+    [[ $MISSING_BASIC -gt 0 ]] && echo "    Missing Basic UDI-DI: $MISSING_BASIC"
+    echo "  Examples:"
+    [[ -n "$MISSING_DETAIL_UUIDS" ]] && echo -e "$MISSING_DETAIL_UUIDS"
+    [[ -n "$MISSING_BASIC_UUIDS" ]] && echo -e "$MISSING_BASIC_UUIDS"
+
+    # Retry missing Basic UDI-DI downloads
+    if [[ $MISSING_BASIC -gt 0 ]]; then
+        echo "  Retrying $MISSING_BASIC missing Basic UDI-DI downloads..."
+        TMPDIR_RETRY=$(mktemp -d)
+        RETRY_LIST="$TMPDIR_RETRY/retry.txt"
+        while IFS= read -r uuid; do
+            if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+                echo "$uuid"
+            fi
+        done < "$UUIDS" > "$RETRY_LIST"
+
+        cat > "$TMPDIR_RETRY/fetch_basic.sh" << 'FETCHEOF'
+#!/bin/bash
+uuid="$1"; cache_dir="$2"; base_url="$3"; ua="$4"
+[[ -f "$cache_dir/$uuid.json" && -s "$cache_dir/$uuid.json" ]] && exit 0
+url="${base_url}/${uuid}?languageIso2Code=en"
+for attempt in 1 2 3 4 5; do
+    result=$(curl -fsSL "$url" -A "$ua" --connect-timeout 15 --max-time 45 2>/dev/null) && break
+    sleep $((attempt * 3))
+done
+if [[ -n "${result:-}" ]]; then
+    echo "$result" > "$cache_dir/$uuid.json" 2>/dev/null
+fi
+FETCHEOF
+        chmod +x "$TMPDIR_RETRY/fetch_basic.sh"
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_RETRY/fetch_basic.sh" {} "$BASIC_UDI_CACHE" "$BASIC_UDI_URL" "$USER_AGENT" < "$RETRY_LIST"
+        rm -rf "$TMPDIR_RETRY"
+
+        # Re-check
+        STILL_MISSING=0
+        while IFS= read -r uuid; do
+            if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+                STILL_MISSING=$((STILL_MISSING + 1))
+            fi
+        done < "$UUIDS"
+        if [[ $STILL_MISSING -gt 0 ]]; then
+            echo "  Still missing $STILL_MISSING Basic UDI-DI after retry"
+        else
+            echo "  All Basic UDI-DI downloads complete after retry"
+        fi
+    fi
+
+    # Retry missing Detail downloads
+    if [[ $MISSING_DETAIL -gt 0 ]]; then
+        echo "  Retrying $MISSING_DETAIL missing Detail downloads..."
+        TMPDIR_RETRY=$(mktemp -d)
+        RETRY_LIST="$TMPDIR_RETRY/retry.txt"
+        while IFS= read -r uuid; do
+            if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+                echo "$uuid"
+            fi
+        done < "$UUIDS" > "$RETRY_LIST"
+
+        cat > "$TMPDIR_RETRY/fetch_detail.sh" << 'FETCHEOF'
+#!/bin/bash
+uuid="$1"; outdir="$2"; base_url="$3"; ua="$4"
+[[ -f "$outdir/$uuid.json" && -s "$outdir/$uuid.json" ]] && exit 0
+url="${base_url}/${uuid}?languageIso2Code=en"
+for attempt in 1 2 3 4 5; do
+    result=$(curl -fsSL "$url" -A "$ua" --connect-timeout 15 --max-time 45 2>/dev/null) && break
+    sleep $((attempt * 3))
+done
+if [[ -n "${result:-}" ]]; then
+    echo "$result" | jq '.' > "$outdir/$uuid.json" 2>/dev/null
+fi
+FETCHEOF
+        chmod +x "$TMPDIR_RETRY/fetch_detail.sh"
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_RETRY/fetch_detail.sh" {} "$EUDAMED_JSON_DIR" "$BASE_URL" "$USER_AGENT" < "$RETRY_LIST"
+        rm -rf "$TMPDIR_RETRY"
+
+        STILL_MISSING=0
+        while IFS= read -r uuid; do
+            if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+                STILL_MISSING=$((STILL_MISSING + 1))
+            fi
+        done < "$UUIDS"
+        if [[ $STILL_MISSING -gt 0 ]]; then
+            echo "  Still missing $STILL_MISSING Detail JSON after retry"
+        else
+            echo "  All Detail downloads complete after retry"
+        fi
+    fi
+else
+    echo "  All $UUID_COUNT devices have both Detail and Basic UDI-DI data ✓"
+fi
+
 # --- Step 4: Convert to firstbase JSON ---
 echo "=== Step 4: Converting to firstbase JSON ==="
 cargo run --quiet -- eudamed_json
