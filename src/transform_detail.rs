@@ -49,20 +49,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     }
 
     // --- Production identifiers ---
-    // MDR/IVDR require at least one (097.013). Default to BATCH_NUMBER when EUDAMED has none.
     // 097.095: Legacy devices (MDD/AIMDD/IVDD) must NOT have production identifiers.
+    // MDR/IVDR: udiPiType is mandatory in EUDAMED, so production_identifiers() is never empty.
     let raw_production_ids: Vec<String> = device.production_identifiers();
     let production_ids: Vec<CodeValue> = if is_legacy {
         Vec::new()
     } else {
-        let mut ids: Vec<CodeValue> = raw_production_ids
+        raw_production_ids
             .iter()
             .map(|id| CodeValue { value: id.clone() })
-            .collect();
-        if ids.is_empty() {
-            ids.push(CodeValue { value: "BATCH_NUMBER".to_string() });
-        }
-        ids
+            .collect()
     };
 
     // 097.091: SOFTWARE_IDENTIFICATION requires specialDeviceTypeCode = SOFTWARE
@@ -224,10 +220,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
 
     // Risk class from Basic UDI-DI → classification system 76 (MDR/IVDR) or 85 (MDD/AIMDD/IVDD)
     // 097.002/097.003/097.005: risk class value must match the local code list for the system
+    // riskClass is mandatory in EUDAMED Basic UDI-DI — 0/100K records have null.
+    // Fallback only triggers on BUDI cache miss (download.sh Step 3c ensures completeness).
     let risk_class_refdata = basic_udi.and_then(|b| b.risk_class_code());
     let risk_class_gs1 = risk_class_refdata.as_ref()
         .map(|rc| mappings::risk_class_refdata_to_gs1(rc).to_string())
-        .unwrap_or_else(|| "EU_CLASS_I".to_string());
+        .unwrap_or_else(|| {
+            eprintln!("WARNING: No riskClass for {} — BUDI cache miss? Using EU_CLASS_I",
+                device.uuid.as_deref().unwrap_or("unknown"));
+            "EU_CLASS_I".to_string()
+        });
     // 097.002: Legacy devices (MDD/AIMDD/IVDD) must use system 85, not 76
     let risk_class_system = if is_legacy {
         "85".to_string()

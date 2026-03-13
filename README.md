@@ -311,7 +311,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.025 missing globalModelNumber | 176x | Use primary DI code as fallback; globalModelDescription uses `deviceName` (FLD-UDID-22) from Basic UDI-DI |
 | 097.025 missing globalModelDescription en | — | Treat `allLanguagesApplicable` as English; fallback to `primaryDi.code` (not tradeName) |
 | 097.025 MODEL_NUMBER from deviceModel | — | `deviceModel` (FLD-UDID-20) from Basic UDI-DI mapped to `additionalTradeItemIdentification` with typeCode `MODEL_NUMBER` for all devices (not just legacy) |
-| 097.013 missing uDIProductionIdentifierTypeCode | — | Default to `BATCH_NUMBER` when EUDAMED has no production identifiers (MDR/IVDR mandatory) |
+| 097.013 uDIProductionIdentifierTypeCode | — | From `udiPiType` (mandatory under MDR/IVDR, never null). Legacy devices stripped per 097.095. BATCH_NUMBER fallback removed |
 | G541 invalid country code 826 (UK/NI) | — | Skip GB/XI from market sales conditions post-Brexit; XI will become valid with GDSN March/May 2026 release |
 | 097.072 missing additionalDescription | 60x | Resolved by defaulting multiComponentDeviceTypeCode to DEVICE |
 | 097.020 ON_MARKET needs ORIGINAL_PLACED | 25x | Use `placedOnTheMarket` country when `marketInfoLink` is null; enforce exactly one ORIGINAL_PLACED country. Final fallback: manufacturer country (if EU/EEA) or DE — Member State info is OOS for swissdamed |
