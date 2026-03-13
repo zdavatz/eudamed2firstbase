@@ -79,6 +79,8 @@ Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 - **#3 Data Quality: null MDR booleans**: ~2% of MDR Basic UDI-DI records have null active/implantable/measuringFunction. We default to false (permits import but semantically incorrect).
 - **#4 Data Quality: MDR Class III missing certificate**: Closed (resolved 12.03.2026). 0 097.101 rejections across all pushes.
 - **#5 GS1 097.039: NOT_INTENDED_FOR_EU_MARKET**: GS1 rejects this status for MDR/IVDR devices, but these are non-EU market devices (CH, UK, etc.) — EUDAMED only tracks EU/EEA markets, so NOT_INTENDED doesn't specify which non-EU market. Need GS1 rule relaxation for non-EU use cases.
+- **#6 1:n Mapping Gaps**: 17 EUDAMED fields that don't map 1:1 to GS1/GDSN, resolved with fallback logic (sterilisation→UNSPECIFIED, reusability, truncation, language defaults, etc.). Compliance-relevant inventory.
+- **#7 GDSN mandatory gaps**: Packaging hierarchy (PALLET not derivable) and issuingEntityCode (parsed but not mapped). 6 of 8 fields implemented with assumptions.
 
 ## Reference Files (in maik/)
 
