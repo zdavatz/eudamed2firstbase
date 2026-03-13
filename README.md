@@ -309,7 +309,7 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 | 097.011 missing MDR boolean fields | 648x | Use real values from Basic UDI-DI cache; fall back to false |
 | 097.010 missing multiComponent/tissue | 264x | Use real multiComponent from Basic UDI-DI; fall back to `DEVICE` |
 | 097.025 missing globalModelNumber | 176x | Use primary DI code as fallback; globalModelDescription uses `deviceName` (FLD-UDID-22) from Basic UDI-DI |
-| 097.025 missing globalModelDescription en | — | Treat `allLanguagesApplicable` as English; fallback to first trade name or Basic UDI-DI device name |
+| 097.025 missing globalModelDescription en | — | Treat `allLanguagesApplicable` as English; fallback to `primaryDi.code` (not tradeName) |
 | 097.025 MODEL_NUMBER from deviceModel | — | `deviceModel` (FLD-UDID-20) from Basic UDI-DI mapped to `additionalTradeItemIdentification` with typeCode `MODEL_NUMBER` for all devices (not just legacy) |
 | 097.013 missing uDIProductionIdentifierTypeCode | — | Default to `BATCH_NUMBER` when EUDAMED has no production identifiers (MDR/IVDR mandatory) |
 | G541 invalid country code 826 (UK/NI) | — | Skip GB/XI from market sales conditions post-Brexit; XI will become valid with GDSN March/May 2026 release |
