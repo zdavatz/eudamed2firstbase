@@ -450,12 +450,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                     let device_name = basic_udi.and_then(|b| b.device_name.as_ref())
                         .filter(|n| !n.is_empty())
                         .cloned()
-                        .unwrap_or_else(|| {
-                            // Fallback: first trade name, then primary DI code
-                            trade_names.first()
-                                .map(|(_, text)| text.clone())
-                                .unwrap_or_else(|| device.primary_di_code())
-                        });
+                        .unwrap_or_else(|| device.primary_di_code());
                     vec![LangValue {
                         language_code: "en".to_string(),
                         value: device_name,
