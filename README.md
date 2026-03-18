@@ -103,7 +103,7 @@ download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
 push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
-log/                       # API push logs (log_dd.mm.yyyy.log)
+log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with full GS1 response)
 ```
 
 ## What it does
