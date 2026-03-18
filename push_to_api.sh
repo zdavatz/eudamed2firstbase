@@ -426,6 +426,84 @@ if [[ ${#LIVE_REQUEST_IDS[@]} -gt 0 ]]; then
             if [[ "$STATUS" == "Done" || "$STATUS" == "Failed" ]]; then
                 echo "$STATUS_OUT" | parse_status
                 echo "$STATUS_OUT" | log_push_results "$REQ_ID" "$PUBLISH_GLN"
+                # Write full response as HTML log
+                mkdir -p log
+                LOG_FILE="log/$(date '+%M.%H_%d.%m.%Y').log.html"
+                echo "$STATUS_OUT" | python3 -c "
+import json, sys, html
+from datetime import datetime, timezone
+
+data = json.load(sys.stdin)
+req_id = '$REQ_ID'
+pub_gln = '$PUBLISH_GLN'
+now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+accepted = []
+rejected = []
+gs1 = data.get('Gs1ResponseMessage', {})
+for resp in gs1.get('GS1Response', []):
+    for tr in resp.get('TransactionResponse', []):
+        rsc = tr.get('ResponseStatusCode', '')
+        ident = tr.get('TransactionIdentifier', {}).get('Value', '')
+        if rsc == 'ACCEPTED':
+            accepted.append(ident)
+    for te in resp.get('TransactionException', []):
+        for ce in te.get('CommandException', []):
+            for de in ce.get('DocumentException', []):
+                doc_id = de.get('DocumentIdentifier', {}).get('Value', '')
+                for ae in de.get('AttributeException', []):
+                    for err in ae.get('GS1Error', []):
+                        rejected.append((doc_id, err.get('ErrorCode',''), err.get('ErrorDescription','')[:200]))
+    for ge in resp.get('GS1Exception', []):
+        if not isinstance(ge, dict): continue
+        for ce in ge.get('CommandException', []):
+            for de in ce.get('DocumentException', []):
+                doc_id = de.get('DocumentIdentifier', {}).get('Value', '')
+                for ae in de.get('AttributeException', []):
+                    for err in ae.get('GS1Error', []):
+                        rejected.append((doc_id, err.get('ErrorCode',''), err.get('ErrorDescription','')[:200]))
+
+out = f'''<!DOCTYPE html>
+<html><head><meta charset=\"utf-8\"><title>Push Log {html.escape(req_id)}</title>
+<style>
+body {{ font-family: monospace; margin: 20px; }}
+h1 {{ font-size: 18px; }}
+table {{ border-collapse: collapse; width: 100%; margin: 10px 0; }}
+th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
+th {{ background: #f0f0f0; }}
+.accepted {{ color: green; }}
+.rejected {{ color: red; }}
+.summary {{ background: #f8f8f8; padding: 10px; margin: 10px 0; }}
+pre {{ background: #f4f4f4; padding: 10px; overflow-x: auto; max-height: 600px; font-size: 12px; }}
+</style></head><body>
+<h1>GS1 Firstbase Push Log</h1>
+<div class=\"summary\">
+<b>Timestamp:</b> {now}<br>
+<b>Request ID:</b> {html.escape(req_id)}<br>
+<b>Publish GLN:</b> {html.escape(pub_gln)}<br>
+<b>Status:</b> {html.escape(data.get('Status','unknown'))}<br>
+<b>Accepted:</b> <span class=\"accepted\">{len(accepted)}</span> |
+<b>Rejected:</b> <span class=\"rejected\">{len(rejected)}</span>
+</div>
+'''
+
+if accepted:
+    out += '<h2 class=\"accepted\">Accepted</h2><table><tr><th>#</th><th>Identifier</th></tr>'
+    for i, ident in enumerate(accepted, 1):
+        out += f'<tr><td>{i}</td><td>{html.escape(ident)}</td></tr>'
+    out += '</table>'
+
+if rejected:
+    out += '<h2 class=\"rejected\">Rejected</h2><table><tr><th>#</th><th>Identifier</th><th>Error Code</th><th>Description</th></tr>'
+    for i, (doc_id, code, desc) in enumerate(rejected, 1):
+        out += f'<tr><td>{i}</td><td>{html.escape(doc_id)}</td><td>{html.escape(code)}</td><td>{html.escape(desc)}</td></tr>'
+    out += '</table>'
+
+out += '<h2>Full JSON Response</h2><pre>' + html.escape(json.dumps(data, indent=2)) + '</pre>'
+out += '</body></html>'
+print(out)
+" > "$LOG_FILE"
+                echo "    Log written: $LOG_FILE"
                 break
             fi
         done
