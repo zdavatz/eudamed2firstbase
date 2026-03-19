@@ -292,7 +292,7 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_api.sh 7612345000527
 ```
 
-All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), then publishes to the specified recipient GLN via `AddMany`. Per-UUID ACCEPTED/REJECTED results are logged to the `push_log` table in `db/version_tracking.db` (with error codes, request ID, publish GLN). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
+All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), refreshes the auth token, then publishes to the specified recipient GLN via `AddMany` and polls until Done. Both steps retry HTTP 429 with `retryAfter` backoff. Per-UUID ACCEPTED/REJECTED results are logged to the `push_log` table in `db/version_tracking.db` (with error codes, request ID, publish GLN). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
 
 **Credentials:** `FIRSTBASE_EMAIL` and `FIRSTBASE_PASSWORD` must be set as environment variables (in `~/.bashrc`). The script will abort if they are not set.
 
