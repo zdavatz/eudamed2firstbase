@@ -268,9 +268,11 @@ You can publish multiple items in a single request by adding more objects to the
 
 The `push_to_api.sh` script handles the full workflow:
 
-- **All devices** (MDR/IVDR/MDD/AIMDD/IVDD) → `Live/CreateMany` (batches of 100) → poll `RequestStatus/Get` until Done → `AddMany` (publish to recipient)
+- **All devices** (MDR/IVDR/MDD/AIMDD/IVDD) → `Live/CreateMany` (batches of 100) → poll `RequestStatus/Get` until Done → `AddMany` (publish to recipient) → poll `RequestStatus/Get` until Done
 
-Since 2026-03-10, GS1 rule 097.096 was downgraded from error to warning — legacy devices (MDD/AIMDD/IVDD) can now be published too. Includes automatic throttling (1s for ≤60 files, 8s for larger batches), HTTP 429 retry with `retry-after` backoff, and polling for async CreateMany completion before publishing.
+`Live/CreateMany` creates/updates items in the supplier account (7612345000480). `AddMany` publishes them to the recipient GLN (e.g. 7612345000527). Both are async — the script polls `RequestStatus/Get` after each step until Done (up to 6 minutes, 15s intervals). Two HTML logs are written per push: one for CreateMany, one for AddMany.
+
+Since 2026-03-10, GS1 rule 097.096 was downgraded from error to warning — legacy devices (MDD/AIMDD/IVDD) can now be published too. Includes automatic throttling (1s for ≤60 files, 8s for larger batches), HTTP 429 retry with `retry-after` backoff.
 
 ```bash
 ./push_to_api.sh 7612345000527                    # push all UUID files in firstbase_json/
