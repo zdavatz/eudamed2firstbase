@@ -517,6 +517,19 @@ fi # end if LIVE_TOTAL > 0
 
 # --- Step 2: Publish all live items via AddMany ---
 if [[ ${#PUBLISH_ITEMS[@]} -gt 0 ]]; then
+    # Refresh token before AddMany (CreateMany polling may have taken minutes)
+    echo ""
+    echo "Refreshing token before AddMany..."
+    TOKEN=$(curl -s --max-time 60 -X POST "$API_BASE/Account/Token" \
+        -H 'Content-Type: application/json' \
+        -d "{\"UserEmail\":\"$EMAIL\",\"Password\":\"$PASSWORD\",\"Gln\":\"$GLN\"}" | tr -d '"')
+    if [[ ${#TOKEN} -lt 20 ]]; then
+        echo "ERROR: Failed to refresh token: $TOKEN"
+        echo "AddMany skipped — items are live but NOT published"
+    else
+        echo "Token refreshed (${#TOKEN} chars)"
+    fi
+
     echo ""
     echo "=== Step 2: Publishing ${#PUBLISH_ITEMS[@]} items via AddMany ==="
 
@@ -556,11 +569,26 @@ with open('$TMPFILE', 'w') as out:
     json.dump(payload, out)
 " "${PUB_SLICE[@]}"
 
-        RESPONSE=$(curl -s --max-time 180 -X POST "$API_BASE/CatalogueItemPublication/AddMany" \
-            -H 'Content-Type: application/json' \
-            -H "Authorization: bearer $TOKEN" \
-            -d @"$TMPFILE" 2>&1)
+        # Retry loop for 429 rate limiting
+        for pub_attempt in 1 2 3; do
+            FULL_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 180 -X POST "$API_BASE/CatalogueItemPublication/AddMany" \
+                -H 'Content-Type: application/json' \
+                -H "Authorization: bearer $TOKEN" \
+                -d @"$TMPFILE")
+
+            PUB_HTTP_CODE=$(echo "$FULL_RESPONSE" | tail -1)
+            RESPONSE=$(echo "$FULL_RESPONSE" | sed '$d')
+
+            if [[ "$PUB_HTTP_CODE" == "429" ]]; then
+                PUB_RETRY_AFTER=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin).get('retryAfter',60))" 2>/dev/null || echo 60)
+                echo "    AddMany 429 rate limited — waiting ${PUB_RETRY_AFTER}s (attempt $pub_attempt/3)"
+                sleep "$PUB_RETRY_AFTER"
+                continue
+            fi
+            break
+        done
         rm -f "$TMPFILE"
+        echo "    AddMany HTTP $PUB_HTTP_CODE"
 
         # Extract RequestIdentifier from AddMany response
         PUB_REQ_ID=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin).get('RequestIdentifier',''))" 2>/dev/null || echo "")
