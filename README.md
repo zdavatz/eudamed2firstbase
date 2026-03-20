@@ -417,6 +417,7 @@ Bug reports are tracked as [GitHub Issues](https://github.com/zdavatz/eudamed2fi
 | [#5](https://github.com/zdavatz/eudamed2firstbase/issues/5) | GS1 Rule | NOT_INTENDED_FOR_EU_MARKET rejected for non-EU market devices | 097.039 | Open |
 | [#6](https://github.com/zdavatz/eudamed2firstbase/issues/6) | Mapping | 1:n Mapping Gaps: EUDAMED → GS1 fallback resolvers | — | Open (17 gaps documented) |
 | [#7](https://github.com/zdavatz/eudamed2firstbase/issues/7) | Mapping | GDSN mandatory gaps: packaging hierarchy & issuingEntityCode | — | Open (2 gaps, 6 implemented) |
+| [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | — | Open (not yet observed) |
 
 Re-push 12.03.2026: 2,485 items → ~348 errors (down from 392). 097.020 eliminated by fallback workaround. 097.021 fixed by skipping sales module for NOT_INTENDED devices. 097.101 no longer seen.
 

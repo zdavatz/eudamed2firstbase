@@ -81,6 +81,7 @@ Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 - **#5 GS1 097.039: NOT_INTENDED_FOR_EU_MARKET**: GS1 rejects this status for MDR/IVDR devices, but these are non-EU market devices (CH, UK, etc.) — EUDAMED only tracks EU/EEA markets, so NOT_INTENDED doesn't specify which non-EU market. Need GS1 rule relaxation for non-EU use cases.
 - **#6 1:n Mapping Gaps**: 17 EUDAMED fields that don't map 1:1 to GS1/GDSN, resolved with fallback logic (sterilisation→UNSPECIFIED, reusability, truncation, language defaults, etc.). Compliance-relevant inventory.
 - **#7 GDSN mandatory gaps**: Packaging hierarchy (PALLET not derivable) and issuingEntityCode (parsed but not mapped). 6 of 8 fields implemented with assumptions.
+- **#8 GTIN deduplication**: Same GTIN can exist under MDR and MDD in EUDAMED. GDSN allows only one per GTIN/GLN/TM. MDR/IVDR must take priority. Not yet observed in data — implement when first duplicate appears.
 
 ## Reference Files (in maik/)
 
