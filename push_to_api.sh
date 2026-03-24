@@ -26,12 +26,14 @@ GLN="${FIRSTBASE_GLN:-7612345000480}"
 
 DRY_RUN=false
 STATUS_MODE=false
+VERBOSE=false
 REQUEST_ID=""
 PUBLISH_GLN=""
 
 # Parse args — first positional arg is PublishToGln (unless --status mode)
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -v|--verbose) VERBOSE=true; shift ;;
         --dry-run)  DRY_RUN=true; shift ;;
         --status)   STATUS_MODE=true; REQUEST_ID="$2"; shift 2 ;;
         --dir)      INPUT_DIR="$2"; shift 2 ;;
@@ -261,17 +263,25 @@ SENT_FILES=()
 
 # --- Get token (with retry) ---
 TOKEN=""
+CURL_VERBOSE=""
+$VERBOSE && CURL_VERBOSE="-v"
+
 for token_attempt in 1 2 3; do
     echo "Getting token (attempt $token_attempt/3)..."
-    TOKEN=$(curl -s --max-time 30 -X POST "$API_BASE/Account/Token" \
+    $VERBOSE && echo "  POST $API_BASE/Account/Token"
+    $VERBOSE && echo "  GLN: $GLN | Email: $EMAIL"
+
+    TOKEN_RESPONSE=$(curl -s $CURL_VERBOSE --max-time 30 -X POST "$API_BASE/Account/Token" \
         -H 'Content-Type: application/json' \
-        -d "{\"UserEmail\":\"$EMAIL\",\"Password\":\"$PASSWORD\",\"Gln\":\"$GLN\"}" 2>&1 | tr -d '"')
+        -d "{\"UserEmail\":\"$EMAIL\",\"Password\":\"$PASSWORD\",\"Gln\":\"$GLN\"}" 2>&1)
+    TOKEN=$(echo "$TOKEN_RESPONSE" | grep -v '^\*\|^>\|^<\|^{.*\[' | tail -1 | tr -d '"')
 
     if [[ ${#TOKEN} -gt 20 ]]; then
         echo "Token obtained (${#TOKEN} chars)"
         break
     fi
-    echo "  Failed: ${TOKEN:-(empty response)}"
+    $VERBOSE && echo "$TOKEN_RESPONSE" | head -20
+    echo "  Failed: ${TOKEN:-(empty/timeout)}"
     if [[ $token_attempt -lt 3 ]]; then
         echo "  Retrying in 10s..."
         sleep 10
@@ -335,7 +345,8 @@ print(f'    Payload: {len(items)} items ({children} with children)')
 
     # Retry loop for 429 rate limiting
     for attempt in 1 2 3; do
-        RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 300 -X POST "$API_BASE/CatalogueItem/Live/CreateMany" \
+        $VERBOSE && echo "    POST $API_BASE/CatalogueItem/Live/CreateMany (attempt $attempt)"
+        RESPONSE=$(curl -s $CURL_VERBOSE -w "\n%{http_code}" --max-time 300 -X POST "$API_BASE/CatalogueItem/Live/CreateMany" \
             -H 'Content-Type: application/json' \
             -H "Authorization: bearer $TOKEN" \
             -d @"$TMPFILE" 2>&1)
