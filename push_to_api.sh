@@ -220,28 +220,19 @@ print(f'{act} {gtin}')
 " "$1" 2>/dev/null || echo "UNKNOWN "
 }
 
-# --- Collect and classify files ---
+# --- Collect and classify files (fast Rust scanner) ---
 # Since 2026-03-10: 097.096 downgraded from error to warning — legacy devices
 # (MDD/AIMDD/IVDD) can now be published via Live/CreateMany + AddMany too.
+SCAN_TMP=$(mktemp)
+cargo run --quiet -- scan "$INPUT_DIR" > "$SCAN_TMP"
 LIVE_FILES=()
-SKIPPED=0
-for f in "$INPUT_DIR"/*.json; do
-    base=$(basename "$f")
-    [[ "$base" == firstbase_* ]] && continue
-    INFO=$(get_file_info "$f")
-    ACT="${INFO%% *}"
-    GTIN="${INFO#* }"
-    # Skip files without GTIN (device-level / Basic UDI-DI records)
-    if [[ -z "$GTIN" ]]; then
-        ((SKIPPED++)) || true
-        continue
-    fi
-    LIVE_FILES+=("$f")
-done
+while IFS=$'\t' read -r filepath gtin; do
+    [[ -n "$filepath" ]] && LIVE_FILES+=("$filepath")
+done < "$SCAN_TMP"
+rm -f "$SCAN_TMP"
 
 LIVE_TOTAL=${#LIVE_FILES[@]}
 TOTAL=$LIVE_TOTAL
-echo "Found $TOTAL JSON files in $INPUT_DIR/ ($LIVE_TOTAL live, $SKIPPED skipped no GTIN)"
 
 if [[ $TOTAL -eq 0 ]]; then
     echo "No files to push."

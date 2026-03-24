@@ -10,6 +10,7 @@ mod transform_api;
 mod transform_detail;
 mod transform_eudamed_json;
 mod version_db;
+mod scan;
 mod xlsx_export;
 
 use anyhow::{Context, Result};
@@ -39,6 +40,11 @@ fn main() -> Result<()> {
             // Process individual EUDAMED JSON files (one-to-one)
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json");
             process_eudamed_json_dir(Path::new(input_dir), &config)
+        }
+        Some("scan") => {
+            // Fast parallel scan of firstbase JSON files — outputs "filepath\tGTIN" per line
+            let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("firstbase_json");
+            scan::scan_dir(Path::new(input_dir))
         }
         Some("xlsx") => {
             // Convert detail NDJSON to XLSX
