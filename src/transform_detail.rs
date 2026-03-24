@@ -1348,7 +1348,6 @@ fn extract_descriptions(
 /// Package level info extracted from containedItem hierarchy.
 struct PackageLevel {
     code: String,
-    issuing_agency: String,
     quantity: u32, // quantity of items this package contains
 }
 
@@ -1364,13 +1363,8 @@ fn flatten_package_levels(root: &ContainedItemNode) -> Vec<PackageLevel> {
             .and_then(|id| id.code.as_deref())
             .unwrap_or("")
             .to_string();
-        let agency = node.item_identifier.as_ref()
-            .and_then(|id| id.issuing_agency.as_ref())
-            .and_then(|a| a.code.as_deref())
-            .unwrap_or("")
-            .to_string();
         let qty = node.number_of_items.unwrap_or(1);
-        levels.push(PackageLevel { code, issuing_agency: agency, quantity: qty });
+        levels.push(PackageLevel { code, quantity: qty });
         current_children = node.contained_items.as_deref().unwrap_or(&[]);
     }
 

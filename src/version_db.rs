@@ -375,6 +375,7 @@ pub fn count_records(conn: &Connection) -> Result<u64> {
 }
 
 /// Get summary statistics
+#[allow(dead_code)]
 pub fn stats(conn: &Connection) -> Result<(u64, u64, u64)> {
     let total: u64 = conn.query_row("SELECT COUNT(*) FROM udi_versions", [], |row| row.get(0))?;
     let with_gtin: u64 = conn.query_row(

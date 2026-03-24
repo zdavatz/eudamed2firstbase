@@ -259,17 +259,30 @@ fi
 # Track successfully sent files for moving to processed/
 SENT_FILES=()
 
-# --- Get token ---
-echo "Getting token..."
-TOKEN=$(curl -s --max-time 60 -X POST "$API_BASE/Account/Token" \
-    -H 'Content-Type: application/json' \
-    -d "{\"UserEmail\":\"$EMAIL\",\"Password\":\"$PASSWORD\",\"Gln\":\"$GLN\"}" | tr -d '"')
+# --- Get token (with retry) ---
+TOKEN=""
+for token_attempt in 1 2 3; do
+    echo "Getting token (attempt $token_attempt/3)..."
+    TOKEN=$(curl -s --max-time 30 -X POST "$API_BASE/Account/Token" \
+        -H 'Content-Type: application/json' \
+        -d "{\"UserEmail\":\"$EMAIL\",\"Password\":\"$PASSWORD\",\"Gln\":\"$GLN\"}" 2>&1 | tr -d '"')
+
+    if [[ ${#TOKEN} -gt 20 ]]; then
+        echo "Token obtained (${#TOKEN} chars)"
+        break
+    fi
+    echo "  Failed: ${TOKEN:-(empty response)}"
+    if [[ $token_attempt -lt 3 ]]; then
+        echo "  Retrying in 10s..."
+        sleep 10
+    fi
+done
 
 if [[ ${#TOKEN} -lt 20 ]]; then
-    echo "ERROR: Failed to get token: $TOKEN"
+    echo "ERROR: Failed to get token after 3 attempts. API may be down."
+    echo "  URL: $API_BASE/Account/Token"
     exit 1
 fi
-echo "Token obtained (${#TOKEN} chars)"
 
 # --- Step 1: Create live products via Live/CreateMany (batches of 100) ---
 BATCH_SIZE=100

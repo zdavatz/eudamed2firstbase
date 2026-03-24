@@ -97,6 +97,7 @@ src/
   mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR, multiComponent)
   xlsx_export.rs             # NDJSON detail -> XLSX spreadsheet export
   version_db.rs              # SQLite version tracking DB (per-section change detection)
+  scan.rs                    # Fast parallel GTIN scanner for push_to_api.sh (rayon, string search)
 
 download.sh                # Unified download + convert script (listing + detail + Basic UDI-DI + convert)
 download_10k.sh            # Legacy: download 10k listings
