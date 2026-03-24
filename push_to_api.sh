@@ -48,7 +48,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if ! $STATUS_MODE && [[ -z "$PUBLISH_GLN" ]]; then
-    echo "Usage: $0 <PublishToGln> [--dir /path/to/dir] [--dry-run]"
+    echo "Usage: $0 [-v] <PublishToGln> [--dir /path/to/dir] [--dry-run]"
     echo "       $0 --status <reqid>"
     echo ""
     echo "Example: $0 7612345000527"

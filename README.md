@@ -277,6 +277,7 @@ Since 2026-03-10, GS1 rule 097.096 was downgraded from error to warning — lega
 
 ```bash
 ./push_to_api.sh 7612345000527                    # push all UUID files in firstbase_json/
+./push_to_api.sh -v 7612345000527                 # verbose: show curl connection details
 ./push_to_api.sh 7612345000527 --dir /path/to/dir # push files from a custom directory
 ./push_to_api.sh 7612345000527 --dry-run          # show what would be pushed, no API calls
 ./push_to_api.sh --status <reqid>                  # query status of a previous request
