@@ -58,22 +58,40 @@ pub fn scan_dir(input_dir: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Extract Gtin value from JSON string without full parsing (fast path)
+/// Extract the main TradeItem Gtin (not from children or NextLowerLevel).
+/// Finds all "Gtin" occurrences and returns the one that belongs to the
+/// top-level TradeItem (before CatalogueItemChildItemLink, after the last
+/// top-level key like TargetMarket/TargetSector).
 fn extract_gtin(content: &str) -> Option<String> {
-    // Look for "Gtin": "..." pattern in DraftItem.TradeItem
     let marker = "\"Gtin\"";
-    let pos = content.find(marker)?;
-    let after = &content[pos + marker.len()..];
-    // Skip whitespace and colon
-    let after = after.trim_start();
-    let after = after.strip_prefix(':')?;
-    let after = after.trim_start();
-    // Extract quoted value
-    let after = after.strip_prefix('"')?;
-    let end = after.find('"')?;
-    let gtin = &after[..end];
-    if gtin.is_empty() {
-        return None;
+    // Find ALL Gtin occurrences and pick the right one
+    // The main TradeItem Gtin is at the top level — typically the last "Gtin"
+    // before "CatalogueItemChildItemLink" or end of TradeItem.
+    let child_boundary = content.find("\"CatalogueItemChildItemLink\"")
+        .unwrap_or(content.len());
+
+    let mut last_gtin = None;
+    let mut search_from = 0;
+    while let Some(pos) = content[search_from..].find(marker) {
+        let abs_pos = search_from + pos;
+        if abs_pos >= child_boundary {
+            break;
+        }
+        // Extract the value
+        let after = &content[abs_pos + marker.len()..];
+        let after = after.trim_start();
+        if let Some(after) = after.strip_prefix(':') {
+            let after = after.trim_start();
+            if let Some(after) = after.strip_prefix('"') {
+                if let Some(end) = after.find('"') {
+                    let val = &after[..end];
+                    if !val.is_empty() {
+                        last_gtin = Some(val.to_string());
+                    }
+                }
+            }
+        }
+        search_from = abs_pos + marker.len();
     }
-    Some(gtin.to_string())
+    last_gtin
 }
