@@ -108,6 +108,47 @@ if errors:
 " 2>/dev/null || cat
 }
 
+# --- Helper: log request ID to DB on submit ---
+# Args: $1 = request_id, $2 = request_type (CreateMany/AddMany), $3 = item_count, $4 = publish_gln
+log_request_submit() {
+    local req_id="$1" req_type="$2" item_count="$3" pub_gln="$4"
+    python3 -c "
+import sqlite3, os
+from datetime import datetime, timezone
+db = '$DB_PATH'
+os.makedirs(os.path.dirname(db) or '.', exist_ok=True)
+conn = sqlite3.connect(db)
+conn.execute('''CREATE TABLE IF NOT EXISTS request_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, request_id TEXT NOT NULL UNIQUE,
+    request_type TEXT NOT NULL, submitted_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'SUBMITTED', polled_at TEXT,
+    item_count INTEGER DEFAULT 0, accepted INTEGER DEFAULT 0,
+    rejected INTEGER DEFAULT 0, publish_gln TEXT
+)''')
+now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+conn.execute('INSERT OR REPLACE INTO request_log (request_id,request_type,submitted_at,status,item_count,publish_gln) VALUES (?,?,?,?,?,?)',
+    ('$req_id','$req_type',now,'SUBMITTED',$item_count,'$pub_gln'))
+conn.commit()
+conn.close()
+" 2>/dev/null
+}
+
+# --- Helper: update request status in DB after polling ---
+# Args: $1 = request_id, $2 = status, $3 = accepted, $4 = rejected
+log_request_status() {
+    local req_id="$1" status="$2" acc="$3" rej="$4"
+    python3 -c "
+import sqlite3
+from datetime import datetime, timezone
+conn = sqlite3.connect('$DB_PATH')
+now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+conn.execute('UPDATE request_log SET status=?, polled_at=?, accepted=?, rejected=? WHERE request_id=?',
+    ('$status',now,$acc,$rej,'$req_id'))
+conn.commit()
+conn.close()
+" 2>/dev/null
+}
+
 # --- Helper: log push results to SQLite DB ---
 # Parses RequestStatus response JSON and logs per-item ACCEPTED/REJECTED to push_log table.
 # Args: $1 = request_id, $2 = publish_gln, stdin = full RequestStatus JSON
@@ -385,6 +426,7 @@ else:
     if [[ -n "$REQ_ID" && "$REQ_ID" != "None" ]]; then
         echo "    Submitted: $REQ_ID"
         LIVE_REQUEST_IDS+=("$REQ_ID")
+        log_request_submit "$REQ_ID" "CreateMany" "$BATCH_COUNT" "$PUBLISH_GLN"
 
         # Collect publish items from this batch (including children) and track sent files
         for FILE in "${BATCH_FILES[@]}"; do
@@ -450,6 +492,22 @@ if [[ ${#LIVE_REQUEST_IDS[@]} -gt 0 ]]; then
             if [[ "$STATUS" == "Done" || "$STATUS" == "Failed" ]]; then
                 echo "$STATUS_OUT" | parse_status
                 echo "$STATUS_OUT" | log_push_results "$REQ_ID" "$PUBLISH_GLN"
+                # Update request_log with result counts
+                POLL_COUNTS=$(echo "$STATUS_OUT" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+acc = rej = 0
+gs1 = data.get('Gs1ResponseMessage', {})
+for resp in gs1.get('GS1Response', []):
+    acc += len(resp.get('TransactionResponse', []))
+    for te in resp.get('TransactionException', []):
+        for ce in te.get('CommandException', []):
+            for de in ce.get('DocumentException', []):
+                for ae in de.get('AttributeException', []):
+                    rej += len(ae.get('GS1Error', []))
+print(f'{acc} {rej}')
+" 2>/dev/null || echo "0 0")
+                log_request_status "$REQ_ID" "$STATUS" "${POLL_COUNTS%% *}" "${POLL_COUNTS##* }"
                 # Write full response as HTML log
                 mkdir -p log
                 LOG_FILE="log/$(date '+%M.%H_%d.%m.%Y').log.html"
@@ -533,6 +591,7 @@ print(out)
         done
         if [[ "$STATUS" != "Done" && "$STATUS" != "Failed" ]]; then
             echo "    WARNING: Request still not done after $((MAX_POLLS*15))s — AddMany may fail"
+            log_request_status "$REQ_ID" "TIMEOUT" "0" "0"
         fi
     done
 fi
@@ -619,6 +678,7 @@ with open('$TMPFILE', 'w') as out:
 
         if [[ -n "$PUB_REQ_ID" && "$PUB_REQ_ID" != "None" ]]; then
             echo "    AddMany submitted: $PUB_REQ_ID"
+            log_request_submit "$PUB_REQ_ID" "AddMany" "$PUB_COUNT" "$PUBLISH_GLN"
 
             # Poll until Done/Failed
             for ((pub_poll=1; pub_poll<=MAX_POLLS; pub_poll++)); do
@@ -706,6 +766,7 @@ out += '</body></html>'
 print(out)
 " > "$LOG_FILE"
                     echo "    AddMany log written: $LOG_FILE"
+                    log_request_status "$PUB_REQ_ID" "$PUB_STATUS" "0" "0"
                     if [[ "$PUB_STATUS" == "Failed" ]]; then
                         echo "    ERROR: AddMany publication FAILED for batch $((pi/PUB_BATCH+1))"
                     fi
@@ -714,6 +775,7 @@ print(out)
             done
             if [[ "$PUB_STATUS" != "Done" && "$PUB_STATUS" != "Failed" ]]; then
                 echo "    WARNING: AddMany still not done after $((MAX_POLLS*15))s — publication may not have completed"
+                log_request_status "$PUB_REQ_ID" "TIMEOUT" "0" "0"
             fi
         else
             echo "    ERROR: AddMany failed — no RequestIdentifier returned"

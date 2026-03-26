@@ -142,7 +142,21 @@ pub fn open_db(path: &Path) -> Result<Connection> {
         );
         CREATE INDEX IF NOT EXISTS idx_push_log_uuid ON push_log(uuid);
         CREATE INDEX IF NOT EXISTS idx_push_log_status ON push_log(status);
-        CREATE INDEX IF NOT EXISTS idx_push_log_pushed_at ON push_log(pushed_at);",
+        CREATE INDEX IF NOT EXISTS idx_push_log_pushed_at ON push_log(pushed_at);
+
+        CREATE TABLE IF NOT EXISTS request_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT NOT NULL UNIQUE,
+            request_type TEXT NOT NULL,
+            submitted_at TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'SUBMITTED',
+            polled_at TEXT,
+            item_count INTEGER DEFAULT 0,
+            accepted INTEGER DEFAULT 0,
+            rejected INTEGER DEFAULT 0,
+            publish_gln TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_request_log_status ON request_log(status);",
     )?;
 
     Ok(conn)
