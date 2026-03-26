@@ -83,7 +83,10 @@ Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 - **#5 GS1 097.039: NOT_INTENDED_FOR_EU_MARKET**: Closed (warning since 25.03.2026). GS1 downgraded 097.039 from error to warning — NOT_INTENDED + MDR/IVDR devices now accepted.
 - **#6 1:n Mapping Gaps**: 17 EUDAMED fields that don't map 1:1 to GS1/GDSN, resolved with fallback logic (sterilisation→UNSPECIFIED, reusability, truncation, language defaults, etc.). Compliance-relevant inventory.
 - **#7 GDSN mandatory gaps**: Packaging hierarchy (PALLET not derivable) and issuingEntityCode (parsed but not mapped). 6 of 8 fields implemented with assumptions.
-- **#8 GTIN deduplication**: Same GTIN can exist under MDR and MDD in EUDAMED. GDSN allows only one per GTIN/GLN/TM. MDR/IVDR must take priority. Not yet observed in data — implement when first duplicate appears.
+- **#8 GTIN deduplication**: Same GTIN can exist under MDR and MDD in EUDAMED. GDSN allows only one per GTIN/GLN/TM. MDR/IVDR must take priority. First case observed 26.03.2026 (GTIN `00840161300249`).
+- **#9 097.041: MDR Class IIB implantable without certificate**: 332x. Neither manufacturer (FLD-UDID-60..64) nor NB (CertificateLink FLD-UDID-344..361) has registered a certificate. EUDAMED data quality.
+- **#10 097.029/097.036: Updateable rules**: Block field changes after first sync. GS1 will disable these soon. Long-term: need `DocumentCommand: "CORRECT"` for updates.
+- **#11 097.078: System/Procedure Pack missing medicalPurposeDescription**: 44x. EUDAMED API doesn't expose purpose description for System/Procedure Pack devices.
 
 ## Reference Files (in maik/)
 
