@@ -537,13 +537,13 @@ pub struct AdditionalPartyIdentification {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct StructuredAddress {
-    #[serde(rename = "City")]
+    #[serde(rename = "City", skip_serializing_if = "String::is_empty")]
     pub city: String,
     #[serde(rename = "CountryCode")]
     pub country_code: CodeValue,
-    #[serde(rename = "PostalCode")]
+    #[serde(rename = "PostalCode", skip_serializing_if = "String::is_empty")]
     pub postal_code: String,
-    #[serde(rename = "StreetAddress")]
+    #[serde(rename = "StreetAddress", skip_serializing_if = "String::is_empty")]
     pub street: String,
     #[serde(rename = "StreetNumber", skip_serializing_if = "Option::is_none")]
     pub street_number: Option<String>,
