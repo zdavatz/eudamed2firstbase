@@ -314,16 +314,22 @@ for ((bi=0; bi<LIVE_TOTAL; bi+=BATCH_SIZE)); do
     echo "  Batch $((bi/BATCH_SIZE+1)): items $((bi+1))-$BATCH_END of $LIVE_TOTAL"
 
     # Build the Live/CreateMany payload (keep packaging hierarchy nested)
+    # Filter out items without valid numeric GTIN to prevent whole-batch rejection
     TMPFILE=$(mktemp)
     python3 -c "
 import json, sys
 
 files = sys.argv[1:]
 items = []
+skipped = 0
 for fpath in files:
     with open(fpath) as f:
         doc = json.load(f)
     draft = doc['DraftItem']
+    gtin = draft.get('TradeItem', {}).get('Gtin', '')
+    if not gtin or not gtin.isdigit():
+        skipped += 1
+        continue
     item = {
         'Identifier': draft['Identifier'],
         'TradeItem': draft['TradeItem']
@@ -340,7 +346,10 @@ payload = {
 with open('$TMPFILE', 'w') as out:
     json.dump(payload, out)
 children = sum(len(doc.get('DraftItem',{}).get('CatalogueItemChildItemLink',[])) for fpath in files for doc in [json.load(open(fpath))])
-print(f'    Payload: {len(items)} items ({children} with children)')
+if skipped:
+    print(f'    Payload: {len(items)} items ({children} with children, {skipped} skipped non-numeric GTIN)')
+else:
+    print(f'    Payload: {len(items)} items ({children} with children)')
 " "${BATCH_FILES[@]}"
 
     # Retry loop for 429 rate limiting
