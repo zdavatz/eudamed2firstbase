@@ -87,6 +87,8 @@ Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 - **#9 097.041: MDR Class IIB implantable without certificate**: 332x. Neither manufacturer (FLD-UDID-60..64) nor NB (CertificateLink FLD-UDID-344..361) has registered a certificate. EUDAMED data quality.
 - **#10 097.029/097.036: Updateable rules**: Block field changes after first sync. GS1 will disable these soon. Long-term: need `DocumentCommand: "CORRECT"` for updates.
 - **#11 097.078: System/Procedure Pack missing medicalPurposeDescription**: 44x. EUDAMED API doesn't expose purpose description for System/Procedure Pack devices.
+- **#12 097.054: Non-EU manufacturers missing AR SRN**: 150x. Non-EU manufacturers without Authorised Representative SRN in EUDAMED. No fallback placeholder (unlike EMA/manufacturer SRN).
+- **#13 097.083: medicinalProduct=true without substance data**: 6x. Device flagged as containing medicinal product but no substance details in EUDAMED API.
 
 ## Reference Files (in maik/)
 
