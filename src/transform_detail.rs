@@ -707,6 +707,11 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
                 })
                 .unwrap_or_default();
 
+            // Skip clinical sizes with unmappable measurement units (e.g. MU999 "Other")
+            if unit_code.is_empty() && cs.value.is_some() {
+                return None;
+            }
+
             let mut values = Vec::new();
             let mut maximums = Vec::new();
 

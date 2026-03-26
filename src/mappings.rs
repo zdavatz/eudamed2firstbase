@@ -169,7 +169,7 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
         "CST42" => "BASE_CURVE",
         "CST43" => "OPTICAL_ZONE_DIAMETER",
         "CST44" => "POWER_PROFILE",
-        "CST45" => "COLOUR",
+        "CST45" => "DEVICE_SIZE_TEXT_SPECIFY",  // COLOUR not in GS1 code list
         "CST46" => "EDGE_LIFT",
         "CST47" => "PRISM",
         "CST48" => "CEL",
@@ -180,7 +180,7 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
         "CST53" => "TRUNCATION",
         "CST54" => "TRUNCATION_AXIS",
         "CST55" => "EDGE_RADIUS",
-        "CST56" => "BODY_WEIGHT_KG",
+        "CST56" => "WEIGHT",  // BODY_WEIGHT_KG not in GS1 code list, use WEIGHT
         "CST57" => "BACK_CYLINDER_POWER",
         "CST58" => "BACK_CYLINDER_AXIS",
         "CST59" => "OPTICAL_ZONE_DIAMETER_BACK",
@@ -335,6 +335,7 @@ pub fn measurement_unit_to_gs1(code: &str) -> &str {
         "MU136" => "mg/dL",
         "MU169" => "Q30",
         "MU170" => "H79",
+        "MU999" => "",  // "Other" unit — no valid UN/CEFACT mapping, skip
         other => other,
     }
 }
@@ -385,7 +386,7 @@ pub fn multi_component_to_gs1(code: &str) -> &str {
     match suffix {
         "system" => "SYSTEM",
         "procedure-pack" => "PROCEDURE_PACK",
-        "spp-procedure-pack" => "SPP_PROCEDURE_PACK",
+        "spp-procedure-pack" => "PROCEDURE_PACK",  // SPP not in GS1 code list, use PROCEDURE_PACK
         _ => "DEVICE",
     }
 }
