@@ -422,7 +422,7 @@ Bug reports are tracked as [GitHub Issues](https://github.com/zdavatz/eudamed2fi
 | [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | — | Open (first case 26.03.2026) |
 | [#9](https://github.com/zdavatz/eudamed2firstbase/issues/9) | Data Quality | MDR Class IIB implantable without certificate | 097.041 | Open (332x, EUDAMED) |
 | [#10](https://github.com/zdavatz/eudamed2firstbase/issues/10) | GS1 Rule | Updateable rules block field changes after first sync | 097.029, 097.036 | Open (GS1 disabling soon) |
-| [#11](https://github.com/zdavatz/eudamed2firstbase/issues/11) | Data Quality | System/Procedure Pack missing medicalPurposeDescription | 097.078 | Open (44x, EUDAMED API gap) |
+| [#11](https://github.com/zdavatz/eudamed2firstbase/issues/11) | Mapping | Language mismatch in StorageHandling fallback | 097.078 | Closed (fixed 26.03.2026) |
 | [#12](https://github.com/zdavatz/eudamed2firstbase/issues/12) | Data Quality | Non-EU manufacturers missing Authorised Representative SRN | 097.054 | Open (150x, EUDAMED) |
 | [#13](https://github.com/zdavatz/eudamed2firstbase/issues/13) | Data Quality | medicinalProduct=true without regulated substance data | 097.083 | Open (6x, EUDAMED) |
 

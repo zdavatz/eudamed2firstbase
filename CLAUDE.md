@@ -86,7 +86,7 @@ Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 - **#8 GTIN deduplication**: Same GTIN can exist under MDR and MDD in EUDAMED. GDSN allows only one per GTIN/GLN/TM. MDR/IVDR must take priority. First case observed 26.03.2026 (GTIN `00840161300249`).
 - **#9 097.041: MDR Class IIB implantable without certificate**: 332x. Neither manufacturer (FLD-UDID-60..64) nor NB (CertificateLink FLD-UDID-344..361) has registered a certificate. EUDAMED data quality.
 - **#10 097.029/097.036: Updateable rules**: Block field changes after first sync. GS1 will disable these soon. Long-term: need `DocumentCommand: "CORRECT"` for updates.
-- **#11 097.078: System/Procedure Pack missing medicalPurposeDescription**: 44x. EUDAMED API doesn't expose purpose description for System/Procedure Pack devices.
+- **#11 097.078: Language mismatch in StorageHandling fallback**: Closed (fixed 26.03.2026). StorageHandling fallback was hardcoded "en" while device had "de" → now uses primary language.
 - **#12 097.054: Non-EU manufacturers missing AR SRN**: 150x. Non-EU manufacturers without Authorised Representative SRN in EUDAMED. No fallback placeholder (unlike EMA/manufacturer SRN).
 - **#13 097.083: medicinalProduct=true without substance data**: 6x. Device flagged as containing medicinal product but no substance details in EUDAMED API.
 
