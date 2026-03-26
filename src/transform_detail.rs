@@ -261,7 +261,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     }
 
     // --- Healthcare item module (clinical sizes, storage, warnings, latex, tissue) ---
-    let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr);
+    // 097.078: all description fields must use consistent language codes
+    let primary_lang = trade_names.first().map(|(l, _)| l.as_str()).unwrap_or("en");
+    let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr, primary_lang);
 
     // --- Chemical regulation module (substances) ---
     // 097.095: Legacy devices must not have CMR_SUBSTANCE or ENDOCRINE_SUBSTANCE
@@ -646,9 +648,9 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
     contacts
 }
 
-fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>, is_ivdr: bool) -> Option<HealthcareItemInformationModule> {
+fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>, is_ivdr: bool, primary_lang: &str) -> Option<HealthcareItemInformationModule> {
     let clinical_sizes = build_clinical_sizes(device);
-    let storage_handling = build_storage_handling(device);
+    let storage_handling = build_storage_handling(device, primary_lang);
     let clinical_warnings = build_clinical_warnings(device);
     let contains_latex = Some(device.latex.map(|b| bool_str(b)).unwrap_or_else(|| "FALSE".to_string()));
 
@@ -761,7 +763,7 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
         .collect()
 }
 
-fn build_storage_handling(device: &ApiDeviceDetail) -> Vec<ClinicalStorageHandling> {
+fn build_storage_handling(device: &ApiDeviceDetail, primary_lang: &str) -> Vec<ClinicalStorageHandling> {
     let conditions = match device.storage_handling_conditions.as_ref() {
         Some(c) if !c.is_empty() => c,
         _ => return Vec::new(),
@@ -776,13 +778,14 @@ fn build_storage_handling(device: &ApiDeviceDetail) -> Vec<ClinicalStorageHandli
 
             let mut descriptions = extract_descriptions(&shc.description);
             // 097.074 / BR-UDID-028: these SHC codes require a description
+            // 097.078: fallback language must match primary language of other descriptions
             let needs_description = matches!(gs1_code.as_str(),
                 "SHC06" | "SHC07" | "SHC08" | "SHC09" | "SHC10" |
                 "SHC13" | "SHC21" | "SHC22" | "SHC23" | "SHC25" | "SHC45"
             );
             if descriptions.is_empty() && needs_description {
                 descriptions.push(LangValue {
-                    language_code: "en".to_string(),
+                    language_code: primary_lang.to_string(),
                     value: gs1_code.clone(),
                 });
             }
