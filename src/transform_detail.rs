@@ -304,7 +304,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
 
     // --- Sales module (market availability with ORIGINAL_PLACED distinction) ---
     // 097.021: NOT_INTENDED_FOR_EU_MARKET must not have country/sales data
-    let sales_module = if eudamed_status == "NOT_INTENDED_FOR_EU_MARKET" {
+    // 097.086: MDR SPP must NOT have targetMarketSalesConditions
+    let sales_module = if eudamed_status == "NOT_INTENDED_FOR_EU_MARKET" || is_system_or_pack {
         None
     } else {
         build_sales_module(device, basic_udi)
@@ -406,7 +407,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                         .and_then(|b| b.multi_component_code())
                         .unwrap_or_else(|| "DEVICE".to_string()),
                 }),
-                // SystemOrProcedurePackTypeCode: set for SPP devices
+                // SystemOrProcedurePackTypeCode + MedicalPurposeDescription: set for SPP devices
                 system_or_procedure_pack_type: if is_system_or_pack {
                     Some(CodeValue {
                         value: basic_udi
@@ -415,6 +416,28 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                     })
                 } else {
                     None
+                },
+                // 097.049: SPP requires systemOrProcedurePackMedicalPurposeDescription
+                system_or_procedure_pack_purpose: if is_system_or_pack {
+                    let descs = device.additional_description_texts();
+                    if descs.is_empty() {
+                        // Fallback: use trade name as purpose description
+                        trade_names.iter()
+                            .map(|(lang, text)| LangValue {
+                                language_code: lang.clone(),
+                                value: text.clone(),
+                            })
+                            .collect()
+                    } else {
+                        descs.iter()
+                            .map(|(lang, text)| LangValue {
+                                language_code: lang.clone(),
+                                value: text.clone(),
+                            })
+                            .collect()
+                    }
+                } else {
+                    Vec::new()
                 },
                 // 097.047: isNewDevice mandatory for IVDR
                 is_new_device: if is_ivdr { Some(device.new_device.unwrap_or(false)) } else { device.new_device },
