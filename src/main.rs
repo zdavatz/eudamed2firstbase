@@ -11,6 +11,7 @@ mod transform_detail;
 mod transform_eudamed_json;
 mod version_db;
 mod scan;
+mod swissdamed;
 mod xlsx_export;
 
 use anyhow::{Context, Result};
