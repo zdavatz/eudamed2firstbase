@@ -1,0 +1,232 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC08"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "-5 °C to +40 °C Transport and storage"
+                }
+              ]
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW999",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "If the patient does not have the upper body strength to sit in the sling (with or without holding onto the handles), they have a higher risk of slipping out of the sling. This could lead to a fall."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "DirectPartMarkingIdentifier": [
+            {
+              "IdentificationSchemeAgencyCode": "GS1",
+              "Value": "05707581000904"
+            }
+          ],
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": true,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "SERIAL_NUMBER"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "LIMITED_REUSABLE"
+            },
+            "MaximumCyclesReusable": 10000
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  }
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "All-in-One Hoist, 200 kg, Stand-up hoist, Convertible"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "V0805030102"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DK-MF-000020145"
+            }
+          ],
+          "ContactName": "Ropox a/s"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-24T17:10:49",
+        "EffectiveDateTime": "2026-03-19T11:58:19.541",
+        "PublicationDateTime": "2026-03-24T17:10:49"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "57075810015R8",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "All-in-One Hoist"
+            }
+          ]
+        }
+      ],
+      "Gtin": "05707581000904",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "25-20523-8"
+        }
+      ]
+    },
+    "Identifier": "Draft_7f081d1d-a987-49c0-9bc4-cb07f3566664"
+  }
+}

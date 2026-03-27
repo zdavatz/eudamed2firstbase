@@ -1,0 +1,241 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              }
+            }
+          ],
+          "ClinicalSize": [
+            {
+              "ClinicalSizeTypeCode": {
+                "Value": "SIZE"
+              },
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "TEXT"
+              },
+              "ClinicalSizeValueText": "9cm X 15cm"
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "DirectPartMarkingIdentifier": [
+            {
+              "IdentificationSchemeAgencyCode": "GS1",
+              "Value": "06926365560581"
+            }
+          ],
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "MANUFACTURING_DATE"
+            },
+            {
+              "Value": "EXPIRATION_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "UNSPECIFIED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Silicone foam dressing is an absorbent and atraumatic dressing that absorbs exudate, maintain a moist wound healing environment, and acts as a barrier to liquid and microorganisms from wound. The wound contact surface of Silicone foam dressing is coated with a layer of soft silicone that does not stick to the surface of a wound or cause trauma to delicate new tissue upon removal. This soft silicone layer is also slightly tacky, which facilitates application and retention of the dressing to intact skin, but  minimize the incidence of epidermal stripping or pain on removal. \nGeneral silicone foam dressing with border is composed ot PU film, PU foam , absorbent fibre with non-woven, silicone gel and release film.                                                                                                                                                          size:9cm X 15cm"
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Innomed"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "M04040701"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CN-MF-000001161"
+            }
+          ],
+          "ContactName": "Zhejiang Longterm Medical Technology Co., Ltd."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NL-AR-000000121"
+            }
+          ],
+          "ContactName": "Lotus NL B.V."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:41",
+        "EffectiveDateTime": "2022-09-03T13:51:58.688",
+        "PublicationDateTime": "2026-03-26T10:10:41"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "69263655200047W",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Silicone foam dressing"
+            }
+          ]
+        }
+      ],
+      "Gtin": "06926365560581",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "S80007"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "S71022"
+        }
+      ]
+    },
+    "Identifier": "Draft_6168c6ad-4084-4b60-a8ca-d0c7e886fa28"
+  }
+}

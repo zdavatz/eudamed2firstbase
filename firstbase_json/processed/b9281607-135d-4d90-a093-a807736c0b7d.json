@@ -1,0 +1,228 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC09"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "75 % non-condensing"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC07"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "+45 °C"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC06"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "–25 °C"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "DirectPartMarkingIdentifier": [
+            {
+              "IdentificationSchemeAgencyCode": "GS1",
+              "Value": "08594211570503"
+            }
+          ],
+          "HasDeviceMeasuringFunction": true,
+          "IsActiveDevice": true,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "SERIAL_NUMBER"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "abdominal 0.5m for Harmony"
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "MMT Air-Charged Pressure Sensor"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "U0580"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CZ-MF-000016193"
+            }
+          ],
+          "ContactName": "MEDKONSULT medical technology s.r.o."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:03",
+        "EffectiveDateTime": "2024-11-04T16:56:08.174",
+        "PublicationDateTime": "2026-03-26T10:11:03"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "859421157ATMOSK7",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Air-Charged Pressure Sensor"
+            }
+          ]
+        }
+      ],
+      "Gtin": "08594211570503",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "PS10-02A05"
+        }
+      ]
+    },
+    "Identifier": "Draft_b9281607-135d-4d90-a093-a807736c0b7d"
+  }
+}

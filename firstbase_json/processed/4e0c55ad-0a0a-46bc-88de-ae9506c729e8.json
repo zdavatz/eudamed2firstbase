@@ -1,0 +1,332 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 100,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 100,
+            "Gtin": "03760348111413"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "FR-MF-000026140"
+            }
+          ],
+          "ContactName": "HOIST MEDICAL "
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:48",
+        "EffectiveDateTime": "2026-03-19T16:46:48",
+        "PublicationDateTime": "2026-03-19T16:46:48"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "376034811400.06CC"
+        }
+      ],
+      "Gtin": "13760348111410"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 100,
+        "CatalogueItem": {
+          "Identifier": "5ed24def-5ae8-447b-9a28-f2f656938688",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW009"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW007"
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 1,
+                "DirectPartMarkingIdentifier": [
+                  {
+                    "IdentificationSchemeAgencyCode": "GS1",
+                    "Value": "03760348111413"
+                  }
+                ],
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": true,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "SYSTEM"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "UNSPECIFIED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "CertificationInformationModule": {
+              "CertificationInformation": [
+                {
+                  "AdditionalCertificationOrganisationIdentifier": [
+                    {
+                      "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                      "Value": "0297"
+                    }
+                  ],
+                  "CertificationAgency": "DQS Medizinprodukte GmbH",
+                  "CertificationStandard": "MDR_QUALITY_MANAGEMENT_SYSTEM",
+                  "Certification": [
+                    {
+                      "CertificationValue": "1000217799",
+                      "CertificationIdentification": "01",
+                      "CertificationEffectiveEndDateTime": "2029-10-31",
+                      "CertificationEffectiveStartDateTime": "2025-02-14"
+                    }
+                  ]
+                }
+              ]
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        },
+                        "StartAvailabilityDateTime": "2025-02-28"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Bottle adaptor for transferring liquids to an enteral syringe"
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "STARFIT BOTTLE ADAPTOR L 20 - 21.5 mm BA-L01"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "G0280"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "FR-MF-000026140"
+                  }
+                ],
+                "ContactName": "HOIST MEDICAL "
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:48",
+              "EffectiveDateTime": "2025-03-19T08:57:52.103",
+              "PublicationDateTime": "2026-03-19T16:46:48"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "376034811400.06CC",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "STARFIT BOTTLE ADAPTOR L 20 - 21.5 mm"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "03760348111413",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "BA-L01"
+              },
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                "Value": "STARFIT BOTTLE ADAPTOR L 20 - 21.5 mm"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_4e0c55ad-0a0a-46bc-88de-ae9506c729e8"
+  }
+}

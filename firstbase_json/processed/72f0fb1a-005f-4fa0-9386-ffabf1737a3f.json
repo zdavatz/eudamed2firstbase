@@ -1,0 +1,304 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 100,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 100,
+            "Gtin": "03760348112472"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "FR-MF-000026140"
+            }
+          ],
+          "ContactName": "HOIST MEDICAL "
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:50",
+        "EffectiveDateTime": "2026-03-19T16:46:50",
+        "PublicationDateTime": "2026-03-19T16:46:50"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "376043811400.13CB"
+        }
+      ],
+      "Gtin": "13760348112479"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 100,
+        "CatalogueItem": {
+          "Identifier": "1888bc5c-a55a-4852-890d-95c84aa63458",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW007"
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 1,
+                "DirectPartMarkingIdentifier": [
+                  {
+                    "IdentificationSchemeAgencyCode": "GS1",
+                    "Value": "03760348112472"
+                  }
+                ],
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": true,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "SYSTEM"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "NOT_STERILISED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "642"
+                        },
+                        "StartAvailabilityDateTime": "2025-06-02"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "STARFIT MEDICINE DOSE STRAW MFS01"
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "STARFIT MEDICINE DOSE STRAW MFS01"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "G0280"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "FR-MF-000026140"
+                  }
+                ],
+                "ContactName": "HOIST MEDICAL "
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:50",
+              "EffectiveDateTime": "2025-10-03T16:08:57.215",
+              "PublicationDateTime": "2026-03-19T16:46:50"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "376043811400.13CB",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "STARFIT MEDICINE DOSE STRAW MFS01"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "03760348112472",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "MFS01"
+              },
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                "Value": "STARFIT MEDICINE DOSE STRAW"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_72f0fb1a-005f-4fa0-9386-ffabf1737a3f"
+  }
+}

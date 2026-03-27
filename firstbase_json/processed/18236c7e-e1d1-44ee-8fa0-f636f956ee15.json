@@ -1,0 +1,237 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainMicrobialSubstance": false,
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC13"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "10°C - 30°C "
+                }
+              ]
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW057"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW075"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW079"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW087"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW099"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "IsNewDevice": false,
+          "IsDeviceReagent": false,
+          "IsDeviceInstrument": false,
+          "IsDevicePatientSelfTesting": false,
+          "IsDeviceNearPatientTesting": false,
+          "IsDeviceDesignedForProfessionalTesting": false,
+          "IsDeviceCompanionDiagnostic": false,
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "IVDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "HEMOFAST "
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_A"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "W0103010301"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "IT-MF-000009572"
+            }
+          ],
+          "ContactName": "Mascia Brunelli S.p.A."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:23",
+        "EffectiveDateTime": "2026-03-11T11:18:59.853",
+        "PublicationDateTime": "2026-03-26T10:10:23"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "803373798HEMOFAST000032YR",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "08033737983959"
+            }
+          ]
+        }
+      ],
+      "Gtin": "08033737983959",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "D594590"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "HEMOFAST"
+        }
+      ]
+    },
+    "Identifier": "Draft_18236c7e-e1d1-44ee-8fa0-f636f956ee15"
+  }
+}

@@ -1,0 +1,280 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "•\tDisorders in which acupuncture is not indicated,  •\tDo not use to treat pregnant women,  •\tDo not use on injured skin,  •\tDo not use on mucous membranes,  •\tDo not use on patients who have an active implanted electronic device (pacemaker or other device).  •\tStimulation should not be applied from one side of the head to the other, to the eyes, mouth or front of the neck (and particularly to the carotid sinus) or from electrodes placed on the chest and upper part of the back or creating a current across the heart."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": true,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "CertificationInformationModule": {
+        "CertificationInformation": [
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "0123"
+              }
+            ],
+            "CertificationAgency": "TÜV SÜD Product Service GmbH",
+            "CertificationStandard": "MDD_II_4",
+            "Certification": [
+              {
+                "CertificationValue": "G1 0 15735 0024 ",
+                "CertificationIdentification": "1",
+                "CertificationEffectiveEndDateTime": "2019-06-26"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDD",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  }
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "470"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "AGISTIM DUO"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "85"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "Z120622"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "FR-MF-000020946"
+            }
+          ],
+          "ContactName": "Sedatelec"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:16",
+        "EffectiveDateTime": "2026-01-19T15:19:33.749",
+        "PublicationDateTime": "2026-03-26T10:11:16"
+      },
+      "Gtin": "03760262490199",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "108268"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "B-03760262490199"
+        }
+      ]
+    },
+    "Identifier": "Draft_f0fa7e37-48a7-432a-b55b-38b8167d5cc0"
+  }
+}

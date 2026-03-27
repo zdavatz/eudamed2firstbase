@@ -1,0 +1,283 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC08"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "-10 °C to +50 °C Transport and storage"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "DirectPartMarkingIdentifier": [
+            {
+              "IdentificationSchemeAgencyCode": "GS1",
+              "Value": "05707581000553"
+            }
+          ],
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": true,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "SERIAL_NUMBER"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "ReferencedFileDetailInformationModule": {
+        "ReferencedFileHeader": [
+          {
+            "ReferencedFileTypeCode": {
+              "Value": "IFU"
+            },
+            "UniformResourceIdentifier": "https://ropox.com/product/vario-changing-bench/",
+            "IsPrimaryFile": "TRUE"
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  }
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "352"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Vario Changing Bed, 140x70 cm, with Safety Rail, Electric"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "Y093312"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DK-MF-000020145"
+            }
+          ],
+          "ContactName": "Ropox a/s"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:57",
+        "EffectiveDateTime": "2026-03-12T14:08:04.484",
+        "PublicationDateTime": "2026-03-19T16:46:57"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "57075810012R2",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Vario Changing Bed"
+            }
+          ]
+        }
+      ],
+      "Gtin": "05707581000553",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "40-30806-3"
+        }
+      ]
+    },
+    "Identifier": "Draft_f9c24eff-c4c4-49f5-a5fe-1bf6e1fda084"
+  }
+}

@@ -1,0 +1,374 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 60,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 60,
+            "Gtin": "06438129002607"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "FI-MF-000000642"
+            }
+          ],
+          "ContactName": "OneMed Group Oy"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:16",
+        "EffectiveDateTime": "2026-03-26T10:11:16",
+        "PublicationDateTime": "2026-03-26T10:11:16"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "6438129B0027HE"
+        }
+      ],
+      "Gtin": "06438129002614"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 60,
+        "CatalogueItem": {
+          "Identifier": "d6b407ef-9c1f-422f-b134-358e0f8a773c",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC06"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "Lower limit 15° C"
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC07"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "Upper limit 25° C"
+                      }
+                    ]
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW001"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW007"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW010"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW009"
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 1,
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": true,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "MANUFACTURING_DATE"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "DEVICE"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "UNSPECIFIED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "752"
+                        },
+                        "StartAvailabilityDateTime": "2026-03-06"
+                      }
+                    ]
+                  },
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "578"
+                        },
+                        "StartAvailabilityDateTime": "2026-03-06"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "428"
+                        },
+                        "StartAvailabilityDateTime": "2026-03-06"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "208"
+                        },
+                        "StartAvailabilityDateTime": "2026-03-06"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "246"
+                        },
+                        "StartAvailabilityDateTime": "2026-03-06"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "233"
+                        },
+                        "StartAvailabilityDateTime": "2026-03-06"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "440"
+                        },
+                        "StartAvailabilityDateTime": "2026-03-06"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "evercare® inline TRANSFUSION SET, NON-VENTED, 3- WAY STOPCOCK, PVC Free, 195 cm"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "A03010102"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "FI-MF-000000642"
+                  }
+                ],
+                "ContactName": "OneMed Group Oy"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:11:16",
+              "EffectiveDateTime": "2026-03-11T12:13:49.421",
+              "PublicationDateTime": "2026-03-26T10:11:16"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "6438129B0027HE",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Transfusion Sets"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "06438129002607",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "10684"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_ef2cc1f3-1cd0-46f0-997e-da8091435584"
+  }
+}

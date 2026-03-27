@@ -1,0 +1,179 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainLatex": "FALSE",
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC46"
+              }
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "UdidDeviceCount": 1,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            }
+          ],
+          "SystemOrProcedurePackTypeCode": {
+            "Value": "PROCEDURE_PACK"
+          },
+          "SystemOrProcedurePackMedicalPurposeDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "The Laerdal Pocket Mask is designed for\nmouth-to-mask ventilation of a non-breathing\nadult, child or infant as a barrier between the\nrescuer and patient. For use on an infant, the\nmask may be turned 180° to achieve a better\nseal."
+            }
+          ],
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "The Laerdal Pocket Mask is available in one size that can be used for adults, children and infants. It is available in the following main configurations:\n· With oxygen connection and head strap\n· Without oxygen connection\n· Packed in clam shell, soft pouch or poly bag\n· With accessories: examination gloves and/or wipes depended on market and configuration."
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Laerdal Pocket Mask"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "R03010199"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EPP"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NO-PR-000002650"
+            }
+          ],
+          "ContactName": "Laerdal Medical AS"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T16:42:02",
+        "EffectiveDateTime": "2022-11-09T16:39:46.904",
+        "PublicationDateTime": "2026-03-27T16:42:02"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "0704543209950SX",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Laerdal Pocket Mask"
+            }
+          ]
+        }
+      ],
+      "Gtin": "07045430043831",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "82004100"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "Pocket Mask "
+        }
+      ]
+    },
+    "Identifier": "Draft_18bdd0fd-b20c-4e6c-a65e-cfc96f3d7cca"
+  }
+}

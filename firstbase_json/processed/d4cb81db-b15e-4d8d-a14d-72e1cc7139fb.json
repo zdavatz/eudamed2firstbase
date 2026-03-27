@@ -1,0 +1,286 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 10,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 10,
+            "Gtin": "10076490646414"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "BE-MF-000000691"
+            }
+          ],
+          "ContactName": "Ansell Healthcare Europe NV"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:55",
+        "EffectiveDateTime": "2026-03-19T16:46:55",
+        "PublicationDateTime": "2026-03-19T16:46:55"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "5414566MF92245INFQ"
+        }
+      ],
+      "Gtin": "20076490664811"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 10,
+        "CatalogueItem": {
+          "Identifier": "2ab6421e-c620-43ea-a36d-939372376213",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW009"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW010"
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 100,
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "DEVICE"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "NOT_INTENDED_FOR_EU_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "NOT_STERILISED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "ReferencedFileDetailInformationModule": {
+              "ReferencedFileHeader": [
+                {
+                  "ReferencedFileTypeCode": {
+                    "Value": "IFU"
+                  },
+                  "UniformResourceIdentifier": "https://www.ansell.com/in/en/products/microflex-92-245",
+                  "IsPrimaryFile": "TRUE"
+                }
+              ]
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "MICROFLEX 92-245"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "T01020204"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "BE-MF-000000691"
+                  }
+                ],
+                "ContactName": "Ansell Healthcare Europe NV"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:55",
+              "EffectiveDateTime": "2025-03-03T21:59:58.208",
+              "PublicationDateTime": "2026-03-19T16:46:55"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "5414566MF92245INFQ",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Nitrile Examination/Treatment Glove"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "10076490646414",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "92245090"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_d4cb81db-b15e-4d8d-a14d-72e1cc7139fb"
+  }
+}

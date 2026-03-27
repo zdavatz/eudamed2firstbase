@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<message:Push version="<!-- Schema version here-->"
+              xmlns:adr="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Party/Address/v1"
+              xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1"
+              xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1"
+              xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+              xmlns:mi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1"
+              xmlns:mkinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1"
+              xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1"
+              xmlns:udi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1"
+              xmlns:lngs="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1"
+              xmlns:lnks="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Links/v1"
+              xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1"
+              xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1"
+              xmlns:party="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Party/v1"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+    <message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+    <message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+    <message:creationDateTime>2019-12-09T10:42:01.790+01:00</message:creationDateTime>
+    <message:messageID>a64a5a1f-da86-4810-a0de-27d0338811a9</message:messageID>
+    <message:recipient>
+        <message:node>
+            <service:nodeActorCode>EUDAMED</service:nodeActorCode>
+            <service:nodeID>eDelivery:EUDAMED</service:nodeID>
+        </message:node>
+        <message:service>
+            <service:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></service:serviceAccessToken>
+            <service:serviceID>PACKAGE_UDI</service:serviceID>
+            <service:serviceOperation>PUT</service:serviceOperation>
+        </message:service>
+    </message:recipient>
+    <message:payload>
+        <device:DTXPackageUDI>
+            <udidi:udiIdentifier>
+                <commondevice:DICode><!-- Primary UDI of the device or System and/or Procedure pack (Root node)  --></commondevice:DICode>
+                <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+            </udidi:udiIdentifier>
+            <udidi:packages>
+			<e:version>1</e:version>
+                <udidi:package>
+                    <udidi:identifier>
+                        <commondevice:DICode><!-- UDI of the package (2) --></commondevice:DICode>
+                        <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                    </udidi:identifier>
+                    <udidi:status>
+                        <commondevice:code>ON_THE_MARKET</commondevice:code>
+                    </udidi:status>
+					<udidi:child>
+						<commondevice:DICode><!-- UDI of the previous package (1) --></commondevice:DICode>
+                        <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+					</udidi:child>
+                    <udidi:numberOfItems>4</udidi:numberOfItems>
+                </udidi:package>
+				<udidi:package>
+                    <udidi:identifier>
+                        <commondevice:DICode><!-- UDI of the package (1) --></commondevice:DICode>
+                        <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                    </udidi:identifier>
+                    <udidi:status>
+                        <commondevice:code>ON_THE_MARKET</commondevice:code>
+                    </udidi:status>
+					<udidi:child>
+						<commondevice:DICode><!-- Primary UDI of the device or System and/or Procedure pack (Root node) --></commondevice:DICode>
+                        <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+					</udidi:child>
+                    <udidi:numberOfItems>100</udidi:numberOfItems>
+                </udidi:package>
+            </udidi:packages>
+        </device:DTXPackageUDI>
+    </message:payload>
+    <message:sender>
+        <message:node>
+            <service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+            <service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+        </message:node>
+        <message:service>
+            <service:serviceID>PACKAGE_UDI</service:serviceID>
+            <service:serviceOperation>PUT</service:serviceOperation>
+        </message:service>
+    </message:sender>
+</message:Push>

@@ -1,0 +1,427 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainMicrobialSubstance": false,
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "SERIAL_NUMBER"
+            },
+            {
+              "Value": "MANUFACTURING_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "IsNewDevice": false,
+          "IsDeviceReagent": false,
+          "IsDeviceInstrument": false,
+          "IsDevicePatientSelfTesting": false,
+          "IsDeviceNearPatientTesting": false,
+          "IsDeviceDesignedForProfessionalTesting": false,
+          "IsDeviceCompanionDiagnostic": false,
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "ReferencedFileDetailInformationModule": {
+        "ReferencedFileHeader": [
+          {
+            "ReferencedFileTypeCode": {
+              "Value": "IFU"
+            },
+            "UniformResourceIdentifier": "https://www.leicabiosystems.com/en-de/histology-equipment/cryostats/leica-cm1520/",
+            "IsPrimaryFile": "TRUE"
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "IVDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "100"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "352"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "438"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "470"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "703"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "792"
+                  },
+                  "EndAvailabilityDateTime": "2099-12-31",
+                  "StartAvailabilityDateTime": "2012-09-03"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "A precision cutting instrument contained within a temperature-controlled cabinet (i.e., a cryostat) intended to be used for the sectioning of rapidly-frozen tissue specimens without prior fixation to expedite subsequent in vitro diagnostic analysis of the tissue specimen.\n"
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Leica CM1520"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_A"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "W0202059003"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-MF-000021943"
+            }
+          ],
+          "ContactName": "Leica Biosystems Nussloch GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:45",
+        "EffectiveDateTime": "2022-04-12T11:48:49.605",
+        "PublicationDateTime": "2026-03-19T16:46:45"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "010404918804919Z",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Leica CM1520"
+            }
+          ]
+        }
+      ],
+      "Gtin": "04049188169822",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "14049148053"
+        }
+      ]
+    },
+    "Identifier": "Draft_09d27ddb-b7d0-4fbf-9b9c-d96212d2cb59"
+  }
+}

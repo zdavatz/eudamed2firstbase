@@ -1,0 +1,323 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC08"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "-20~50℃"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC09"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "10~80%RH"
+                }
+              ]
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW001"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW009"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW007"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": true,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "UNSPECIFIED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "CertificationInformationModule": {
+        "CertificationInformation": [
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "0123"
+              }
+            ],
+            "CertificationAgency": "TÜV SÜD Product Service GmbH",
+            "CertificationStandard": "MDD_II_EX_4",
+            "Certification": [
+              {
+                "CertificationValue": "G1 094490 0008 Rev. 00",
+                "CertificationEffectiveEndDateTime": "2024-05-26"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDD",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "100"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2018-01-01"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "ELECTRODE SURGICAL INSTRUMENTS"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "85"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "K0201010402"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CN-MF-000016558"
+            }
+          ],
+          "ContactName": "VHMED (Nantong) Co., Ltd."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "XI-AR-000037579"
+            }
+          ],
+          "ContactName": "Very Heal Ltd."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:49",
+        "EffectiveDateTime": "2026-01-30T07:24:20.453",
+        "PublicationDateTime": "2026-03-19T16:46:49"
+      },
+      "Gtin": "06971254922698",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "LS1041"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "LS1041"
+        }
+      ]
+    },
+    "Identifier": "Draft_52a27339-34a8-4d12-9c24-57be9226c96d"
+  }
+}

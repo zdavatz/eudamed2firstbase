@@ -1,0 +1,198 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW275",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "medical Oxygen"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "SERIAL_NUMBER"
+            },
+            {
+              "Value": "MANUFACTURING_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "This cylinder valve with integrated regulator and integrated residual pressure valve device is\ndesign for oxygen therapy. This Ceodeux S.A. Meditec product will regulate the high pressure\nof the medical oxygen gas cylinder and deliver it to the patient.\nThis PRODUCT is not intended for any other installation or purpose. If the product user has\nany question regarding this PRODUCT’s proper application or purpose, the product user\nshould call *352 327832-1 or Fax * 352-32.78.32.317. Any non-approved use or application\nand/or any non-approved modification of the PRODUCT or its use or application may result in\na serious accident or personal injury for which CEODEUX S.A will not be responsible.\nCeodeux S.A cannot be held responsible for an inappropriate use of the product. The supplier\nof the final equipment is responsible for the homologation of the system. CEODEUX S.A.\ncannot be held responsible of the latter’s negligence.\nRecommendations of CODEUX S.A. do not substitute for the final responsibility of a customer."
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "de",
+              "Value": "OXO 300"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "R9099"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-PR-000040122"
+            }
+          ],
+          "ContactName": "EMS GmbH Emergency Medical Systems"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:20",
+        "EffectiveDateTime": "2025-09-24T12:14:41.345",
+        "PublicationDateTime": "2026-03-26T10:10:20"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "426245536OXOBasic1CM",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "1222250 V1"
+            }
+          ]
+        }
+      ],
+      "Gtin": "04262455360078",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "122220 V1 / ULC1-79-300 + M74200002"
+        }
+      ]
+    },
+    "Identifier": "Draft_0d9c922c-d8aa-4d6e-b209-4d12a01c8c27"
+  }
+}

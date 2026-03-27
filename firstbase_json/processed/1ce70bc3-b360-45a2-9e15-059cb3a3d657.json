@@ -1,0 +1,261 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 30,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 30,
+            "Gtin": "04250203258913"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EPP"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-PR-000036373"
+            }
+          ],
+          "ContactName": "Primed Halberstadt Medizintechnik GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T16:42:02",
+        "EffectiveDateTime": "2026-03-27T16:42:02",
+        "PublicationDateTime": "2026-03-27T16:42:02"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "42502032PRI0804Y"
+        }
+      ],
+      "Gtin": "04250203258920"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 30,
+        "CatalogueItem": {
+          "Identifier": "aa36bff1-1f13-4732-9e7e-f24ef0056357",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainLatex": "FALSE"
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "UdidDeviceCount": 1,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "MANUFACTURING_DATE"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "SystemOrProcedurePackTypeCode": {
+                  "Value": "PROCEDURE_PACK"
+                },
+                "SystemOrProcedurePackMedicalPurposeDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Perkutane Dilatationstracheotomie"
+                  }
+                ],
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "UNSPECIFIED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "de",
+                    "Value": "ProLine PercuTrach® Suction Voice, Gr.7  mit atraumatischer Einführhilfe  steril, nicht MRT geeignet"
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "de",
+                    "Value": "ProLine PercuTrach® Suction Voice, Gr.7  mit atraumatischer Einführhilfe  steril, nicht MRT geeignet"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "R0105020101"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EPP"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "DE-PR-000036373"
+                  }
+                ],
+                "ContactName": "Primed Halberstadt Medizintechnik GmbH"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-27T16:42:02",
+              "EffectiveDateTime": "2026-02-10T10:10:49.046",
+              "PublicationDateTime": "2026-03-27T16:42:02"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "42502032PRI0804Y",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "04250203258913"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "04250203258913",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "1021670"
+              },
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                "Value": "ProLine und Optima PercuTrach Sets"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_1ce70bc3-b360-45a2-9e15-059cb3a3d657"
+  }
+}

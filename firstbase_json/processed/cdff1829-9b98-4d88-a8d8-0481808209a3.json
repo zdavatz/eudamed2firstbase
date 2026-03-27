@@ -1,0 +1,342 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              }
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC05"
+              }
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC06"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "5 degree Celsius"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC07"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "25 degree Celsius"
+                }
+              ]
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW011",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Apply the bandage with light pressure. If a tingling sensation occurs, loosen or remove. Secure with bandage clips or adhesive tape. Do not use while sleeping or on broken or irritated skin. Discontinue use if elasticity decreases."
+                }
+              ]
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW032"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW277",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Consult a doctor if symptoms persist."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "DirectPartMarkingIdentifier": [
+            {
+              "IdentificationSchemeAgencyCode": "GS1",
+              "Value": "08712175939215"
+            }
+          ],
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "EXPIRATION_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-09"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-09"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-09"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-09"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-09"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-09"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-09"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Elastic bandage with 2 clips, 6 cm x 5 m (stretched length), assortment: blue, white"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "M030499"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EPD"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CN-MF-000007970"
+            }
+          ],
+          "ContactName": "Allmed Medical Products Co.,Ltd",
+          "StructuredAddress": [
+            {
+              "CountryCode": {
+                "Value": "156"
+              },
+              "StreetAddress": "No.18 Qixing Road 443200 443200 Zhijiang city, Hubei province"
+            }
+          ],
+          "TargetMarketCommunicationChannel": [
+            {
+              "CommunicationChannel": [
+                {
+                  "CommunicationChannelCode": {
+                    "Value": "TELEPHONE"
+                  },
+                  "CommunicationValue": "+86 717 4211111"
+                }
+              ]
+            },
+            {
+              "CommunicationChannel": [
+                {
+                  "CommunicationChannelCode": {
+                    "Value": "EMAIL"
+                  },
+                  "CommunicationValue": "sale@allmed.cn"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NL-MF-000004386"
+            }
+          ],
+          "ContactName": "Bevaplast B.V."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T17:13:18",
+        "EffectiveDateTime": "2025-01-10T14:18:22.387",
+        "PublicationDateTime": "2026-03-26T17:13:18"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "8712175_TD_14_XXWINL8",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Elastic Bandage"
+            }
+          ]
+        }
+      ],
+      "Gtin": "08712175939215",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "8361"
+        }
+      ]
+    },
+    "Identifier": "Draft_cdff1829-9b98-4d88-a8d8-0481808209a3"
+  }
+}

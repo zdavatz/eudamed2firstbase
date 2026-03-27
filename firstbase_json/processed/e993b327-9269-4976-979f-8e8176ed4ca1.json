@@ -1,0 +1,293 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC07"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Upper limit 25° C"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC06"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Lower limit 15° C"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              }
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC05"
+              }
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW001"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW007"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW009"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "MANUFACTURING_DATE"
+            },
+            {
+              "Value": "EXPIRATION_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "NO_LONGER_PLACED_ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "UNSPECIFIED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  },
+                  "EndAvailabilityDateTime": "2024-04-22",
+                  "StartAvailabilityDateTime": "2022-05-27"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "EndAvailabilityDateTime": "2024-04-22",
+                  "StartAvailabilityDateTime": "2022-05-27"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "EndAvailabilityDateTime": "2024-04-22",
+                  "StartAvailabilityDateTime": "2022-05-27"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  },
+                  "EndAvailabilityDateTime": "2024-04-22",
+                  "StartAvailabilityDateTime": "2022-05-27"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  },
+                  "EndAvailabilityDateTime": "2024-04-22",
+                  "StartAvailabilityDateTime": "2022-05-27"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  },
+                  "EndAvailabilityDateTime": "2024-04-22",
+                  "StartAvailabilityDateTime": "2022-05-27"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  },
+                  "EndAvailabilityDateTime": "2024-04-22",
+                  "StartAvailabilityDateTime": "2022-05-27"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "evercare® Essentia Special OP-gown, size XXL"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "T020402"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "FI-MF-000000642"
+            }
+          ],
+          "ContactName": "OneMed Group Oy"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:14",
+        "EffectiveDateTime": "2024-05-07T13:47:17.062",
+        "PublicationDateTime": "2026-03-26T10:11:14",
+        "DiscontinuedDateTime": "2026-03-27T10:11:14"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "6438129B0034HB",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "OP Gowns, sterile"
+            }
+          ]
+        }
+      ],
+      "Gtin": "06438129120547",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "2555-01"
+        }
+      ]
+    },
+    "Identifier": "Draft_e993b327-9269-4976-979f-8e8176ed4ca1"
+  }
+}

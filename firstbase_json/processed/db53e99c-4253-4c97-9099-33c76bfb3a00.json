@@ -1,0 +1,323 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC05"
+              }
+            }
+          ],
+          "ClinicalSize": [
+            {
+              "ClinicalSizeTypeCode": {
+                "Value": "WIDTH"
+              },
+              "ClinicalSizeValue": [
+                {
+                  "MeasurementUnitCode": "MMT",
+                  "Value": 16.0
+                }
+              ],
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "VALUE"
+              }
+            },
+            {
+              "ClinicalSizeTypeCode": {
+                "Value": "DEPTH"
+              },
+              "ClinicalSizeValue": [
+                {
+                  "MeasurementUnitCode": "MMT",
+                  "Value": 15.0
+                }
+              ],
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "VALUE"
+              }
+            },
+            {
+              "ClinicalSizeTypeCode": {
+                "Value": "ANGLE"
+              },
+              "ClinicalSizeValue": [
+                {
+                  "MeasurementUnitCode": "DD",
+                  "Value": 4.0
+                }
+              ],
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "VALUE"
+              }
+            },
+            {
+              "ClinicalSizeTypeCode": {
+                "Value": "HEIGHT"
+              },
+              "ClinicalSizeValue": [
+                {
+                  "MeasurementUnitCode": "MMT",
+                  "Value": 5.0
+                }
+              ],
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "VALUE"
+              }
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW036"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": true,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "SERIAL_NUMBER"
+            },
+            {
+              "Value": "MANUFACTURING_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "LIMITED_REUSABLE"
+            },
+            "MaximumCyclesReusable": 200
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "UNSPECIFIED"
+              }
+            ]
+          }
+        }
+      },
+      "ReferencedFileDetailInformationModule": {
+        "ReferencedFileHeader": [
+          {
+            "ReferencedFileTypeCode": {
+              "Value": "IFU"
+            },
+            "UniformResourceIdentifier": "https://ngmedical.de",
+            "IsPrimaryFile": "TRUE"
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "NGMedical test implants are reusable, surgically invasive products for temporary use. They are used to determine the size and final position of the implant."
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Cervical Trial 5 x 16 mm 4°"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "L1199"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-MF-000000204"
+            }
+          ],
+          "ContactName": "NGMedical GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:11",
+        "EffectiveDateTime": "2025-12-09T09:34:00.488",
+        "PublicationDateTime": "2026-03-26T10:11:11"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "42516314TD020IIa4W",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Cervical Trial"
+            }
+          ]
+        }
+      ],
+      "Gtin": "04251631403678",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "I516"
+        }
+      ]
+    },
+    "Identifier": "Draft_db53e99c-4253-4c97-9099-33c76bfb3a00"
+  }
+}

@@ -1,0 +1,394 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 4,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 4,
+            "Gtin": "04034342374952"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-MF-000006357"
+            }
+          ],
+          "ContactName": "P. J. Dahlhausen & Co. GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:46",
+        "EffectiveDateTime": "2026-03-19T16:46:46",
+        "PublicationDateTime": "2026-03-19T16:46:46"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "34342EKGElektrodenGY"
+        }
+      ],
+      "Gtin": "04034342374969"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 4,
+        "CatalogueItem": {
+          "Identifier": "4d4b9f68-884f-4c1e-a382-4854ebc3f3b6",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 40,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 40,
+                  "Gtin": "04034342088637"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "DE-MF-000006357"
+                  }
+                ],
+                "ContactName": "P. J. Dahlhausen & Co. GmbH"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:46",
+              "EffectiveDateTime": "2026-03-19T16:46:46",
+              "PublicationDateTime": "2026-03-19T16:46:46"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "34342EKGElektrodenGY"
+              }
+            ],
+            "Gtin": "04034342374952"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 40,
+              "CatalogueItem": {
+                "Identifier": "92cd10b2-65c0-4589-8235-e3bded541e36",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 30,
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "NOT_STERILISED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "276"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "380"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "250"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "616"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "203"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "620"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "703"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "348"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "428"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "191"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "724"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "C020501"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "DE-MF-000006357"
+                        }
+                      ],
+                      "ContactName": "P. J. Dahlhausen & Co. GmbH"
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-19T16:46:46",
+                    "EffectiveDateTime": "2025-12-12T11:05:19.125",
+                    "PublicationDateTime": "2026-03-19T16:46:46"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "34342EKGElektrodenGY",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "ECG Electrodes"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "04034342088637",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "1900000558"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_2096997c-c313-4dde-95dc-86e06b1cd976"
+  }
+}

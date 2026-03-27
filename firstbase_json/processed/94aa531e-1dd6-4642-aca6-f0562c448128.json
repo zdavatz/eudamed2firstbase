@@ -1,0 +1,350 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              }
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC05"
+              }
+            }
+          ],
+          "ClinicalSize": [
+            {
+              "ClinicalSizeDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "20cm x 20cm"
+                }
+              ],
+              "ClinicalSizeTypeCode": {
+                "Value": "DEVICE_SIZE_TEXT_SPECIFY"
+              },
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "TEXT"
+              },
+              "ClinicalSizeValueText": "20cm x 20cm"
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW009"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW007"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW001"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW022"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW032"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "UNSPECIFIED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "CertificationInformationModule": {
+        "CertificationInformation": [
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "1639"
+              }
+            ],
+            "CertificationAgency": "SGS Belgium NV",
+            "CertificationStandard": "MDD_II_EX_4",
+            "Certification": [
+              {
+                "CertificationValue": "GB19/964732.00",
+                "CertificationIdentification": "3",
+                "CertificationEffectiveEndDateTime": "2023-06-18"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDD",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "el",
+              "Value": "Υδρόφιλο αφρώδες επίθεμα με μαλακό στρώμα επαφής από σιλικόνη"
+            },
+            {
+              "LanguageCode": "it",
+              "Value": "Medicazione di schiuma idrofila con strato di contatto di silicone morbido"
+            },
+            {
+              "LanguageCode": "nl",
+              "Value": "Hydrofiele schuim dressing met zachte siliconen contact laag"
+            },
+            {
+              "LanguageCode": "de",
+              "Value": "Wundauflage aus hydrophilem Schaumstoff mit einer weichen Kontaktschicht aus Silikon"
+            },
+            {
+              "LanguageCode": "es",
+              "Value": "Apósito de espuma hidrófila con suave capa de contacto de silicona"
+            },
+            {
+              "LanguageCode": "fi",
+              "Value": "Hydrofiilinen vaahtosidos, pehmytsilikoninen kontaktikerros"
+            },
+            {
+              "LanguageCode": "fr",
+              "Value": "Pansement en mousse hydrophile avec couche de contact de silicone douce"
+            },
+            {
+              "LanguageCode": "pl",
+              "Value": "Hydrofilowy opatrunek piankowy z miękką warstwą silikonową kontaktującą się z raną"
+            },
+            {
+              "LanguageCode": "en",
+              "Value": "Hydrophilic foam dressing with soft silicone wound contact layer"
+            },
+            {
+              "LanguageCode": "pt",
+              "Value": "Curativo de espuma hidrofílica com uma camada de contato de silicone macio"
+            },
+            {
+              "LanguageCode": "da",
+              "Value": "Hydrofil skumbandage med et blødt kontaktlag af silikone"
+            },
+            {
+              "LanguageCode": "sv",
+              "Value": "Hydrofilt skumförband med ett mjukt kontaktlager av silikon"
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Advazorb Silfix"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "85"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "M040499"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "GB-MF-000012039"
+            }
+          ],
+          "ContactName": "Brightwake Limited"
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "IE-AR-000004113"
+            }
+          ],
+          "ContactName": "CS Life Sciences Europe Ltd"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:53",
+        "EffectiveDateTime": "2025-02-14T12:06:32.788",
+        "PublicationDateTime": "2026-03-26T10:10:53"
+      },
+      "Gtin": "05060031475180",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "CR4182"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "B-05060031475180"
+        }
+      ]
+    },
+    "Identifier": "Draft_94aa531e-1dd6-4642-aca6-f0562c448128"
+  }
+}

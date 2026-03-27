@@ -1,0 +1,308 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 20,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 20,
+            "Gtin": "08435016781018"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EPP"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "ES-PR-000011724"
+            }
+          ],
+          "ContactName": "Servicio Integral Hospitalario, S.L.U."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T16:42:02",
+        "EffectiveDateTime": "2026-03-27T16:42:02",
+        "PublicationDateTime": "2026-03-27T16:42:02"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "184350167cpacks01G8"
+        }
+      ],
+      "Gtin": "18435016781015"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 20,
+        "CatalogueItem": {
+          "Identifier": "8cf58523-aaf4-41a6-9d7b-7eef5df74db8",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainLatex": "FALSE",
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC14"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC01"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW007"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW009"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW032"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW010",
+                    "WarningsOrContraIndicationDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "Due to the nature of the materials, the presence of fibers is possible, so that during surgery precautions must be taken to minimize fibers reaching or remaining in the eye. Dispose of all products contained in the pack, following the hospital practice once the surgical procedure is completed.For invasive procedures, prior to use, please flush the container (bowls or and trays ) with sterile solution."
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "UdidDeviceCount": 1,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "SystemOrProcedurePackTypeCode": {
+                  "Value": "PROCEDURE_PACK"
+                },
+                "SystemOrProcedurePackMedicalPurposeDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Medical devices intended to be used in an ophthalmic surgical procedure. The products contained in the pack are selected by trained medical professionals who know how to use them correctly, both individually and in combination with other health products."
+                  }
+                ],
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "UNSPECIFIED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "fr",
+                    "Value": "Combination of medical devices with different classification."
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "fr",
+                    "Value": "Procedure Pack"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "Q021113"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EPP"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "ES-PR-000011724"
+                  }
+                ],
+                "ContactName": "Servicio Integral Hospitalario, S.L.U."
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-27T16:42:02",
+              "EffectiveDateTime": "2026-02-20T15:39:48.092",
+              "PublicationDateTime": "2026-03-27T16:42:02"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "184350167cpacks01G8",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "CUSTOM OPHTHALMIC PROCEDURE PACK IIa"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "08435016781018",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "Q4015411/1"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_05873326-5a1f-4fab-af99-e8e468c35f0d"
+  }
+}

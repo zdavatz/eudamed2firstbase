@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- edited with XMLSpy v2019 rel. 3 sp1 (x64) (http://www.altova.com) by European Commission DG SANTE (European Commission DG SANTE) -->
+<message:Push version="<!-- Schema version here-->" xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1" xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1" xmlns:udt="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDIData/v1" xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" xmlns:lngs="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1" xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd" xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1" xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1" xmlns:udi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1" xmlns:udieu="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDI/v1" xmlns:mi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1">
+	<message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+	<message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+	<message:creationDateTime>2019-05-22T07:00:28.066+02:00</message:creationDateTime>
+	<message:messageID>14b3f4ea-9db8-4c12-9a5f-4176336b9be0</message:messageID>
+	<message:recipient>
+		<message:node>
+			<service:nodeActorCode>EUDAMED</service:nodeActorCode>
+			<service:nodeID>eudamed_mdr_acc</service:nodeID>
+		</message:node>
+		<message:service>
+			<service:serviceAccessToken><!--YOUR SECURITY TOKEN --></service:serviceAccessToken>
+			<service:serviceID>UDI_DI</service:serviceID>
+			<service:serviceOperation>PATCH</service:serviceOperation>
+		</message:service>
+	</message:recipient>
+	<message:payload>
+	<!-- MDR UDI UPDATE EXAMPLE -->
+		<device:UDIDIData xsi:type="udidi:MDRUDIDIDataType">
+			<e:version>0</e:version>
+			<udidi:identifier>
+				<commondevice:DICode>UDI-Code</commondevice:DICode>
+				<commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+			</udidi:identifier>
+			<udidi:status>
+				<commondevice:code>NO_LONGER_PLACED_ON_THE_MARKET</commondevice:code>
+			</udidi:status>
+			<udidi:additionalDescription>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>Dummy additional desc V2</lngs:textValue>
+				</lngs:name>
+			</udidi:additionalDescription>
+			<udidi:basicUDIIdentifier>
+				<commondevice:DICode>Basic UDI</commondevice:DICode>
+				<commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+			</udidi:basicUDIIdentifier>
+			<udidi:MDNCodes>A0101010101 D01010103</udidi:MDNCodes>
+			<udidi:productionIdentifier>BATCH_NUMBER</udidi:productionIdentifier>
+			<udidi:referenceNumber>REFERENCE NUMBER 011111</udidi:referenceNumber>
+			<udidi:sterile>true</udidi:sterile>
+			<udidi:sterilization>true</udidi:sterilization>
+			<udidi:tradeNames>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>EN NAME</lngs:textValue>
+				</lngs:name>
+				<lngs:name>
+					<lngs:language>FR</lngs:language>
+					<lngs:textValue>FR NAME</lngs:textValue>
+				</lngs:name>
+			</udidi:tradeNames>
+			<udidi:numberOfReuses>0</udidi:numberOfReuses>
+			<udidi:marketInfos>
+				<mi:marketInfo>
+					<mi:country>BE</mi:country>
+					<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+				<mi:marketInfo>
+					<mi:country>FR</mi:country>
+					<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+			</udidi:marketInfos>
+			<udidi:baseQuantity>1</udidi:baseQuantity>
+			<udidi:latex>false</udidi:latex>
+			<udidi:reprocessed>false</udidi:reprocessed>
+		</device:UDIDIData>
+		<!-- UDIDIData 02 START-->
+		<!-- IVDR UDI UPDATE EXAMPLE -->
+		<device:UDIDIData xsi:type="udidi:IVDRUDIDIDataType">
+			<e:version>0</e:version>
+			<udidi:identifier>
+				<commondevice:DICode>UDI-Code</commondevice:DICode>
+				<commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+			</udidi:identifier>
+			<udidi:status>
+				<commondevice:code>ON_THE_MARKET</commondevice:code>
+			</udidi:status>
+			<udidi:additionalDescription>
+				<lsn:name>
+					<lsn:language>EN</lsn:language>
+					<lsn:textValue>Description_EN</lsn:textValue>
+				</lsn:name>
+			</udidi:additionalDescription>
+			<udidi:basicUDIIdentifier>
+				<commondevice:DICode>Basic UDI</commondevice:DICode>
+				<commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+			</udidi:basicUDIIdentifier>
+			<udidi:MDNCodes>A0101010101 B02010201</udidi:MDNCodes>
+			<udidi:productionIdentifier>BATCH_NUMBER</udidi:productionIdentifier>
+			<udidi:referenceNumber>REF_NO_01245</udidi:referenceNumber>
+			<udidi:secondaryIdentifier>
+				<commondevice:DICode>SomeDeviceIDasSecondary1223</commondevice:DICode>
+				<commondevice:issuingEntityCode>IFA</commondevice:issuingEntityCode>
+			</udidi:secondaryIdentifier>
+			<udidi:sterile>true</udidi:sterile>
+			<udidi:sterilization>false</udidi:sterilization>
+			<udidi:tradeNames>
+				<lsn:name>
+					<lsn:language>ANY</lsn:language>
+					<lsn:textValue>new trade name</lsn:textValue>
+				</lsn:name>
+			</udidi:tradeNames>
+			<udidi:website>www.yournewsite.org</udidi:website>
+			<udidi:storageHandlingConditions>
+				<commondevice:condition>
+					<commondevice:comments>
+						<lsn:name>
+							<lsn:textValue>New Condition</lsn:textValue>
+						</lsn:name>
+					</commondevice:comments>
+					<commondevice:storageHandlingConditionValue>SHC002</commondevice:storageHandlingConditionValue>
+				</commondevice:condition>
+			</udidi:storageHandlingConditions>
+			<udidi:criticalWarnings>
+				<commondevice:warning>
+					<commondevice:comments>
+						<lsn:name>
+							<lsn:textValue>Critical_Warning_Test</lsn:textValue>
+						</lsn:name>
+					</commondevice:comments>
+					<commondevice:warningValue>CW006</commondevice:warningValue>
+				</commondevice:warning>
+			</udidi:criticalWarnings>
+			<udidi:numberOfReuses>15</udidi:numberOfReuses>
+			<udidi:marketInfos>
+				<mi:marketInfo>
+					<mi:country>BE</mi:country>
+					<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+			</udidi:marketInfos>
+			<udidi:deviceMarking>
+				<udidi:directMarkingDI>
+					<commondevice:DICode>SomeDeviceasDirectMark123</commondevice:DICode>
+					<commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+				</udidi:directMarkingDI>
+			</udidi:deviceMarking>
+			<udidi:baseQuantity>3</udidi:baseQuantity>
+			<udidi:newDevice>false</udidi:newDevice>
+		</device:UDIDIData>
+		<!-- UDIDIData 03 START-->
+	</message:payload>
+	<message:sender>
+		<message:node>
+			<service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+			<service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+		</message:node>
+		<message:service>
+			<service:serviceID>REPLY_SERVICE</service:serviceID>
+			<service:serviceOperation>GET</service:serviceOperation>
+		</message:service>
+	</message:sender>
+</message:Push>

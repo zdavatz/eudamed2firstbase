@@ -1,0 +1,338 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 16,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 16,
+            "Gtin": "03760348110850"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "FR-MF-000026140"
+            }
+          ],
+          "ContactName": "HOIST MEDICAL "
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:56",
+        "EffectiveDateTime": "2026-03-19T16:46:56",
+        "PublicationDateTime": "2026-03-19T16:46:56"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "376034811100.01AT"
+        }
+      ],
+      "Gtin": "23760348110854"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 16,
+        "CatalogueItem": {
+          "Identifier": "51cfc5e2-9ba6-4860-9a95-a2e47b30b0c6",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW010"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW009"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW007"
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 1,
+                "DirectPartMarkingIdentifier": [
+                  {
+                    "IdentificationSchemeAgencyCode": "GS1",
+                    "Value": "03760348110850"
+                  }
+                ],
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": true,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "SYSTEM"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "UNSPECIFIED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "CertificationInformationModule": {
+              "CertificationInformation": [
+                {
+                  "AdditionalCertificationOrganisationIdentifier": [
+                    {
+                      "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                      "Value": "0297"
+                    }
+                  ],
+                  "CertificationAgency": "DQS Medizinprodukte GmbH",
+                  "CertificationStandard": "MDR_QUALITY_MANAGEMENT_SYSTEM",
+                  "Certification": [
+                    {
+                      "CertificationValue": "1000217799",
+                      "CertificationIdentification": "01",
+                      "CertificationEffectiveEndDateTime": "2029-10-31",
+                      "CertificationEffectiveStartDateTime": "2025-02-14"
+                    }
+                  ]
+                }
+              ]
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        },
+                        "StartAvailabilityDateTime": "2025-05-06"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "The PURFIT™ gastrostomy button is a fully Polyurethane low profile gastrostomy tube with accessories, indicated for long-term use in a well-established and healed gastrostomy, for nutrition and/or medication administration. It can be used for gastric decompression"
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "PURFIT GASTROSTOMY BUTTON 20FR 3 CM PGB20-3.0"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "G02020201"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "FR-MF-000026140"
+                  }
+                ],
+                "ContactName": "HOIST MEDICAL "
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:56",
+              "EffectiveDateTime": "2025-09-23T11:05:46.05",
+              "PublicationDateTime": "2026-03-19T16:46:56"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "376034811100.01AT",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "PURFIT GASTROSTOMY BUTTON 14FR 3CM PGB14-3.0"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "03760348110850",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "PGB20-3.0"
+              },
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                "Value": "PURFIT GASTROSTOMY BUTTON 14FR 3CM PGB14-3.0"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_d89f3acc-7ba3-4e21-9497-cefc3321f5d8"
+  }
+}

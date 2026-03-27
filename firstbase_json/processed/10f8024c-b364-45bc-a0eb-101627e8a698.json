@@ -1,0 +1,456 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 180,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 180,
+            "Gtin": "08428097031707"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "ES-MF-000000160"
+            }
+          ],
+          "ContactName": "Iberhospitex, S.A."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:21",
+        "EffectiveDateTime": "2026-03-26T10:10:21",
+        "PublicationDateTime": "2026-03-26T10:10:21"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "8428097TAPE99"
+        }
+      ],
+      "Gtin": "08428097031714"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 180,
+        "CatalogueItem": {
+          "Identifier": "b5a9b57f-ec92-4117-91db-6d57d09a9252",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 1,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 1,
+                  "Gtin": "08428097878500"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "ES-MF-000000160"
+                  }
+                ],
+                "ContactName": "Iberhospitex, S.A."
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:10:21",
+              "EffectiveDateTime": "2026-03-26T10:10:21",
+              "PublicationDateTime": "2026-03-26T10:10:21"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "8428097TAPE99"
+              }
+            ],
+            "Gtin": "08428097031707"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 1,
+              "CatalogueItem": {
+                "Identifier": "ae25e167-f291-4cd3-9ef5-0956976d9d44",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false,
+                      "ClinicalStorageHandlingInformation": [
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC02"
+                          }
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC05"
+                          }
+                        }
+                      ],
+                      "ClinicalWarning": [
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW009"
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        },
+                        {
+                          "Value": "EXPIRATION_DATE"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "NOT_STERILISED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "724"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "056"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "196"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "203"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "246"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "250"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "300"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "348"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "372"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "380"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "440"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "620"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "703"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "705"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "AdditionalTradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Adhesive non-woven fabric 5 x 1000 cm"
+                        },
+                        {
+                          "LanguageCode": "fr",
+                          "Value": "Tissu non-tissé auto-adhésif 5 x 1000 cm"
+                        },
+                        {
+                          "LanguageCode": "es",
+                          "Value": "Tejido sin tejer autoadhesivo 5 x 1000 cm"
+                        }
+                      ],
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "OPER TAPE 5 x 1000 cm"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "M0303010201"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "ES-MF-000000160"
+                        }
+                      ],
+                      "ContactName": "Iberhospitex, S.A."
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:10:21",
+                    "EffectiveDateTime": "2021-11-16T13:23:54.141",
+                    "PublicationDateTime": "2026-03-26T10:10:21"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "8428097TAPE99",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Adhesive non-woven fabric"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "08428097878500",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "0032220"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_10f8024c-b364-45bc-a0eb-101627e8a698"
+  }
+}

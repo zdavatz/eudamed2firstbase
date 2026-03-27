@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<m:Push version="<!-- Schema version here-->"
+        xmlns:s="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1"
+        xmlns:basicudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1"
+        xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1"
+        xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1"
+        xmlns:lsn="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1"
+        xmlns:commondi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1"
+        xmlns:m="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+
+    <m:conversationID>ae6f2f07-6a84-4d01-becd-178d4e7e6e41</m:conversationID>
+    <m:correlationID>98971ef5-58ed-4db4-ba19-61bcb07ebec4</m:correlationID>
+    <m:creationDateTime>2020-01-23T11:21:58.523108Z</m:creationDateTime>
+    <m:messageID>6b5db5cd-715a-490d-9e55-f619c9a64d34</m:messageID>
+    <m:recipient>
+        <m:node>
+            <s:nodeActorCode>EUDAMED</s:nodeActorCode>
+            <s:nodeID>eDelivery:EUDAMED</s:nodeID> 
+        </m:node>
+        <m:service>
+            <s:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></s:serviceAccessToken>
+            <s:serviceID>DEVICE</s:serviceID>
+            <s:serviceOperation>POST</s:serviceOperation>
+        </m:service>
+    </m:recipient>
+    <m:payload>
+        <device:Device xsi:type="device:PRDeviceType">
+            <device:PRBasicUDI>
+                <basicudi:riskClass>CLASS_I</basicudi:riskClass>
+                <basicudi:model>SPP_Model</basicudi:model>
+                <basicudi:identifier>
+                    <commondi:DICode>1314412345556476X5</commondi:DICode>
+                    <commondi:issuingEntityCode>GS1</commondi:issuingEntityCode>
+                </basicudi:identifier>
+                <basicudi:medicinalPurpose>
+                    <lsn:name>
+                        <lsn:language>EN</lsn:language>
+                        <lsn:textValue>Medicinal Purpose Language EN</lsn:textValue>
+                    </lsn:name>
+                    <lsn:name>
+                        <lsn:language>FR</lsn:language>
+                        <lsn:textValue>Medicinal Purpose Language FR</lsn:textValue>
+                    </lsn:name>
+                </basicudi:medicinalPurpose>
+                <basicudi:PRActorCode>BE-PR-000000022</basicudi:PRActorCode>
+                <basicudi:type>SYSTEM</basicudi:type>
+            </device:PRBasicUDI>
+            <device:PRUDIDIData>
+                <udidi:identifier>
+                    <commondi:DICode>23212112213233</commondi:DICode>
+                    <commondi:issuingEntityCode>HIBCC</commondi:issuingEntityCode>
+                </udidi:identifier>
+                <udidi:status>
+                    <commondi:code>ON_THE_MARKET</commondi:code>
+                </udidi:status>
+                <udidi:basicUDIIdentifier>
+                    <commondi:DICode>1314412345556476X5</commondi:DICode>
+                    <commondi:issuingEntityCode>GS1</commondi:issuingEntityCode>
+                </udidi:basicUDIIdentifier>
+                <udidi:MDNCodes>Z11039011</udidi:MDNCodes>
+                <udidi:productionIdentifier>BATCH_NUMBER</udidi:productionIdentifier>
+                <udidi:referenceNumber>Reference_no</udidi:referenceNumber>
+                <udidi:sterile>true</udidi:sterile>
+                <udidi:sterilization>true</udidi:sterilization>
+                <udidi:tradeNames>
+                    <lsn:name>
+                        <lsn:language>EN</lsn:language>
+                        <lsn:textValue>Trade_Name</lsn:textValue>
+                    </lsn:name>
+                </udidi:tradeNames>
+                <udidi:website>www.web_test.com</udidi:website>
+                <udidi:storageHandlingConditions>
+							<commondi:condition>
+								<commondi:comments>
+										<lsn:name>
+												<lsn:textValue>Storage Conditions Comments</lsn:textValue>
+										</lsn:name>
+							</commondi:comments>
+							<commondi:storageHandlingConditionValue>SHC005</commondi:storageHandlingConditionValue>
+							</commondi:condition>
+				</udidi:storageHandlingConditions>
+                <udidi:packages>
+                    <udidi:package>
+                        <udidi:identifier>
+                            <commondi:DICode>D11212212451</commondi:DICode>
+                            <commondi:issuingEntityCode>HIBCC</commondi:issuingEntityCode>
+                        </udidi:identifier>
+                        <udidi:status>
+                            <commondi:code>ON_THE_MARKET</commondi:code>
+                        </udidi:status>
+                        <udidi:child>
+                            <commondi:DICode>23212112213233</commondi:DICode>
+                            <commondi:issuingEntityCode>HIBCC</commondi:issuingEntityCode>
+                        </udidi:child>
+                        <udidi:numberOfItems>4</udidi:numberOfItems>
+                    </udidi:package>
+                </udidi:packages>
+                <udidi:criticalWarnings>
+                    <commondi:warning>
+                        <commondi:warningValue>CW006</commondi:warningValue>
+                    </commondi:warning>
+                </udidi:criticalWarnings>
+            </device:PRUDIDIData>
+        </device:Device>
+    </m:payload>
+    <m:sender>
+        <m:node>
+            <s:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></s:nodeActorCode>
+            <s:nodeID><!-- YOUR Party ID HERE  --></s:nodeID>
+        </m:node>
+        <m:service>
+            <s:serviceID>DEVICE</s:serviceID>
+            <s:serviceOperation>POST</s:serviceOperation>
+        </m:service>
+    </m:sender>
+</m:Push>

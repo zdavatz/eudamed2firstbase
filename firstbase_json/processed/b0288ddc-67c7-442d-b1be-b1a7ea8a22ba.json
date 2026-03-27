@@ -1,0 +1,487 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 4,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 4,
+            "Gtin": "10076490636750"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "BE-MF-000000691"
+            }
+          ],
+          "ContactName": "Ansell Healthcare Europe NV"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:53",
+        "EffectiveDateTime": "2026-03-19T16:46:53",
+        "PublicationDateTime": "2026-03-19T16:46:53"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "5414566SANSM10YD"
+        }
+      ],
+      "Gtin": "20076490645414"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 4,
+        "CatalogueItem": {
+          "Identifier": "be6c3234-a346-4649-aeef-8f43415f8c2e",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW009",
+                    "WarningsOrContraIndicationDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": " Re-use could cause post contamination and post-operative complication"
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW010"
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 100,
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "DEVICE"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "NOT_STERILISED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "056"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      }
+                    ]
+                  },
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "300"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "348"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "352"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "372"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "380"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "428"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "438"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "440"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "442"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "470"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "528"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "578"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "616"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "620"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "642"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "703"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "705"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "724"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "752"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "792"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "040"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "100"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "191"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "196"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "203"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "208"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "233"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "246"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "276"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "SANDEL PREP-RESIST 4-in-1 Marker"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "V9004"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "BE-MF-000000691"
+                  }
+                ],
+                "ContactName": "Ansell Healthcare Europe NV"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:53",
+              "EffectiveDateTime": "2025-02-19T16:16:36.502",
+              "PublicationDateTime": "2026-03-19T16:46:53"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "5414566SANSM10YD",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "SANDEL Skin Markers (Non-Sterile)"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "10076490636750",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "1061-NNS"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_b0288ddc-67c7-442d-b1be-b1a7ea8a22ba"
+  }
+}

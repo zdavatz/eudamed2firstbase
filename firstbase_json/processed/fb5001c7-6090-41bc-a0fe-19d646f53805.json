@@ -1,0 +1,198 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainLatex": "FALSE",
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC99"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "This device should be stored in a non-corrosive and ventilated environment. Storage temperature: -10℃～+40℃."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "SystemOrProcedurePackTypeCode": {
+            "Value": "SYSTEM"
+          },
+          "SystemOrProcedurePackMedicalPurposeDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Bone Cement Mixing System"
+            }
+          ],
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "UNSPECIFIED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "CertificationInformationModule": {
+        "CertificationInformation": [
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "0123"
+              }
+            ],
+            "CertificationAgency": "TÜV SÜD Product Service GmbH",
+            "CertificationStandard": "MDD_V",
+            "Certification": [
+              {
+                "CertificationValue": "G2S 107765 0003",
+                "CertificationIdentification": "00",
+                "CertificationEffectiveEndDateTime": "2024-05-26"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDD",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "This device consists of Vacuum mixer (Including Mixing bowl, Mixing paddle and Rotating handle), Spatula, Curette, Vacuum hose (with trumpet adapter or spigot adapter). This device can mix up to three units (total 120g powder) of bone cement of any viscosity. Associated devices: The Bone Cement and Vacuum extractor (Vacuum pump) are not  including in this device. The Bone cement is mixed under negative pressure."
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Bone Cement Mixing System"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "85"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "P099002"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EPP"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CN-MF-000008926"
+            }
+          ],
+          "ContactName": "Guangzhou Clean Medical Products Manufacturing Corp."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NL-AR-000000247"
+            }
+          ],
+          "ContactName": "SUNGO Europe B.V."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T16:42:05",
+        "EffectiveDateTime": "2026-02-28T06:16:56.157",
+        "PublicationDateTime": "2026-03-27T16:42:05"
+      },
+      "Gtin": "06951233720521",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "CL006-01BE"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "CL006-01"
+        }
+      ]
+    },
+    "Identifier": "Draft_fb5001c7-6090-41bc-a0fe-19d646f53805"
+  }
+}

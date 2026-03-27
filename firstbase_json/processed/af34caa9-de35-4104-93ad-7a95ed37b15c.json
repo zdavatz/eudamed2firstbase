@@ -1,0 +1,357 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 2,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 2,
+            "Gtin": "04250203248303"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-MF-000004967"
+            }
+          ],
+          "ContactName": "Primed Halberstadt Medizintechnik GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:00",
+        "EffectiveDateTime": "2026-03-26T10:11:00",
+        "PublicationDateTime": "2026-03-26T10:11:00"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "42502032PRI0154M"
+        }
+      ],
+      "Gtin": "04250203248310"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 2,
+        "CatalogueItem": {
+          "Identifier": "e35aada6-3666-4485-8ad8-012f8ea5fd99",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 25,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 25,
+                  "Gtin": "04250203208024"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "DE-MF-000004967"
+                  }
+                ],
+                "ContactName": "Primed Halberstadt Medizintechnik GmbH"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:11:00",
+              "EffectiveDateTime": "2026-03-26T10:11:00",
+              "PublicationDateTime": "2026-03-26T10:11:00"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "42502032PRI0154M"
+              }
+            ],
+            "Gtin": "04250203248303"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 25,
+              "CatalogueItem": {
+                "Identifier": "0d53cf2d-29d7-4f88-a444-7a4c5c61d4bd",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        },
+                        {
+                          "Value": "MANUFACTURING_DATE"
+                        },
+                        {
+                          "Value": "EXPIRATION_DATE"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "UNSPECIFIED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "276"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "de",
+                          "Value": "Gallendrainagebeutel 500 ml, mit Sekretschlauch, steril"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "A060301"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "DE-MF-000004967"
+                        }
+                      ],
+                      "ContactName": "Primed Halberstadt Medizintechnik GmbH"
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:11:00",
+                    "EffectiveDateTime": "2026-02-03T18:13:56.332",
+                    "PublicationDateTime": "2026-03-26T10:11:00"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "42502032PRI0154M",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "04250203208024"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "04250203208024",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "21999"
+                    },
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                      "Value": "Niedervakuum"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_af34caa9-de35-4104-93ad-7a95ed37b15c"
+  }
+}

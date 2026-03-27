@@ -1,0 +1,502 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 1,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 1,
+            "Gtin": "05411967001361"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "BE-MF-000000313"
+            }
+          ],
+          "ContactName": "FertiPro"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:02",
+        "EffectiveDateTime": "2026-03-26T10:11:02",
+        "PublicationDateTime": "2026-03-26T10:11:02"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "5411967SPMGN12N"
+        }
+      ],
+      "Gtin": "05411967003174"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 1,
+        "CatalogueItem": {
+          "Identifier": "8758f8a0-04c2-4eb1-9162-44eebc696789",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainMicrobialSubstance": false,
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "TRUE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC08"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "2-8°C"
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC36"
+                    }
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW011",
+                    "WarningsOrContraIndicationDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "All human, organic material should be considered potentially infectious. Handle all specimens as if capable of transmitting HIV or hepatitis."
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW008",
+                    "WarningsOrContraIndicationDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "he SpermMar Test IgG Positive and Negative Controls contain human serum"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 1,
+                "DirectPartMarkingIdentifier": [
+                  {
+                    "IdentificationSchemeAgencyCode": "GS1",
+                    "Value": "05411967001361"
+                  }
+                ],
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "DEVICE"
+                },
+                "IsNewDevice": false,
+                "IsDeviceReagent": false,
+                "IsDeviceInstrument": false,
+                "IsDevicePatientSelfTesting": false,
+                "IsDeviceNearPatientTesting": false,
+                "IsDeviceDesignedForProfessionalTesting": false,
+                "IsDeviceCompanionDiagnostic": false,
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "REUSABLE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "NOT_STERILISED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "ReferencedFileDetailInformationModule": {
+              "ReferencedFileHeader": [
+                {
+                  "ReferencedFileTypeCode": {
+                    "Value": "IFU"
+                  },
+                  "UniformResourceIdentifier": "https://fertipro.com/2019/11/04/spermmar-igg/",
+                  "IsPrimaryFile": "TRUE"
+                }
+              ]
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "IVDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "056"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "040"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "100"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "191"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "196"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "203"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "208"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "233"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "246"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "276"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "300"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "348"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "352"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "372"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "380"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "428"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "438"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "440"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "442"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "470"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "528"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "578"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "616"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "620"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "642"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "703"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "705"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "724"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "752"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "792"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "The SpermMar Test IgG Positive and Negative Controls are control sera for use with the SpermMar Test IgG to verify the performance of the device."
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "SpermMar Test IgG Negative Control"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_B"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "W0102152011"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "BE-MF-000000313"
+                  }
+                ],
+                "ContactName": "FertiPro"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:11:02",
+              "EffectiveDateTime": "2026-02-02T09:46:00.055",
+              "PublicationDateTime": "2026-03-26T10:11:02"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "5411967SPMGN12N",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "SpermMar Test IgG Negative Control"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "05411967001361",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "SPMG_N"
+              },
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                "Value": "SPMG_N"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_b521a684-616b-4505-97ed-0640b31bbe06"
+  }
+}

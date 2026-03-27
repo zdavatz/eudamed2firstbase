@@ -1,0 +1,205 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainLatex": "FALSE",
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW001"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW009"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW007"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "SystemOrProcedurePackTypeCode": {
+            "Value": "SYSTEM"
+          },
+          "SystemOrProcedurePackMedicalPurposeDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Mr. Thirsty Medium/Large (100pk)"
+            }
+          ],
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "CertificationInformationModule": {
+        "CertificationInformation": [
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "0413"
+              }
+            ],
+            "CertificationAgency": "INTERTEK SEMKO AB",
+            "CertificationStandard": "MDD_II_EX_4",
+            "Certification": [
+              {
+                "CertificationValue": "41377454",
+                "CertificationIdentification": "01",
+                "CertificationEffectiveEndDateTime": "2023-09-26"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDD",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Product device description:\n\tThe Mr. Thirsty® is a device comprised of two components which together create a device that connects to a high-volume evacuation Isolation System device that is used during dental procedures.  \n\nThe components consist of an angle tube which is made of polystyrene and a tongue shield that is made of a thermoplastic elastomer.  The tongue shield component has a bite block designed into it.\n\nIntended use of the product:\n\tThe Mr. Thirsty® device is intended for use with high volume evacuation for evacuation of fluids from the oral cavity. While also retracting the tongue and cheek of the patient during dental procedures in which sterile devices are not required. (Mr. Thirsty is not a sterile device).  \n\nIt assists the dental professional during dental procedures. During the procedure: the bite block props the patient’s mouth open, the tongue shield retracts both the tongue and cheek of the patient out of the working area, and the High-Volume Evacuator (HVE) it assists in keeping the working area dry by suctioning fluids and debris away and out of the oral cavity."
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Mr. Thirsty® One-Step Medium/Large (100pk)"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "85"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "Q019001"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EPP"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "US-MF-000021065"
+            }
+          ],
+          "ContactName": "Zirc Dental Products Inc."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-AR-000005612"
+            }
+          ],
+          "ContactName": "Medicom GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T16:42:05",
+        "EffectiveDateTime": "2023-07-26T12:03:44.048",
+        "PublicationDateTime": "2026-03-27T16:42:05"
+      },
+      "Gtin": "00840161304902",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "50Z986LG-B"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "B-00840161304902"
+        }
+      ]
+    },
+    "Identifier": "Draft_f8b3ef9e-f7e4-4d3c-bde5-1246538aae02"
+  }
+}

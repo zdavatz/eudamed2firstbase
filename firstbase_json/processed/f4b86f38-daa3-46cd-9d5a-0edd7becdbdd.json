@@ -1,0 +1,407 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 22,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 22,
+            "Gtin": "06971381254624"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CN-MF-000010305"
+            }
+          ],
+          "ContactName": "Scivita Medical Technology Co., Ltd."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-AR-000000001"
+            }
+          ],
+          "ContactName": "Shanghai International Holding Corp. GmbH(Europe)"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:17",
+        "EffectiveDateTime": "2026-03-26T10:11:17",
+        "PublicationDateTime": "2026-03-26T10:11:17"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "697138125012A87"
+        }
+      ],
+      "Gtin": "16971381254621"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 22,
+        "CatalogueItem": {
+          "Identifier": "019bd5d6-bfbf-4912-817b-d77b3e2b6a1d",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC10"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "700-1060hPa"
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC09"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "20- 90% "
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC06"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "-40℃- +55℃"
+                      }
+                    ]
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW011",
+                    "WarningsOrContraIndicationDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "see the instruction for use"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 1,
+                "DirectPartMarkingIdentifier": [
+                  {
+                    "IdentificationSchemeAgencyCode": "GS1",
+                    "Value": "06971381254624"
+                  }
+                ],
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": true,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "MANUFACTURING_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "DEVICE"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "UNSPECIFIED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "056"
+                        },
+                        "EndAvailabilityDateTime": "2039-12-31",
+                        "StartAvailabilityDateTime": "2023-06-01"
+                      }
+                    ]
+                  },
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        },
+                        "EndAvailabilityDateTime": "2039-12-31",
+                        "StartAvailabilityDateTime": "2023-06-01"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "276"
+                        },
+                        "EndAvailabilityDateTime": "2039-12-31",
+                        "StartAvailabilityDateTime": "2023-06-01"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "380"
+                        },
+                        "EndAvailabilityDateTime": "2039-12-31",
+                        "StartAvailabilityDateTime": "2023-06-01"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "620"
+                        },
+                        "EndAvailabilityDateTime": "2039-12-31",
+                        "StartAvailabilityDateTime": "2023-06-01"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "642"
+                        },
+                        "EndAvailabilityDateTime": "2039-12-31",
+                        "StartAvailabilityDateTime": "2023-06-01"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "724"
+                        },
+                        "EndAvailabilityDateTime": "2039-12-31",
+                        "StartAvailabilityDateTime": "2023-06-01"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "This Single-use Hystero Videoscope is intended to use in conjunction with endoscopic image processor to provide images through the video monitor for observation, diagnosis, photography and treatment of gynecological systems such as cervix, uterine cavity and fallopian tube. It can also be used with treatment accessories for treatment. This product cannot be used with high frequency accessories"
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Single-use Hystero Videoscope"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "Z12020704"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "CN-MF-000010305"
+                  }
+                ],
+                "ContactName": "Scivita Medical Technology Co., Ltd."
+              },
+              {
+                "ContactTypeCode": {
+                  "Value": "EAR"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "DE-AR-000000001"
+                  }
+                ],
+                "ContactName": "Shanghai International Holding Corp. GmbH(Europe)"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:11:17",
+              "EffectiveDateTime": "2024-02-23T04:48:19.847",
+              "PublicationDateTime": "2026-03-26T10:11:17"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "697138125012A87",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Single-use Hystero Videoscope"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "06971381254624",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "SHV-P2"
+              },
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                "Value": "SHV-B1,SHV-P1,SHV-B2,SHV-P2"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_f4b86f38-daa3-46cd-9d5a-0edd7becdbdd"
+  }
+}

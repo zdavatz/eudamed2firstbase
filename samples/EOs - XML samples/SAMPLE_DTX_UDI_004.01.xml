@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<message:PullRequest version="<!-- Schema version here-->"
+                     xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+                     xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+
+    <message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+    <message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+    <message:creationDateTime>2019-05-22T06:58:45.223+02:00</message:creationDateTime>
+    <message:messageID>a64a5a1f-da86-4810-a0de-27d0338811a9</message:messageID>
+    <message:recipient>
+        <message:node>
+            <s:nodeActorCode>EUDAMED</s:nodeActorCode>
+            <s:nodeID>eDelivery:EUDAMED</s:nodeID> 
+        </message:node>
+        <message:service>
+            <service:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></service:serviceAccessToken>
+            <service:serviceID>DEVICE</service:serviceID>
+            <service:serviceOperation>GET</service:serviceOperation>
+        </message:service>
+    </message:recipient>
+    <message:payload/>
+    <message:sender>
+        <message:node>
+            <s:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></s:nodeActorCode>
+            <service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+        </message:node>
+        <message:service>
+            <service:serviceID>REPLY_SERVICE</service:serviceID>
+            <service:serviceOperation>GET</service:serviceOperation>
+        </message:service>
+    </message:sender>
+    <message:pageNumber>0</message:pageNumber>
+    <message:pageSize>10</message:pageSize>
+    <message:criteriaPayload>
+        <message:diDownloadCriteria>
+            <service:MFActorCode>BE-MF-000000002</service:MFActorCode>
+            <service:State>REGISTERED</service:State>
+        </message:diDownloadCriteria>
+    </message:criteriaPayload>
+</message:PullRequest>

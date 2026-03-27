@@ -1,0 +1,542 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 1,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 1,
+            "Gtin": "09421905447041"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NZ-MF-000011306"
+            }
+          ],
+          "ContactName": "The Insides Company Limited"
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "MT-AR-000000234"
+            }
+          ],
+          "ContactName": "Advena Limited"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:59",
+        "EffectiveDateTime": "2026-03-26T10:10:59",
+        "PublicationDateTime": "2026-03-26T10:10:59"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "09421905447CHYMEUPIITL"
+        }
+      ],
+      "Gtin": "09421905447119"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 1,
+        "CatalogueItem": {
+          "Identifier": "68686d88-ec39-45f8-892d-810f4cecc2c5",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC08"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "0°C – 40°C / 32°F - 104°F"
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC09"
+                    },
+                    "ClinicalStorageHandlingDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "90%RH Max"
+                      }
+                    ]
+                  }
+                ],
+                "ClinicalWarning": [
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW010",
+                    "WarningsOrContraIndicationDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "consult instructions for use for all warnings."
+                      }
+                    ]
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW030"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW007"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW133"
+                  },
+                  {
+                    "ClinicalWarningAgencyCode": {
+                      "Value": "EUDAMED"
+                    },
+                    "ClinicalWarningCode": "CW999",
+                    "WarningsOrContraIndicationDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "THE INSIDES System is NOT suitable for patients who: \n- Are under the age of 18.\n - Do not have two available stomal openings with proximal and distal intestinal limbs. \n- Cannot have chyme pumped into their distal limb. - Have chyme which is an unsuitable thickness. Refer to THE INSIDES Driver Operation section for more information. \n- Have active Clostridium difficile infection. \n- Do not have the physical dexterity to use THE INSIDES System, or a carer that can assist. \n- Do not have the mental capacity to use THE INSIDES System, or have a carer that can assist. \n- Have not had a feeding tube inserted into their lower intestine. \n- Have a pacemaker. \n- Are at an altitude of 3000 m or higher.\n- Do not have access to mains power for charging the device."
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 1,
+                "DirectPartMarkingIdentifier": [
+                  {
+                    "IdentificationSchemeAgencyCode": "GS1",
+                    "Value": "09421905447041"
+                  }
+                ],
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "SERIAL_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "DEVICE"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "NOT_STERILISED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "ReferencedFileDetailInformationModule": {
+              "ReferencedFileHeader": [
+                {
+                  "ReferencedFileTypeCode": {
+                    "Value": "IFU"
+                  },
+                  "UniformResourceIdentifier": "https://www.theinsides.co/resources?tab=ifu",
+                  "IsPrimaryFile": "TRUE"
+                }
+              ]
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "040"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "056"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "100"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "191"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "196"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "203"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "208"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "233"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "246"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "276"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "300"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "348"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "352"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "372"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "380"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "428"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "438"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "440"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "442"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "470"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "528"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "578"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "616"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "620"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "642"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "703"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "705"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "724"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "752"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "792"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "AdditionalTradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "THE INSIDES Tube is an accessory intended to be used with THE INSIDES System in order to return chyme to the lower intestine to prevent complications, and restore gut health."
+                  }
+                ],
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "The Insides Tube"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "G020299"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "NZ-MF-000011306"
+                  }
+                ],
+                "ContactName": "The Insides Company Limited"
+              },
+              {
+                "ContactTypeCode": {
+                  "Value": "EAR"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "MT-AR-000000234"
+                  }
+                ],
+                "ContactName": "Advena Limited"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:10:59",
+              "EffectiveDateTime": "2025-04-28T03:03:27.485",
+              "PublicationDateTime": "2026-03-26T10:10:59"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "09421905447CHYMEUPIITL",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "The Insides Tube"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "09421905447041",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "PS007"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_aaa5ff81-2b7e-452d-87c5-ed6d9362c2c9"
+  }
+}

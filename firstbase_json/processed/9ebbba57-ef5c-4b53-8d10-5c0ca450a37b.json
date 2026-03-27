@@ -1,0 +1,626 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 6,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 6,
+            "Gtin": "18719189246015"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NL-MF-000001553"
+            }
+          ],
+          "ContactName": "Rovers Medical Devices B.V."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:56",
+        "EffectiveDateTime": "2026-03-26T10:10:56",
+        "PublicationDateTime": "2026-03-26T10:10:56"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "87191892463800903316R"
+        }
+      ],
+      "Gtin": "08719189246544"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 6,
+        "CatalogueItem": {
+          "Identifier": "fa448d8f-6e37-4004-998b-92d9fe8a504d",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 100,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 100,
+                  "Gtin": "08719189246018"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "NL-MF-000001553"
+                  }
+                ],
+                "ContactName": "Rovers Medical Devices B.V."
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:10:56",
+              "EffectiveDateTime": "2026-03-26T10:10:56",
+              "PublicationDateTime": "2026-03-26T10:10:56"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "87191892463800903316R"
+              }
+            ],
+            "Gtin": "18719189246015"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 100,
+              "CatalogueItem": {
+                "Identifier": "738f0705-ebac-4bbf-9467-7f1af577f925",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false,
+                      "ClinicalWarning": [
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW009"
+                        },
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW007"
+                        },
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW010"
+                        },
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW999",
+                          "WarningsOrContraIndicationDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "To be used only by qualified medical\npersonnel."
+                            },
+                            {
+                              "LanguageCode": "de",
+                              "Value": "Darf nur von qualifiziertem medizinischem\nPersonal verwendet werden."
+                            },
+                            {
+                              "LanguageCode": "fr",
+                              "Value": "Usage réservé au personnel médical\nqualifié."
+                            },
+                            {
+                              "LanguageCode": "es",
+                              "Value": "Para uso exclusivo de personal sanitario\ncualificado."
+                            },
+                            {
+                              "LanguageCode": "it",
+                              "Value": "Il prodotto deve essere utilizzato\nesclusivamente da personale medico\nqualificato."
+                            },
+                            {
+                              "LanguageCode": "nl",
+                              "Value": "Alleen te gebruiken door gekwalificeerd\nmedisch personeel."
+                            },
+                            {
+                              "LanguageCode": "da",
+                              "Value": "Må kun anvendes af kvalificeret\nsundhedspersonale"
+                            },
+                            {
+                              "LanguageCode": "pt",
+                              "Value": "Só pode ser utilizado por pessoal médico\nqualificado."
+                            },
+                            {
+                              "LanguageCode": "el",
+                              "Value": "Μπορεί να χρησιμοποιηθεί μόνο από\nεξειδικευμένο ιατρικό προσωπικό."
+                            },
+                            {
+                              "LanguageCode": "sv",
+                              "Value": "Får endast användas av kvalificerad\nmedicinsk personal."
+                            },
+                            {
+                              "LanguageCode": "pl",
+                              "Value": "Do stosowania wyłącznie przez\nwykwalifikowany personel medyczny."
+                            },
+                            {
+                              "LanguageCode": "lt",
+                              "Value": "Skirta naudoti tik kvalifikuotiems medicinos\ndarbuotojams."
+                            },
+                            {
+                              "LanguageCode": "et",
+                              "Value": "Ette nähtud kasutamiseks ainult\nkutselistele meditsiinitöötajatele."
+                            },
+                            {
+                              "LanguageCode": "bg",
+                              "Value": "Да се използва само от квалифициран\nмедицински персонал."
+                            },
+                            {
+                              "LanguageCode": "hr",
+                              "Value": "Predviđeno za upotrebu samo\nosposobljenim zdravstvenim djelatnicima."
+                            },
+                            {
+                              "LanguageCode": "cs",
+                              "Value": "Určeno pouze k použití kvalifikovanými\nzdravotnickými pracovníky."
+                            },
+                            {
+                              "LanguageCode": "fi",
+                              "Value": "Tarkoitettu ainoastaan pätevän\nlääkintähenkilökunnan käyttöön."
+                            },
+                            {
+                              "LanguageCode": "hu",
+                              "Value": "Kizárólag képzett egészségügyi\nszemélyzet általi használatra."
+                            },
+                            {
+                              "LanguageCode": "lv",
+                              "Value": "Drīkst izmantot tikai kvalificēti medicīniskie\ndarbinieki."
+                            },
+                            {
+                              "LanguageCode": "ro",
+                              "Value": "A se utiliza numai de către personal\nmedical calificat."
+                            },
+                            {
+                              "LanguageCode": "sk",
+                              "Value": "Určené len pre kvalifikovaných\nzdravotníckych pracovníkov."
+                            },
+                            {
+                              "LanguageCode": "sl",
+                              "Value": "Pripomoček sme uporabljati samo\nkvalificirano medicinsko osebje."
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        },
+                        {
+                          "Value": "MANUFACTURING_DATE"
+                        },
+                        {
+                          "Value": "EXPIRATION_DATE"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "UNSPECIFIED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "528"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "040"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "056"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "100"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "191"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "196"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "203"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "208"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "233"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "246"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "250"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "276"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "300"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "348"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "352"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "372"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "380"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "428"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "438"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "440"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "442"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "470"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "578"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "616"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "620"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "642"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "703"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "705"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "724"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "752"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "792"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Rovers® Anex® Brush"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "A99"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "NL-MF-000001553"
+                        }
+                      ],
+                      "ContactName": "Rovers Medical Devices B.V."
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:10:56",
+                    "EffectiveDateTime": "2024-05-23T08:50:33.037",
+                    "PublicationDateTime": "2026-03-26T10:10:56"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "87191892463800903316R",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Rovers® Anex® Brush"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "08719189246018",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "380090331"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_9ebbba57-ef5c-4b53-8d10-5c0ca450a37b"
+  }
+}

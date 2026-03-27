@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<m:Push version="<!-- Schema version here-->"
+        xmlns:s="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1"
+        xmlns:links="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Links/v1"
+        xmlns:basicudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1"
+        xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1"
+        xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1"
+        xmlns:lsn="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1"
+        xmlns:marketinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1"
+        xmlns:commondi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1"
+        xmlns:m="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1"
+		xmlns:udieu="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDI/v1"
+		xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1"
+		xmlns:udi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1"
+        xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+    <m:conversationID>ae6f2f07-6a84-4d01-becd-178d4e7e6e41</m:conversationID>
+    <m:correlationID>98971ef5-58ed-4db4-ba19-61bcb07ebec4</m:correlationID>
+    <m:creationDateTime>2025-11-10T11:21:58.523108Z</m:creationDateTime>
+    <m:messageID>cacc9539-6145-4d6b-89ec-0f3ac4f5f42d</m:messageID>
+    <m:recipient>
+        <m:node>
+            <s:nodeActorCode>EUDAMED</s:nodeActorCode>
+            <s:nodeID>eudamed_mdr_acc</s:nodeID> 
+        </m:node>
+        <m:service>
+		    <s:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></s:serviceAccessToken>
+            <s:serviceID>BASIC_UDI</s:serviceID>
+            <s:serviceOperation>PATCH</s:serviceOperation>
+        </m:service>
+    </m:recipient>
+    <m:payload>
+<!-- IVDD Basic UDI -->
+		                 <device:BasicUDI xsi:type="udieu:IVDEUDIType">
+            <e:version>0</e:version>
+             <udi:riskClass>IVD_ANNEX_II_LIST_A</udi:riskClass>
+           <udi:model>IVDD Legacy Device Model</udi:model>
+            <udi:identifier>
+                <commondevice:DICode>B-53404336434997</commondevice:DICode>
+                <commondevice:issuingEntityCode>EUDAMED</commondevice:issuingEntityCode>
+            </udi:identifier>
+            <udi:animalTissuesCells>false</udi:animalTissuesCells>
+            <udi:ARActorCode>MT-AR-000003247</udi:ARActorCode>
+            <udi:humanTissuesCells>false</udi:humanTissuesCells>
+            <udi:MFActorCode>CN-MF-000003287</udi:MFActorCode>
+            <commondevice:companionDiagnostics>false</commondevice:companionDiagnostics>
+            <commondevice:instrument>true</commondevice:instrument>
+            <commondevice:kit>false</commondevice:kit>
+            <commondevice:microbialSubstances>true</commondevice:microbialSubstances>
+            <commondevice:nearPatientTesting>false</commondevice:nearPatientTesting>
+            <commondevice:professionalTesting>false</commondevice:professionalTesting>
+            <commondevice:reagent>false</commondevice:reagent>
+            <commondevice:selfTesting>false</commondevice:selfTesting>
+        </device:BasicUDI>
+      <!--  MDD Basic UDI-->
+                <device:BasicUDI xsi:type="udieu:MDEUDIType">
+            <e:version>0</e:version>
+             <udi:riskClass>CLASS_IIB</udi:riskClass>
+<basicudi:model>MDD Legacy Device Model</basicudi:model>
+      
+            <udi:identifier>
+                <commondevice:DICode>B-92507783202672</commondevice:DICode>
+                <commondevice:issuingEntityCode>EUDAMED</commondevice:issuingEntityCode>
+            </udi:identifier>            
+            <udi:animalTissuesCells>false</udi:animalTissuesCells>
+            <udi:ARActorCode>MT-AR-000003247</udi:ARActorCode>
+            <udi:humanTissuesCells>false</udi:humanTissuesCells>
+            <udi:MFActorCode>CN-MF-000003287</udi:MFActorCode>
+            <udi:humanProductCheck>false</udi:humanProductCheck>
+            <udi:medicinalProductCheck>true</udi:medicinalProductCheck>
+            <udi:type>DEVICE</udi:type>
+            <commondevice:active>true</commondevice:active>
+            <commondevice:administeringMedicine>true</commondevice:administeringMedicine>
+            <commondevice:implantable>false</commondevice:implantable>
+            <commondevice:measuringFunction>false</commondevice:measuringFunction>
+            <commondevice:reusable>false</commondevice:reusable>
+            <udieu:applicableLegislation>MDD</udieu:applicableLegislation>
+        </device:BasicUDI>
+       <!-- AIMDD Basic UDI-->
+		        <device:BasicUDI xsi:type="udieu:MDEUDIType">
+            <e:version>0</e:version>
+             <udi:riskClass>AIMDD</udi:riskClass>
+ <basicudi:model>AIMDD Legacy Device  Model</basicudi:model>
+      
+            <udi:identifier>
+                <commondevice:DICode>B-94963643537908</commondevice:DICode>
+                <commondevice:issuingEntityCode>EUDAMED</commondevice:issuingEntityCode>
+            </udi:identifier>            
+            <udi:animalTissuesCells>false</udi:animalTissuesCells>
+			 <udi:ARActorCode>MT-AR-000003247</udi:ARActorCode>
+            <udi:humanTissuesCells>false</udi:humanTissuesCells>
+            <udi:MFActorCode>CN-MF-000003287</udi:MFActorCode>
+            <udi:humanProductCheck>false</udi:humanProductCheck>
+            <udi:medicinalProductCheck>true</udi:medicinalProductCheck>
+            <udi:type>DEVICE</udi:type>
+            <commondevice:active>false</commondevice:active>
+            <commondevice:administeringMedicine>false</commondevice:administeringMedicine>
+            <commondevice:implantable>true</commondevice:implantable>
+            <commondevice:measuringFunction>false</commondevice:measuringFunction>
+            <commondevice:reusable>true</commondevice:reusable>
+            <udieu:applicableLegislation>AIMDD</udieu:applicableLegislation>
+        </device:BasicUDI>
+    </m:payload>
+    <m:sender>
+        <m:node>
+            <s:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></s:nodeActorCode>
+            <s:nodeID><!-- YOUR Party ID HERE  --></s:nodeID>
+        </m:node>
+        <m:service>
+            <s:serviceID>REPLY_SERVICE</s:serviceID>
+            <s:serviceOperation>GET</s:serviceOperation>
+        </m:service>
+    </m:sender>
+</m:Push>

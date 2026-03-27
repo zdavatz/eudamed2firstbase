@@ -1,0 +1,446 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 40,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 40,
+            "Gtin": "08428097681124"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "ES-MF-000000160"
+            }
+          ],
+          "ContactName": "Iberhospitex, S.A."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:04",
+        "EffectiveDateTime": "2026-03-26T10:11:04",
+        "PublicationDateTime": "2026-03-26T10:11:04"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "8428097CLEARZF"
+        }
+      ],
+      "Gtin": "08428097681131"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 40,
+        "CatalogueItem": {
+          "Identifier": "c9046d4b-e9a7-4f97-ba0d-ccf5a7a93e94",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 24,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 24,
+                  "Gtin": "08428097681100"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "ES-MF-000000160"
+                  }
+                ],
+                "ContactName": "Iberhospitex, S.A."
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:11:04",
+              "EffectiveDateTime": "2026-03-26T10:11:04",
+              "PublicationDateTime": "2026-03-26T10:11:04"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "8428097CLEARZF"
+              }
+            ],
+            "Gtin": "08428097681124"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 24,
+              "CatalogueItem": {
+                "Identifier": "cbbcb5c9-7e6a-4e52-a242-0c1b46f311ff",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false,
+                      "ClinicalStorageHandlingInformation": [
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC02"
+                          }
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC05"
+                          }
+                        }
+                      ],
+                      "ClinicalSize": [
+                        {
+                          "ClinicalSizeTypeCode": {
+                            "Value": "WIDTH"
+                          },
+                          "ClinicalSizeValue": [
+                            {
+                              "MeasurementUnitCode": "CMT",
+                              "Value": 1.25
+                            }
+                          ],
+                          "ClinicalSizeMeasurementPrecisionCode": {
+                            "Value": "VALUE"
+                          }
+                        },
+                        {
+                          "ClinicalSizeTypeCode": {
+                            "Value": "LENGTH"
+                          },
+                          "ClinicalSizeValue": [
+                            {
+                              "MeasurementUnitCode": "MTR",
+                              "Value": 5.0
+                            }
+                          ],
+                          "ClinicalSizeMeasurementPrecisionCode": {
+                            "Value": "VALUE"
+                          }
+                        }
+                      ],
+                      "ClinicalWarning": [
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW009"
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        },
+                        {
+                          "Value": "EXPIRATION_DATE"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "NOT_STERILISED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "724"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "056"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "348"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "440"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "616"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "620"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "AdditionalTradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Micro-perforated transparent PE plastic surgical tape with hypoallergenic acrylic adhesive 5 m x 1,25 cm"
+                        },
+                        {
+                          "LanguageCode": "fr",
+                          "Value": "Sparadrap en plastique PE transparent, micro-perforé, avec adhésif acrylique hypoallergénique 5 m x 1,25 cm"
+                        },
+                        {
+                          "LanguageCode": "es",
+                          "Value": "Esparadrapo de plástico PE transparente, microperforado con adhesivo acrílico hipoalergénico 5 m x 1,25 cm"
+                        }
+                      ],
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "OPER TAPE CLEAR 5 m x 1,25 cm"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "M0303010201"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "ES-MF-000000160"
+                        }
+                      ],
+                      "ContactName": "Iberhospitex, S.A."
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:11:04",
+                    "EffectiveDateTime": "2022-07-20T15:57:37.738",
+                    "PublicationDateTime": "2026-03-26T10:11:04"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "8428097CLEARZF",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Micro-perforated transparent PE plastic surgical tape with hypoallergenic acrylic adhesive"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "08428097681100",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "0038150"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_c08157e3-b3c7-4e99-8286-9d52ad732802"
+  }
+}

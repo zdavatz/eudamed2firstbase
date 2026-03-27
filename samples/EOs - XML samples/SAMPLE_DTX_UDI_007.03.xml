@@ -1,0 +1,53 @@
+<message:Push version="<!-- Schema version here-->"
+              xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+              xmlns:dtxmktinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/v1"
+              xmlns:mktinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1"
+			  xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1"
+              xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1"
+              xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+
+    <message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+    <message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+    <message:creationDateTime>2019-06-06T11:33:34.852+02:00</message:creationDateTime>
+    <message:messageID>a64a5a1f-da86-4810-a0de-27d0338811a9</message:messageID>
+    <message:recipient>
+        <message:node>
+            <service:nodeActorCode>EUDAMED</service:nodeActorCode>
+            <service:nodeID>eDelivery:EUDAMED</service:nodeID>
+        </message:node>
+        <message:service>
+            <service:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></service:serviceAccessToken>
+            <service:serviceID>MARKET_INFO</service:serviceID>
+            <service:serviceOperation>PUT</service:serviceOperation>
+        </message:service>
+    </message:recipient>
+    <message:payload>
+        <dtxmktinfo:DTXMarketInfo>
+            <mktinfo:uDIDIIdentifier>
+                <commondevice:DICode>not-existing-udi</commondevice:DICode>
+                <commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+            </mktinfo:uDIDIIdentifier>
+            <mktinfo:marketInfos>
+			<e:version>0</e:version>
+                <mktinfo:marketInfo>
+                    <mktinfo:country>BE</mktinfo:country>
+                    <mktinfo:endDate>2030-02-05+01:00</mktinfo:endDate>
+                    <mktinfo:originalPlacedOnTheMarket>true</mktinfo:originalPlacedOnTheMarket>
+                    <mktinfo:startDate>2019-02-05+01:00</mktinfo:startDate>
+                </mktinfo:marketInfo>
+            </mktinfo:marketInfos>
+        </dtxmktinfo:DTXMarketInfo>
+    </message:payload>
+    <message:sender>
+        <message:node>
+            <service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+            <service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+        </message:node>
+        <message:service>
+            <service:serviceID>NOTIFICATION_SERVICE</service:serviceID>
+            <service:serviceOperation>GET</service:serviceOperation>
+        </message:service>
+    </message:sender>
+</message:Push>

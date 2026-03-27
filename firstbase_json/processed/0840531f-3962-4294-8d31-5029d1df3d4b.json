@@ -1,0 +1,365 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC05"
+              }
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              }
+            }
+          ],
+          "ClinicalSize": [
+            {
+              "ClinicalSizeTypeCode": {
+                "Value": "WEIGHT"
+              },
+              "ClinicalSizeValue": [
+                {
+                  "MeasurementUnitCode": "GRM",
+                  "Value": 10.0
+                }
+              ],
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "VALUE"
+              }
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW011"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW007"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW262"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW999",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Do not use on infected are of skin"
+                }
+              ]
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW999",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Do NOT use on open wounds or deep puncture wounds."
+                }
+              ]
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW999",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Do NOT use where there are any known allergies or sensitivities to the ingredients."
+                }
+              ]
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW999",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Do NOT use on neonates (less than one year old)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "hr",
+              "Value": "Zaštitna krema s Manuka medom"
+            },
+            {
+              "LanguageCode": "es",
+              "Value": "Crema protectora con miel de Manuka"
+            },
+            {
+              "LanguageCode": "da",
+              "Value": "Barrierecreme med Manuka honning"
+            },
+            {
+              "LanguageCode": "lt",
+              "Value": "Manukų medaus apsauginis kremas"
+            },
+            {
+              "LanguageCode": "pl",
+              "Value": "Krem barierowy na bazie miodu manuka"
+            },
+            {
+              "LanguageCode": "it",
+              "Value": "Crema barriera al miele di Manuka"
+            },
+            {
+              "LanguageCode": "sk",
+              "Value": "Ochranný krém s medom manuka"
+            },
+            {
+              "LanguageCode": "fi",
+              "Value": "Manuka-hunajaa sisältävä suojavoide"
+            },
+            {
+              "LanguageCode": "ro",
+              "Value": "Cremă de tip barieră cu miere de Manuka"
+            },
+            {
+              "LanguageCode": "fr",
+              "Value": "Crème protectrice au miel de Manuka"
+            },
+            {
+              "LanguageCode": "nl",
+              "Value": "Barrièrecrème met manukahoning"
+            },
+            {
+              "LanguageCode": "pt",
+              "Value": "Creme de Proteção com Mel de Manuka"
+            },
+            {
+              "LanguageCode": "et",
+              "Value": "Kaitsekreem Manuka meega"
+            },
+            {
+              "LanguageCode": "el",
+              "Value": "Κρέμα προστασίας δέρματος με μέλι Manuka"
+            },
+            {
+              "LanguageCode": "sv",
+              "Value": "Barriärkräm med Manukahonung"
+            },
+            {
+              "LanguageCode": "de",
+              "Value": "Barrierecreme mit Manukahonig"
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Activon Manuka Honey Barrier Cream"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "M9002"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "GB-MF-000012039"
+            }
+          ],
+          "ContactName": "Brightwake Limited"
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "IE-AR-000004113"
+            }
+          ],
+          "ContactName": "CS Life Sciences Europe Ltd"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:19",
+        "EffectiveDateTime": "2025-05-19T14:49:13.472",
+        "PublicationDateTime": "2026-03-26T10:10:19"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "506003148ActivonBarrierLV",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Activon Manuka Honey Barrier Cream 100g"
+            }
+          ]
+        }
+      ],
+      "Gtin": "05060031485356",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "CR4552"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "CR4546"
+        }
+      ]
+    },
+    "Identifier": "Draft_0840531f-3962-4294-8d31-5029d1df3d4b"
+  }
+}

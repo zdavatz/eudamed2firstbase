@@ -1,0 +1,520 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 100,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 100,
+            "Gtin": "16971381258780"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CN-MF-000010305"
+            }
+          ],
+          "ContactName": "Scivita Medical Technology Co., Ltd."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-AR-000000001"
+            }
+          ],
+          "ContactName": "Shanghai International Holding Corp. GmbH(Europe)"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:45",
+        "EffectiveDateTime": "2026-03-26T10:10:45",
+        "PublicationDateTime": "2026-03-26T10:10:45"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "697138125046A92"
+        }
+      ],
+      "Gtin": "26971381258787"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 100,
+        "CatalogueItem": {
+          "Identifier": "d74dc687-9159-4967-97dc-c2c1e2413abf",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 10,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 10,
+                  "Gtin": "06971381258783"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "CN-MF-000010305"
+                  }
+                ],
+                "ContactName": "Scivita Medical Technology Co., Ltd."
+              },
+              {
+                "ContactTypeCode": {
+                  "Value": "EAR"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "DE-AR-000000001"
+                  }
+                ],
+                "ContactName": "Shanghai International Holding Corp. GmbH(Europe)"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:10:45",
+              "EffectiveDateTime": "2026-03-26T10:10:45",
+              "PublicationDateTime": "2026-03-26T10:10:45"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "697138125046A92"
+              }
+            ],
+            "Gtin": "16971381258780"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 10,
+              "CatalogueItem": {
+                "Identifier": "7bc09d78-730c-4a08-8752-ec1bb404164e",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false,
+                      "ClinicalStorageHandlingInformation": [
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC10"
+                          },
+                          "ClinicalStorageHandlingDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "700hPa -1060hPa "
+                            }
+                          ]
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC08"
+                          },
+                          "ClinicalStorageHandlingDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "10℃-40℃"
+                            }
+                          ]
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC09"
+                          },
+                          "ClinicalStorageHandlingDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "20%-80% "
+                            }
+                          ]
+                        }
+                      ],
+                      "ClinicalWarning": [
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW011",
+                          "WarningsOrContraIndicationDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "see the instruction for use"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "DirectPartMarkingIdentifier": [
+                        {
+                          "IdentificationSchemeAgencyCode": "GS1",
+                          "Value": "06971381258783"
+                        }
+                      ],
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "UNSPECIFIED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "056"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            }
+                          ]
+                        },
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "250"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "276"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "300"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "352"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "372"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "380"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "620"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "642"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "724"
+                              },
+                              "EndAvailabilityDateTime": "2039-12-31",
+                              "StartAvailabilityDateTime": "2025-09-22"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "AdditionalTradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "This product is intended to collect foreign bodies under an endoscope during surgery."
+                        }
+                      ],
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Single-use Grasping Forceps "
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "U0903010101"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "CN-MF-000010305"
+                        }
+                      ],
+                      "ContactName": "Scivita Medical Technology Co., Ltd."
+                    },
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EAR"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "DE-AR-000000001"
+                        }
+                      ],
+                      "ContactName": "Shanghai International Holding Corp. GmbH(Europe)"
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:10:45",
+                    "EffectiveDateTime": "2025-10-23T09:21:29.601",
+                    "PublicationDateTime": "2026-03-26T10:10:45"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "697138125046A92",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Single-use Grasping Forceps "
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "06971381258783",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "GFC-1806G"
+                    },
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                      "Value": "GFA-(1806G,1812G,1818G,1823G),GFB-(2306G,2312G,2318G,2323G),GFC-(1806G,1812G,181"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_7071e6af-85bd-4bad-a894-f46bd861dd72"
+  }
+}

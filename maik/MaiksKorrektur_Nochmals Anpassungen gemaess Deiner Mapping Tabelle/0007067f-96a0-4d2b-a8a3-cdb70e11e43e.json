@@ -1,0 +1,199 @@
+{
+  "DraftItem": {
+  "TradeItem": {
+    "IsBrandBankPublication": false,
+    "TargetSector": [
+      "UDI_REGISTRY"
+    ],
+    "HealthcareItemInformationModule": {
+      "HealthcareItemInformation": {
+        "DoesTradeItemContainLatex": "FALSE",
+        "ClinicalStorageHandlingInformation": [
+          {
+            "ClinicalStorageHandlingTypeCode": {
+              "Value": "SHC05"
+            }
+          }
+        ],
+        "ClinicalSize": [
+          {
+            "ClinicalSizeTypeCode": {
+              "Value": "LENGTH"
+            },
+            "ClinicalSizeValue": [
+              {
+                "MeasurementUnitCode": "MMT",
+                "Value": 14.0
+              }
+            ],
+            "ClinicalSizeMeasurementPrecisionCode": {
+              "Value": "VALUE"
+            }
+          },
+          {
+            "ClinicalSizeTypeCode": {
+              "Value": "DIAMETER"
+            },
+            "ClinicalSizeValue": [
+              {
+                "MeasurementUnitCode": "MMT",
+                "Value": 2.5
+              }
+            ],
+            "ClinicalSizeMeasurementPrecisionCode": {
+              "Value": "VALUE"
+            }
+          }
+        ],
+        "ClinicalWarning": [
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW010"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW009"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW001"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW007"
+          }
+        ]
+      }
+    },
+    "MedicalDeviceTradeItemModule": {
+      "MedicalDeviceInformation": {
+        "UdidDeviceCount": 1,
+        "IsReprocessedSingleUseDevice": false,
+        "EUMedicalDeviceStatusCode": {
+          "Value": "ON_MARKET"
+        },
+        "HealthcareTradeItemReusabilityInformation": {
+          "ManufacturerDeclaredReusabilityTypeCode": {
+            "Value": "SINGLE_USE"
+          }
+        },
+        "TradeItemSterilityInformation": {
+          "InitialManufacturerSterilisationCode": [
+            {
+              "Value": "OZONE"
+            }
+          ]
+        }
+      }
+    },
+    "RegulatedTradeItemModule": {
+      "RegulatoryInformation": [
+        {
+          "RegulatoryAct": "MDR",
+          "RegulatoryAgency": "EU"
+        }
+      ]
+    },
+    "SalesInformationModule": {
+      "SalesInformation": {
+        "TargetMarketSalesConditions": [
+          {
+            "TargetMarketConsumerSalesConditionCode": {
+              "Value": "ORIGINAL_PLACED"
+            },
+            "SalesConditionTargetMarketCountry": [
+              {
+                "CountryCode": {
+                  "Value": "276"
+                },
+                "StartAvailabilityDateTime": "2020-06-14"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "TradeItemDescriptionModule": {
+      "TradeItemDescriptionInformation": {
+        "AdditionalTradeItemDescription": [
+          {
+            "LanguageCode": "en",
+            "Value": "Mozec™ - Rx PTCA Balloon Dilatation Catheter which is designed for dilating stenotic atherosclerotic lesions in coronary arteries or bypass grafts and for post-delivery expansion of Balloon expandable stents. Mozec™ - Rx PTCA Balloon Dilatation Catheter consists of a Balloon (dilatation element) near the distal tip with a single radiopaque marker band at the middle of Balloon working length for Balloon sizes 1.25 mm to 1.50 mm and double radiopaque marker bands for balloon sizes 2.00 mm to 4.50 mm, which represent the approximate balloon working length at nominal pressure. The catheter has a soft tip. The two coaxial lumens permit movement of guide wire and balloon inflation. The two markers on the proximal shaft approximately indicate the exit of the balloon catheter tip from the guiding catheter. (Brachial 90 cm, Femoral 100 cm). The distal portion of the shaft has hydrophilic coating applied on it, in order to optimize proximal pushability with a smooth transition to a distal shaft trackability. The compliance chart on the inner and outer label indicates how the balloon diameter increases with increasing pressure. The compliance data is based on in vitro testing of balloons at 37°C temperature. "
+          }
+        ],
+        "TradeItemDescription": [
+          {
+            "LanguageCode": "en",
+            "Value": "Mozec™"
+          }
+        ]
+      }
+    },
+    "IsTradeItemABaseUnit": true,
+    "IsTradeItemADespatchUnit": false,
+    "IsTradeItemAnOrderableUnit": true,
+    "TradeItemUnitDescriptorCode": {
+      "Value": "BASE_UNIT_OR_EACH"
+    },
+    "TradeItemTradeChannelCode": [
+      {
+        "Value": "UDI_REGISTRY"
+      }
+    ],
+    "InformationProviderOfTradeItem": {
+      "Gln": "7612345000480",
+      "PartyName": "EUDAMED Public Download Importing"
+    },
+    "GdsnTradeItemClassification": {
+      "GpcSegmentCode": "51000000",
+      "GpcClassCode": "51150100",
+      "GpcFamilyCode": "51150000",
+      "GpcCategoryCode": "10005844",
+      "GpcCategoryName": "Medical Devices",
+      "AdditionalTradeItemClassification": [
+        {
+          "AdditionalTradeItemClassificationSystemCode": {
+            "Value": "88"
+          },
+          "AdditionalTradeItemClassificationValue": [
+            {
+              "AdditionalTradeItemClassificationCodeValue": "C010401020101"
+            }
+          ]
+        }
+      ]
+    },
+    "TargetMarket": {
+      "TargetMarketCountryCode": {
+        "Value": "097"
+      }
+    },
+    "TradeItemSynchronisationDates": {
+      "LastChangeDateTime": "2026-03-02T09:57:15",
+      "EffectiveDateTime": "2026-03-02T09:57:15",
+      "PublicationDateTime": "2026-03-02T09:57:15"
+    },
+    "GlobalModelInformation": [
+      {
+        "GlobalModelNumber": ""
+      }
+    ],
+    "Gtin": "18904224931913",
+    "AdditionalTradeItemIdentification": [
+      {
+        "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+        "Value": "MOZL25014"
+      }
+    ]
+  },
+  "Identifier": "Draft_0007067f-96a0-4d2b-a8a3-cdb70e11e43e"
+}
+}

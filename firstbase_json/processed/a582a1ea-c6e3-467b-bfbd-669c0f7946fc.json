@@ -1,0 +1,422 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 8,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 8,
+            "Gtin": "05411967007134"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "BE-MF-000000313"
+            }
+          ],
+          "ContactName": "FertiPro"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:58",
+        "EffectiveDateTime": "2026-03-26T10:10:58",
+        "PublicationDateTime": "2026-03-26T10:10:58"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "5411967DRDP1UP"
+        }
+      ],
+      "Gtin": "05411967007158"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 8,
+        "CatalogueItem": {
+          "Identifier": "554d1a21-f639-4f13-ae32-8dd76c953e08",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 50,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 50,
+                  "Gtin": "05411967007127"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "BE-MF-000000313"
+                  }
+                ],
+                "ContactName": "FertiPro"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:10:58",
+              "EffectiveDateTime": "2026-03-26T10:10:58",
+              "PublicationDateTime": "2026-03-26T10:10:58"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "5411967DRDP1UP"
+              }
+            ],
+            "Gtin": "05411967007134"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 50,
+              "CatalogueItem": {
+                "Identifier": "c00e7f1b-7e41-44b8-99c4-ee34aa42e987",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainMicrobialSubstance": false,
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": true,
+                      "ClinicalStorageHandlingInformation": [
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC08"
+                          },
+                          "ClinicalStorageHandlingDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "2°C-25°C"
+                            }
+                          ]
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC02"
+                          }
+                        }
+                      ],
+                      "ClinicalWarning": [
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW007"
+                        },
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW008",
+                          "WarningsOrContraIndicationDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "All human, organic material should be considered potentially infectious. Handle all specimens as if capable of transmitting pathogens. Always wear protective clothing when handling specimens and reagents (e.g. gloves, lab coat, surgical mask, eye/face protection)."
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "DirectPartMarkingIdentifier": [
+                        {
+                          "IdentificationSchemeAgencyCode": "GS1",
+                          "Value": "05411967007127"
+                        }
+                      ],
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        },
+                        {
+                          "Value": "EXPIRATION_DATE"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "IsNewDevice": false,
+                      "IsDeviceReagent": false,
+                      "IsDeviceInstrument": false,
+                      "IsDevicePatientSelfTesting": false,
+                      "IsDeviceNearPatientTesting": false,
+                      "IsDeviceDesignedForProfessionalTesting": false,
+                      "IsDeviceCompanionDiagnostic": false,
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "NOT_STERILISED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "ReferencedFileDetailInformationModule": {
+                    "ReferencedFileHeader": [
+                      {
+                        "ReferencedFileTypeCode": {
+                          "Value": "IFU"
+                        },
+                        "UniformResourceIdentifier": "www.inactivblue.com",
+                        "IsPrimaryFile": "TRUE"
+                      }
+                    ]
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "IVDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "056"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "AdditionalTradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "DRDP is a universal virus-inactivating medium intended for the collection and transport of upper respiratory specimens (saliva, nasal swabs) for in vitro diagnostic testing on the presence of antigens or genetic material (i.e. viral RNA, human RNA/DNA).\nDRDP can be used in quick lateral flow tests, and in molecular methods such as (RT-)qPCR.\nDRDP can be suitable for direct PCR in your specific test system upon validation (i.e. no extraction and/or purification needed).\nDRDP stabilizes nucleic acids up to 8 days after collection when stored between 2-25°C."
+                        }
+                      ],
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "DRDP"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_A"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "W0104010203"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "BE-MF-000000313"
+                        }
+                      ],
+                      "ContactName": "FertiPro"
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:10:58",
+                    "EffectiveDateTime": "2025-01-06T14:36:03.469",
+                    "PublicationDateTime": "2026-03-26T10:10:58"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "5411967DRDP1UP",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "DRDP"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "05411967007127",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "DRDP_0002"
+                    },
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                      "Value": "DRDP_0002"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_a582a1ea-c6e3-467b-bfbd-669c0f7946fc"
+  }
+}

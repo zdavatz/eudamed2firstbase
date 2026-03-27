@@ -1,0 +1,427 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC46"
+              }
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW009"
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW001"
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": true,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "EXPIRATION_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "UNSPECIFIED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "CertificationInformationModule": {
+        "CertificationInformation": [
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "2265"
+              }
+            ],
+            "CertificationAgency": "3EC International a.s.",
+            "CertificationStandard": "MDR_QUALITY_MANAGEMENT_SYSTEM",
+            "Certification": [
+              {
+                "CertificationValue": "2024-MDR/QS-009/C",
+                "CertificationIdentification": "03",
+                "CertificationEffectiveEndDateTime": "2029-02-23",
+                "CertificationEffectiveStartDateTime": "2026-02-10"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "100"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "352"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "438"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "470"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "703"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "792"
+                  },
+                  "StartAvailabilityDateTime": "2024-02-23"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "ArtiSential Electrodes, Bipolar Series"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "K0201010202"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "KR-MF-000011855"
+            }
+          ],
+          "ContactName": "LivsMed Inc."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "IE-AR-000004258"
+            }
+          ],
+          "ContactName": "Meridius Medical Europe Limited"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:55",
+        "EffectiveDateTime": "2025-07-04T10:20:28.09",
+        "PublicationDateTime": "2026-03-19T16:46:55"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "88000427BipolarN2",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Laparoscopic Instruments - Electrodes"
+            }
+          ]
+        }
+      ],
+      "Gtin": "08800042700454",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "ABD01L-L"
+        }
+      ]
+    },
+    "Identifier": "Draft_c6fe055c-0a00-4641-8f17-f582f264dc60"
+  }
+}

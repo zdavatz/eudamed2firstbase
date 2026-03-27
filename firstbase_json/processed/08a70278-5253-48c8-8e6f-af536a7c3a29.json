@@ -1,0 +1,514 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 27,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 27,
+            "Gtin": "06926365593954"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "CN-MF-000001161"
+            }
+          ],
+          "ContactName": "Zhejiang Longterm Medical Technology Co., Ltd."
+        },
+        {
+          "ContactTypeCode": {
+            "Value": "EAR"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NL-AR-000000121"
+            }
+          ],
+          "ContactName": "Lotus NL B.V."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:19",
+        "EffectiveDateTime": "2026-03-26T10:10:19",
+        "PublicationDateTime": "2026-03-26T10:10:19"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "69263655200017Q"
+        }
+      ],
+      "Gtin": "06926365593961"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 27,
+        "CatalogueItem": {
+          "Identifier": "445ca011-5280-4536-85b0-711a1017111b",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "CASE"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 6,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 6,
+                  "Gtin": "06926365593947"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "CN-MF-000001161"
+                  }
+                ],
+                "ContactName": "Zhejiang Longterm Medical Technology Co., Ltd."
+              },
+              {
+                "ContactTypeCode": {
+                  "Value": "EAR"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "NL-AR-000000121"
+                  }
+                ],
+                "ContactName": "Lotus NL B.V."
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:10:19",
+              "EffectiveDateTime": "2026-03-26T10:10:19",
+              "PublicationDateTime": "2026-03-26T10:10:19"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "69263655200017Q"
+              }
+            ],
+            "Gtin": "06926365593954"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 6,
+              "CatalogueItem": {
+                "Identifier": "026e8005-a18a-4a34-a0d5-023b69125ea1",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      }
+                    }
+                  },
+                  "IsTradeItemABaseUnit": false,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "PACK_OR_INNER_PACK"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices"
+                  },
+                  "NextLowerLevelTradeItemInformation": {
+                    "QuantityOfChildren": 1,
+                    "TotalQuantityOfNextLowerLevelTradeItem": 5,
+                    "ChildTradeItem": [
+                      {
+                        "QuantityOfNextLowerLevelTradeItem": 5,
+                        "Gtin": "06926365593930"
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "CN-MF-000001161"
+                        }
+                      ],
+                      "ContactName": "Zhejiang Longterm Medical Technology Co., Ltd."
+                    },
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EAR"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "NL-AR-000000121"
+                        }
+                      ],
+                      "ContactName": "Lotus NL B.V."
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:10:19",
+                    "EffectiveDateTime": "2026-03-26T10:10:19",
+                    "PublicationDateTime": "2026-03-26T10:10:19"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "69263655200017Q"
+                    }
+                  ],
+                  "Gtin": "06926365593947"
+                },
+                "CatalogueItemChildItemLink": [
+                  {
+                    "Quantity": 5,
+                    "CatalogueItem": {
+                      "Identifier": "7b9e2362-3bd3-453b-8106-26756c666dc9",
+                      "TradeItem": {
+                        "IsBrandBankPublication": false,
+                        "TargetSector": [
+                          "UDI_REGISTRY"
+                        ],
+                        "HealthcareItemInformationModule": {
+                          "HealthcareItemInformation": {
+                            "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                            "DoesTradeItemContainLatex": "FALSE",
+                            "DoesTradeItemContainHumanTissue": "FALSE",
+                            "DoesTradeItemContainAnimalTissue": false,
+                            "ClinicalStorageHandlingInformation": [
+                              {
+                                "ClinicalStorageHandlingTypeCode": {
+                                  "Value": "SHC02"
+                                }
+                              }
+                            ],
+                            "ClinicalSize": [
+                              {
+                                "ClinicalSizeTypeCode": {
+                                  "Value": "SIZE"
+                                },
+                                "ClinicalSizeMeasurementPrecisionCode": {
+                                  "Value": "TEXT"
+                                },
+                                "ClinicalSizeValueText": "7.5cm x 4.5cm"
+                              }
+                            ],
+                            "ClinicalWarning": [
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW010"
+                              }
+                            ]
+                          }
+                        },
+                        "MedicalDeviceTradeItemModule": {
+                          "MedicalDeviceInformation": {
+                            "IsTradeItemImplantable": "FALSE",
+                            "UdidDeviceCount": 1,
+                            "HasDeviceMeasuringFunction": false,
+                            "IsActiveDevice": false,
+                            "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                            "IsDeviceMedicinalProduct": false,
+                            "IsReprocessedSingleUseDevice": false,
+                            "IsReusableSurgicalInstrument": false,
+                            "UDIProductionIdentifierTypeCode": [
+                              {
+                                "Value": "BATCH_NUMBER"
+                              },
+                              {
+                                "Value": "MANUFACTURING_DATE"
+                              },
+                              {
+                                "Value": "EXPIRATION_DATE"
+                              }
+                            ],
+                            "MultiComponentDeviceTypeCode": {
+                              "Value": "DEVICE"
+                            },
+                            "EUMedicalDeviceStatusCode": {
+                              "Value": "ON_MARKET"
+                            },
+                            "HealthcareTradeItemReusabilityInformation": {
+                              "ManufacturerDeclaredReusabilityTypeCode": {
+                                "Value": "SINGLE_USE"
+                              }
+                            },
+                            "TradeItemSterilityInformation": {
+                              "InitialManufacturerSterilisationCode": [
+                                {
+                                  "Value": "UNSPECIFIED"
+                                }
+                              ],
+                              "InitialSterilisationPriorToUseCode": [
+                                {
+                                  "Value": "NO_STERILISATION_REQUIRED"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "RegulatedTradeItemModule": {
+                          "RegulatoryInformation": [
+                            {
+                              "RegulatoryAct": "MDR",
+                              "RegulatoryAgency": "EU"
+                            }
+                          ]
+                        },
+                        "SalesInformationModule": {
+                          "SalesInformation": {
+                            "TargetMarketSalesConditions": [
+                              {
+                                "TargetMarketConsumerSalesConditionCode": {
+                                  "Value": "ORIGINAL_PLACED"
+                                },
+                                "SalesConditionTargetMarketCountry": [
+                                  {
+                                    "CountryCode": {
+                                      "Value": "276"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        "TradeItemDescriptionModule": {
+                          "TradeItemDescriptionInformation": {
+                            "TradeItemDescription": [
+                              {
+                                "LanguageCode": "en",
+                                "Value": " Opti-Heal"
+                              }
+                            ]
+                          }
+                        },
+                        "IsTradeItemABaseUnit": true,
+                        "IsTradeItemADespatchUnit": false,
+                        "IsTradeItemAnOrderableUnit": true,
+                        "TradeItemUnitDescriptorCode": {
+                          "Value": "BASE_UNIT_OR_EACH"
+                        },
+                        "TradeItemTradeChannelCode": [
+                          {
+                            "Value": "UDI_REGISTRY"
+                          }
+                        ],
+                        "InformationProviderOfTradeItem": {
+                          "Gln": "7612345000480",
+                          "PartyName": "EUDAMED Public Download Importing"
+                        },
+                        "GdsnTradeItemClassification": {
+                          "GpcSegmentCode": "51000000",
+                          "GpcClassCode": "51150100",
+                          "GpcFamilyCode": "51150000",
+                          "GpcCategoryCode": "10005844",
+                          "GpcCategoryName": "Medical Devices",
+                          "AdditionalTradeItemClassification": [
+                            {
+                              "AdditionalTradeItemClassificationSystemCode": {
+                                "Value": "76"
+                              },
+                              "AdditionalTradeItemClassificationValue": [
+                                {
+                                  "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+                                }
+                              ]
+                            },
+                            {
+                              "AdditionalTradeItemClassificationSystemCode": {
+                                "Value": "88"
+                              },
+                              "AdditionalTradeItemClassificationValue": [
+                                {
+                                  "AdditionalTradeItemClassificationCodeValue": "M04040301"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "TargetMarket": {
+                          "TargetMarketCountryCode": {
+                            "Value": "097"
+                          }
+                        },
+                        "TradeItemContactInformation": [
+                          {
+                            "ContactTypeCode": {
+                              "Value": "EMA"
+                            },
+                            "AdditionalPartyIdentification": [
+                              {
+                                "AdditionalPartyIdentificationTypeCode": "SRN",
+                                "Value": "CN-MF-000001161"
+                              }
+                            ],
+                            "ContactName": "Zhejiang Longterm Medical Technology Co., Ltd."
+                          },
+                          {
+                            "ContactTypeCode": {
+                              "Value": "EAR"
+                            },
+                            "AdditionalPartyIdentification": [
+                              {
+                                "AdditionalPartyIdentificationTypeCode": "SRN",
+                                "Value": "NL-AR-000000121"
+                              }
+                            ],
+                            "ContactName": "Lotus NL B.V."
+                          }
+                        ],
+                        "TradeItemSynchronisationDates": {
+                          "LastChangeDateTime": "2026-03-26T10:10:19",
+                          "EffectiveDateTime": "2025-06-03T10:16:01.176",
+                          "PublicationDateTime": "2026-03-26T10:10:19"
+                        },
+                        "GlobalModelInformation": [
+                          {
+                            "GlobalModelNumber": "69263655200017Q",
+                            "GlobalModelDescription": [
+                              {
+                                "LanguageCode": "en",
+                                "Value": "Hydrocolloid dressing"
+                              }
+                            ]
+                          }
+                        ],
+                        "Gtin": "06926365593930",
+                        "AdditionalTradeItemIdentification": [
+                          {
+                            "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                            "Value": " AW006-C5"
+                          },
+                          {
+                            "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                            "Value": "G1302"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_08a70278-5253-48c8-8e6f-af536a7c3a29"
+  }
+}

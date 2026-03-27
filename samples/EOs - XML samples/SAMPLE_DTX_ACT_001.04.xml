@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<message:PullRequest version="<!-- Schema version here-->" xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1">
+    <message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+    <message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+    <message:creationDateTime>2020-09-21T11:53:47.893+02:00</message:creationDateTime>
+    <message:messageID>a64a5a1f-da86-4810-a0de-27d0338811a9</message:messageID>
+    <message:recipient>
+        <message:node>
+            <service:nodeActorCode>EUDAMED</service:nodeActorCode>
+            <service:nodeID>eDelivery:EUDAMED</service:nodeID>          
+        </message:node>
+        <message:service>
+            <service:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></service:serviceAccessToken>
+            <service:serviceID>ACTOR</service:serviceID>
+            <service:serviceOperation>GET</service:serviceOperation>
+        </message:service>
+    </message:recipient>
+    <message:payload/>
+    <message:sender>
+        <message:node>
+            <service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+            <service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>           
+        </message:node>
+        <message:service>
+            <service:serviceID>ACTOR</service:serviceID>
+            <service:serviceOperation>GET</service:serviceOperation>
+        </message:service>
+    </message:sender>
+    <message:pageNumber>0</message:pageNumber>
+    <message:pageSize>5</message:pageSize>
+    <message:criteriaPayload>
+        <message:actorsDownloadCriteria>
+			<service:actorCode>FR-AR-000001801</service:actorCode>          
+        </message:actorsDownloadCriteria>
+    </message:criteriaPayload>
+</message:PullRequest>

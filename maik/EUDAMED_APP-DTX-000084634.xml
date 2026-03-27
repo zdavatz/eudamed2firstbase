@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<message:PullResponse version="3.0.25" xmlns:msuobj="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/Measure/Objection/v1" xmlns:issuedcrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/IssuedCertificate/v1" xmlns:msuproc="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/Procedure/v1" xmlns:msucoa="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/CorrectiveAction/v1" xmlns:ns3="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/OCM/OldCustomMadeDevice/v1" xmlns:crtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/v1" xmlns:ns6="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/OCM/v1" xmlns:msuaffectedcountry="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/AffectedCountry/v1" xmlns:msuaddi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/AdditionalInfo/v1" xmlns:msuasr="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Reports/AnnualSummaryReport/v1" xmlns:actorrel="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Actor/Relationship/v1" xmlns:eudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDI/v1" xmlns:msufyr="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Reports/FourYearReport/v1" xmlns:vigreport="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/CorrectiveAction/VigilanceReport/v1" xmlns:cmnt="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Comment/v1" xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1" xmlns:msuprocdt="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/ProcedureData/v1" xmlns:msufir="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Reports/FIRVersionType/v1" xmlns:msucoatype="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/CorrectiveAction/CorrectiveActionType/v1" xmlns:dtxmktinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/v1" xmlns:decisioncrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/CertificateDecisionUpdate/v1" xmlns:dcsn="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Decision/v1" xmlns:ns46="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/PD/ProductDesigner/v1" xmlns:budi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1" xmlns:didecisioncrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/DICertificateDecision/v1" xmlns:doc="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Document/v1" xmlns:msuprecond="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/Measure/Precondition/v1" xmlns:ns47="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/PD/v1" xmlns:basic="https://ec.europa.eu/tools/eudamed/dtx/datamodel/CommonBasic/v1" xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1" xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" xmlns:party="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Party/v1" xmlns:areg="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Actor/Registration/v1" xmlns:vigv1="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance/v1" xmlns:vigbase="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance" xmlns:msudoc="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Reports/ReportDocumentType/v1" xmlns:cecpcrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/Cecp/v1" xmlns:msueo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Msu/MSUEconomicOperatorType/v1" xmlns:msumea="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/Measure/v1" xmlns:msumeasuretype="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/Measure/MeasureType/v1" xmlns:lnks="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Links/v1" xmlns:lngs="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1" xmlns:addr="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Party/Address/v1" xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1" xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1" xmlns:msur="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Reports/ReportDataType/v1" xmlns:actor="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Actor/v1" xmlns:msuv="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Msu/VersionDataType/v1" xmlns:mktinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1" xmlns:msupd="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MsuProcedures/ProcedureDevice/v1" xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" xmlns:appcrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/ApplicationCertificate/v1" xmlns:scopecrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/Scope/v1" xmlns:sscp="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/SSCP/v1">
+    <message:correlationID>APP-DTX-000084634</message:correlationID>
+    <message:creationDateTime>2026-02-27T11:00:54.494+01:00</message:creationDateTime>
+    <message:messageID>e1a5a97c-7e2f-43fb-be22-6019ff3b8d40</message:messageID>
+    <message:recipient>
+        <message:node>
+            <service:nodeActorCode>CH-MF-000023141</service:nodeActorCode>
+        </message:node>
+        <message:service>
+            <service:serviceID>DEVICE</service:serviceID>
+            <service:serviceOperation>GET</service:serviceOperation>
+        </message:service>
+    </message:recipient>
+    <message:payload>
+        <device:Device xsi:type="device:MDRDeviceType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <device:MDRBasicUDI>
+                <e:state>REGISTERED</e:state>
+                <e:version>1</e:version>
+                <e:versionDate>2026-02-03T13:02:02.617+01:00</e:versionDate>
+                <budi:riskClass>CLASS_IIB</budi:riskClass>
+                <budi:modelName>
+                    <commondevice:model>54_Compl_MDR_IIb_modelNumber</commondevice:model>
+                    <commondevice:name>54_Compl_MDR_IIb_modelName</commondevice:name>
+                </budi:modelName>
+                <budi:identifier>
+                    <commondevice:DICode>7612345GOLDENtest54JJ</commondevice:DICode>
+                    <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                </budi:identifier>
+                <budi:animalTissuesCells>false</budi:animalTissuesCells>
+                <budi:ARActorCode>DK-AR-000023001</budi:ARActorCode>
+                <budi:humanTissuesCells>true</budi:humanTissuesCells>
+                <budi:MFActorCode>CH-MF-000023141</budi:MFActorCode>
+                <budi:clinicalInvestigationLinks/>
+                <budi:deviceCertificateLinks/>
+                <budi:humanProductCheck>true</budi:humanProductCheck>
+                <budi:IIb_implantable_exceptions>false</budi:IIb_implantable_exceptions>
+                <budi:medicinalProductCheck>true</budi:medicinalProductCheck>
+                <budi:type>PROCEDURE_PACK</budi:type>
+                <commondevice:active>false</commondevice:active>
+                <commondevice:administeringMedicine>true</commondevice:administeringMedicine>
+                <commondevice:implantable>false</commondevice:implantable>
+                <commondevice:measuringFunction>true</commondevice:measuringFunction>
+                <commondevice:reusable>true</commondevice:reusable>
+            </device:MDRBasicUDI>
+            <device:MDRUDIDIData>
+                <e:state>REGISTERED</e:state>
+                <e:version>1</e:version>
+                <e:versionDate>2026-02-03T13:02:02.766+01:00</e:versionDate>
+                <udidi:identifier>
+                    <commondevice:DICode>07612345780290</commondevice:DICode>
+                    <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                </udidi:identifier>
+                <udidi:status>
+                    <commondevice:code>ON_THE_MARKET</commondevice:code>
+                </udidi:status>
+                <udidi:additionalDescription>
+                    <lngs:name>
+                        <lngs:language>IT</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_descrizione aggiuntiva dell'articolo</lngs:textValue>
+                    </lngs:name>
+                    <lngs:name>
+                        <lngs:language>EN</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_additional product description</lngs:textValue>
+                    </lngs:name>
+                    <lngs:name>
+                        <lngs:language>DE</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_Zusätzliche Artikelbeschreibung</lngs:textValue>
+                    </lngs:name>
+                    <lngs:name>
+                        <lngs:language>FR</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_description supplémentaire du produit</lngs:textValue>
+                    </lngs:name>
+                </udidi:additionalDescription>
+                <udidi:basicUDIIdentifier>
+                    <commondevice:DICode>7612345GOLDENtest54JJ</commondevice:DICode>
+                    <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                </udidi:basicUDIIdentifier>
+                <udidi:MDNCodes>A01020402 A01020401</udidi:MDNCodes>
+                <udidi:productionIdentifier>BATCH_NUMBER MANUFACTURING_DATE SERIALISATION_NUMBER</udidi:productionIdentifier>
+                <udidi:referenceNumber>54_Compl_MDR_IIb_referenceNumber</udidi:referenceNumber>
+                <udidi:sterile>false</udidi:sterile>
+                <udidi:sterilization>true</udidi:sterilization>
+                <udidi:tradeNames>
+                    <lngs:name>
+                        <lngs:language>EN</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_trade name</lngs:textValue>
+                    </lngs:name>
+                    <lngs:name>
+                        <lngs:language>FR</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_nom du produit</lngs:textValue>
+                    </lngs:name>
+                    <lngs:name>
+                        <lngs:language>DE</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_Produktbezeichnung</lngs:textValue>
+                    </lngs:name>
+                    <lngs:name>
+                        <lngs:language>IT</lngs:language>
+                        <lngs:textValue>54_Compl_MDR_IIb_denominazione del prodotto</lngs:textValue>
+                    </lngs:name>
+                </udidi:tradeNames>
+                <udidi:website>https://ifu.medtech-docs.eu/IIb/UDI-DI-04012345678901/IFU-DE-Rev03.pdf</udidi:website>
+                <udidi:storageHandlingConditions>
+                    <commondevice:condition>
+                        <commondevice:storageHandlingConditionValue>SHC036</commondevice:storageHandlingConditionValue>
+                    </commondevice:condition>
+                    <commondevice:condition>
+                        <commondevice:comments>
+                            <lngs:name>
+                                <lngs:language>EN</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Storage handling special text</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>FR</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Manipulation du texte spécial de stockage</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>DE</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Lagerung und Handhabung Spezialtext</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>IT</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Gestione dello stoccaggio testo speciale</lngs:textValue>
+                            </lngs:name>
+                        </commondevice:comments>
+                        <commondevice:storageHandlingConditionValue>SHC099</commondevice:storageHandlingConditionValue>
+                    </commondevice:condition>
+                    <commondevice:condition>
+                        <commondevice:storageHandlingConditionValue>SHC035</commondevice:storageHandlingConditionValue>
+                    </commondevice:condition>
+                </udidi:storageHandlingConditions>
+                <udidi:packages>
+                    <udidi:package>
+                        <e:state>REGISTERED</e:state>
+                        <e:version>1</e:version>
+                        <e:versionDate>2026-02-03T13:02:04.058+01:00</e:versionDate>
+                        <udidi:identifier>
+                            <commondevice:DICode>07612345780306</commondevice:DICode>
+                            <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                        </udidi:identifier>
+                        <udidi:status>
+                            <commondevice:code>ON_THE_MARKET</commondevice:code>
+                        </udidi:status>
+                        <udidi:child>
+                            <commondevice:DICode>07612345780290</commondevice:DICode>
+                            <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                        </udidi:child>
+                        <udidi:numberOfItems>3</udidi:numberOfItems>
+                    </udidi:package>
+                    <udidi:package>
+                        <e:state>REGISTERED</e:state>
+                        <e:version>1</e:version>
+                        <e:versionDate>2026-02-03T13:02:04.073+01:00</e:versionDate>
+                        <udidi:identifier>
+                            <commondevice:DICode>07612345780313</commondevice:DICode>
+                            <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                        </udidi:identifier>
+                        <udidi:status>
+                            <commondevice:code>ON_THE_MARKET</commondevice:code>
+                        </udidi:status>
+                        <udidi:child>
+                            <commondevice:DICode>07612345780306</commondevice:DICode>
+                            <commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+                        </udidi:child>
+                        <udidi:numberOfItems>5</udidi:numberOfItems>
+                    </udidi:package>
+                </udidi:packages>
+                <udidi:criticalWarnings>
+                    <commondevice:warning>
+                        <commondevice:warningValue>CW008</commondevice:warningValue>
+                    </commondevice:warning>
+                    <commondevice:warning>
+                        <commondevice:comments>
+                            <lngs:name>
+                                <lngs:language>DE</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Kritische Warnung – Sondertext</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>EN</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Critical warning special text</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>IT</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Testo speciale di avviso critico</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>FR</lngs:language>
+                                <lngs:textValue>54_Compl_MDR_IIa_Texte spécial d'avertissement critique</lngs:textValue>
+                            </lngs:name>
+                        </commondevice:comments>
+                        <commondevice:warningValue>CW999</commondevice:warningValue>
+                    </commondevice:warning>
+                    <commondevice:warning>
+                        <commondevice:warningValue>CW029</commondevice:warningValue>
+                    </commondevice:warning>
+                </udidi:criticalWarnings>
+                <udidi:numberOfReuses>15</udidi:numberOfReuses>
+                <udidi:marketInfos>
+                    <e:state>REGISTERED</e:state>
+                    <e:version>1</e:version>
+                    <e:versionDate>2026-02-03T13:02:04.104+01:00</e:versionDate>
+                    <mktinfo:marketInfo>
+                        <mktinfo:country>NL</mktinfo:country>
+                        <mktinfo:originalPlacedOnTheMarket>false</mktinfo:originalPlacedOnTheMarket>
+                        <mktinfo:startDate>2026-02-03+01:00</mktinfo:startDate>
+                    </mktinfo:marketInfo>
+                    <mktinfo:marketInfo>
+                        <mktinfo:country>IS</mktinfo:country>
+                        <mktinfo:endDate>2026-02-27+01:00</mktinfo:endDate>
+                        <mktinfo:originalPlacedOnTheMarket>true</mktinfo:originalPlacedOnTheMarket>
+                        <mktinfo:startDate>2026-02-03+01:00</mktinfo:startDate>
+                    </mktinfo:marketInfo>
+                    <mktinfo:marketInfo>
+                        <mktinfo:country>FR</mktinfo:country>
+                        <mktinfo:originalPlacedOnTheMarket>false</mktinfo:originalPlacedOnTheMarket>
+                        <mktinfo:startDate>2026-02-03+01:00</mktinfo:startDate>
+                    </mktinfo:marketInfo>
+                    <mktinfo:marketInfo>
+                        <mktinfo:country>DK</mktinfo:country>
+                        <mktinfo:originalPlacedOnTheMarket>false</mktinfo:originalPlacedOnTheMarket>
+                        <mktinfo:startDate>2026-02-03+01:00</mktinfo:startDate>
+                    </mktinfo:marketInfo>
+                </udidi:marketInfos>
+                <udidi:deviceMarking/>
+                <udidi:baseQuantity>1</udidi:baseQuantity>
+                <udidi:productDesignerActor>
+                    <e:state>REGISTERED</e:state>
+                    <e:version>1</e:version>
+                    <e:versionDate>2026-02-03T13:02:04.252+01:00</e:versionDate>
+                    <udidi:productDesignerOrganisation>
+                        <party:geographicAddress>
+                            <addr:city>Bern</addr:city>
+                            <addr:country>CH</addr:country>
+                            <addr:postCode>3007</addr:postCode>
+                            <addr:street>Monbijoustrasse</addr:street>
+                            <addr:streetNum>68</addr:streetNum>
+                        </party:geographicAddress>
+                        <party:contactsDetails>
+                            <addr:contactDetail>
+                                <addr:eMail>msi@gs1.ch</addr:eMail>
+                                <addr:phone>+41 79 563 25 99</addr:phone>
+                                <addr:public>true</addr:public>
+                            </addr:contactDetail>
+                        </party:contactsDetails>
+                        <udidi:organizationName>
+                            <lngs:language>EN</lngs:language>
+                            <lngs:textValue>GS1 Switzerland</lngs:textValue>
+                        </udidi:organizationName>
+                    </udidi:productDesignerOrganisation>
+                </udidi:productDesignerActor>
+                <udidi:annexXVINonMedicalDeviceTypes>
+                    <udidi:nmdType>FILLING_BY_INJECTION</udidi:nmdType>
+                </udidi:annexXVINonMedicalDeviceTypes>
+                <udidi:latex>false</udidi:latex>
+                <udidi:reprocessed>false</udidi:reprocessed>
+                <udidi:substances>
+                    <udidi:substance xsi:type="udidi:CMRSubstanceType">
+                        <udidi:names>
+                            <lngs:name>
+                                <lngs:language>FR</lngs:language>
+                                <lngs:textValue>Benzène</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>EN</lngs:language>
+                                <lngs:textValue>Benzen</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>IT</lngs:language>
+                                <lngs:textValue>Benzeno</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>DE</lngs:language>
+                                <lngs:textValue>Benzol</lngs:textValue>
+                            </lngs:name>
+                        </udidi:names>
+                        <udidi:type>CMR_1B</udidi:type>
+                    </udidi:substance>
+                    <udidi:substance xsi:type="udidi:EndocrineSubstanceType">
+                        <udidi:names>
+                            <lngs:name>
+                                <lngs:textValue>Estradiol</lngs:textValue>
+                            </lngs:name>
+                        </udidi:names>
+                    </udidi:substance>
+                    <udidi:substance xsi:type="udidi:MedicalHumanProductSubstanceType">
+                        <udidi:INN>Human albumin</udidi:INN>
+                        <udidi:type>HUMAN_PRODUCT_SUBSTANCE</udidi:type>
+                    </udidi:substance>
+                    <udidi:substance xsi:type="udidi:MedicalHumanProductSubstanceType">
+                        <udidi:names>
+                            <lngs:name>
+                                <lngs:language>DE</lngs:language>
+                                <lngs:textValue>Humanalbumin</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>FR</lngs:language>
+                                <lngs:textValue>Albumine humaine</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>EN</lngs:language>
+                                <lngs:textValue>Human albumin</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>IT</lngs:language>
+                                <lngs:textValue>Albumina umana</lngs:textValue>
+                            </lngs:name>
+                        </udidi:names>
+                        <udidi:type>HUMAN_PRODUCT_SUBSTANCE</udidi:type>
+                    </udidi:substance>
+                    <udidi:substance xsi:type="udidi:MedicalHumanProductSubstanceType">
+                        <udidi:names>
+                            <lngs:name>
+                                <lngs:language>IT</lngs:language>
+                                <lngs:textValue>Amoxicillina</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>FR</lngs:language>
+                                <lngs:textValue>Amoxicilline</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>DE</lngs:language>
+                                <lngs:textValue>Amoxicillin</lngs:textValue>
+                            </lngs:name>
+                            <lngs:name>
+                                <lngs:language>EN</lngs:language>
+                                <lngs:textValue>Amoxicillin</lngs:textValue>
+                            </lngs:name>
+                        </udidi:names>
+                        <udidi:type>MEDICINAL_PRODUCT_SUBSTANCE</udidi:type>
+                    </udidi:substance>
+                    <udidi:substance xsi:type="udidi:MedicalHumanProductSubstanceType">
+                        <udidi:INN>Amoxicillin</udidi:INN>
+                        <udidi:type>MEDICINAL_PRODUCT_SUBSTANCE</udidi:type>
+                    </udidi:substance>
+                </udidi:substances>
+                <udidi:clinicalSizes>
+                    <commondevice:clinicalSize xsi:type="commondevice:RangeClinicalSizeType">
+                        <commondevice:clinicalSizeType>CST14</commondevice:clinicalSizeType>
+                        <commondevice:maximum>14.0</commondevice:maximum>
+                        <commondevice:minimum>12.0</commondevice:minimum>
+                        <commondevice:valueUnit>MU170</commondevice:valueUnit>
+                    </commondevice:clinicalSize>
+                    <commondevice:clinicalSize xsi:type="commondevice:TextClinicalSizeType">
+                        <commondevice:clinicalSizeType>CST10</commondevice:clinicalSizeType>
+                        <commondevice:text>54_Compl_MDR_IIa_clinicalSizeValueText</commondevice:text>
+                    </commondevice:clinicalSize>
+                    <commondevice:clinicalSize xsi:type="commondevice:ValueClinicalSizeType">
+                        <commondevice:clinicalSizeType>CST65</commondevice:clinicalSizeType>
+                        <commondevice:value>1.0</commondevice:value>
+                        <commondevice:valueUnit>MU128</commondevice:valueUnit>
+                    </commondevice:clinicalSize>
+                </udidi:clinicalSizes>
+            </device:MDRUDIDIData>
+        </device:Device>
+    </message:payload>
+    <message:sender>
+        <message:node>
+            <service:nodeActorCode>EUDAMED_MDR</service:nodeActorCode>
+        </message:node>
+        <message:service>
+            <service:serviceID>DEVICE</service:serviceID>
+            <service:serviceOperation>GET</service:serviceOperation>
+        </message:service>
+    </message:sender>
+    <message:numberOfPages>0</message:numberOfPages>
+    <message:pageNumber>0</message:pageNumber>
+    <message:pageSize>20</message:pageSize>
+    <message:report/>
+    <message:responseCode>SUCCESS</message:responseCode>
+</message:PullResponse>

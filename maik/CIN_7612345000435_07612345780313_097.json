@@ -1,0 +1,765 @@
+{
+  "TradeItem": {
+    "IsBrandBankPublication": false,
+    "TargetSector": [
+      "UDI_REGISTRY"
+    ],
+    "MedicalDeviceTradeItemModule": {
+      "MedicalDeviceInformation": {
+        "EUMedicalDeviceStatusCode": {
+          "Value": "ON_MARKET"
+        }
+      }
+    },
+    "IsTradeItemABaseUnit": false,
+    "IsTradeItemADespatchUnit": true,
+    "IsTradeItemAnOrderableUnit": true,
+    "TradeItemUnitDescriptorCode": {
+      "Value": "CASE"
+    },
+    "InformationProviderOfTradeItem": {
+      "Gln": "7612345000435",
+      "PartyName": "UDI manufacturer POC/MVP"
+    },
+    "GdsnTradeItemClassification": {
+      "GpcSegmentCode": "51000000",
+      "GpcClassCode": "51150100",
+      "GpcFamilyCode": "51150000",
+      "GpcCategoryCode": "10005844",
+      "GpcCategoryName": "Medical Devices"
+    },
+    "NextLowerLevelTradeItemInformation": {
+      "QuantityOfChildren": 1,
+      "TotalQuantityOfNextLowerLevelTradeItem": 5,
+      "ChildTradeItem": [
+        {
+          "QuantityOfNextLowerLevelTradeItem": 5,
+          "Gtin": "07612345780306"
+        }
+      ]
+    },
+    "TargetMarket": {
+      "TargetMarketCountryCode": {
+        "Value": "097"
+      }
+    },
+    "TradeItemSynchronisationDates": {
+      "LastChangeDateTime": "2026-02-03T11:59:11+00:00",
+      "EffectiveDateTime": "2026-02-02T23:00:00+00:00",
+      "PublicationDateTime": "2026-02-03T00:00:00+01:00"
+    },
+    "GlobalModelInformation": [
+      {
+        "GlobalModelNumber": "7612345GOLDENtest54JJ"
+      }
+    ],
+    "Gtin": "07612345780313"
+  },
+  "CatalogueItemChildItemLink": [
+    {
+      "Quantity": 5,
+      "CatalogueItem": {
+        "Identifier": "c0e5f5d7-f745-4040-aab5-882822efc5fb",
+        "TradeItem": {
+          "IsBrandBankPublication": false,
+          "TargetSector": [
+            "UDI_REGISTRY"
+          ],
+          "MedicalDeviceTradeItemModule": {
+            "MedicalDeviceInformation": {
+              "EUMedicalDeviceStatusCode": {
+                "Value": "ON_MARKET"
+              }
+            }
+          },
+          "IsTradeItemABaseUnit": false,
+          "IsTradeItemADespatchUnit": false,
+          "IsTradeItemAnOrderableUnit": true,
+          "TradeItemUnitDescriptorCode": {
+            "Value": "CASE"
+          },
+          "InformationProviderOfTradeItem": {
+            "Gln": "7612345000435",
+            "PartyName": "UDI manufacturer POC/MVP"
+          },
+          "GdsnTradeItemClassification": {
+            "GpcSegmentCode": "51000000",
+            "GpcClassCode": "51150100",
+            "GpcFamilyCode": "51150000",
+            "GpcCategoryCode": "10005844",
+            "GpcCategoryName": "Medical Devices"
+          },
+          "NextLowerLevelTradeItemInformation": {
+            "QuantityOfChildren": 1,
+            "TotalQuantityOfNextLowerLevelTradeItem": 3,
+            "ChildTradeItem": [
+              {
+                "QuantityOfNextLowerLevelTradeItem": 3,
+                "Gtin": "07612345780290"
+              }
+            ]
+          },
+          "TargetMarket": {
+            "TargetMarketCountryCode": {
+              "Value": "097"
+            }
+          },
+          "TradeItemSynchronisationDates": {
+            "LastChangeDateTime": "2026-02-03T11:57:58+00:00",
+            "EffectiveDateTime": "2026-02-02T23:00:00+00:00",
+            "PublicationDateTime": "2026-02-03T00:00:00+01:00"
+          },
+          "GlobalModelInformation": [
+            {
+              "GlobalModelNumber": "7612345GOLDENtest54JJ"
+            }
+          ],
+          "Gtin": "07612345780306"
+        },
+        "CatalogueItemChildItemLink": [
+          {
+            "Quantity": 3,
+            "CatalogueItem": {
+              "Identifier": "13c58607-89fc-42c8-a4a2-547ce1056f51",
+              "TradeItem": {
+                "IsBrandBankPublication": false,
+                "TargetSector": [
+                  "UDI_REGISTRY"
+                ],
+                "ChemicalRegulationInformationModule": {
+                  "ChemicalRegulationInformation": [
+                    {
+                      "ChemicalRegulationAgency": "WHO",
+                      "ChemicalRegulation": [
+                        {
+                          "ChemicalRegulationName": "INN",
+                          "RegulatedChemical": [
+                            {
+                              "RegulatedChemicalDescription": [
+                                {
+                                  "LanguageCode": "fr",
+                                  "Value": "Amoxicilline"
+                                },
+                                {
+                                  "LanguageCode": "en",
+                                  "Value": "Amoxicillin"
+                                },
+                                {
+                                  "LanguageCode": "de",
+                                  "Value": "Amoxicillin"
+                                },
+                                {
+                                  "LanguageCode": "it",
+                                  "Value": "Amoxicillina"
+                                }
+                              ],
+                              "RegulatedChemicalTypeCode": {
+                                "Value": "MEDICINAL_PRODUCT"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "ChemicalRegulationAgency": "WHO",
+                      "ChemicalRegulation": [
+                        {
+                          "ChemicalRegulationName": "INN",
+                          "RegulatedChemical": [
+                            {
+                              "RegulatedChemicalName": "Amoxicillin",
+                              "RegulatedChemicalTypeCode": {
+                                "Value": "MEDICINAL_PRODUCT"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "ChemicalRegulationAgency": "WHO",
+                      "ChemicalRegulation": [
+                        {
+                          "ChemicalRegulationName": "INN",
+                          "RegulatedChemical": [
+                            {
+                              "RegulatedChemicalName": "Human albumin",
+                              "RegulatedChemicalTypeCode": {
+                                "Value": "HUMAN_PRODUCT"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "ChemicalRegulationAgency": "WHO",
+                      "ChemicalRegulation": [
+                        {
+                          "ChemicalRegulationName": "INN",
+                          "RegulatedChemical": [
+                            {
+                              "RegulatedChemicalDescription": [
+                                {
+                                  "LanguageCode": "fr",
+                                  "Value": "Albumine humaine"
+                                },
+                                {
+                                  "LanguageCode": "en",
+                                  "Value": "Human albumin"
+                                },
+                                {
+                                  "LanguageCode": "de",
+                                  "Value": "Humanalbumin"
+                                },
+                                {
+                                  "LanguageCode": "it",
+                                  "Value": "Albumina umana"
+                                }
+                              ],
+                              "RegulatedChemicalTypeCode": {
+                                "Value": "HUMAN_PRODUCT"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "ChemicalRegulationAgency": "ECHA",
+                      "ChemicalRegulation": [
+                        {
+                          "ChemicalRegulationName": "ECICS",
+                          "RegulatedChemical": [
+                            {
+                              "RegulatedChemicalIdentifierCodeReference": {
+                                "CodeListAgencyName": "EC",
+                                "Value": "200-023-8"
+                              },
+                              "RegulatedChemicalDescription": [
+                                {
+                                  "LanguageCode": "en",
+                                  "Value": "Estradiol"
+                                }
+                              ],
+                              "RegulatedChemicalTypeCode": {
+                                "Value": "ENDOCRINE_SUBSTANCE"
+                              }
+                            },
+                            {
+                              "RegulatedChemicalIdentifierCodeReference": {
+                                "CodeListAgencyName": "CAS",
+                                "Value": "50-28-2"
+                              },
+                              "RegulatedChemicalDescription": [
+                                {
+                                  "LanguageCode": "en",
+                                  "Value": "Estradiol"
+                                }
+                              ],
+                              "RegulatedChemicalTypeCode": {
+                                "Value": "ENDOCRINE_SUBSTANCE"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "ChemicalRegulationAgency": "ECHA",
+                      "ChemicalRegulation": [
+                        {
+                          "ChemicalRegulationName": "ECICS",
+                          "RegulatedChemical": [
+                            {
+                              "RegulatedChemicalDescription": [
+                                {
+                                  "LanguageCode": "fr",
+                                  "Value": "Benzène"
+                                },
+                                {
+                                  "LanguageCode": "en",
+                                  "Value": "Benzen"
+                                },
+                                {
+                                  "LanguageCode": "de",
+                                  "Value": "Benzol"
+                                },
+                                {
+                                  "LanguageCode": "it",
+                                  "Value": "Benzeno"
+                                }
+                              ],
+                              "CarcinogenicMutagenicReprotoxicTypeCode": {
+                                "Value": "CMR_1B"
+                              },
+                              "RegulatedChemicalTypeCode": {
+                                "Value": "CMR_SUBSTANCE"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "HealthcareItemInformationModule": {
+                  "HealthcareItemInformation": {
+                    "DoesTradeItemContainHumanBloodDerivative": "TRUE",
+                    "DoesTradeItemContainLatex": "FALSE",
+                    "DoesTradeItemContainHumanTissue": "TRUE",
+                    "DoesTradeItemContainAnimalTissue": false,
+                    "ClinicalStorageHandlingInformation": [
+                      {
+                        "ClinicalStorageHandlingTypeCode": {
+                          "Value": "SHC36"
+                        }
+                      },
+                      {
+                        "ClinicalStorageHandlingTypeCode": {
+                          "Value": "SHC99"
+                        },
+                        "ClinicalStorageHandlingDescription": [
+                          {
+                            "LanguageCode": "en",
+                            "Value": "54_Compl_MDR_IIa_Storage handling special text"
+                          },
+                          {
+                            "LanguageCode": "fr",
+                            "Value": "54_Compl_MDR_IIa_Manipulation du texte spécial de stockage"
+                          },
+                          {
+                            "LanguageCode": "de",
+                            "Value": "54_Compl_MDR_IIa_Lagerung und Handhabung Spezialtext"
+                          },
+                          {
+                            "LanguageCode": "it",
+                            "Value": "54_Compl_MDR_IIa_Gestione dello stoccaggio testo speciale"
+                          }
+                        ]
+                      },
+                      {
+                        "ClinicalStorageHandlingTypeCode": {
+                          "Value": "SHC35"
+                        }
+                      }
+                    ],
+                    "ClinicalSize": [
+                      {
+                        "ClinicalSizeTypeCode": {
+                          "Value": "NEEDLE_GAUGE"
+                        },
+                        "ClinicalSizeValue": [
+                          {
+                            "MeasurementUnitCode": "H79",
+                            "Value": 12.0
+                          }
+                        ],
+                        "ClinicalSizeValueMaximum": [
+                          {
+                            "MeasurementUnitCode": "H79",
+                            "Value": 14.0
+                          }
+                        ],
+                        "ClinicalSizeMeasurementPrecisionCode": {
+                          "Value": "RANGE"
+                        }
+                      },
+                      {
+                        "ClinicalSizeTypeCode": {
+                          "Value": "DIAMETER_INNER"
+                        },
+                        "ClinicalSizeMeasurementPrecisionCode": {
+                          "Value": "TEXT"
+                        },
+                        "ClinicalSizeValueText": "54_Compl_MDR_IIa_clinicalSizeValueText"
+                      },
+                      {
+                        "ClinicalSizeTypeCode": {
+                          "Value": "CIRCUMFERENCE"
+                        },
+                        "ClinicalSizeValue": [
+                          {
+                            "MeasurementUnitCode": "u",
+                            "Value": 1.0
+                          }
+                        ],
+                        "ClinicalSizeMeasurementPrecisionCode": {
+                          "Value": "VALUE"
+                        }
+                      }
+                    ],
+                    "ClinicalWarning": [
+                      {
+                        "ClinicalWarningAgencyCode": {
+                          "Value": "EUDAMED"
+                        },
+                        "ClinicalWarningCode": "CW008"
+                      },
+                      {
+                        "ClinicalWarningAgencyCode": {
+                          "Value": "EUDAMED"
+                        },
+                        "ClinicalWarningCode": "CW999",
+                        "WarningsOrContraIndicationDescription": [
+                          {
+                            "LanguageCode": "en",
+                            "Value": "54_Compl_MDR_IIa_Critical warning special text"
+                          },
+                          {
+                            "LanguageCode": "fr",
+                            "Value": "54_Compl_MDR_IIa_Texte spécial d'avertissement critique"
+                          },
+                          {
+                            "LanguageCode": "de",
+                            "Value": "54_Compl_MDR_IIa_Kritische Warnung – Sondertext"
+                          },
+                          {
+                            "LanguageCode": "it",
+                            "Value": "54_Compl_MDR_IIa_Testo speciale di avviso critico"
+                          }
+                        ]
+                      },
+                      {
+                        "ClinicalWarningAgencyCode": {
+                          "Value": "EUDAMED"
+                        },
+                        "ClinicalWarningCode": "CW029"
+                      }
+                    ]
+                  }
+                },
+                "MedicalDeviceTradeItemModule": {
+                  "MedicalDeviceInformation": {
+                    "IsTradeItemImplantable": "FALSE",
+                    "UdidDeviceCount": 1,
+                    "DirectPartMarkingIdentifier": [
+                      {
+                        "IdentificationSchemeAgencyCode": "GS1",
+                        "Value": "07612345780320"
+                      }
+                    ],
+                    "HasDeviceMeasuringFunction": true,
+                    "IsActiveDevice": false,
+                    "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": true,
+                    "IsDeviceMedicinalProduct": true,
+                    "IsReprocessedSingleUseDevice": false,
+                    "IsReusableSurgicalInstrument": true,
+                    "UDIProductionIdentifierTypeCode": [
+                      {
+                        "Value": "SERIAL_NUMBER"
+                      },
+                      {
+                        "Value": "MANUFACTURING_DATE"
+                      },
+                      {
+                        "Value": "BATCH_NUMBER"
+                      }
+                    ],
+                    "AnnexXVIIntendedPurposeTypeCode": [
+                      {
+                        "Value": "FILLING_BY_INJECTION"
+                      }
+                    ],
+                    "MultiComponentDeviceTypeCode": {
+                      "Value": "PROCEDURE_PACK"
+                    },
+                    "EUMedicalDeviceStatusCode": {
+                      "Value": "ON_MARKET"
+                    },
+                    "HealthcareTradeItemReusabilityInformation": {
+                      "ManufacturerDeclaredReusabilityTypeCode": {
+                        "Value": "LIMITED_REUSABLE"
+                      },
+                      "MaximumCyclesReusable": 15
+                    },
+                    "TradeItemSterilityInformation": {
+                      "InitialManufacturerSterilisationCode": [
+                        {
+                          "Value": "NOT_STERILISED"
+                        }
+                      ],
+                      "InitialSterilisationPriorToUseCode": [
+                        {
+                          "Value": "OZONE"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "ReferencedFileDetailInformationModule": {
+                  "ReferencedFileHeader": [
+                    {
+                      "MediaSourceGln": "7612345000435",
+                      "MimeType": "application/pdf",
+                      "ReferencedFileTypeCode": {
+                        "Value": "IFU"
+                      },
+                      "FileFormatName": "Pdf",
+                      "FileName": "IFU-DE-Rev03.pdf",
+                      "UniformResourceIdentifier": "https://ifu.medtech-docs.eu/IIb/UDI-DI-04012345678901/IFU-DE-Rev03.pdf",
+                      "IsPrimaryFile": "FALSE"
+                    }
+                  ]
+                },
+                "RegulatedTradeItemModule": {
+                  "RegulatoryInformation": [
+                    {
+                      "RegulatoryAct": "MDR",
+                      "RegulatoryAgency": "EU"
+                    }
+                  ]
+                },
+                "SalesInformationModule": {
+                  "SalesInformation": {
+                    "TargetMarketSalesConditions": [
+                      {
+                        "TargetMarketConsumerSalesConditionCode": {
+                          "Value": "ORIGINAL_PLACED"
+                        },
+                        "SalesConditionTargetMarketCountry": [
+                          {
+                            "CountryCode": {
+                              "Value": "352"
+                            },
+                            "EndAvailabilityDateTime": "2026-02-27T21:00:00+00:00",
+                            "StartAvailabilityDateTime": "2026-02-03T13:00:00+00:00"
+                          }
+                        ]
+                      },
+                      {
+                        "TargetMarketConsumerSalesConditionCode": {
+                          "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                        },
+                        "SalesConditionTargetMarketCountry": [
+                          {
+                            "CountryCode": {
+                              "Value": "208"
+                            },
+                            "StartAvailabilityDateTime": "2026-02-03T13:00:00+00:00"
+                          }
+                        ]
+                      },
+                      {
+                        "TargetMarketConsumerSalesConditionCode": {
+                          "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                        },
+                        "SalesConditionTargetMarketCountry": [
+                          {
+                            "CountryCode": {
+                              "Value": "528"
+                            },
+                            "StartAvailabilityDateTime": "2026-02-03T13:00:00+00:00"
+                          }
+                        ]
+                      },
+                      {
+                        "TargetMarketConsumerSalesConditionCode": {
+                          "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                        },
+                        "SalesConditionTargetMarketCountry": [
+                          {
+                            "CountryCode": {
+                              "Value": "250"
+                            },
+                            "StartAvailabilityDateTime": "2026-02-03T13:00:00+00:00"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "TradeItemDescriptionModule": {
+                  "TradeItemDescriptionInformation": {
+                    "AdditionalTradeItemDescription": [
+                      {
+                        "LanguageCode": "fr",
+                        "Value": "54_Compl_MDR_IIb_description supplémentaire du produit"
+                      },
+                      {
+                        "LanguageCode": "en",
+                        "Value": "54_Compl_MDR_IIb_additional product description"
+                      },
+                      {
+                        "LanguageCode": "de",
+                        "Value": "54_Compl_MDR_IIb_Zusätzliche Artikelbeschreibung"
+                      },
+                      {
+                        "LanguageCode": "it",
+                        "Value": "54_Compl_MDR_IIb_descrizione aggiuntiva dell'articolo"
+                      }
+                    ],
+                    "TradeItemDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "54_Compl_MDR_IIb_trade name"
+                      },
+                      {
+                        "LanguageCode": "fr",
+                        "Value": "54_Compl_MDR_IIb_nom du produit"
+                      },
+                      {
+                        "LanguageCode": "de",
+                        "Value": "54_Compl_MDR_IIb_Produktbezeichnung"
+                      },
+                      {
+                        "LanguageCode": "it",
+                        "Value": "54_Compl_MDR_IIb_denominazione del prodotto"
+                      }
+                    ]
+                  }
+                },
+                "IsTradeItemABaseUnit": true,
+                "IsTradeItemADespatchUnit": false,
+                "IsTradeItemAnOrderableUnit": false,
+                "TradeItemUnitDescriptorCode": {
+                  "Value": "BASE_UNIT_OR_EACH"
+                },
+                "TradeItemTradeChannelCode": [
+                  {
+                    "Value": "UDI_REGISTRY"
+                  }
+                ],
+                "InformationProviderOfTradeItem": {
+                  "Gln": "7612345000435",
+                  "PartyName": "UDI manufacturer POC/MVP"
+                },
+                "GdsnTradeItemClassification": {
+                  "GpcSegmentCode": "51000000",
+                  "GpcClassCode": "51150100",
+                  "GpcFamilyCode": "51150000",
+                  "GpcCategoryCode": "10005844",
+                  "GpcCategoryName": "Medical Devices",
+                  "AdditionalTradeItemClassification": [
+                    {
+                      "AdditionalTradeItemClassificationSystemCode": {
+                        "Value": "88"
+                      },
+                      "AdditionalTradeItemClassificationValue": [
+                        {
+                          "AdditionalTradeItemClassificationCodeValue": "A01020401"
+                        }
+                      ]
+                    },
+                    {
+                      "AdditionalTradeItemClassificationSystemCode": {
+                        "Value": "88"
+                      },
+                      "AdditionalTradeItemClassificationValue": [
+                        {
+                          "AdditionalTradeItemClassificationCodeValue": "A01020402"
+                        }
+                      ]
+                    },
+                    {
+                      "AdditionalTradeItemClassificationSystemCode": {
+                        "Value": "76"
+                      },
+                      "AdditionalTradeItemClassificationValue": [
+                        {
+                          "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "TargetMarket": {
+                  "TargetMarketCountryCode": {
+                    "Value": "097"
+                  }
+                },
+                "TradeItemContactInformation": [
+                  {
+                    "ContactTypeCode": {
+                      "Value": "EMA"
+                    },
+                    "AdditionalPartyIdentification": [
+                      {
+                        "AdditionalPartyIdentificationTypeCode": "SRN",
+                        "Value": "CH-MF-000023141"
+                      }
+                    ]
+                  },
+                  {
+                    "ContactTypeCode": {
+                      "Value": "EAR"
+                    },
+                    "AdditionalPartyIdentification": [
+                      {
+                        "AdditionalPartyIdentificationTypeCode": "SRN",
+                        "Value": "DK-AR-000023001"
+                      }
+                    ]
+                  },
+                  {
+                    "ContactTypeCode": {
+                      "Value": "EPD"
+                    },
+                    "ContactName": "GS1 Switzerland",
+                    "StructuredAddress": [
+                      {
+                        "City": "Bern",
+                        "CountryCode": {
+                          "Value": "756"
+                        },
+                        "PostalCode": "3007",
+                        "StreetAddress": "Monbijoustrasse",
+                        "StreetNumber": "68"
+                      }
+                    ],
+                    "TargetMarketCommunicationChannel": [
+                      {
+                        "CommunicationChannel": [
+                          {
+                            "CommunicationChannelCode": {
+                              "Value": "EMAIL"
+                            },
+                            "CommunicationValue": "msi@gs1.ch"
+                          },
+                          {
+                            "CommunicationChannelCode": {
+                              "Value": "TELEPHONE"
+                            },
+                            "CommunicationValue": "+41 79 563 25 99"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "TradeItemSynchronisationDates": {
+                  "LastChangeDateTime": "2026-02-03T12:00:14+00:00",
+                  "EffectiveDateTime": "2026-02-02T23:00:00+00:00",
+                  "PublicationDateTime": "2026-02-03T00:00:00+01:00"
+                },
+                "GlobalModelInformation": [
+                  {
+                    "GlobalModelNumber": "7612345GOLDENtest54JJ",
+                    "GlobalModelDescription": [
+                      {
+                        "LanguageCode": "en",
+                        "Value": "54_Compl_MDR_IIb_modelName"
+                      }
+                    ]
+                  }
+                ],
+                "Gtin": "07612345780290",
+                "AdditionalTradeItemIdentification": [
+                  {
+                    "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                    "Value": "54_Compl_MDR_IIb_referenceNumber"
+                  },
+                  {
+                    "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                    "Value": "54_Compl_MDR_IIb_modelNumber"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

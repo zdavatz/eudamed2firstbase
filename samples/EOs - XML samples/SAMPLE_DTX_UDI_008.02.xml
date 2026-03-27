@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- edited with XMLSpy v2019 rel. 3 sp1 (x64) (http://www.altova.com) by European Commission DG SANTE (European Commission DG SANTE) -->
+<message:Push version="<!-- Schema version here-->" xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1" xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1" xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1" xmlns:mi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1" xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" xmlns:lngs="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1" xmlns:udidiDatas="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1" xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+	<message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+	<message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+	<message:creationDateTime>2019-05-22T07:00:28.066+02:00</message:creationDateTime>
+	<message:messageID>a64a5a1f-da86-4810-a0de-27d0338811a9</message:messageID>
+	<message:recipient>
+		<message:node>
+			<service:nodeActorCode>EUDAMED</service:nodeActorCode>
+			<service:nodeID>eDelivery:EUDAMED</service:nodeID>
+		</message:node>
+		<message:service>
+			<service:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></service:serviceAccessToken>
+			<service:serviceID>UDI_DI</service:serviceID>
+			<service:serviceOperation>POST</service:serviceOperation>
+		</message:service>
+	</message:recipient>
+	<message:payload>
+		<!-- UDIDIData 01 START-->
+		<!-- BASED ON "audit/DU_MDR_RC_I_20190904A.xml" -->
+		<udidiDatas:UDIDIData xsi:type="udidi:MDRUDIDIDataType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+			<udidi:identifier>
+				<commondevice:DICode>UDI-12121UA#31#</commondevice:DICode>
+				<commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+			</udidi:identifier>
+			<udidi:status>
+				<commondevice:code>ON_THE_MARKET</commondevice:code>
+			</udidi:status>
+			<udidi:additionalDescription>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>MK20200526A</lngs:textValue>
+				</lngs:name>
+			</udidi:additionalDescription>
+			<udidi:basicUDIIdentifier>
+				<commondevice:DICode>202107052FS</commondevice:DICode>
+				<!--|MK|MANUAL| SAME AS BUD -->
+				<commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+			</udidi:basicUDIIdentifier>
+			<udidi:MDNCodes>A01030101</udidi:MDNCodes>
+			<udidi:productionIdentifier>SOFTWARE_IDENTIFICATION</udidi:productionIdentifier>
+			<udidi:referenceNumber>MK20200526A</udidi:referenceNumber>
+			<udidi:sterile>false</udidi:sterile>
+			<udidi:sterilization>false</udidi:sterilization>
+			<udidi:tradeNames>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>MK20200526A</lngs:textValue>
+				</lngs:name>
+				<lngs:name>
+					<lngs:language>FR</lngs:language>
+					<lngs:textValue>BridgeBlockA7</lngs:textValue>
+				</lngs:name>
+			</udidi:tradeNames>
+			<udidi:numberOfReuses>1</udidi:numberOfReuses>
+			<udidi:marketInfos>
+				<mi:marketInfo>
+					<mi:country>BE</mi:country>
+					<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+					<mi:startDate>2017-02-11+02:11</mi:startDate>
+				</mi:marketInfo>
+				<mi:marketInfo>
+					<mi:country>DE</mi:country>
+					<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+					<mi:startDate>2016-01-01+01:01</mi:startDate>
+				</mi:marketInfo>
+			</udidi:marketInfos>
+			<udidi:baseQuantity>3</udidi:baseQuantity>
+			<udidi:latex>false</udidi:latex>
+			<udidi:reprocessed>false</udidi:reprocessed>
+			<udidi:substances>
+				<udidi:substance xsi:type="udidi:CMRSubstanceType">
+					<udidi:names>
+						<lngs:name>
+							<lngs:language>IT</lngs:language>
+							<lngs:textValue>Quattro</lngs:textValue>
+						</lngs:name>
+					</udidi:names>
+					<udidi:type>CMR_1A</udidi:type>
+				</udidi:substance>
+			</udidi:substances>
+		</udidiDatas:UDIDIData>
+		<!-- UDIDIData 02 START-->
+		<udidiDatas:UDIDIData xsi:type="udidi:MDRUDIDIDataType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+			<udidi:identifier>
+				<commondevice:DICode>UDI-UA#32#</commondevice:DICode>
+				<commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+			</udidi:identifier>
+			<udidi:status>
+				<commondevice:code>ON_THE_MARKET</commondevice:code>
+			</udidi:status>
+			<udidi:additionalDescription>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>MK20200526B</lngs:textValue>
+				</lngs:name>
+			</udidi:additionalDescription>
+			<udidi:basicUDIIdentifier>
+				<commondevice:DICode>202107052FS</commondevice:DICode>
+				<!--|MK|MANUAL| SAME AS BUD -->
+				<commondevice:issuingEntityCode>GS1</commondevice:issuingEntityCode>
+			</udidi:basicUDIIdentifier>
+			<udidi:MDNCodes>A01030101</udidi:MDNCodes>
+			<udidi:productionIdentifier>SOFTWARE_IDENTIFICATION</udidi:productionIdentifier>
+			<udidi:referenceNumber>MK20200526B</udidi:referenceNumber>
+			<udidi:sterile>false</udidi:sterile>
+			<udidi:sterilization>false</udidi:sterilization>
+			<udidi:tradeNames>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>MK20200526B</lngs:textValue>
+				</lngs:name>
+				<lngs:name>
+					<lngs:language>FR</lngs:language>
+					<lngs:textValue>BridgeBlockA7</lngs:textValue>
+				</lngs:name>
+			</udidi:tradeNames>
+			<udidi:numberOfReuses>1</udidi:numberOfReuses>
+			<udidi:marketInfos>
+				<mi:marketInfo>
+					<mi:country>BE</mi:country>
+					<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+					<mi:startDate>2017-02-11+02:11</mi:startDate>
+				</mi:marketInfo>
+				<mi:marketInfo>
+					<mi:country>DE</mi:country>
+					<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+					<mi:startDate>2016-01-01+01:01</mi:startDate>
+				</mi:marketInfo>
+			</udidi:marketInfos>
+			<udidi:deviceMarking>
+				<udidi:unitOfUseIdentifier>
+					<commondevice:DICode>UDICODE2</commondevice:DICode>
+					<commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+				</udidi:unitOfUseIdentifier>
+			</udidi:deviceMarking>
+			<udidi:baseQuantity>3</udidi:baseQuantity>
+			<udidi:latex>false</udidi:latex>
+			<udidi:reprocessed>false</udidi:reprocessed>
+			<udidi:substances>
+				<udidi:substance xsi:type="udidi:CMRSubstanceType">
+					<udidi:names>
+						<lngs:name>
+							<lngs:language>IT</lngs:language>
+							<lngs:textValue>Quattro</lngs:textValue>
+						</lngs:name>
+					</udidi:names>
+					<udidi:type>CMR_1A</udidi:type>
+				</udidi:substance>
+			</udidi:substances>
+		</udidiDatas:UDIDIData>
+	</message:payload>
+	<message:sender>
+		<message:node>
+			<service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+			<service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+		</message:node>
+		<message:service>
+			<service:serviceID>REPLY_SERVICE</service:serviceID>
+			<service:serviceOperation>GET</service:serviceOperation>
+		</message:service>
+	</message:sender>
+</message:Push>

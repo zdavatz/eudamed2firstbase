@@ -1,0 +1,265 @@
+{
+  "DraftItem": {
+  "TradeItem": {
+    "IsBrandBankPublication": false,
+    "TargetSector": [
+      "UDI_REGISTRY"
+    ],
+    "ChemicalRegulationInformationModule": {
+      "ChemicalRegulationInformation": [
+        {
+          "ChemicalRegulationAgency": "WHO",
+          "ChemicalRegulation": [
+            {
+              "ChemicalRegulationName": "INN",
+              "RegulatedChemical": [
+                {
+                  "RegulatedChemicalDescription": [
+                    {
+                      "LanguageCode": "en",
+                      "Value": "Sirolimus"
+                    }
+                  ],
+                  "RegulatedChemicalTypeCode": {
+                    "Value": "MEDICINAL_PRODUCT"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "HealthcareItemInformationModule": {
+      "HealthcareItemInformation": {
+        "DoesTradeItemContainLatex": "FALSE",
+        "ClinicalStorageHandlingInformation": [
+          {
+            "ClinicalStorageHandlingTypeCode": {
+              "Value": "SHC08"
+            }
+          }
+        ],
+        "ClinicalSize": [
+          {
+            "ClinicalSizeTypeCode": {
+              "Value": "LENGTH"
+            },
+            "ClinicalSizeValue": [
+              {
+                "MeasurementUnitCode": "MMT",
+                "Value": 16.0
+              }
+            ],
+            "ClinicalSizeMeasurementPrecisionCode": {
+              "Value": "VALUE"
+            }
+          },
+          {
+            "ClinicalSizeTypeCode": {
+              "Value": "DIAMETER"
+            },
+            "ClinicalSizeValue": [
+              {
+                "MeasurementUnitCode": "MMT",
+                "Value": 2.0
+              }
+            ],
+            "ClinicalSizeMeasurementPrecisionCode": {
+              "Value": "VALUE"
+            }
+          }
+        ],
+        "ClinicalWarning": [
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW010"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW264"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW009"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW001"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW007"
+          }
+        ]
+      }
+    },
+    "MedicalDeviceTradeItemModule": {
+      "MedicalDeviceInformation": {
+        "UdidDeviceCount": 1,
+        "IsReprocessedSingleUseDevice": false,
+        "EUMedicalDeviceStatusCode": {
+          "Value": "ON_MARKET"
+        },
+        "HealthcareTradeItemReusabilityInformation": {
+          "ManufacturerDeclaredReusabilityTypeCode": {
+            "Value": "SINGLE_USE"
+          }
+        },
+        "TradeItemSterilityInformation": {
+          "InitialManufacturerSterilisationCode": [
+            {
+              "Value": "OZONE"
+            }
+          ]
+        }
+      }
+    },
+    "RegulatedTradeItemModule": {
+      "RegulatoryInformation": [
+        {
+          "RegulatoryAct": "MDR",
+          "RegulatoryAgency": "EU"
+        }
+      ]
+    },
+    "SalesInformationModule": {
+      "SalesInformation": {
+        "TargetMarketSalesConditions": [
+          {
+            "TargetMarketConsumerSalesConditionCode": {
+              "Value": "ORIGINAL_PLACED"
+            },
+            "SalesConditionTargetMarketCountry": [
+              {
+                "CountryCode": {
+                  "Value": "372"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "TradeItemDescriptionModule": {
+      "TradeItemDescriptionInformation": {
+        "AdditionalTradeItemDescription": [
+          {
+            "LanguageCode": "en",
+            "Value": "Sirolimus Eluting Cobalt Chromium Coronary Stent System"
+          }
+        ],
+        "TradeItemDescription": [
+          {
+            "LanguageCode": "en",
+            "Value": "Supraflex Cruz"
+          }
+        ]
+      }
+    },
+    "IsTradeItemABaseUnit": true,
+    "IsTradeItemADespatchUnit": false,
+    "IsTradeItemAnOrderableUnit": true,
+    "TradeItemUnitDescriptorCode": {
+      "Value": "BASE_UNIT_OR_EACH"
+    },
+    "TradeItemTradeChannelCode": [
+      {
+        "Value": "UDI_REGISTRY"
+      }
+    ],
+    "InformationProviderOfTradeItem": {
+      "Gln": "7612345000480",
+      "PartyName": "EUDAMED Public Download Importing"
+    },
+    "GdsnTradeItemClassification": {
+      "GpcSegmentCode": "51000000",
+      "GpcClassCode": "51150100",
+      "GpcFamilyCode": "51150000",
+      "GpcCategoryCode": "10005844",
+      "GpcCategoryName": "Medical Devices",
+      "AdditionalTradeItemClassification": [
+        {
+          "AdditionalTradeItemClassificationSystemCode": {
+            "Value": "88"
+          },
+          "AdditionalTradeItemClassificationValue": [
+            {
+              "AdditionalTradeItemClassificationCodeValue": "P070402010301"
+            }
+          ]
+        }
+      ]
+    },
+    "TargetMarket": {
+      "TargetMarketCountryCode": {
+        "Value": "097"
+      }
+    },
+    "TradeItemContactInformation": [
+      {
+        "ContactTypeCode": {
+          "Value": "EPD"
+        },
+        "AdditionalPartyIdentification": [
+          {
+            "AdditionalPartyIdentificationTypeCode": "SRN",
+            "Value": "IN-MF-000016582"
+          }
+        ],
+        "ContactName": "Sahajanand Medical Technologies Limited",
+        "StructuredAddress": [
+          {
+            "City": "",
+            "CountryCode": {
+              "Value": "356"
+            },
+            "PostalCode": "",
+            "StreetAddress": "“Sahajanand Estate”, Wakhariawadi, 395004 Surat"
+          }
+        ],
+        "TargetMarketCommunicationChannel": [
+          {
+            "CommunicationChannel": [
+              {
+                "CommunicationChannelCode": {
+                  "Value": "EMAIL"
+                },
+                "CommunicationValue": "eudamed.in@smt.in"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "TradeItemSynchronisationDates": {
+      "LastChangeDateTime": "2026-03-02T09:57:15",
+      "EffectiveDateTime": "2026-03-02T09:57:15",
+      "PublicationDateTime": "2026-03-02T09:57:15"
+    },
+    "GlobalModelInformation": [
+      {
+        "GlobalModelNumber": ""
+      }
+    ],
+    "Gtin": "05397217003821",
+    "AdditionalTradeItemIdentification": [
+      {
+        "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+        "Value": "FGTZ200016IE"
+      }
+    ]
+  },
+  "Identifier": "Draft_00446a6a-49ed-4ae0-ab44-48e1af7a55d2"
+}
+}

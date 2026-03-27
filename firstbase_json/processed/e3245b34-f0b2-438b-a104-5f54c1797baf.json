@@ -1,0 +1,643 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 10,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 10,
+            "Gtin": "26417952244174"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "FI-MF-000001469"
+            }
+          ],
+          "ContactName": "Pharmia Oy"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:13",
+        "EffectiveDateTime": "2026-03-26T10:11:13",
+        "PublicationDateTime": "2026-03-26T10:11:13"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "641795210002CD"
+        }
+      ],
+      "Gtin": "36417952244171"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 10,
+        "CatalogueItem": {
+          "Identifier": "e1f9c25e-2ca9-4c5c-b99a-887736c53891",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "CASE"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 39,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 39,
+                  "Gtin": "16417952244177"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "FI-MF-000001469"
+                  }
+                ],
+                "ContactName": "Pharmia Oy"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:11:13",
+              "EffectiveDateTime": "2026-03-26T10:11:13",
+              "PublicationDateTime": "2026-03-26T10:11:13"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "641795210002CD"
+              }
+            ],
+            "Gtin": "26417952244174"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 39,
+              "CatalogueItem": {
+                "Identifier": "c6f5a968-148a-43fb-8d58-ee0d9c45f6ae",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      }
+                    }
+                  },
+                  "IsTradeItemABaseUnit": false,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "PACK_OR_INNER_PACK"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices"
+                  },
+                  "NextLowerLevelTradeItemInformation": {
+                    "QuantityOfChildren": 1,
+                    "TotalQuantityOfNextLowerLevelTradeItem": 10,
+                    "ChildTradeItem": [
+                      {
+                        "QuantityOfNextLowerLevelTradeItem": 10,
+                        "Gtin": "06417952244170"
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "FI-MF-000001469"
+                        }
+                      ],
+                      "ContactName": "Pharmia Oy"
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:11:13",
+                    "EffectiveDateTime": "2026-03-26T10:11:13",
+                    "PublicationDateTime": "2026-03-26T10:11:13"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "641795210002CD"
+                    }
+                  ],
+                  "Gtin": "16417952244177"
+                },
+                "CatalogueItemChildItemLink": [
+                  {
+                    "Quantity": 10,
+                    "CatalogueItem": {
+                      "Identifier": "f2662710-60bc-44c5-9526-46180648d01e",
+                      "TradeItem": {
+                        "IsBrandBankPublication": false,
+                        "TargetSector": [
+                          "UDI_REGISTRY"
+                        ],
+                        "HealthcareItemInformationModule": {
+                          "HealthcareItemInformation": {
+                            "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                            "DoesTradeItemContainLatex": "FALSE",
+                            "DoesTradeItemContainHumanTissue": "FALSE",
+                            "DoesTradeItemContainAnimalTissue": false,
+                            "ClinicalStorageHandlingInformation": [
+                              {
+                                "ClinicalStorageHandlingTypeCode": {
+                                  "Value": "SHC08"
+                                },
+                                "ClinicalStorageHandlingDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "15 - 25 °C"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalStorageHandlingTypeCode": {
+                                  "Value": "SHC02"
+                                },
+                                "ClinicalStorageHandlingDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Protect from sunlight"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalStorageHandlingTypeCode": {
+                                  "Value": "SHC45"
+                                },
+                                "ClinicalStorageHandlingDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Use the product within 3 months of opening"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalStorageHandlingTypeCode": {
+                                  "Value": "SHC99"
+                                },
+                                "ClinicalStorageHandlingDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Replace the cap after use. Store the bottle closed"
+                                  }
+                                ]
+                              }
+                            ],
+                            "ClinicalWarning": [
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW276",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "When used as recommended, no adverse effects or interactions with other medicines are to be expected"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW036",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "If you are also using other nasal sprays, it is recommended to take a break of at least one hour between using the products"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW262",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "For personal use only"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW999",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Keep the product out of reach and sight of children"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW999",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Avoid contact with eyes"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW999",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "If you have had a nasal surgery, consult a physician before using this product"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW999",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Do not use the product if you are allergic to sesame oil or any other of the ingredients. In case the product causes an allergic reaction, stop using the product and contact a doctor"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW999",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Not for children under 12 years of age"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW010",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Read the packaging leaflet before use"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW022",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Do not try to enlarge the tip of the spray pump"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW007",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Do not use the product if the bottle or spray part is not intact"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW032",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "Do not use the product after expire date"
+                                  }
+                                ]
+                              },
+                              {
+                                "ClinicalWarningAgencyCode": {
+                                  "Value": "EUDAMED"
+                                },
+                                "ClinicalWarningCode": "CW277",
+                                "WarningsOrContraIndicationDescription": [
+                                  {
+                                    "LanguageCode": "en",
+                                    "Value": "In case of worsened or prolonged symptoms or, if you get adverse effects not mentioned in this packaging leaflet, contact a healthcare professional"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        "MedicalDeviceTradeItemModule": {
+                          "MedicalDeviceInformation": {
+                            "IsTradeItemImplantable": "FALSE",
+                            "UdidDeviceCount": 1,
+                            "HasDeviceMeasuringFunction": false,
+                            "IsActiveDevice": false,
+                            "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                            "IsDeviceMedicinalProduct": false,
+                            "IsReprocessedSingleUseDevice": false,
+                            "IsReusableSurgicalInstrument": false,
+                            "UDIProductionIdentifierTypeCode": [
+                              {
+                                "Value": "BATCH_NUMBER"
+                              },
+                              {
+                                "Value": "EXPIRATION_DATE"
+                              }
+                            ],
+                            "MultiComponentDeviceTypeCode": {
+                              "Value": "DEVICE"
+                            },
+                            "EUMedicalDeviceStatusCode": {
+                              "Value": "ON_MARKET"
+                            },
+                            "HealthcareTradeItemReusabilityInformation": {
+                              "ManufacturerDeclaredReusabilityTypeCode": {
+                                "Value": "REUSABLE"
+                              }
+                            },
+                            "TradeItemSterilityInformation": {
+                              "InitialManufacturerSterilisationCode": [
+                                {
+                                  "Value": "NOT_STERILISED"
+                                }
+                              ],
+                              "InitialSterilisationPriorToUseCode": [
+                                {
+                                  "Value": "NO_STERILISATION_REQUIRED"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "RegulatedTradeItemModule": {
+                          "RegulatoryInformation": [
+                            {
+                              "RegulatoryAct": "MDR",
+                              "RegulatoryAgency": "EU"
+                            }
+                          ]
+                        },
+                        "SalesInformationModule": {
+                          "SalesInformation": {
+                            "TargetMarketSalesConditions": [
+                              {
+                                "TargetMarketConsumerSalesConditionCode": {
+                                  "Value": "ORIGINAL_PLACED"
+                                },
+                                "SalesConditionTargetMarketCountry": [
+                                  {
+                                    "CountryCode": {
+                                      "Value": "578"
+                                    },
+                                    "EndAvailabilityDateTime": "2027-11-30",
+                                    "StartAvailabilityDateTime": "2023-12-28"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        "TradeItemDescriptionModule": {
+                          "TradeItemDescriptionInformation": {
+                            "TradeItemDescription": [
+                              {
+                                "LanguageCode": "en",
+                                "Value": "Metode neseolje m/vitA pepmynt"
+                              }
+                            ]
+                          }
+                        },
+                        "IsTradeItemABaseUnit": true,
+                        "IsTradeItemADespatchUnit": false,
+                        "IsTradeItemAnOrderableUnit": true,
+                        "TradeItemUnitDescriptorCode": {
+                          "Value": "BASE_UNIT_OR_EACH"
+                        },
+                        "TradeItemTradeChannelCode": [
+                          {
+                            "Value": "UDI_REGISTRY"
+                          }
+                        ],
+                        "InformationProviderOfTradeItem": {
+                          "Gln": "7612345000480",
+                          "PartyName": "EUDAMED Public Download Importing"
+                        },
+                        "GdsnTradeItemClassification": {
+                          "GpcSegmentCode": "51000000",
+                          "GpcClassCode": "51150100",
+                          "GpcFamilyCode": "51150000",
+                          "GpcCategoryCode": "10005844",
+                          "GpcCategoryName": "Medical Devices",
+                          "AdditionalTradeItemClassification": [
+                            {
+                              "AdditionalTradeItemClassificationSystemCode": {
+                                "Value": "76"
+                              },
+                              "AdditionalTradeItemClassificationValue": [
+                                {
+                                  "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+                                }
+                              ]
+                            },
+                            {
+                              "AdditionalTradeItemClassificationSystemCode": {
+                                "Value": "88"
+                              },
+                              "AdditionalTradeItemClassificationValue": [
+                                {
+                                  "AdditionalTradeItemClassificationCodeValue": "Q030103"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "TargetMarket": {
+                          "TargetMarketCountryCode": {
+                            "Value": "097"
+                          }
+                        },
+                        "TradeItemContactInformation": [
+                          {
+                            "ContactTypeCode": {
+                              "Value": "EMA"
+                            },
+                            "AdditionalPartyIdentification": [
+                              {
+                                "AdditionalPartyIdentificationTypeCode": "SRN",
+                                "Value": "FI-MF-000001469"
+                              }
+                            ],
+                            "ContactName": "Pharmia Oy"
+                          }
+                        ],
+                        "TradeItemSynchronisationDates": {
+                          "LastChangeDateTime": "2026-03-26T10:11:13",
+                          "EffectiveDateTime": "2023-12-12T13:21:30.012",
+                          "PublicationDateTime": "2026-03-26T10:11:13"
+                        },
+                        "GlobalModelInformation": [
+                          {
+                            "GlobalModelNumber": "641795210002CD",
+                            "GlobalModelDescription": [
+                              {
+                                "LanguageCode": "en",
+                                "Value": "Metode neseolje m/vitA"
+                              }
+                            ]
+                          }
+                        ],
+                        "Gtin": "06417952244170",
+                        "AdditionalTradeItemIdentification": [
+                          {
+                            "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                            "Value": "LPXG02"
+                          },
+                          {
+                            "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                            "Value": "10 ml"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_e3245b34-f0b2-438b-a104-5f54c1797baf"
+  }
+}

@@ -1,0 +1,592 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 4,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 4,
+            "Gtin": "25414566050758"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "BE-MF-000000691"
+            }
+          ],
+          "ContactName": "Ansell Healthcare Europe NV"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:55",
+        "EffectiveDateTime": "2026-03-19T16:46:55",
+        "PublicationDateTime": "2026-03-19T16:46:55"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "5414566GEPIHYB340UL"
+        }
+      ],
+      "Gtin": "35414566050755"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 4,
+        "CatalogueItem": {
+          "Identifier": "c732a41d-a7df-4e64-981a-bb8e2266b534",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 50,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 50,
+                  "Gtin": "15414566050751"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "BE-MF-000000691"
+                  }
+                ],
+                "ContactName": "Ansell Healthcare Europe NV"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:55",
+              "EffectiveDateTime": "2026-03-19T16:46:55",
+              "PublicationDateTime": "2026-03-19T16:46:55"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "5414566GEPIHYB340UL"
+              }
+            ],
+            "Gtin": "25414566050758"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 50,
+              "CatalogueItem": {
+                "Identifier": "7f201eb5-a0a5-4d03-831f-28779eb58fd1",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false,
+                      "ClinicalStorageHandlingInformation": [
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC02"
+                          }
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC05"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        },
+                        {
+                          "Value": "EXPIRATION_DATE"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "UNSPECIFIED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "ReferencedFileDetailInformationModule": {
+                    "ReferencedFileHeader": [
+                      {
+                        "ReferencedFileTypeCode": {
+                          "Value": "IFU"
+                        },
+                        "UniformResourceIdentifier": "https://www.ansell.com/gb/en/products/encore-non-latex-pi-hybrid",
+                        "IsPrimaryFile": "TRUE"
+                      }
+                    ]
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "056"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            }
+                          ]
+                        },
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "040"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "100"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "191"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "196"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "203"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "208"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "233"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "246"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "250"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "276"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "300"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "348"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "352"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "372"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "380"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "428"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "438"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "440"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "442"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "470"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "528"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "578"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "616"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "620"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "642"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "703"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "705"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "724"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "752"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "792"
+                              },
+                              "EndAvailabilityDateTime": "2028-01-04",
+                              "StartAvailabilityDateTime": "2023-01-05"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Encore Non-Latex PI Hybrid"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIA"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "T01010299"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "BE-MF-000000691"
+                        }
+                      ],
+                      "ContactName": "Ansell Healthcare Europe NV"
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-19T16:46:55",
+                    "EffectiveDateTime": "2023-01-16T18:30:11.482",
+                    "PublicationDateTime": "2026-03-19T16:46:55"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "5414566GEPIHYB340UL",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Gammex PI Hybrid"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "15414566050751",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "340105075 7.5"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_c95fd8f9-1125-4efe-b535-4094e34d7fe3"
+  }
+}

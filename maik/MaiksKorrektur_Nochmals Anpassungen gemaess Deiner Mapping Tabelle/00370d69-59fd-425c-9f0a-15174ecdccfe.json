@@ -1,0 +1,204 @@
+{
+  "DraftItem": {
+  "TradeItem": {
+    "IsBrandBankPublication": false,
+    "TargetSector": [
+      "UDI_REGISTRY"
+    ],
+    "HealthcareItemInformationModule": {
+      "HealthcareItemInformation": {
+        "DoesTradeItemContainLatex": "FALSE",
+        "ClinicalStorageHandlingInformation": [
+          {
+            "ClinicalStorageHandlingTypeCode": {
+              "Value": "SHC08"
+            }
+          },
+          {
+            "ClinicalStorageHandlingTypeCode": {
+              "Value": "SHC09"
+            }
+          }
+        ],
+        "ClinicalSize": [
+          {
+            "ClinicalSizeTypeCode": {
+              "Value": "SIZE"
+            },
+            "ClinicalSizeMeasurementPrecisionCode": {
+              "Value": "TEXT"
+            },
+            "ClinicalSizeValueText": "Paediatric"
+          }
+        ],
+        "ClinicalWarning": [
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW009"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW007"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW032"
+          },
+          {
+            "ClinicalWarningAgencyCode": {
+              "Value": "EUDAMED"
+            },
+            "ClinicalWarningCode": "CW011"
+          }
+        ]
+      }
+    },
+    "MedicalDeviceTradeItemModule": {
+      "MedicalDeviceInformation": {
+        "UdidDeviceCount": 1,
+        "DirectPartMarkingIdentifier": [
+          {
+            "IdentificationSchemeAgencyCode": "GS1",
+            "Value": "06945099393951"
+          }
+        ],
+        "IsReprocessedSingleUseDevice": false,
+        "UDIProductionIdentifierTypeCode": [
+          {
+            "Value": "BATCH_NUMBER"
+          },
+          {
+            "Value": "SERIAL_NUMBER"
+          },
+          {
+            "Value": "MANUFACTURING_DATE"
+          },
+          {
+            "Value": "EXPIRATION_DATE"
+          }
+        ],
+        "EUMedicalDeviceStatusCode": {
+          "Value": "ON_MARKET"
+        },
+        "HealthcareTradeItemReusabilityInformation": {
+          "ManufacturerDeclaredReusabilityTypeCode": {
+            "Value": "SINGLE_USE"
+          }
+        },
+        "TradeItemSterilityInformation": {
+          "InitialManufacturerSterilisationCode": [
+            {
+              "Value": "NOT_STERILISED"
+            }
+          ]
+        }
+      }
+    },
+    "RegulatedTradeItemModule": {
+      "RegulatoryInformation": [
+        {
+          "RegulatoryAct": "MDR",
+          "RegulatoryAgency": "EU"
+        }
+      ]
+    },
+    "SalesInformationModule": {
+      "SalesInformation": {
+        "TargetMarketSalesConditions": [
+          {
+            "TargetMarketConsumerSalesConditionCode": {
+              "Value": "ORIGINAL_PLACED"
+            },
+            "SalesConditionTargetMarketCountry": [
+              {
+                "CountryCode": {
+                  "Value": "276"
+                },
+                "EndAvailabilityDateTime": "2027-12-14",
+                "StartAvailabilityDateTime": "2022-12-15"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "TradeItemDescriptionModule": {
+      "TradeItemDescriptionInformation": {
+        "AdditionalTradeItemDescription": [
+          {
+            "LanguageCode": "en",
+            "Value": "Standard, Paediatric, Standard lariat, 6mm-10ft oxygen tubing, No-crush, Universal connector, Non-sterile\n"
+          }
+        ]
+      }
+    },
+    "IsTradeItemABaseUnit": true,
+    "IsTradeItemADespatchUnit": false,
+    "IsTradeItemAnOrderableUnit": true,
+    "TradeItemUnitDescriptorCode": {
+      "Value": "BASE_UNIT_OR_EACH"
+    },
+    "TradeItemTradeChannelCode": [
+      {
+        "Value": "UDI_REGISTRY"
+      }
+    ],
+    "InformationProviderOfTradeItem": {
+      "Gln": "7612345000480",
+      "PartyName": "EUDAMED Public Download Importing"
+    },
+    "GdsnTradeItemClassification": {
+      "GpcSegmentCode": "51000000",
+      "GpcClassCode": "51150100",
+      "GpcFamilyCode": "51150000",
+      "GpcCategoryCode": "10005844",
+      "GpcCategoryName": "Medical Devices",
+      "AdditionalTradeItemClassification": [
+        {
+          "AdditionalTradeItemClassificationSystemCode": {
+            "Value": "88"
+          },
+          "AdditionalTradeItemClassificationValue": [
+            {
+              "AdditionalTradeItemClassificationCodeValue": "R0301020301"
+            }
+          ]
+        }
+      ]
+    },
+    "TargetMarket": {
+      "TargetMarketCountryCode": {
+        "Value": "097"
+      }
+    },
+    "TradeItemSynchronisationDates": {
+      "LastChangeDateTime": "2026-03-02T09:57:15",
+      "EffectiveDateTime": "2026-03-02T09:57:15",
+      "PublicationDateTime": "2026-03-02T09:57:15"
+    },
+    "GlobalModelInformation": [
+      {
+        "GlobalModelNumber": ""
+      }
+    ],
+    "Gtin": "06945099393951",
+    "AdditionalTradeItemIdentification": [
+      {
+        "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+        "Value": "C1212"
+      },
+      {
+        "AdditionalTradeItemIdentificationTypeCode": "GTIN_14",
+        "Value": "46945099393959"
+      }
+    ]
+  },
+  "Identifier": "Draft_00370d69-59fd-425c-9f0a-15174ecdccfe"
+}
+}

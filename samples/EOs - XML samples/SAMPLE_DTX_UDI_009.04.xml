@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<m:Push version="<!-- Schema version here-->"
+        xmlns:s="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1"
+        xmlns:links="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Links/v1"
+        xmlns:basicudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1"
+        xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1"
+        xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1"
+        xmlns:lsn="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1"
+        xmlns:marketinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1"
+        xmlns:commondi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1"
+        xmlns:m="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1"
+        xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+
+    <m:conversationID>ae6f2f07-6a84-4d01-becd-178d4e7e6e41</m:conversationID>
+    <m:correlationID>98971ef5-58ed-4db4-ba19-61bcb07ebec4</m:correlationID>
+    <m:creationDateTime>2025-11-10T11:21:58.523108Z</m:creationDateTime>
+    <m:messageID>4ff7c702-cd69-4db9-885f-c28ef8fc75fe</m:messageID>
+    <m:recipient>
+        <m:node>
+            <s:nodeActorCode>EUDAMED</s:nodeActorCode>
+            <s:nodeID>eudamed_mdr_acc</s:nodeID> 
+        </m:node>
+        <m:service>
+        <s:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></s:serviceAccessToken>
+            <s:serviceID>BASIC_UDI</s:serviceID>
+            <s:serviceOperation>PATCH</s:serviceOperation>
+        </m:service>
+    </m:recipient>
+    <m:payload>
+        <device:BasicUDI xsi:type="basicudi:PRBasicUDIType">
+			<e:version>0</e:version>
+			<basicudi:riskClass>CLASS_I</basicudi:riskClass>
+			<basicudi:modelName>
+			<commondi:model>Device Model</commondi:model>
+				<commondi:name>Device Name</commondi:name>
+			</basicudi:modelName>
+			
+			<basicudi:identifier>
+				<commondi:DICode>99999999ELSD99095N</commondi:DICode>
+				<commondi:issuingEntityCode>GS1</commondi:issuingEntityCode>
+			</basicudi:identifier>
+			<basicudi:medicinalPurpose>
+				<lsn:name>
+					<lsn:language>EN</lsn:language>
+					<lsn:textValue>medicinal purpose</lsn:textValue>
+				</lsn:name>
+			</basicudi:medicinalPurpose>
+			<basicudi:PRActorCode>CY-PR-000007627</basicudi:PRActorCode>
+			<basicudi:type>SYSTEM</basicudi:type>
+
+		</device:BasicUDI>
+		        <device:BasicUDI xsi:type="basicudi:PRBasicUDIType">
+			<e:version>0</e:version>
+			<basicudi:riskClass>CLASS_I</basicudi:riskClass>
+			<basicudi:modelName>
+			<commondi:model>Device Model</commondi:model>
+				<commondi:name>Device Name</commondi:name>
+			</basicudi:modelName>
+			
+			<basicudi:identifier>
+				<commondi:DICode>99999999ELSD991057</commondi:DICode>
+				<commondi:issuingEntityCode>GS1</commondi:issuingEntityCode>
+			</basicudi:identifier>
+			<basicudi:medicinalPurpose>
+				<lsn:name>
+					<lsn:language>EN</lsn:language>
+					<lsn:textValue>Medicinal Purpose Language EN</lsn:textValue>
+				</lsn:name>
+								<lsn:name>
+					<lsn:language>FR</lsn:language>
+					<lsn:textValue>Medicinal Purpose Language FR</lsn:textValue>
+				</lsn:name>
+			</basicudi:medicinalPurpose>
+			<basicudi:PRActorCode>CY-PR-000007627</basicudi:PRActorCode>
+			<basicudi:type>PROCEDURE_PACK</basicudi:type>
+
+		</device:BasicUDI>
+		        
+		       
+    </m:payload>
+    <m:sender>
+        <m:node>
+            <s:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></s:nodeActorCode>
+            <s:nodeID><!-- YOUR Party ID HERE  --></s:nodeID>
+        </m:node>
+        <m:service>
+            <s:serviceID>REPLY_SERVICE</s:serviceID>
+            <s:serviceOperation>GET</s:serviceOperation>
+        </m:service>
+    </m:sender>
+</m:Push>

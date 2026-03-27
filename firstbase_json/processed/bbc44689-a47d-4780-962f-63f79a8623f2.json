@@ -1,0 +1,642 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 6,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 6,
+            "Gtin": "18719189246268"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "NL-MF-000001553"
+            }
+          ],
+          "ContactName": "Rovers Medical Devices B.V."
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:03",
+        "EffectiveDateTime": "2026-03-26T10:11:03",
+        "PublicationDateTime": "2026-03-26T10:11:03"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "871918924638010043148"
+        }
+      ],
+      "Gtin": "08719189246414"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 6,
+        "CatalogueItem": {
+          "Identifier": "658d2c64-58fd-46aa-a76a-3443e767c74d",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 100,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 100,
+                  "Gtin": "08719189246261"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "NL-MF-000001553"
+                  }
+                ],
+                "ContactName": "Rovers Medical Devices B.V."
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-26T10:11:03",
+              "EffectiveDateTime": "2026-03-26T10:11:03",
+              "PublicationDateTime": "2026-03-26T10:11:03"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "871918924638010043148"
+              }
+            ],
+            "Gtin": "18719189246268"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 100,
+              "CatalogueItem": {
+                "Identifier": "9346f432-6d6f-4f6d-8ea1-1f57d1a87df8",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false,
+                      "ClinicalWarning": [
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW009"
+                        },
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW007"
+                        },
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW999",
+                          "WarningsOrContraIndicationDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "To be used only by qualified medical\npersonnel."
+                            }
+                          ]
+                        },
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW999",
+                          "WarningsOrContraIndicationDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "The Cervex-Brush® should not be\nused on patients after the first\n10 weeks of pregnancy."
+                            },
+                            {
+                              "LanguageCode": "de",
+                              "Value": "Die\nCervex-Brush® sollte nicht mehr nach\nder 10. Schwangerschaftswoche\nangewendet werden."
+                            },
+                            {
+                              "LanguageCode": "fr",
+                              "Value": "Ne pas utiliser la\nCervex Brush® aprés les 10 premières\nsemaines de grossesse."
+                            },
+                            {
+                              "LanguageCode": "es",
+                              "Value": "El dispositivo\nCervex-Brush® no deberá utilizarse\nen pacientes tras las 10 primeras\nsemanas de embarazo."
+                            },
+                            {
+                              "LanguageCode": "it",
+                              "Value": "Cervex-Brush®\nnon dovrebbe essere utilizzato su\ndonne in stato di gravidanza dopo la\ndecima settimana di gestazione."
+                            },
+                            {
+                              "LanguageCode": "nl",
+                              "Value": "De Cervex-Brush®\nmag niet worden gebruikt bij patiënten\nna de eerste 10 weken zwangerschap."
+                            },
+                            {
+                              "LanguageCode": "da",
+                              "Value": "Cervex-Brush®\nbør ikke anvendes på patienter efter\nde første 10 uger af gravidititeten."
+                            },
+                            {
+                              "LanguageCode": "pt",
+                              "Value": "Não utilizar\nCervex-Brush® após a primeiras\n10 semanas de gravidez."
+                            },
+                            {
+                              "LanguageCode": "el",
+                              "Value": "Το Cervex-Brush® δεν\nπρέπει να χρησιμοποιείται σε\nασθενείς μετά από την πάροδο των\n10 πρώτων εβδομάδων κύησης."
+                            },
+                            {
+                              "LanguageCode": "sv",
+                              "Value": "Cervex-Brush®\nska inte användas med patienter efter\ngraviditetens första 10 veckor."
+                            },
+                            {
+                              "LanguageCode": "pl",
+                              "Value": "Przyrząd\nCervex-Brush® nie powinien być\nstosowany u pacjentek po 10 tygodniu\nciąży."
+                            },
+                            {
+                              "LanguageCode": "lt",
+                              "Value": "Negalima naudoti\n„Cervex-Brush®“ tiriant pacientes po\n10 pirmųjų nėštumo savaičių."
+                            },
+                            {
+                              "LanguageCode": "et",
+                              "Value": "Cervex-Brushi®\nei tohi kasutada patsientidel pärast\n10 rasedusnädalat."
+                            },
+                            {
+                              "LanguageCode": "bg",
+                              "Value": "Cervex-Brush®\nне трябва да бъде използван при\nпациенти след първите 10\nседмици от бременността."
+                            },
+                            {
+                              "LanguageCode": "hr",
+                              "Value": "Cervex-Brush®\nne smije se koristiti u pacijentica\nnakon prvih 10 tjedana trudnoće."
+                            },
+                            {
+                              "LanguageCode": "cs",
+                              "Value": "Kartáček\nCervex-Brush® by se neměl používat\nu pacientek po prvních 10 týdnech\ntěhotenství."
+                            },
+                            {
+                              "LanguageCode": "fi",
+                              "Value": "Cervex-Brush®-\ntuotetta ei saa käyttää potilaille\nensimmäisten 10 raskausviikon\njälkeen."
+                            },
+                            {
+                              "LanguageCode": "hu",
+                              "Value": "A Cervex-Brush®\neszközt nem szabad a terhesség\n10. hete után alkalmazni."
+                            },
+                            {
+                              "LanguageCode": "lv",
+                              "Value": "Cervex-Brush®\nsuku nedrīkst lietot grūtniecēm pēc\n10. grūtniecības nedēļas."
+                            },
+                            {
+                              "LanguageCode": "ro",
+                              "Value": "Cervex-Brush®\nnu trebuie utilizat în cazul pacientelor\ndupă primele 10 săptămâni de\nsarcină."
+                            },
+                            {
+                              "LanguageCode": "sk",
+                              "Value": "Kefka Cervex-Brush®\nsa nesmie používať u pacientok po\nprvých 10 týždňoch tehotenstva."
+                            },
+                            {
+                              "LanguageCode": "sl",
+                              "Value": "Ščetke\nCervex-Brush® se ne sme\nuporabljati pri pacientkah po prvih\n10 tednih nosečnosti."
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
+                      "UdidDeviceCount": 1,
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": false,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "BATCH_NUMBER"
+                        },
+                        {
+                          "Value": "MANUFACTURING_DATE"
+                        },
+                        {
+                          "Value": "EXPIRATION_DATE"
+                        }
+                      ],
+                      "MultiComponentDeviceTypeCode": {
+                        "Value": "DEVICE"
+                      },
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "SINGLE_USE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "UNSPECIFIED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "528"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "040"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "056"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "100"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "191"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "196"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "203"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "208"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "233"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "246"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "250"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "276"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "300"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "348"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "352"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "372"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "380"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "428"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "438"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "440"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "442"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "470"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "578"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "616"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "620"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "642"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "703"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "705"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "724"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "752"
+                              }
+                            },
+                            {
+                              "CountryCode": {
+                                "Value": "792"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Rovers® Cervex-Brush®"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "U089002"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "A99"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EMA"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "NL-MF-000001553"
+                        }
+                      ],
+                      "ContactName": "Rovers Medical Devices B.V."
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-26T10:11:03",
+                    "EffectiveDateTime": "2024-10-15T10:18:34.376",
+                    "PublicationDateTime": "2026-03-26T10:11:03"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "871918924638010043148",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Rovers® Cervex-Brush®"
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "08719189246261",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "380100431"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_bbc44689-a47d-4780-962f-63f79a8623f2"
+  }
+}

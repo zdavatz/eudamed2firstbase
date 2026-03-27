@@ -1,0 +1,43 @@
+issuingEntityCode<>GS1 for Primary DIs (FLD-UDID-14, FLD-UDID-178, FLD-UDID-342) -> not mapped
+
+
+labelledSingleUse (FLD-UDID-167) -> manufacturerDeclaredReusabilityTypeCode ()
+numberOfReuses=0 (true) -> SINGLE_USE
+? -> (REUSABLE_SAME_PATIENT)
+numberOfReuses>0 (false) > -> LIMITED_REUSABLE
+w/o numberOfReuses=-1 (false) -> REUSABLE
+
+
+sterile (FLD-UDID-169) -> initialManufacturerSterilisationCode (1126)
+true -> UNSPECIFIED
+? -> (all other codes)
+false -> NOT_STERILISED
+
+
+sterilization (FLD-UDID-170) -> initialSterilisationPriorToUseCode (1127)
+true -> UNSPECIFIED
+? -> (all other codes)
+false -> NO_STERILISATION_REQUIRED
+
+
+website (FLD-UDID-174) -> referencedFileTypeCode (2469)
+-> WEBSITE?, or PRODUCT_WEBSITE, IFU?
+
+
+tradeNames (FLD-UDID-176) -> tradeItemDescription (3318)
+languageCode=ANY -> languageCode=EN?
+
+
+For Zeno:
+clinical size value=1 + valueUnit (FLD-UDID-195) -> clinicalSizeCharacteristicCode (new)
+
+
+clinicalInvestigationReference (FLD-UDID-51) -> certificationValue (246) + certificationIdentification (253) = CLINK
+
+
+
+
+
+
+
+

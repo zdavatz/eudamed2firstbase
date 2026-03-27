@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="utf-8"?>
+<catalogue_item_notification:catalogueItemNotificationMessage p1:schemaLocation="urn:gs1:gdsn:catalogue_item_notification:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/CatalogueItemNotification.xsd" xmlns:p1="http://www.w3.org/2001/XMLSchema-instance" xmlns:catalogue_item_notification="urn:gs1:gdsn:catalogue_item_notification:xsd:3">
+  <StandardBusinessDocumentHeader xmlns="http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader">
+    <HeaderVersion>1.0</HeaderVersion>
+    <Sender>
+      <Identifier Authority="GS1">7612345000435</Identifier>
+    </Sender>
+    <Receiver>
+      <Identifier Authority="GS1">7612345000343</Identifier>
+    </Receiver>
+    <DocumentIdentification>
+      <Standard>GS1</Standard>
+      <TypeVersion>3.1</TypeVersion>
+      <InstanceIdentifier>Message-357f207e-42df-48c6-a634-17b7fb53e8cd</InstanceIdentifier>
+      <Type>catalogueItemNotification</Type>
+      <CreationDateAndTime>2026-02-27T10:00:08.2645458+00:00</CreationDateAndTime>
+    </DocumentIdentification>
+  </StandardBusinessDocumentHeader>
+  <transaction>
+    <transactionIdentification>
+      <entityIdentification>Transaction-218d3502-4d64-4582-b4d2-89c5a78b3e17</entityIdentification>
+      <contentOwner>
+        <gln>7612345000435</gln>
+      </contentOwner>
+    </transactionIdentification>
+    <documentCommand>
+      <documentCommandHeader type="ADD">
+        <documentCommandIdentification>
+          <entityIdentification>DocumentCommand-2a671fef-c937-40c4-8594-4c5b361474db</entityIdentification>
+          <contentOwner>
+            <gln>7612345000435</gln>
+          </contentOwner>
+        </documentCommandIdentification>
+      </documentCommandHeader>
+      <catalogue_item_notification:catalogueItemNotification>
+        <creationDateTime>2026-02-27T10:00:08.2645458+00:00</creationDateTime>
+        <documentStatusCode>COPY</documentStatusCode>
+        <documentActionCode>ADD</documentActionCode>
+        <catalogueItemNotificationIdentification>
+          <entityIdentification>CatalogueItemNotification-bab631e5-95ef-4a25-8f41-88b010f3c7ec</entityIdentification>
+          <contentOwner>
+            <gln>7612345000435</gln>
+          </contentOwner>
+        </catalogueItemNotificationIdentification>
+        <isReload>false</isReload>
+        <catalogueItem>
+          <catalogueItemState>
+            <catalogueItemStateCode>IN_PROGRESS</catalogueItemStateCode>
+          </catalogueItemState>
+          <tradeItem>
+            <gtin>07612345780313</gtin>
+            <isTradeItemABaseUnit>false</isTradeItemABaseUnit>
+            <isTradeItemADespatchUnit>true</isTradeItemADespatchUnit>
+            <isTradeItemAnOrderableUnit>true</isTradeItemAnOrderableUnit>
+            <tradeItemUnitDescriptorCode>CASE</tradeItemUnitDescriptorCode>
+            <informationProviderOfTradeItem>
+              <gln>7612345000435</gln>
+              <partyName>UDI manufacturer POC/MVP</partyName>
+            </informationProviderOfTradeItem>
+            <gdsnTradeItemClassification>
+              <gpcCategoryCode>10005844</gpcCategoryCode>
+              <gpcCategoryName>Medical Devices</gpcCategoryName>
+            </gdsnTradeItemClassification>
+            <nextLowerLevelTradeItemInformation>
+              <quantityOfChildren>1</quantityOfChildren>
+              <totalQuantityOfNextLowerLevelTradeItem>5</totalQuantityOfNextLowerLevelTradeItem>
+              <childTradeItem>
+                <gtin>07612345780306</gtin>
+                <quantityOfNextLowerLevelTradeItem>5</quantityOfNextLowerLevelTradeItem>
+              </childTradeItem>
+            </nextLowerLevelTradeItemInformation>
+            <targetMarket>
+              <targetMarketCountryCode>097</targetMarketCountryCode>
+            </targetMarket>
+            <tradeItemInformation>
+              <extension>
+                <medical_device_trade_item:medicalDeviceTradeItemModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:medical_device_trade_item:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/MedicalDeviceTradeItemModule.xsd" xmlns:medical_device_trade_item="urn:gs1:gdsn:medical_device_trade_item:xsd:3">
+                  <medicalDeviceInformation>
+                    <eUMedicalDeviceStatusCode>ON_MARKET</eUMedicalDeviceStatusCode>
+                  </medicalDeviceInformation>
+                </medical_device_trade_item:medicalDeviceTradeItemModule>
+              </extension>
+            </tradeItemInformation>
+            <tradeItemSynchronisationDates>
+              <lastChangeDateTime>2026-02-03T11:59:11+00:00</lastChangeDateTime>
+              <effectiveDateTime>2026-02-02T23:00:00+00:00</effectiveDateTime>
+              <publicationDateTime>2026-02-03T00:00:00+01:00</publicationDateTime>
+            </tradeItemSynchronisationDates>
+            <globalModelInformation>
+              <globalModelNumber>7612345GOLDENtest54JJ</globalModelNumber>
+            </globalModelInformation>
+            <avpList>
+              <stringAVP attributeName="targetSector">UDI_REGISTRY</stringAVP>
+            </avpList>
+          </tradeItem>
+          <catalogueItemChildItemLink>
+            <quantity>5</quantity>
+            <catalogueItem>
+              <catalogueItemState>
+                <catalogueItemStateCode>IN_PROGRESS</catalogueItemStateCode>
+              </catalogueItemState>
+              <tradeItem>
+                <gtin>07612345780306</gtin>
+                <isTradeItemABaseUnit>false</isTradeItemABaseUnit>
+                <isTradeItemADespatchUnit>false</isTradeItemADespatchUnit>
+                <isTradeItemAnOrderableUnit>true</isTradeItemAnOrderableUnit>
+                <tradeItemUnitDescriptorCode>CASE</tradeItemUnitDescriptorCode>
+                <informationProviderOfTradeItem>
+                  <gln>7612345000435</gln>
+                  <partyName>UDI manufacturer POC/MVP</partyName>
+                </informationProviderOfTradeItem>
+                <gdsnTradeItemClassification>
+                  <gpcCategoryCode>10005844</gpcCategoryCode>
+                  <gpcCategoryName>Medical Devices</gpcCategoryName>
+                </gdsnTradeItemClassification>
+                <nextLowerLevelTradeItemInformation>
+                  <quantityOfChildren>1</quantityOfChildren>
+                  <totalQuantityOfNextLowerLevelTradeItem>3</totalQuantityOfNextLowerLevelTradeItem>
+                  <childTradeItem>
+                    <gtin>07612345780290</gtin>
+                    <quantityOfNextLowerLevelTradeItem>3</quantityOfNextLowerLevelTradeItem>
+                  </childTradeItem>
+                </nextLowerLevelTradeItemInformation>
+                <targetMarket>
+                  <targetMarketCountryCode>097</targetMarketCountryCode>
+                </targetMarket>
+                <tradeItemInformation>
+                  <extension>
+                    <medical_device_trade_item:medicalDeviceTradeItemModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:medical_device_trade_item:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/MedicalDeviceTradeItemModule.xsd" xmlns:medical_device_trade_item="urn:gs1:gdsn:medical_device_trade_item:xsd:3">
+                      <medicalDeviceInformation>
+                        <eUMedicalDeviceStatusCode>ON_MARKET</eUMedicalDeviceStatusCode>
+                      </medicalDeviceInformation>
+                    </medical_device_trade_item:medicalDeviceTradeItemModule>
+                  </extension>
+                </tradeItemInformation>
+                <tradeItemSynchronisationDates>
+                  <lastChangeDateTime>2026-02-03T11:57:58+00:00</lastChangeDateTime>
+                  <effectiveDateTime>2026-02-02T23:00:00+00:00</effectiveDateTime>
+                  <publicationDateTime>2026-02-03T00:00:00+01:00</publicationDateTime>
+                </tradeItemSynchronisationDates>
+                <globalModelInformation>
+                  <globalModelNumber>7612345GOLDENtest54JJ</globalModelNumber>
+                </globalModelInformation>
+                <avpList>
+                  <stringAVP attributeName="targetSector">UDI_REGISTRY</stringAVP>
+                </avpList>
+              </tradeItem>
+              <catalogueItemChildItemLink>
+                <quantity>3</quantity>
+                <catalogueItem>
+                  <catalogueItemState>
+                    <catalogueItemStateCode>REGISTERED</catalogueItemStateCode>
+                  </catalogueItemState>
+                  <tradeItem>
+                    <gtin>07612345780290</gtin>
+                    <additionalTradeItemIdentification additionalTradeItemIdentificationTypeCode="MANUFACTURER_PART_NUMBER">54_Compl_MDR_IIb_referenceNumber</additionalTradeItemIdentification>
+                    <additionalTradeItemIdentification additionalTradeItemIdentificationTypeCode="MODEL_NUMBER">54_Compl_MDR_IIb_modelNumber</additionalTradeItemIdentification>
+                    <isTradeItemABaseUnit>true</isTradeItemABaseUnit>
+                    <isTradeItemADespatchUnit>false</isTradeItemADespatchUnit>
+                    <isTradeItemAnOrderableUnit>false</isTradeItemAnOrderableUnit>
+                    <tradeItemUnitDescriptorCode>BASE_UNIT_OR_EACH</tradeItemUnitDescriptorCode>
+                    <tradeItemTradeChannelCode>UDI_REGISTRY</tradeItemTradeChannelCode>
+                    <informationProviderOfTradeItem>
+                      <gln>7612345000435</gln>
+                      <partyName>UDI manufacturer POC/MVP</partyName>
+                    </informationProviderOfTradeItem>
+                    <gdsnTradeItemClassification>
+                      <gpcCategoryCode>10005844</gpcCategoryCode>
+                      <gpcCategoryName>Medical Devices</gpcCategoryName>
+                      <additionalTradeItemClassification>
+                        <additionalTradeItemClassificationSystemCode>88</additionalTradeItemClassificationSystemCode>
+                        <additionalTradeItemClassificationValue>
+                          <additionalTradeItemClassificationCodeValue>A01020401</additionalTradeItemClassificationCodeValue>
+                        </additionalTradeItemClassificationValue>
+                      </additionalTradeItemClassification>
+                      <additionalTradeItemClassification>
+                        <additionalTradeItemClassificationSystemCode>88</additionalTradeItemClassificationSystemCode>
+                        <additionalTradeItemClassificationValue>
+                          <additionalTradeItemClassificationCodeValue>A01020402</additionalTradeItemClassificationCodeValue>
+                        </additionalTradeItemClassificationValue>
+                      </additionalTradeItemClassification>
+                      <additionalTradeItemClassification>
+                        <additionalTradeItemClassificationSystemCode>76</additionalTradeItemClassificationSystemCode>
+                        <additionalTradeItemClassificationValue>
+                          <additionalTradeItemClassificationCodeValue>EU_CLASS_IIB</additionalTradeItemClassificationCodeValue>
+                        </additionalTradeItemClassificationValue>
+                      </additionalTradeItemClassification>
+                    </gdsnTradeItemClassification>
+                    <targetMarket>
+                      <targetMarketCountryCode>097</targetMarketCountryCode>
+                    </targetMarket>
+                    <tradeItemContactInformation>
+                      <contactTypeCode>EMA</contactTypeCode>
+                      <additionalPartyIdentification additionalPartyIdentificationTypeCode="SRN">CH-MF-000023141</additionalPartyIdentification>
+                    </tradeItemContactInformation>
+                    <tradeItemContactInformation>
+                      <contactTypeCode>EAR</contactTypeCode>
+                      <additionalPartyIdentification additionalPartyIdentificationTypeCode="SRN">DK-AR-000023001</additionalPartyIdentification>
+                    </tradeItemContactInformation>
+                    <tradeItemContactInformation>
+                      <contactTypeCode>EPD</contactTypeCode>
+                      <contactName>GS1 Switzerland</contactName>
+                      <structuredAddress>
+                        <city>Bern</city>
+                        <countryCode>756</countryCode>
+                        <postalCode>3007</postalCode>
+                        <streetAddress>Monbijoustrasse</streetAddress>
+                        <streetNumber>68</streetNumber>
+                      </structuredAddress>
+                      <targetMarketCommunicationChannel>
+                        <communicationChannel>
+                          <communicationChannelCode>EMAIL</communicationChannelCode>
+                          <communicationValue>msi@gs1.ch</communicationValue>
+                        </communicationChannel>
+                        <communicationChannel>
+                          <communicationChannelCode>TELEPHONE</communicationChannelCode>
+                          <communicationValue>+41 79 563 25 99</communicationValue>
+                        </communicationChannel>
+                      </targetMarketCommunicationChannel>
+                    </tradeItemContactInformation>
+                    <tradeItemInformation>
+                      <extension>
+                        <chemical_regulation_information:chemicalRegulationInformationModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:chemical_regulation_information:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/ChemicalRegulationInformationModule.xsd" xmlns:chemical_regulation_information="urn:gs1:gdsn:chemical_regulation_information:xsd:3">
+                          <chemicalRegulationInformation>
+                            <chemicalRegulationAgency>WHO</chemicalRegulationAgency>
+                            <chemicalRegulation>
+                              <chemicalRegulationName>INN</chemicalRegulationName>
+                              <regulatedChemical>
+                                <regulatedChemicalDescription languageCode="fr">Amoxicilline</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="en">Amoxicillin</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="de">Amoxicillin</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="it">Amoxicillina</regulatedChemicalDescription>
+                                <regulatedChemicalTypeCode>MEDICINAL_PRODUCT</regulatedChemicalTypeCode>
+                              </regulatedChemical>
+                            </chemicalRegulation>
+                          </chemicalRegulationInformation>
+                          <chemicalRegulationInformation>
+                            <chemicalRegulationAgency>WHO</chemicalRegulationAgency>
+                            <chemicalRegulation>
+                              <chemicalRegulationName>INN</chemicalRegulationName>
+                              <regulatedChemical>
+                                <regulatedChemicalName>Amoxicillin</regulatedChemicalName>
+                                <regulatedChemicalTypeCode>MEDICINAL_PRODUCT</regulatedChemicalTypeCode>
+                              </regulatedChemical>
+                            </chemicalRegulation>
+                          </chemicalRegulationInformation>
+                          <chemicalRegulationInformation>
+                            <chemicalRegulationAgency>WHO</chemicalRegulationAgency>
+                            <chemicalRegulation>
+                              <chemicalRegulationName>INN</chemicalRegulationName>
+                              <regulatedChemical>
+                                <regulatedChemicalName>Human albumin</regulatedChemicalName>
+                                <regulatedChemicalTypeCode>HUMAN_PRODUCT</regulatedChemicalTypeCode>
+                              </regulatedChemical>
+                            </chemicalRegulation>
+                          </chemicalRegulationInformation>
+                          <chemicalRegulationInformation>
+                            <chemicalRegulationAgency>WHO</chemicalRegulationAgency>
+                            <chemicalRegulation>
+                              <chemicalRegulationName>INN</chemicalRegulationName>
+                              <regulatedChemical>
+                                <regulatedChemicalDescription languageCode="fr">Albumine humaine</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="en">Human albumin</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="de">Humanalbumin</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="it">Albumina umana</regulatedChemicalDescription>
+                                <regulatedChemicalTypeCode>HUMAN_PRODUCT</regulatedChemicalTypeCode>
+                              </regulatedChemical>
+                            </chemicalRegulation>
+                          </chemicalRegulationInformation>
+                          <chemicalRegulationInformation>
+                            <chemicalRegulationAgency>ECHA</chemicalRegulationAgency>
+                            <chemicalRegulation>
+                              <chemicalRegulationName>ECICS</chemicalRegulationName>
+                              <regulatedChemical>
+                                <regulatedChemicalIdentifierCodeReference codeListAgencyName="EC">200-023-8</regulatedChemicalIdentifierCodeReference>
+                                <regulatedChemicalDescription languageCode="en">Estradiol</regulatedChemicalDescription>
+                                <regulatedChemicalTypeCode>ENDOCRINE_SUBSTANCE</regulatedChemicalTypeCode>
+                              </regulatedChemical>
+                              <regulatedChemical>
+                                <regulatedChemicalIdentifierCodeReference codeListAgencyName="CAS">50-28-2</regulatedChemicalIdentifierCodeReference>
+                                <regulatedChemicalDescription languageCode="en">Estradiol</regulatedChemicalDescription>
+                                <regulatedChemicalTypeCode>ENDOCRINE_SUBSTANCE</regulatedChemicalTypeCode>
+                              </regulatedChemical>
+                            </chemicalRegulation>
+                          </chemicalRegulationInformation>
+                          <chemicalRegulationInformation>
+                            <chemicalRegulationAgency>ECHA</chemicalRegulationAgency>
+                            <chemicalRegulation>
+                              <chemicalRegulationName>ECICS</chemicalRegulationName>
+                              <regulatedChemical>
+                                <regulatedChemicalDescription languageCode="fr">Benzène</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="en">Benzen</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="de">Benzol</regulatedChemicalDescription>
+                                <regulatedChemicalDescription languageCode="it">Benzeno</regulatedChemicalDescription>
+                                <carcinogenicMutagenicReprotoxicTypeCode>CMR_1B</carcinogenicMutagenicReprotoxicTypeCode>
+                                <regulatedChemicalTypeCode>CMR_SUBSTANCE</regulatedChemicalTypeCode>
+                              </regulatedChemical>
+                            </chemicalRegulation>
+                          </chemicalRegulationInformation>
+                        </chemical_regulation_information:chemicalRegulationInformationModule>
+                        <healthcare_item_information:healthcareItemInformationModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:healthcare_item_information:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/HealthcareItemInformationModule.xsd" xmlns:healthcare_item_information="urn:gs1:gdsn:healthcare_item_information:xsd:3">
+                          <healthcareItemInformation>
+                            <doesTradeItemContainHumanBloodDerivative>TRUE</doesTradeItemContainHumanBloodDerivative>
+                            <doesTradeItemContainLatex>FALSE</doesTradeItemContainLatex>
+                            <doesTradeItemContainHumanTissue>TRUE</doesTradeItemContainHumanTissue>
+                            <doesTradeItemContainAnimalTissue>false</doesTradeItemContainAnimalTissue>
+                            <clinicalStorageHandlingInformation>
+                              <clinicalStorageHandlingTypeCode>SHC36</clinicalStorageHandlingTypeCode>
+                            </clinicalStorageHandlingInformation>
+                            <clinicalStorageHandlingInformation>
+                              <clinicalStorageHandlingTypeCode>SHC99</clinicalStorageHandlingTypeCode>
+                              <clinicalStorageHandlingDescription languageCode="en">54_Compl_MDR_IIa_Storage handling special text</clinicalStorageHandlingDescription>
+                              <clinicalStorageHandlingDescription languageCode="fr">54_Compl_MDR_IIa_Manipulation du texte spécial de stockage</clinicalStorageHandlingDescription>
+                              <clinicalStorageHandlingDescription languageCode="de">54_Compl_MDR_IIa_Lagerung und Handhabung Spezialtext</clinicalStorageHandlingDescription>
+                              <clinicalStorageHandlingDescription languageCode="it">54_Compl_MDR_IIa_Gestione dello stoccaggio testo speciale</clinicalStorageHandlingDescription>
+                            </clinicalStorageHandlingInformation>
+                            <clinicalStorageHandlingInformation>
+                              <clinicalStorageHandlingTypeCode>SHC35</clinicalStorageHandlingTypeCode>
+                            </clinicalStorageHandlingInformation>
+                            <clinicalSize>
+                              <clinicalSizeTypeCode>NEEDLE_GAUGE</clinicalSizeTypeCode>
+                              <clinicalSizeValue measurementUnitCode="H79">12</clinicalSizeValue>
+                              <clinicalSizeValueMaximum measurementUnitCode="H79">14</clinicalSizeValueMaximum>
+                              <clinicalSizeMeasurementPrecisionCode>RANGE</clinicalSizeMeasurementPrecisionCode>
+                            </clinicalSize>
+                            <clinicalSize>
+                              <clinicalSizeTypeCode>DIAMETER_INNER</clinicalSizeTypeCode>
+                              <clinicalSizeMeasurementPrecisionCode>TEXT</clinicalSizeMeasurementPrecisionCode>
+                              <clinicalSizeValueText>54_Compl_MDR_IIa_clinicalSizeValueText</clinicalSizeValueText>
+                            </clinicalSize>
+                            <clinicalSize>
+                              <clinicalSizeTypeCode>CIRCUMFERENCE</clinicalSizeTypeCode>
+                              <clinicalSizeValue measurementUnitCode="u">1</clinicalSizeValue>
+                              <clinicalSizeMeasurementPrecisionCode>VALUE</clinicalSizeMeasurementPrecisionCode>
+                            </clinicalSize>
+                            <clinicalWarning>
+                              <clinicalWarningAgencyCode>EUDAMED</clinicalWarningAgencyCode>
+                              <clinicalWarningCode>CW008</clinicalWarningCode>
+                            </clinicalWarning>
+                            <clinicalWarning>
+                              <clinicalWarningAgencyCode>EUDAMED</clinicalWarningAgencyCode>
+                              <clinicalWarningCode>CW999</clinicalWarningCode>
+                              <warningsOrContraIndicationDescription languageCode="en">54_Compl_MDR_IIa_Critical warning special text</warningsOrContraIndicationDescription>
+                              <warningsOrContraIndicationDescription languageCode="fr">54_Compl_MDR_IIa_Texte spécial d'avertissement critique</warningsOrContraIndicationDescription>
+                              <warningsOrContraIndicationDescription languageCode="de">54_Compl_MDR_IIa_Kritische Warnung – Sondertext</warningsOrContraIndicationDescription>
+                              <warningsOrContraIndicationDescription languageCode="it">54_Compl_MDR_IIa_Testo speciale di avviso critico</warningsOrContraIndicationDescription>
+                            </clinicalWarning>
+                            <clinicalWarning>
+                              <clinicalWarningAgencyCode>EUDAMED</clinicalWarningAgencyCode>
+                              <clinicalWarningCode>CW029</clinicalWarningCode>
+                            </clinicalWarning>
+                          </healthcareItemInformation>
+                        </healthcare_item_information:healthcareItemInformationModule>
+                        <medical_device_trade_item:medicalDeviceTradeItemModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:medical_device_trade_item:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/MedicalDeviceTradeItemModule.xsd" xmlns:medical_device_trade_item="urn:gs1:gdsn:medical_device_trade_item:xsd:3">
+                          <medicalDeviceInformation>
+                            <isTradeItemImplantable>FALSE</isTradeItemImplantable>
+                            <udidDeviceCount>1</udidDeviceCount>
+                            <directPartMarkingIdentifier identificationSchemeAgencyCode="GS1">07612345780320</directPartMarkingIdentifier>
+                            <hasDeviceMeasuringFunction>true</hasDeviceMeasuringFunction>
+                            <isActiveDevice>false</isActiveDevice>
+                            <isDeviceIntendedToAdministerOrRemoveMedicinalProduct>true</isDeviceIntendedToAdministerOrRemoveMedicinalProduct>
+                            <isDeviceMedicinalProduct>true</isDeviceMedicinalProduct>
+                            <isReprocessedSingleUseDevice>false</isReprocessedSingleUseDevice>
+                            <isReusableSurgicalInstrument>true</isReusableSurgicalInstrument>
+                            <uDIProductionIdentifierTypeCode>SERIAL_NUMBER</uDIProductionIdentifierTypeCode>
+                            <uDIProductionIdentifierTypeCode>MANUFACTURING_DATE</uDIProductionIdentifierTypeCode>
+                            <uDIProductionIdentifierTypeCode>BATCH_NUMBER</uDIProductionIdentifierTypeCode>
+                            <annexXVIIntendedPurposeTypeCode>FILLING_BY_INJECTION</annexXVIIntendedPurposeTypeCode>
+                            <multiComponentDeviceTypeCode>PROCEDURE_PACK</multiComponentDeviceTypeCode>
+                            <eUMedicalDeviceStatusCode>ON_MARKET</eUMedicalDeviceStatusCode>
+                            <healthcareTradeItemReusabilityInformation>
+                              <manufacturerDeclaredReusabilityTypeCode>LIMITED_REUSABLE</manufacturerDeclaredReusabilityTypeCode>
+                              <maximumCyclesReusable>15</maximumCyclesReusable>
+                            </healthcareTradeItemReusabilityInformation>
+                            <tradeItemSterilityInformation>
+                              <initialManufacturerSterilisationCode>NOT_STERILISED</initialManufacturerSterilisationCode>
+                              <initialSterilisationPriorToUseCode>OZONE</initialSterilisationPriorToUseCode>
+                            </tradeItemSterilityInformation>
+                          </medicalDeviceInformation>
+                        </medical_device_trade_item:medicalDeviceTradeItemModule>
+                        <referenced_file_detail_information:referencedFileDetailInformationModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:referenced_file_detail_information:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/ReferencedFileDetailInformationModule.xsd" xmlns:referenced_file_detail_information="urn:gs1:gdsn:referenced_file_detail_information:xsd:3">
+                          <referencedFileHeader>
+                            <referencedFileTypeCode>IFU</referencedFileTypeCode>
+                            <fileFormatName>Pdf</fileFormatName>
+                            <fileName>IFU-DE-Rev03.pdf</fileName>
+                            <uniformResourceIdentifier>https://ifu.medtech-docs.eu/IIb/UDI-DI-04012345678901/IFU-DE-Rev03.pdf</uniformResourceIdentifier>
+                            <isPrimaryFile>FALSE</isPrimaryFile>
+                            <avpList>
+                              <stringAVP attributeName="mediaSourceGln">7612345000435</stringAVP>
+                            </avpList>
+                          </referencedFileHeader>
+                        </referenced_file_detail_information:referencedFileDetailInformationModule>
+                        <regulated_trade_item:regulatedTradeItemModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:regulated_trade_item:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/RegulatedTradeItemModule.xsd" xmlns:regulated_trade_item="urn:gs1:gdsn:regulated_trade_item:xsd:3">
+                          <regulatoryInformation>
+                            <regulatoryAct>MDR</regulatoryAct>
+                            <regulatoryAgency>EU</regulatoryAgency>
+                          </regulatoryInformation>
+                        </regulated_trade_item:regulatedTradeItemModule>
+                        <sales_information:salesInformationModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:sales_information:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/SalesInformationModule.xsd" xmlns:sales_information="urn:gs1:gdsn:sales_information:xsd:3">
+                          <salesInformation>
+                            <targetMarketSalesConditions>
+                              <targetMarketConsumerSalesConditionCode>ORIGINAL_PLACED</targetMarketConsumerSalesConditionCode>
+                              <salesConditionTargetMarketCountry>
+                                <countryCode>352</countryCode>
+                                <endAvailabilityDateTime>2026-02-27T21:00:00+00:00</endAvailabilityDateTime>
+                                <startAvailabilityDateTime>2026-02-03T13:00:00+00:00</startAvailabilityDateTime>
+                              </salesConditionTargetMarketCountry>
+                            </targetMarketSalesConditions>
+                            <targetMarketSalesConditions>
+                              <targetMarketConsumerSalesConditionCode>ADDITIONAL_MARKET_AVAILABILITY</targetMarketConsumerSalesConditionCode>
+                              <salesConditionTargetMarketCountry>
+                                <countryCode>208</countryCode>
+                                <startAvailabilityDateTime>2026-02-03T13:00:00+00:00</startAvailabilityDateTime>
+                              </salesConditionTargetMarketCountry>
+                            </targetMarketSalesConditions>
+                            <targetMarketSalesConditions>
+                              <targetMarketConsumerSalesConditionCode>ADDITIONAL_MARKET_AVAILABILITY</targetMarketConsumerSalesConditionCode>
+                              <salesConditionTargetMarketCountry>
+                                <countryCode>528</countryCode>
+                                <startAvailabilityDateTime>2026-02-03T13:00:00+00:00</startAvailabilityDateTime>
+                              </salesConditionTargetMarketCountry>
+                            </targetMarketSalesConditions>
+                            <targetMarketSalesConditions>
+                              <targetMarketConsumerSalesConditionCode>ADDITIONAL_MARKET_AVAILABILITY</targetMarketConsumerSalesConditionCode>
+                              <salesConditionTargetMarketCountry>
+                                <countryCode>250</countryCode>
+                                <startAvailabilityDateTime>2026-02-03T13:00:00+00:00</startAvailabilityDateTime>
+                              </salesConditionTargetMarketCountry>
+                            </targetMarketSalesConditions>
+                          </salesInformation>
+                        </sales_information:salesInformationModule>
+                        <trade_item_description:tradeItemDescriptionModule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:gs1:gdsn:trade_item_description:xsd:3 http://www.gdsregistry.org/3.1/schemas/gs1/gdsn/TradeItemDescriptionModule.xsd" xmlns:trade_item_description="urn:gs1:gdsn:trade_item_description:xsd:3">
+                          <tradeItemDescriptionInformation>
+                            <additionalTradeItemDescription languageCode="fr">54_Compl_MDR_IIb_description supplémentaire du produit</additionalTradeItemDescription>
+                            <additionalTradeItemDescription languageCode="en">54_Compl_MDR_IIb_additional product description</additionalTradeItemDescription>
+                            <additionalTradeItemDescription languageCode="de">54_Compl_MDR_IIb_Zusätzliche Artikelbeschreibung</additionalTradeItemDescription>
+                            <additionalTradeItemDescription languageCode="it">54_Compl_MDR_IIb_descrizione aggiuntiva dell'articolo</additionalTradeItemDescription>
+                            <tradeItemDescription languageCode="en">54_Compl_MDR_IIb_trade name</tradeItemDescription>
+                            <tradeItemDescription languageCode="fr">54_Compl_MDR_IIb_nom du produit</tradeItemDescription>
+                            <tradeItemDescription languageCode="de">54_Compl_MDR_IIb_Produktbezeichnung</tradeItemDescription>
+                            <tradeItemDescription languageCode="it">54_Compl_MDR_IIb_denominazione del prodotto</tradeItemDescription>
+                          </tradeItemDescriptionInformation>
+                        </trade_item_description:tradeItemDescriptionModule>
+                      </extension>
+                    </tradeItemInformation>
+                    <tradeItemSynchronisationDates>
+                      <lastChangeDateTime>2026-02-03T12:00:14+00:00</lastChangeDateTime>
+                      <effectiveDateTime>2026-02-02T23:00:00+00:00</effectiveDateTime>
+                      <publicationDateTime>2026-02-03T00:00:00+01:00</publicationDateTime>
+                    </tradeItemSynchronisationDates>
+                    <globalModelInformation>
+                      <globalModelNumber>7612345GOLDENtest54JJ</globalModelNumber>
+                      <globalModelDescription languageCode="en">54_Compl_MDR_IIb_modelName</globalModelDescription>
+                    </globalModelInformation>
+                    <avpList>
+                      <stringAVP attributeName="targetSector">UDI_REGISTRY</stringAVP>
+                    </avpList>
+                  </tradeItem>
+                </catalogueItem>
+              </catalogueItemChildItemLink>
+            </catalogueItem>
+          </catalogueItemChildItemLink>
+        </catalogueItem>
+      </catalogue_item_notification:catalogueItemNotification>
+    </documentCommand>
+  </transaction>
+</catalogue_item_notification:catalogueItemNotificationMessage>

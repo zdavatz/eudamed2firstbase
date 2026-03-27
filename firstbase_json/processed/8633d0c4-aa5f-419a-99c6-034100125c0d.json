@@ -1,0 +1,464 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 1,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 1,
+            "Gtin": "07350096320081"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EPP"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "SE-MF-000018550"
+            }
+          ],
+          "ContactName": "Integration Diagnostics / NSK Nordic"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T16:42:04",
+        "EffectiveDateTime": "2026-03-27T16:42:04",
+        "PublicationDateTime": "2026-03-27T16:42:04"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "735009632PenguinRF"
+        }
+      ],
+      "Gtin": "07350096320326"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 1,
+        "CatalogueItem": {
+          "Identifier": "cdaa18ac-cb25-49b5-b8ea-2cd1dd9759db",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                }
+              }
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "IsTradeItemABaseUnit": false,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "PACK_OR_INNER_PACK"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices"
+            },
+            "NextLowerLevelTradeItemInformation": {
+              "QuantityOfChildren": 1,
+              "TotalQuantityOfNextLowerLevelTradeItem": 1,
+              "ChildTradeItem": [
+                {
+                  "QuantityOfNextLowerLevelTradeItem": 1,
+                  "Gtin": "07350096320012"
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EPP"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "SE-MF-000018550"
+                  }
+                ],
+                "ContactName": "Integration Diagnostics / NSK Nordic"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-27T16:42:04",
+              "EffectiveDateTime": "2026-03-27T16:42:04",
+              "PublicationDateTime": "2026-03-27T16:42:04"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "735009632PenguinRF"
+              }
+            ],
+            "Gtin": "07350096320081"
+          },
+          "CatalogueItemChildItemLink": [
+            {
+              "Quantity": 1,
+              "CatalogueItem": {
+                "Identifier": "54edacee-981f-4f9b-af16-a5619c7d741b",
+                "TradeItem": {
+                  "IsBrandBankPublication": false,
+                  "TargetSector": [
+                    "UDI_REGISTRY"
+                  ],
+                  "HealthcareItemInformationModule": {
+                    "HealthcareItemInformation": {
+                      "DoesTradeItemContainLatex": "FALSE",
+                      "ClinicalStorageHandlingInformation": [
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC08"
+                          },
+                          "ClinicalStorageHandlingDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "Ambient temperature: 16° to 40°C (60°–104°F)"
+                            }
+                          ]
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC09"
+                          },
+                          "ClinicalStorageHandlingDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "Relative humidity: 10%–80% Rh"
+                            }
+                          ]
+                        },
+                        {
+                          "ClinicalStorageHandlingTypeCode": {
+                            "Value": "SHC10"
+                          },
+                          "ClinicalStorageHandlingDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "Atmospheric pressure: 500 hPa- 1060 hPa (0.5–1.0 atm)."
+                            }
+                          ]
+                        }
+                      ],
+                      "ClinicalSize": [
+                        {
+                          "ClinicalSizeTypeCode": {
+                            "Value": "LENGTH"
+                          },
+                          "ClinicalSizeValue": [
+                            {
+                              "MeasurementUnitCode": "MMT",
+                              "Value": 31.0
+                            }
+                          ],
+                          "ClinicalSizeMeasurementPrecisionCode": {
+                            "Value": "VALUE"
+                          }
+                        },
+                        {
+                          "ClinicalSizeTypeCode": {
+                            "Value": "WIDTH"
+                          },
+                          "ClinicalSizeValue": [
+                            {
+                              "MeasurementUnitCode": "MMT",
+                              "Value": 26.0
+                            }
+                          ],
+                          "ClinicalSizeMeasurementPrecisionCode": {
+                            "Value": "VALUE"
+                          }
+                        },
+                        {
+                          "ClinicalSizeTypeCode": {
+                            "Value": "HEIGHT"
+                          },
+                          "ClinicalSizeValue": [
+                            {
+                              "MeasurementUnitCode": "MMT",
+                              "Value": 201.0
+                            }
+                          ],
+                          "ClinicalSizeMeasurementPrecisionCode": {
+                            "Value": "VALUE"
+                          }
+                        }
+                      ],
+                      "ClinicalWarning": [
+                        {
+                          "ClinicalWarningAgencyCode": {
+                            "Value": "EUDAMED"
+                          },
+                          "ClinicalWarningCode": "CW023",
+                          "WarningsOrContraIndicationDescription": [
+                            {
+                              "LanguageCode": "en",
+                              "Value": "The instrument emits short magnetic pulses with pulse duration of 1 ms and strength of +/- 20 gauss, 10 mm from the instrument tip. Precautions might be necessary when using the instrument close to cardiac pacemakers or other equipment sensitive to magnetic fields."
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "MedicalDeviceTradeItemModule": {
+                    "MedicalDeviceInformation": {
+                      "UdidDeviceCount": 1,
+                      "DirectPartMarkingIdentifier": [
+                        {
+                          "IdentificationSchemeAgencyCode": "GS1",
+                          "Value": "07350096320012"
+                        }
+                      ],
+                      "UDIProductionIdentifierTypeCode": [
+                        {
+                          "Value": "SERIAL_NUMBER"
+                        },
+                        {
+                          "Value": "MANUFACTURING_DATE"
+                        }
+                      ],
+                      "SystemOrProcedurePackTypeCode": {
+                        "Value": "SYSTEM"
+                      },
+                      "SystemOrProcedurePackMedicalPurposeDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Penguin Instrument "
+                        }
+                      ],
+                      "EUMedicalDeviceStatusCode": {
+                        "Value": "ON_MARKET"
+                      },
+                      "HealthcareTradeItemReusabilityInformation": {
+                        "ManufacturerDeclaredReusabilityTypeCode": {
+                          "Value": "REUSABLE"
+                        }
+                      },
+                      "TradeItemSterilityInformation": {
+                        "InitialManufacturerSterilisationCode": [
+                          {
+                            "Value": "NOT_STERILISED"
+                          }
+                        ],
+                        "InitialSterilisationPriorToUseCode": [
+                          {
+                            "Value": "NO_STERILISATION_REQUIRED"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "ReferencedFileDetailInformationModule": {
+                    "ReferencedFileHeader": [
+                      {
+                        "ReferencedFileTypeCode": {
+                          "Value": "IFU"
+                        },
+                        "UniformResourceIdentifier": "https://penguininstruments.com/",
+                        "IsPrimaryFile": "TRUE"
+                      }
+                    ]
+                  },
+                  "RegulatedTradeItemModule": {
+                    "RegulatoryInformation": [
+                      {
+                        "RegulatoryAct": "MDR",
+                        "RegulatoryAgency": "EU"
+                      }
+                    ]
+                  },
+                  "TradeItemDescriptionModule": {
+                    "TradeItemDescriptionInformation": {
+                      "AdditionalTradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Device is indicated for use in measuring the stability of dental implants."
+                        }
+                      ],
+                      "TradeItemDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Penguin RFA"
+                        }
+                      ]
+                    }
+                  },
+                  "IsTradeItemABaseUnit": true,
+                  "IsTradeItemADespatchUnit": false,
+                  "IsTradeItemAnOrderableUnit": true,
+                  "TradeItemUnitDescriptorCode": {
+                    "Value": "BASE_UNIT_OR_EACH"
+                  },
+                  "TradeItemTradeChannelCode": [
+                    {
+                      "Value": "UDI_REGISTRY"
+                    }
+                  ],
+                  "InformationProviderOfTradeItem": {
+                    "Gln": "7612345000480",
+                    "PartyName": "EUDAMED Public Download Importing"
+                  },
+                  "GdsnTradeItemClassification": {
+                    "GpcSegmentCode": "51000000",
+                    "GpcClassCode": "51150100",
+                    "GpcFamilyCode": "51150000",
+                    "GpcCategoryCode": "10005844",
+                    "GpcCategoryName": "Medical Devices",
+                    "AdditionalTradeItemClassification": [
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "76"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                          }
+                        ]
+                      },
+                      {
+                        "AdditionalTradeItemClassificationSystemCode": {
+                          "Value": "88"
+                        },
+                        "AdditionalTradeItemClassificationValue": [
+                          {
+                            "AdditionalTradeItemClassificationCodeValue": "Q0199"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "TargetMarket": {
+                    "TargetMarketCountryCode": {
+                      "Value": "097"
+                    }
+                  },
+                  "TradeItemContactInformation": [
+                    {
+                      "ContactTypeCode": {
+                        "Value": "EPP"
+                      },
+                      "AdditionalPartyIdentification": [
+                        {
+                          "AdditionalPartyIdentificationTypeCode": "SRN",
+                          "Value": "SE-MF-000018550"
+                        }
+                      ],
+                      "ContactName": "Integration Diagnostics / NSK Nordic"
+                    }
+                  ],
+                  "TradeItemSynchronisationDates": {
+                    "LastChangeDateTime": "2026-03-27T16:42:04",
+                    "EffectiveDateTime": "2024-04-29T17:30:59.525",
+                    "PublicationDateTime": "2026-03-27T16:42:04"
+                  },
+                  "GlobalModelInformation": [
+                    {
+                      "GlobalModelNumber": "735009632PenguinRF",
+                      "GlobalModelDescription": [
+                        {
+                          "LanguageCode": "en",
+                          "Value": "Penguin Instrument "
+                        }
+                      ]
+                    }
+                  ],
+                  "Gtin": "07350096320012",
+                  "AdditionalTradeItemIdentification": [
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                      "Value": "55002"
+                    },
+                    {
+                      "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+                      "Value": "Penguin Instruments"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "Identifier": "Draft_8633d0c4-aa5f-419a-99c6-034100125c0d"
+  }
+}

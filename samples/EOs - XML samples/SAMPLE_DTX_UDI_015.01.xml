@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ 
+<message:Push version="<!-- Schema version here-->"
+ xmlns:lngs="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1"
+xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1"
+xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1"
+xmlns:party="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Party/v1"
+xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1"
+xmlns:adr="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Party/Address/v1"
+xmlns:pd="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/PD/v1"
+xmlns:productdesigner="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/PD/ProductDesigner/v1"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+<message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+<message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+<message:creationDateTime>2021-02-16T13:57:56.747+01:00</message:creationDateTime>
+<message:messageID>a64a5a1f-da86-4810-a0de-27d0338811a9</message:messageID>
+ 
+<message:recipient>
+	<message:node>
+		<service:nodeActorCode>EUDAMED</service:nodeActorCode>
+		<service:nodeID>eDelivery:EUDAMED</service:nodeID>
+	</message:node>
+ 
+	<message:service>
+		<service:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></service:serviceAccessToken>
+		<service:serviceID>PRODUCT_DESIGNER</service:serviceID>
+		<service:serviceOperation>PUT</service:serviceOperation>
+	</message:service>
+</message:recipient>
+ 
+<message:payload>
+	<pd:DTXProductDesigner>
+		<productdesigner:uDIDIIdentifier>
+			<commondevice:DICode><!-- UDI-DI/EUDAMED DI CODE HERE--></commondevice:DICode>
+			<commondevice:issuingEntityCode><!-- ISSUING ENTITY --></commondevice:issuingEntityCode>
+		</productdesigner:uDIDIIdentifier>
+ 
+		<productdesigner:productDesignerActor>
+			<udidi:productDesignerOrganisation>
+				<party:geographicAddress>
+					<adr:city>South Tarawa</adr:city>
+					<adr:country>KI</adr:country>
+					<adr:postCode>KI-8000</adr:postCode>
+					<adr:street>Madeliefstraat</adr:street>
+					<adr:streetNum>8</adr:streetNum>
+				</party:geographicAddress>
+ 
+			<party:contactsDetails>
+				<adr:contactDetail>
+					<adr:eMail>aaa@aaa.ki</adr:eMail>
+					<adr:phone>0068640669807337</adr:phone>
+					<adr:public>true</adr:public>
+				</adr:contactDetail>
+			</party:contactsDetails>
+ 
+			<udidi:organizationName>
+				<lngs:language>ANY</lngs:language>
+				<lngs:textValue>Organisation_Name</lngs:textValue>
+			</udidi:organizationName>
+ 
+			</udidi:productDesignerOrganisation>
+		</productdesigner:productDesignerActor>
+	</pd:DTXProductDesigner>
+ 
+</message:payload>
+<message:sender>
+	<message:node>
+		<service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+		<service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+	</message:node>
+ 
+<message:service>
+	<service:serviceID>PRODUCT_DESIGNER</service:serviceID>
+	<service:serviceOperation>PUT</service:serviceOperation>
+</message:service>
+ 
+</message:sender>
+</message:Push>

@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<message:Push version="<!-- Schema version here-->" 
+xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1" 
+xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1" 
+xmlns:udt="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDIData/v1" 
+xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" 
+xmlns:lngs="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1" 
+xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xmlns:commondi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" 
+xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd" 
+xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1" 
+xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1" 
+xmlns:udi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1" 
+xmlns:udieu="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDI/v1" 
+xmlns:mi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1">
+	<message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+	<message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+	<message:creationDateTime>2019-05-22T07:00:28.066+02:00</message:creationDateTime>
+	<message:messageID>a64a5a1f-da86-4810-a0de-27d0338811a9</message:messageID>
+	<message:recipient>
+		<message:node>
+			<service:nodeActorCode>EUDAMED</service:nodeActorCode>
+			<service:nodeID>eudamed_mdr_acc</service:nodeID>
+		</message:node>
+		<message:service>
+			<service:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></service:serviceAccessToken>
+			<service:serviceID>UDI_DI</service:serviceID>
+			<service:serviceOperation>PATCH</service:serviceOperation>
+		</message:service>
+	</message:recipient>
+	<message:payload>
+		<!-- MDD UDI update example -->
+		<device:UDIDIData xsi:type="udt:MDEUDataType">
+			<e:version>0</e:version>
+			<udidi:identifier>
+				<commondevice:DICode>UDIcode</commondevice:DICode>
+				<commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+			</udidi:identifier>
+			<udidi:status>
+				<commondevice:code>ON_THE_MARKET</commondevice:code>
+			</udidi:status>
+			<udidi:additionalDescription>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>legacy device MDD</lngs:textValue>
+				</lngs:name>
+			</udidi:additionalDescription>
+			<udidi:basicUDIIdentifier>
+				<commondevice:DICode>Basic UDI Code</commondevice:DICode>
+				<commondevice:issuingEntityCode>EUDAMED</commondevice:issuingEntityCode>
+			</udidi:basicUDIIdentifier>
+			<udidi:MDNCodes>Q02030206 V9099</udidi:MDNCodes>
+			<udidi:referenceNumber>1234560012</udidi:referenceNumber>
+			<udidi:sterile>false</udidi:sterile>
+			<udidi:sterilization>false</udidi:sterilization>
+			<udidi:tradeNames>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>Legacy MDD Trade Name</lngs:textValue>
+				</lngs:name>
+			</udidi:tradeNames>
+			<udidi:numberOfReuses>0</udidi:numberOfReuses>
+			<udidi:marketInfos>
+				<mi:marketInfo>
+					<mi:country>BE</mi:country>
+					<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+			</udidi:marketInfos>
+			<udidi:latex>false</udidi:latex>
+			<udidi:reprocessed>false</udidi:reprocessed>
+		</device:UDIDIData>
+		<!-- AIMDD UDI update example -->
+		<device:UDIDIData xsi:type="udt:MDEUDataType">
+<e:version>0</e:version>
+<udidi:identifier>
+<commondi:DICode>D-meer344CK</commondi:DICode>
+<commondi:issuingEntityCode>EUDAMED</commondi:issuingEntityCode>
+</udidi:identifier>
+<udidi:status>
+<commondi:code>ON_THE_MARKET</commondi:code>
+</udidi:status>
+<udidi:additionalDescription>
+<lngs:name>
+<lngs:language>FR</lngs:language>
+<lngs:textValue>Generic description_FR</lngs:textValue>
+</lngs:name>
+<lngs:name>
+<lngs:language>EN</lngs:language>
+<lngs:textValue>Generic description_EN</lngs:textValue>
+</lngs:name>
+</udidi:additionalDescription>
+<udidi:basicUDIIdentifier>
+<commondi:DICode>B-meer344CK</commondi:DICode>
+<commondi:issuingEntityCode>EUDAMED</commondi:issuingEntityCode>
+</udidi:basicUDIIdentifier>
+<udidi:MDNCodes>A010199</udidi:MDNCodes>
+<udidi:referenceNumber>1234678</udidi:referenceNumber>
+<udidi:sterile>false</udidi:sterile>
+<udidi:sterilization>false</udidi:sterilization>
+<udidi:tradeNames>
+<lngs:name>
+<lngs:language>EN</lngs:language>
+<lngs:textValue>BRAND or TRADE NAME </lngs:textValue>
+</lngs:name>
+<lngs:name>
+<lngs:language>FR</lngs:language>
+<lngs:textValue> BRAND or TRADE NAME </lngs:textValue>
+</lngs:name>
+<lngs:name>
+<lngs:language>DE</lngs:language>
+<lngs:textValue> BRAND or TRADE NAME </lngs:textValue>
+</lngs:name>
+</udidi:tradeNames>
+<udidi:website>www.yournewwebsite.com</udidi:website>
+<udidi:storageHandlingConditions>
+<commondi:condition>
+<commondi:comments>
+<lngs:name>
+<lngs:language>EN</lngs:language>
+<lngs:textValue>20 degree</lngs:textValue>
+</lngs:name>
+<lngs:name>
+<lngs:language>FR</lngs:language>
+<lngs:textValue>20 degree</lngs:textValue>
+</lngs:name>
+</commondi:comments>
+<commondi:storageHandlingConditionValue>SHC099</commondi:storageHandlingConditionValue>
+</commondi:condition>
+<commondi:condition>
+<commondi:storageHandlingConditionValue>SHC001</commondi:storageHandlingConditionValue>
+</commondi:condition>
+</udidi:storageHandlingConditions>
+<udidi:criticalWarnings>
+<commondi:warning>
+<commondi:warningValue>CW010</commondi:warningValue>
+</commondi:warning>
+<commondi:warning>
+<commondi:comments>
+<lngs:name>
+<lngs:language>EN</lngs:language>
+<lngs:textValue>OTHER CW_EN</lngs:textValue>
+</lngs:name>
+<lngs:name>
+<lngs:language>FR</lngs:language>
+<lngs:textValue>OTHER CW_FR</lngs:textValue>
+</lngs:name>
+</commondi:comments>
+<commondi:warningValue>CW999</commondi:warningValue>
+</commondi:warning>
+<commondi:warning>
+<commondi:comments>
+<lngs:name>
+<lngs:textValue>Critical Warning</lngs:textValue>
+</lngs:name>
+</commondi:comments>
+<commondi:warningValue>CW001</commondi:warningValue>
+</commondi:warning>
+</udidi:criticalWarnings>
+<udidi:numberOfReuses>-1</udidi:numberOfReuses>
+<udidi:marketInfos>
+<mi:marketInfo>
+<mi:country>AT</mi:country>
+<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+</mi:marketInfo>
+<mi:marketInfo>
+<mi:country>BE</mi:country>
+<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+</mi:marketInfo>
+</udidi:marketInfos>
+<udidi:latex>false</udidi:latex>
+<udidi:reprocessed>false</udidi:reprocessed>
+</device:UDIDIData>
+		<!-- IVDD UDI update example -->
+		<device:UDIDIData xsi:type="udt:IVDEUDataType">
+			<e:version>0</e:version>
+			<udidi:identifier>
+				<commondevice:DICode>D-MTY_TST_110NP</commondevice:DICode>
+				<commondevice:issuingEntityCode>EUDAMED</commondevice:issuingEntityCode>
+			</udidi:identifier>
+			<udidi:status>
+				<commondevice:code>ON_THE_MARKET</commondevice:code>
+			</udidi:status>
+				<udidi:additionalDescription>
+				<lngs:name>
+					<lngs:language>EN</lngs:language>
+					<lngs:textValue>Description_EN</lngs:textValue>
+				</lngs:name>
+			</udidi:additionalDescription>
+			<udidi:basicUDIIdentifier>
+				<commondevice:DICode>B-MTY_TST_110NP</commondevice:DICode>
+				<commondevice:issuingEntityCode>EUDAMED</commondevice:issuingEntityCode>
+			</udidi:basicUDIIdentifier>
+			<udidi:MDNCodes>A0101010101</udidi:MDNCodes>
+			<udidi:referenceNumber>1010101991</udidi:referenceNumber>
+			<udidi:sterile>true</udidi:sterile>
+			<udidi:sterilization>false</udidi:sterilization>
+			<udidi:tradeNames>
+				<lngs:name>
+					<lngs:language>HR</lngs:language>
+					<lngs:textValue>test test</lngs:textValue>
+				</lngs:name>
+				<lngs:name>
+					<lngs:language>FR</lngs:language>
+					<lngs:textValue>FRENCH TRADE NAME</lngs:textValue>
+				</lngs:name>
+			</udidi:tradeNames>
+			<udidi:website>www.yournewsite.org</udidi:website>
+			<udidi:storageHandlingConditions>
+				<commondevice:condition>
+					<commondevice:comments>
+						<lngs:name>
+							<lngs:textValue>New Condition</lngs:textValue>
+						</lngs:name>
+					</commondevice:comments>
+					<commondevice:storageHandlingConditionValue>SHC002</commondevice:storageHandlingConditionValue>
+				</commondevice:condition>
+			</udidi:storageHandlingConditions>
+			<udidi:criticalWarnings>
+				<commondevice:warning>
+					<commondevice:comments>
+						<lngs:name>
+							<lngs:textValue>Critical_Warning_Test</lngs:textValue>
+						</lngs:name>
+					</commondevice:comments>
+					<commondevice:warningValue>CW006</commondevice:warningValue>
+				</commondevice:warning>
+			</udidi:criticalWarnings>
+			<udidi:numberOfReuses>0</udidi:numberOfReuses>
+			<udidi:marketInfos>
+				<mi:marketInfo>
+					<mi:country>AT</mi:country>
+					<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+					<mi:marketInfo>
+					<mi:country>DE</mi:country>
+					<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+					<mi:marketInfo>
+					<mi:country>HU</mi:country>
+					<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+					<mi:marketInfo>
+					<mi:country>IE</mi:country>
+					<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+				</mi:marketInfo>
+			</udidi:marketInfos>
+		</device:UDIDIData>
+	</message:payload>
+	<message:sender>
+		<message:node>
+			<service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+			<service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+		</message:node>
+		<message:service>
+			<service:serviceID>REPLY_SERVICE</service:serviceID>
+			<service:serviceOperation>GET</service:serviceOperation>
+		</message:service>
+	</message:sender>
+</message:Push>

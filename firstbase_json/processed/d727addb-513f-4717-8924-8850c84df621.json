@@ -1,0 +1,325 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Symbol"
+                }
+              ]
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Symbol"
+                }
+              ]
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW032",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Symbol"
+                }
+              ]
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW262",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Symbol"
+                }
+              ]
+            },
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW999",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "de",
+                  "Value": "Bei ungewöhnlicher Lage des Kindes bzw. bei Befundrisiken, die eine vaginale Entbindung unmöglich machen. (z.B. Placenta praevia); Bei Gefahr einer Infektion durch aufsteigende Keime (z.B. vorzeitiger Blasensprung, Scheideninfektion); Bei nicht abgeheilten Verletzungen im Genitalbereich; Unter Einfluss von Alkohol und Drogen; Bei vaginalen Blutungen; Bei bösartigen Erkrankungen im Genitalbereich (z.B. Gebärmutterhalskrebs)"
+                },
+                {
+                  "LanguageCode": "en",
+                  "Value": "The baby is in an unusual position, or if there are identified risks making a vaginal birth impossible (e.g. Placenta praevia); There is a risk of an ascending infection (e.g. premature rupture of membranes, infection of the vagina); You have injuries in your genital area which have not yet healed; You are under the influence of alcohol or drugs; You have vaginal bleeding; You have a malignant disease in your genital area (e.g. cervical cancer)"
+                },
+                {
+                  "LanguageCode": "fr",
+                  "Value": "position inhabituelle de l’enfant ou diagnostic de risques pouvant rendre un accouchement par voie basse impossible (p. ex. placenta praevia); danger d’infection par germes ascendants (p. ex. éclatement de la vessie, infection vaginale); blessures mal guéries des organes génitaux; état sous influence de l’alcool ou de drogues; saignements vaginaux; maladies malignes des organes génitaux (p. ex. cancer du col de l’utérus)"
+                },
+                {
+                  "LanguageCode": "it",
+                  "Value": "In caso di posizione anomala del bambino e/o rischi oggettivi, che rendono impossibile il parto per via vaginale (ad es. placenta previa); In caso di pericolo di un’infezione batterica ascendente (ad es. amnioressi, infezione vaginale); In caso di lesioni non guarite nella regione genitale; Sotto l’influsso di alcool o droghe; In caso di emorragie vaginali; In caso di patologie maligne nella regione genitale (ad es. tumore del collo dell’utero)"
+                },
+                {
+                  "LanguageCode": "es",
+                  "Value": "Si el bebé se encuentra en una posición inusual o en caso de diagnóstico de riesgo que imposibilite un parto vaginal (p. ej. placenta previa); Si existe riesgo de infección ascendente (p. ej. rotura prematura de membranas, infección vaginal); Si tienes heridas en el área genital que aún no hayan cicatrizado; Si estás bajo la influencia del alcohol o drogas; Si tienes hemorragias vaginales; En caso de enfermedades de carácter maligno en el área genital (p. ej. cáncer de cérvix)"
+                },
+                {
+                  "LanguageCode": "da",
+                  "Value": "hvis barnet ligger unormalt, eller ved diagnoser, der gør en vaginal fødsel umulig (f.eks. placenta prævia); ved risiko for bakterieinfektion (f.eks. ved for tidlig vandafgang eller skedeinfektion); ved ikke-helede sår omkring kønsdelene; efter indtagelse af alkohol eller andre rusmidler; ved vaginale blødninger; ved ondartede sygdomme omkring kønsdelene (f.eks. livmoderhalskræft)"
+                },
+                {
+                  "LanguageCode": "nl",
+                  "Value": "bij een afwijkende ligging van het kind of indien een vaginale bevalling bij u vanwege vastgestelde risico’s niet mogelijk is (bijvoorbeeld voorligging van de placenta); bij kans op een infectie door opstijgende kiemen (bijvoorbeeld voortijdig breken van de vliezen, vagina-infectie); bij niet genezen wonden in het gebied van de vagina; onder invloed van alcohol en drugs; bij vaginale bloedingen; een tumor in het gebied van de vagina (bijvoorbeeld baarmoederhalskanker)."
+                },
+                {
+                  "LanguageCode": "pl",
+                  "Value": "przy nietypowym ułożeniu dziecka bądź przy niebezpieczeństwach związanych z wykonywaniem badań uniemożliwiających poród pochwowy (np. łożysko przodujące); w wypadku niebezpieczeństwa infekcji za sprawą rozwijających się zarazków (np. przedwczesne pęknięcie błon płodowych, infekcja pochwy); w wypadku niezagojonych urazów w okolicy narządów płciowych; pod wpływem alkoholu i narkotyków; w wypadku krwawień z pochwy; w wypadku złośliwych zachorowań w okolicy narządów płciowych (np. rak szyjki macicy)"
+                },
+                {
+                  "LanguageCode": "pt",
+                  "Value": "o bebé estiver numa posição não usual ou em caso de riscos identificados que impossibilitem o parto vaginal (p. ex. placenta prévia); houver risco de infeção ascendente (p. ex. rutura prematura de membranas, infeção da vagina); tiver alguma lesão na área genital que não está devidamente tratada; estiver sob efeito de álcool ou drogas; tiver sangramento vaginal; tiver alguma doença maligna na área genital (p. ex. cancro do colo do útero)"
+                },
+                {
+                  "LanguageCode": "ro",
+                  "Value": "În cazul unei poziţii neobişnuite a copilului, respectiv în cazul existenţei unor suspiciuni sau riscuri, care fac imposibilă o naştere vaginală. (de ex. Placenta praevia); În caz de risc de infecţie ascendentă (spre ex. ruptura prematură a membranelor, infecţii vaginale); În cazul unor leziuni nevindecate în zona genitală; Sub influenţa alcoolului şi a drogurilor; În caz de sângerări vaginale; În cazul bolilor maligne în zona genitală (de ex. cancer de col uterin)"
+                },
+                {
+                  "LanguageCode": "sv",
+                  "Value": "Fostret är i en ovanlig ställning eller det finns identifierade risker som gör vaginala förlossningen omöjlig (t.ex. föreliggande moderkaka); Det finns en ökad infektionsrisk (t.ex. prematur ruptur av fosterhinnor eller vaginala infektioner); Du har oläkta sår i genitalier; Du är under påverkan av alkohol eller droger; Du har vaginal blödning; Du har en elakartad sjukdom i genitalier (t.ex. cancer i livmodershalsen)"
+                },
+                {
+                  "LanguageCode": "sk",
+                  "Value": "pri neobvyklej polohe dieťaťa, resp. ak lekár zistí riziko, ktoré znemožňuje vaginálny pôrod (napr. placenta praevia); pri nebezpečenstve infekcie v dôsledku stúpajúcich mikróbov (napr. predčasný odtok plodovej vody, infekcia pošvy); pri nezahojených poraneniach v oblasti genitálií; pod vplyvom alkoholu a drog; pri vaginálnom krvácaní; pri zhubných ochoreniach v oblasti genitálií (napr. rakovina krčka maternice)."
+                },
+                {
+                  "LanguageCode": "cs",
+                  "Value": "V případě neobvyklé polohy plodu, příp. zjištění rizik, která znemožňují vaginální porod (např. placenta praevia); V případě nebezpečí infekce způsobené vznikajícími choroboplodnými zárodky (např. předčasné porušení plodových blan, vaginální infekce); V případě nezahojených poranění v oblasti genitálií; Pod vlivem alkoholu a drog; V případě vaginálního krvácení; V případě zhoubných onemocnění v oblasti genitálií (např. rakovina děložního hrdla)"
+                },
+                {
+                  "LanguageCode": "hu",
+                  "Value": "A baba szokatlan fekvése, vagy a hüvelyi úton történő szülést kizáró leletek (pl. elöl fekvő méhlepény) esetén; Felszálló fertőzés veszélye áll fenn (pl. a magzatburok idő előtti megrepedése, hüvelyi fertőzés); Még nem teljesen begyógyult sebek vannak a nemi szervek területén; Alkohol vagy kábítószerek befolyása alatt; Hüvelyi vérzés esetén; A nemi szervek rosszindulatú megbetegedése (pl. méhnyakrák) esetén"
+                },
+                {
+                  "LanguageCode": "fi",
+                  "Value": "Sikiö on epätavallisessa asennossa tai on havaittu muita riskejä, jotka tekevät alatiesynnytyksen mahdottomaksi (esim. eteisistukka); Sikiöllä on lisääntynyt infektioriski (esim. ennenaikainen kalvojen repey­tyminen, emätintulehdukset); Jos sinulla on genitaalialueella haavoja, jotka eivät ole vielä parantuneet; Olet alkoholin tai huumeiden vaikutuksen alaisena; Sinulla esiintyy vuotoa emättimestä; Sinulla on pahanlaatuinen sairaus genitaalialueella (esim. kohdunkaulan syöpä)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "EXPIRATION_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "es",
+              "Value": "Ejercitador para Preparación al Parto y Postparto"
+            },
+            {
+              "LanguageCode": "en",
+              "Value": "Birth Preparation- and Postnatal Pelvic Floor Muscle Trainer"
+            },
+            {
+              "LanguageCode": "fr",
+              "Value": "Entraînement pré et post accouchement"
+            },
+            {
+              "LanguageCode": "it",
+              "Value": "Esercizi per il Parto e Post-Parto"
+            },
+            {
+              "LanguageCode": "de",
+              "Value": "Beckenboden und Geburtstrainer"
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "EPI-NO Delphine Plus"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "U0899"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-MF-000008648"
+            }
+          ],
+          "ContactName": "TECSANA GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:11:10",
+        "EffectiveDateTime": "2024-12-18T14:49:17.499",
+        "PublicationDateTime": "2026-03-26T10:11:10"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "4037696EPINOXH",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "EPI-NO"
+            }
+          ]
+        }
+      ],
+      "Gtin": "04037696011917",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "AN1191"
+        }
+      ]
+    },
+    "Identifier": "Draft_d727addb-513f-4717-8924-8850c84df621"
+  }
+}

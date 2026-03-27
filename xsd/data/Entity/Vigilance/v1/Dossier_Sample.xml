@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vigbase:Dossier xsi:type="vig:DossierType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:vigbase="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance" xmlns:vig="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance/v1" xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance ../vigilance.xsd https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance/v1 vigilance-elements.xsd" version="1">
+  <vigbase:DossierExtId>string</vigbase:DossierExtId>
+  <vigbase:Creator>String</vigbase:Creator>
+  <vigbase:CreationDate>2006-08-19T19:27:14+02:00</vigbase:CreationDate>
+  <vigbase:SubmissionDate>2006-08-19T19:27:14+02:00</vigbase:SubmissionDate>
+  <vigbase:Owner>
+    <vigbase:Owner>String</vigbase:Owner>
+    <vigbase:ActorSrn>BE-CA-001</vigbase:ActorSrn>
+  </vigbase:Owner>
+  <vigbase:EuSin>String</vigbase:EuSin>
+  <vigbase:Fields xsi:type="vig:ncar_2FieldsType" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <vig:ca_srn>BE-CA-001</vig:ca_srn>
+    <vig:countries>BE</vig:countries>
+  </vigbase:Fields>
+  <vigbase:ActionDetails/>
+  <vigbase:Data xsi:type="vig:ncar_2Type" version="1">
+    <vig:NCAR_category>string</vig:NCAR_category>
+    <!--Optional:-->
+    <vig:NCAR_MF>
+      <vig:NCAR_MFisRegistered>string</vig:NCAR_MFisRegistered>
+      <vig:mfSRN>string</vig:mfSRN>
+      <vig:NCAR_MF_data>
+        <vig:organizationName>string</vig:organizationName>
+        <vig:geographicalAddress>
+          <vig:streetName>string</vig:streetName>
+          <vig:streetNumber>string</vig:streetNumber>
+          <vig:cityName>string</vig:cityName>
+          <vig:postalZone>string</vig:postalZone>
+        </vig:geographicalAddress>
+      </vig:NCAR_MF_data>
+    </vig:NCAR_MF>
+    <!--Optional:-->
+    <vig:NCAR_AR>
+      <vig:NCAR_isAR>string</vig:NCAR_isAR>
+      <vig:NCAR_ARisRegistered>string</vig:NCAR_ARisRegistered>
+      <!--1 or more repetitions:-->
+      <vig:AR_SRN>string</vig:AR_SRN>
+      <!--1 or more repetitions:-->
+      <vig:AR_info>
+        <vig:organizationName>string</vig:organizationName>
+        <vig:geographicalAddress>
+          <vig:streetName>string</vig:streetName>
+          <vig:streetNumber>string</vig:streetNumber>
+          <vig:cityName>string</vig:cityName>
+          <vig:postalZone>string</vig:postalZone>
+        </vig:geographicalAddress>
+      </vig:AR_info>
+    </vig:NCAR_AR>
+    <vig:NCAR_isRelatedVIG>string</vig:NCAR_isRelatedVIG>
+    <!--Optional:-->
+    <vig:NCAR_VigilanceRepInfo>
+      <!--Zero or more repetitions:-->
+      <vig:NCAR_RelatedVIGref>string</vig:NCAR_RelatedVIGref>
+      <!--Zero or more repetitions:-->
+      <vig:NCAR_RelatedVIGrefs>
+        <vig:NCAR_isRelatedVIGType>fsca</vig:NCAR_isRelatedVIGType>
+        <!--Optional:-->
+        <vig:mfrRefNumber>string</vig:mfrRefNumber>
+        <!--Optional:-->
+        <vig:NCAR_RelatedVIGCAref>string</vig:NCAR_RelatedVIGCAref>
+      </vig:NCAR_RelatedVIGrefs>
+    </vig:NCAR_VigilanceRepInfo>
+    <vig:NCAR_isRelatedDEV>string</vig:NCAR_isRelatedDEV>
+    <!--Optional:-->
+    <vig:NCAR_DevInfo>
+      <!--Zero or more repetitions:-->
+      <vig:NACR_Devform>
+        <!--Zero or more repetitions:-->
+        <vig:deviceInformationx>
+          <vig:NCAR_isRegRelatedDEV>string</vig:NCAR_isRegRelatedDEV>
+          <!--Optional:-->
+          <vig:NCAR_RelatedDEVref>
+            <vig:udiDiCode>udicode</vig:udiDiCode>
+            <vig:issuingAgency>refdata.issuing-agency.hibcc</vig:issuingAgency>
+          </vig:NCAR_RelatedDEVref>
+          <!--Optional:-->
+          <vig:deviceNotinEUDAMED_BUDI>
+            <!--Optional:-->
+            <vig:deviceNotinEUDAMED_BUDI_Code>string</vig:deviceNotinEUDAMED_BUDI_Code>
+            <!--Optional:-->
+            <vig:deviceIDnotInEUDAMED_BUDI_IssuingEnt>IFA</vig:deviceIDnotInEUDAMED_BUDI_IssuingEnt>
+          </vig:deviceNotinEUDAMED_BUDI>
+          <!--Optional:-->
+          <vig:deviceIDnotInEUDAMED_UDI>
+            <!--Optional:-->
+            <vig:deviceIDnotInEUDAMED_UDI_Code>string</vig:deviceIDnotInEUDAMED_UDI_Code>
+            <!--Optional:-->
+            <vig:deviceIDnotInEUDAMED_IssuingEnt>EUDAMED</vig:deviceIDnotInEUDAMED_IssuingEnt>
+          </vig:deviceIDnotInEUDAMED_UDI>
+          <!--Optional:-->
+          <vig:legislationType>string</vig:legislationType>
+          <!--Optional:-->
+          <vig:deviceRiskClassAIMDD>string</vig:deviceRiskClassAIMDD>
+          <!--Optional:-->
+          <vig:deviceRiskClassIVDD>string</vig:deviceRiskClassIVDD>
+          <!--Optional:-->
+          <vig:deviceRiskClassIVDR>string</vig:deviceRiskClassIVDR>
+          <!--Optional:-->
+          <vig:deviceRiskClassMDR>string</vig:deviceRiskClassMDR>
+          <!--Optional:-->
+          <vig:deviceRiskClassMDD>string</vig:deviceRiskClassMDD>
+          <!--Optional:-->
+          <vig:deviceTradeName>string</vig:deviceTradeName>
+          <vig:MDNCode>string</vig:MDNCode>
+          <!--Optional:-->
+          <vig:MDNDescription>string</vig:MDNDescription>
+          <vig:DeviceDesc>string</vig:DeviceDesc>
+        </vig:deviceInformationx>
+      </vig:NACR_Devform>
+    </vig:NCAR_DevInfo>
+    <!--Optional:-->
+    <vig:NCAR_Comment>
+      <vig:NCAR_Comments>string</vig:NCAR_Comments>
+      <vig:NCAR_info>string</vig:NCAR_info>
+      <vig:NCAR_conclusion>string</vig:NCAR_conclusion>
+      <!--Optional:-->
+      <vig:NCAR_recomm>string</vig:NCAR_recomm>
+      <!--Zero or more repetitions:-->
+      <vig:NCAR_documents>
+        <vig:FileName>string</vig:FileName>
+        <vig:FileURI>string</vig:FileURI>
+        <!--Optional:-->
+        <vig:CreationDate>2006-08-19T19:27:14+02:00</vig:CreationDate>
+        <vig:DocumentType>string</vig:DocumentType>
+        <vig:Language>string</vig:Language>
+        <!--Optional:-->
+        <vig:PublicFileName>string</vig:PublicFileName>
+        <vig:PublicFileURI>string</vig:PublicFileURI>
+        <!--Optional:-->
+        <!--Optional:-->
+        <vig:PubliclyAvailable>true</vig:PubliclyAvailable>
+      </vig:NCAR_documents>
+      <!--1 or more repetitions:-->
+      <vig:NCAR_countries>CY</vig:NCAR_countries>
+    </vig:NCAR_Comment>
+  </vigbase:Data>
+</vigbase:Dossier>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<m:Push xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:s="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" xmlns:actor="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Actor/v1" xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1" xmlns:actorrel="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Actor/Relationship/v1" xmlns:commonbasic="https://ec.europa.eu/tools/eudamed/dtx/datamodel/CommonBasic/v1" xmlns:party="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Party/v1" xmlns:links="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Links/v1" xmlns:basicudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1" xmlns:dt="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Decision/v1" xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1" xmlns:comment="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Comment/v1" xmlns:risk="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/RiskClass/v1" xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1" xmlns:lsn="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1" xmlns:crtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/v1" xmlns:mktinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/v1" xmlns:marketinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1" xmlns:address="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Party/Address/v1" xmlns:actorregistration="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Actor/Registration/v1" xmlns:doct="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Document/v1" xmlns:country="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Country/v1" xmlns:sscp="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/SSCP/v1" xmlns:commondi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" xmlns:eudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDI/v1" xmlns:eudididata="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDIData/v1" xmlns:mir="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance/MIR/v1" xmlns:dicertificate="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/DICertificateDecision/v1" xmlns:crtfissued="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/IssuedCertificate/v1" xmlns:cips="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/CIPS" xmlns:appcrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/ApplicationCertificate/v1" xmlns:crtfcecp="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/Cecp/v1" xmlns:crtfdecisionupdate="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/CertificateDecisionUpdate/v1" xmlns:crtfscp="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/Scope/v1" version="<!-- Schema version here-->" xmlns:m="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+  <m:conversationID>e67d46df-e22e-459e-897b-7d6e65d04eba</m:conversationID>
+  <m:correlationID>9b7c8945-1b27-4295-accc-4de5aaac29bf</m:correlationID>
+  <m:creationDateTime>2025-04-22T11:23:05+00:00</m:creationDateTime>
+  <m:messageID>54c0ea8a-4be0-4993-95f7-456d43e25acc</m:messageID>
+  <m:recipient>
+    <m:node>
+      <s:nodeActorCode>EUDAMED</s:nodeActorCode>
+      <s:nodeID>eudamed_mdr_acc</s:nodeID>
+    </m:node>
+    <m:service>
+	<s:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></s:serviceAccessToken>
+      <s:serviceID>UDI_DI</s:serviceID>
+      <s:serviceOperation>PATCH</s:serviceOperation>
+    </m:service>
+  </m:recipient>
+  <m:payload>
+    <device:UDIDIData xsi:type="udidi:PRUDIDIDataType">
+      <e:version>0</e:version>
+      <udidi:identifier>
+        <commondi:DICode>UDI-DICode</commondi:DICode>
+        <commondi:issuingEntityCode>HIBCC</commondi:issuingEntityCode>
+      </udidi:identifier>
+      <udidi:status>
+        <commondi:code>ON_THE_MARKET</commondi:code>
+      </udidi:status>
+      <udidi:additionalDescription>
+        <lsn:name>
+          <lsn:language>EN</lsn:language>
+          <lsn:textValue>description</lsn:textValue>
+        </lsn:name>
+      </udidi:additionalDescription>
+      <udidi:basicUDIIdentifier>
+        <commondi:DICode>BasicUDICode</commondi:DICode>
+        <commondi:issuingEntityCode>GS1</commondi:issuingEntityCode>
+      </udidi:basicUDIIdentifier>
+      <udidi:MDNCodes>K0104 A99</udidi:MDNCodes>
+      <udidi:productionIdentifier>SERIALISATION_NUMBER MANUFACTURING_DATE</udidi:productionIdentifier>
+      <udidi:referenceNumber>124589</udidi:referenceNumber>
+      <udidi:sterile>false</udidi:sterile>
+      <udidi:sterilization>false</udidi:sterilization>
+    </device:UDIDIData>
+
+  </m:payload>
+  <m:sender>
+    <m:node>
+      <s:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></s:nodeActorCode>
+      <s:nodeID><!-- YOUR SECURITY TOKEN  --></s:nodeID>
+    </m:node>
+    <m:service>
+      <s:serviceID>REPLY_SERVICE</s:serviceID>
+      <s:serviceOperation>GET</s:serviceOperation>
+    </m:service>
+  </m:sender>
+</m:Push>

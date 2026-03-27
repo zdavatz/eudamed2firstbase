@@ -1,0 +1,436 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalSize": [
+            {
+              "ClinicalSizeTypeCode": {
+                "Value": "WEIGHT"
+              },
+              "ClinicalSizeValue": [
+                {
+                  "MeasurementUnitCode": "KGM",
+                  "Value": 150.0
+                }
+              ],
+              "ClinicalSizeMeasurementPrecisionCode": {
+                "Value": "VALUE"
+              }
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "DirectPartMarkingIdentifier": [
+            {
+              "IdentificationSchemeAgencyCode": "GS1",
+              "Value": "07350038032935"
+            }
+          ],
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "SERIAL_NUMBER"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "ReferencedFileDetailInformationModule": {
+        "ReferencedFileHeader": [
+          {
+            "ReferencedFileTypeCode": {
+              "Value": "IFU"
+            },
+            "UniformResourceIdentifier": "https://www.trionic.com/en/printable_userguide?sku=22-00-001",
+            "IsPrimaryFile": "TRUE"
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "100"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "352"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "438"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "470"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "703"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "792"
+                  },
+                  "EndAvailabilityDateTime": "2030-12-31",
+                  "StartAvailabilityDateTime": "2015-01-01"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Trionic Walker 9er M"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "Y120606"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "SE-MF-000014178"
+            }
+          ],
+          "ContactName": "Trionic Sverige AB"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T07:15:18",
+        "EffectiveDateTime": "2025-11-14T09:31:12.335",
+        "PublicationDateTime": "2026-03-27T07:15:18"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "735003803TrionicWalkerFR",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Trionic Walker"
+            }
+          ]
+        }
+      ],
+      "Gtin": "07350038032935",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "22-00-000"
+        }
+      ]
+    },
+    "Identifier": "Draft_98c8ab63-1c91-4da5-a807-c6a2cdc59621"
+  }
+}

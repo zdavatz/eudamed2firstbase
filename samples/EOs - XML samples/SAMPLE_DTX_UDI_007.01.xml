@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<message:Push version="<!-- Schema version here-->" xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1"
+              xmlns:message="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1"
+              xmlns:udt="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDIData/v1"
+              xmlns:service="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" 
+              xmlns:lngs="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1" 
+              xmlns:commondevice="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" 
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+              xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd"
+              xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1"
+              xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1"
+              xmlns:udi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1"
+              xmlns:udieu="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDI/v1"
+              xmlns:dtxmktinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/v1"
+              xmlns:mi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1">
+              
+	<message:conversationID>0c4e479e-32a8-4439-9eea-4cd6c25c5745</message:conversationID>
+	<message:correlationID>a754cdd7-3602-45b4-a993-c25adb18a60e</message:correlationID>
+	<message:creationDateTime>2019-05-22T07:00:28.066+02:00</message:creationDateTime>
+	<message:messageID>3e361202-7491-4ca8-a981-274a46e5e4a9</message:messageID>
+	<message:recipient>
+		<message:node>
+			<service:nodeActorCode>EUDAMED</service:nodeActorCode>
+			<service:nodeID>eudamed_mdr_acc</service:nodeID>
+		</message:node>
+		<message:service>
+		   <service:serviceAccessToken><!--YOUR SECURITY TOKEN --></service:serviceAccessToken>
+			<service:serviceID>MARKET_INFO</service:serviceID>
+			<service:serviceOperation>PUT</service:serviceOperation>
+		</message:service>
+	</message:recipient>
+	<message:payload>
+
+<dtxmktinfo:DTXMarketInfo>
+<mi:uDIDIIdentifier>
+	<commondevice:DICode>UDI-1</commondevice:DICode>
+	<commondevice:issuingEntityCode>HIBCC</commondevice:issuingEntityCode>
+</mi:uDIDIIdentifier>
+<mi:marketInfos>
+<e:version>0</e:version>
+	<mi:marketInfo>
+		<mi:country>DE</mi:country>
+		<mi:endDate>2030-12-31</mi:endDate>
+		<mi:originalPlacedOnTheMarket>true</mi:originalPlacedOnTheMarket>
+		<mi:startDate>2020-01-01</mi:startDate>
+	</mi:marketInfo>
+		<mi:marketInfo>
+		<mi:country>FR</mi:country>
+		<mi:endDate>2049-12-31</mi:endDate>
+		<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+		<mi:startDate>2021-02-02</mi:startDate>
+	</mi:marketInfo>
+	<mi:marketInfo>
+		<mi:country>BE</mi:country>
+		<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+	</mi:marketInfo>
+		<mi:marketInfo>
+		<mi:country>EE</mi:country>
+		<mi:endDate>2999-12-31</mi:endDate>
+		<mi:originalPlacedOnTheMarket>false</mi:originalPlacedOnTheMarket>
+		<mi:startDate>1997-01-01</mi:startDate>
+	</mi:marketInfo>
+</mi:marketInfos>
+<mi:deviceCriterion>LEGACY</mi:deviceCriterion> 
+</dtxmktinfo:DTXMarketInfo>
+
+	</message:payload>
+	<message:sender>
+		<message:node>
+			<service:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></service:nodeActorCode>
+			<service:nodeID><!-- YOUR Party ID HERE  --></service:nodeID>
+		</message:node>
+		<message:service>
+			<service:serviceID>REPLY_SERVICE</service:serviceID>
+			<service:serviceOperation>GET</service:serviceOperation>
+		</message:service>
+	</message:sender>
+</message:Push>

@@ -1,0 +1,434 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC05"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Keep dry"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Keep away from sunlight"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 50,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "MANUFACTURING_DATE"
+            },
+            {
+              "Value": "EXPIRATION_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "ReferencedFileDetailInformationModule": {
+        "ReferencedFileHeader": [
+          {
+            "ReferencedFileTypeCode": {
+              "Value": "IFU"
+            },
+            "UniformResourceIdentifier": "https://www.wiros.de/shop/kopfbedeckungen/pp-astrohauben/wirocosmo/",
+            "IsPrimaryFile": "TRUE"
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "100"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "470"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "703"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  },
+                  "EndAvailabilityDateTime": "2026-03-16",
+                  "StartAvailabilityDateTime": "2012-02-01"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "AdditionalTradeItemDescription": [
+            {
+              "LanguageCode": "de",
+              "Value": "PP ASTROHAUBEN"
+            },
+            {
+              "LanguageCode": "en",
+              "Value": "PP ASTRO HOODS"
+            }
+          ],
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "care & serve®"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "T0207"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "DE-MF-000004956"
+            }
+          ],
+          "ContactName": "WIROS  Wilfried Rosbach GmbH"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:46",
+        "EffectiveDateTime": "2026-03-16T13:23:18.048",
+        "PublicationDateTime": "2026-03-26T10:10:46"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "4051642-wiroCOSMO-EA",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "wiroCOSMO"
+            }
+          ]
+        }
+      ],
+      "Gtin": "04051642006789",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "10004829"
+        }
+      ],
+      "TradeItemInformation": [
+        {
+          "TradeItemComponents": {
+            "TotalNumberOfComponents": 1,
+            "NumberOfPiecesInSet": 50,
+            "ComponentInformation": [
+              {
+                "ComponentNumber": 1,
+                "ComponentIdentification": {
+                  "IdentificationSchemeAgencyCode": "GS1",
+                  "Value": "04051642006796"
+                },
+                "ComponentQuantity": 50
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Identifier": "Draft_756af06c-a7a7-415b-acb4-676e1351d472"
+  }
+}

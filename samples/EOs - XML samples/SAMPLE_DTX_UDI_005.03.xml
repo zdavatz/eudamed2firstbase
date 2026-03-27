@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- edited with XMLSpy v2019 rel. 3 sp1 (x64) (http://www.altova.com) by European Commission DG SANTE (European Commission DG SANTE) -->
+<m:Push xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:s="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Service/v1" xmlns:actor="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Actor/v1" xmlns:e="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/v1" xmlns:actorrel="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Actor/Relationship/v1" xmlns:commonbasic="https://ec.europa.eu/tools/eudamed/dtx/datamodel/CommonBasic/v1" xmlns:party="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Party/v1" xmlns:links="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Links/v1" xmlns:basicudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/BasicUDI/v1" xmlns:dt="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Decision/v1" xmlns:udidi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/UDIDI/v1" xmlns:comment="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Comment/v1" xmlns:risk="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/RiskClass/v1" xmlns:device="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/v1" xmlns:lsn="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/LanguageSpecific/v1" xmlns:crtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/v1" xmlns:mktinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/v1" xmlns:marketinfo="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/MktInfo/MarketInfo/v1" xmlns:address="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Party/Address/v1" xmlns:actorregistration="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Actor/Registration/v1" xmlns:doct="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Document/v1" xmlns:country="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Common/Country/v1" xmlns:sscp="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/SSCP/v1" xmlns:commondi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/CommonDevice/v1" xmlns:eudi="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDI/v1" xmlns:eudididata="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Device/LegacyDevice/EUDIData/v1" xmlns:mir="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Vigilance/MIR/v1" xmlns:dicertificate="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/DICertificateDecision/v1" xmlns:crtfissued="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/IssuedCertificate/v1" xmlns:cips="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/CIPS" xmlns:appcrtf="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/ApplicationCertificate/v1" xmlns:crtfcecp="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/Cecp/v1" xmlns:crtfdecisionupdate="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/CertificateDecisionUpdate/v1" xmlns:crtfscp="https://ec.europa.eu/tools/eudamed/dtx/datamodel/Entity/Certificate/Scope/v1" version="<!-- Schema version here-->" xmlns:m="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://ec.europa.eu/tools/eudamed/dtx/servicemodel/Message/v1 https://webgate.ec.europa.eu/tools/eudamed/dtx/service/Message.xsd">
+	<m:conversationID>ae6f2f07-6a84-4d01-becd-178d4e7e6e41</m:conversationID>
+	<m:correlationID>98971ef5-58ed-4db4-ba19-61bcb07ebec4</m:correlationID>
+	<m:creationDateTime>2020-01-23T11:21:58.523108Z</m:creationDateTime>
+	<m:messageID>6b5db5cd-715a-490d-9e55-f619c9a64d34</m:messageID>
+	<m:recipient>
+		<m:node>
+			<s:nodeActorCode>EUDAMED</s:nodeActorCode>
+            <s:nodeID>eDelivery:EUDAMED</s:nodeID> 
+		</m:node>
+		<m:service>
+		    <s:serviceAccessToken><!-- YOUR SECURITY TOKEN  --></s:serviceAccessToken>
+			<s:serviceID>DEVICE</s:serviceID>
+			<s:serviceOperation>POST</s:serviceOperation>
+		</m:service>
+	</m:recipient>
+	<m:payload>
+		<device:Device xsi:type="device:IVDEUDeviceType">
+			<device:IVDEUData>
+				<udidi:identifier>
+					<commondi:DICode>1234_1237_3</commondi:DICode>
+					<commondi:issuingEntityCode>HIBCC</commondi:issuingEntityCode>
+				</udidi:identifier>
+				<udidi:status>
+					<commondi:code>ON_THE_MARKET</commondi:code>
+				</udidi:status>
+				<udidi:additionalDescription>
+					<lsn:name>
+						<lsn:language>EN</lsn:language>
+						<lsn:textValue>Additional_description</lsn:textValue>
+					</lsn:name>
+				</udidi:additionalDescription>
+				<udidi:basicUDIIdentifier>
+					<commondi:DICode>B-1234_1237_3</commondi:DICode>
+					<commondi:issuingEntityCode>EUDAMED</commondi:issuingEntityCode>
+				</udidi:basicUDIIdentifier>
+				<udidi:MDNCodes>S01010101</udidi:MDNCodes>
+				<udidi:referenceNumber>Reference_test</udidi:referenceNumber>
+				<udidi:secondaryIdentifier>
+					<commondi:DICode>121277121_2</commondi:DICode>
+					<commondi:issuingEntityCode>HIBCC</commondi:issuingEntityCode>
+				</udidi:secondaryIdentifier>
+				<udidi:sterile>true</udidi:sterile>
+				<udidi:sterilization>false</udidi:sterilization>
+				<udidi:website>www.test.com</udidi:website>
+				<udidi:storageHandlingConditions>
+					<commondi:condition>
+						<commondi:comments>
+							<lsn:name>
+								<lsn:textValue>Storage and handling_Description_Test</lsn:textValue>
+							</lsn:name>
+						</commondi:comments>
+						<commondi:storageHandlingConditionValue>SHC010</commondi:storageHandlingConditionValue>
+					</commondi:condition>
+				</udidi:storageHandlingConditions>
+				<udidi:numberOfReuses>-1</udidi:numberOfReuses>
+				<udidi:marketInfos>
+					<marketinfo:marketInfo>
+						<marketinfo:country>BE</marketinfo:country>
+						<marketinfo:originalPlacedOnTheMarket>true</marketinfo:originalPlacedOnTheMarket>
+					</marketinfo:marketInfo>
+				</udidi:marketInfos>
+				<udidi:productDesignerActor>
+					<udidi:productDesignerOrganisation>
+						<party:geographicAddress>
+							<address:city>Brussels</address:city>
+							<address:country>BE</address:country>
+							<address:postCode>1111</address:postCode>
+						</party:geographicAddress>
+						<party:contactsDetails>
+							<address:contactDetail>
+								<address:eMail>test@test.com</address:eMail>
+								<address:public>true</address:public>
+							</address:contactDetail>
+						</party:contactsDetails>
+						<udidi:organizationName>
+							<lsn:language>EN</lsn:language>
+							<lsn:textValue>Organisation_Test</lsn:textValue>
+						</udidi:organizationName>
+					</udidi:productDesignerOrganisation>
+				</udidi:productDesignerActor>
+			</device:IVDEUData>
+			<device:IVDEUDI>
+				<basicudi:riskClass>IVD_ANNEX_II_LIST_A</basicudi:riskClass>
+				<basicudi:model>Device Model</basicudi:model>
+				<basicudi:identifier>
+					<commondi:DICode>B-1234_1237_3</commondi:DICode>
+					<commondi:issuingEntityCode>EUDAMED</commondi:issuingEntityCode>
+				</basicudi:identifier>
+				<basicudi:animalTissuesCells>false</basicudi:animalTissuesCells>
+				<basicudi:humanTissuesCells>false</basicudi:humanTissuesCells>
+				<basicudi:MFActorCode>BE-MF-000000002</basicudi:MFActorCode>
+				<basicudi:deviceCertificateLinks>
+					<links:deviceCertificateLink>
+						<links:certificateNumber>CERT 12121</links:certificateNumber>
+						<links:expiryDate>2024-01-10</links:expiryDate>
+						<links:NBActorCode>0483</links:NBActorCode>
+						<links:certificateRevisionNumber>Revision_1</links:certificateRevisionNumber>
+						<links:certificateType>IVDD_VI</links:certificateType>
+					</links:deviceCertificateLink>
+				</basicudi:deviceCertificateLinks>
+				<commondi:companionDiagnostics>false</commondi:companionDiagnostics>
+				<commondi:instrument>true</commondi:instrument>
+				<commondi:kit>false</commondi:kit>
+				<commondi:microbialSubstances>true</commondi:microbialSubstances>
+				<commondi:nearPatientTesting>false</commondi:nearPatientTesting>
+				<commondi:professionalTesting>false</commondi:professionalTesting>
+				<commondi:reagent>false</commondi:reagent>
+				<commondi:selfTesting>false</commondi:selfTesting>
+			</device:IVDEUDI>
+		</device:Device>
+	</m:payload>
+	<m:sender>
+		<m:node>
+			<s:nodeActorCode><!-- YOUR SRN/ActorID code HERE --></s:nodeActorCode>
+			<s:nodeID><!-- YOUR Party ID HERE  --></s:nodeID>
+		</m:node>
+		<m:service>
+			<s:serviceID>DEVICE</s:serviceID>
+			<s:serviceOperation>POST</s:serviceOperation>
+		</m:service>
+	</m:sender>
+</m:Push>

@@ -1,0 +1,406 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC08"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "-10 ÷ 55°C"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC09"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "10 ÷ 100% non-condensing humidity"
+                }
+              ]
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC10"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "500 ÷ 1060 hPa"
+                }
+              ]
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW010",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "Refer to the instructions for use for detailed contraindications and general warnings."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": true,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "REUSABLE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "CertificationInformationModule": {
+        "CertificationInformation": [
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "0051"
+              }
+            ],
+            "CertificationAgency": "IMQ ISTITUTO ITALIANO DEL MARCHIO DI QUALITÀ S.P.A.",
+            "CertificationStandard": "MDD_II_EX_4",
+            "Certification": [
+              {
+                "CertificationValue": "1833/MDD",
+                "CertificationEffectiveEndDateTime": "2024-05-26"
+              }
+            ]
+          },
+          {
+            "AdditionalCertificationOrganisationIdentifier": [
+              {
+                "AdditionalPartyIdentificationTypeCode": "EU_NOTIFIED_BODY_NUMBER",
+                "Value": "0051"
+              }
+            ],
+            "CertificationAgency": "IMQ ISTITUTO ITALIANO DEL MARCHIO DI QUALITÀ S.P.A.",
+            "CertificationStandard": "MDD_II_EX_4",
+            "Certification": [
+              {
+                "CertificationValue": "1833/MDD",
+                "CertificationEffectiveEndDateTime": "2028-12-31"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDD",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "703"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "792"
+                  },
+                  "EndAvailabilityDateTime": "2028-12-31",
+                  "StartAvailabilityDateTime": "2019-07-31"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "iLux LF HPS Y15"
+            },
+            {
+              "LanguageCode": "en",
+              "Value": "iLux Plus 15W 1064nm"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "85"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_IIB"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "Z120615"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "IT-MF-000040989"
+            }
+          ],
+          "ContactName": "Mectronic Medicale srl"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-26T10:10:35",
+        "EffectiveDateTime": "2025-07-17T14:38:32.267",
+        "PublicationDateTime": "2026-03-26T10:10:35"
+      },
+      "Gtin": "08051499971328",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "10LFHY15"
+        },
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MODEL_NUMBER",
+          "Value": "iLux LF HPS Y15"
+        }
+      ]
+    },
+    "Identifier": "Draft_4a8f56a4-7738-4832-ad3b-bc50588358ab"
+  }
+}

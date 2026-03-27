@@ -1,0 +1,233 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "HealthcareItemInformationModule": {
+        "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+          "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
+          "ClinicalStorageHandlingInformation": [
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC02"
+              }
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC05"
+              }
+            },
+            {
+              "ClinicalStorageHandlingTypeCode": {
+                "Value": "SHC21"
+              },
+              "ClinicalStorageHandlingDescription": [
+                {
+                  "LanguageCode": "en",
+                  "Value": "-10°C / +40°C "
+                }
+              ]
+            }
+          ],
+          "ClinicalWarning": [
+            {
+              "ClinicalWarningAgencyCode": {
+                "Value": "EUDAMED"
+              },
+              "ClinicalWarningCode": "CW999",
+              "WarningsOrContraIndicationDescription": [
+                {
+                  "LanguageCode": "it",
+                  "Value": "Conservare il prodotto in luogo fresco, al riparo da luce, fonti di calore dirette ed umidità.\nConservare il prodotto tra i -10° e i 40°C. Utilizzare a temperatura ambiente (8 - 25° C). L’uso del\nfuoco impone la massima attenzione; proteggere adeguatamente dalla fiamma i capelli e il viso.\nEseguire il trattamento solo con l’assistenza di una persona adulta, in luoghi privi di correnti d’aria\ne lontano da sostanze e/o oggetti infiammabili. Non usare in caso di qualsiasi patologia in sede\notologica, di recenti interventi chirurgici, di ipersensibilità nota ai componenti. Tenere fuori dalla\nportata dei bambini. Si sconsiglia l’uso nei bambini fino ai 12 anni. Non usare su bambini sotto i\n3 anni. Prima dell’uso consultare uno specialista otorinolaringoiatra che confermi la presenza di\nun tappo di cerume e che accerti che eventuali disturbi presenti sono dovuti a questo e non ad\naltre patologie. Non utilizzare per modi o scopi diversi da quelli specificatamente indicati dal\nfabbricante in queste istruzioni per l’uso. In caso si presentino effetti indesiderati contattare il\nmedico o il fabbricante. Se utilizzato con altri farmaci/Dispositivi Medici consultare preventivamente\nil proprio medico. Non ingerire né utilizzare in orifizi differenti da quello auricolare."
+                },
+                {
+                  "LanguageCode": "fi",
+                  "Value": "Säilytä tuote viileässä paikassa, suojassa valolta,\nsuorilta lämmönlähteiltä ja kosteudelta. Säilytä\ntuotetta -10° + 40 °C:n lämpötilassa. Käytä huoneen\nlämpötilassa (8–25 °C). Tulen käyttämisen vuoksi on\nnoudatettava mitä suurinta varovaisuutta; suojaa\nhiukset ja kasvot liekiltä sopivalla tavalla. Suorita\nkäsittely ehdottomasti aikuisen henkilön\navustuksella, tilassa, jossa ei ole vetoa sekä kaukana\nsyttyvistä aineista ja/tai esineistä. Älä käytä, jos\nkorvissa on sairauksia, jos hiljattain on suoritettu\nkirurgisia toimenpiteitä, jos tuotteen ainesosien\ntiedetään aiheuttavan yliherkkyysreaktioita. Ei\nlasten ulottuville. Käyttöä ei suositella alle\n12-vuotiaille lapsille. Ei saa käyttää alle 3-vuotiaille\nlapsille. Varmista ennen käyttöä korva-, nenä- ja\nkurkkutautien erikoislääkäriltä, että kyseessä todella\non vahatulppa ja että mahdolliset vaivat johtuvat\ntulpasta, eivät muista sairauksista. Älä käytä muilla\ntavoin tai muihin tarkoituksiin kuin valmistaja näissä\nkäyttöohjeissa on nimenomaisesti ilmoittanut. Jos\nesiintyy haittavaikutuksia, ota yhteyttä lääkäriin tai\nvalmistajaan. Jos tuotetta käytetään yhdessä\nmuiden lääkkeiden / lääkinnällisten laitteiden\nkanssa, puhu asiasta etukäteen oman lääkärisi\nkanssa. Älä niele äläkä käytä muissa kehon aukoissa\nkuin korvassa."
+                },
+                {
+                  "LanguageCode": "sv",
+                  "Value": "Förvara produkten på sval plats, i skydd frånljus, direkta värmekällor och fukt. Förvara produkten mellan -10 ° och 40 °C. Används i rumstemperatur (8 -25 °C). Användning av eld kräver yttersta uppmärksamhet: skydda håret\noch ansiktet på lämpligt vis mot lågan. Utför\nbehandlingen endast med hjälp av en vuxen,\npå dragfri plats och i skydd från brandfarliga\nämnen och/eller föremål. Får inte användas vid\nnågon som helst patologi i örat, nyligen\ngenomförd operation eller vid allergi mot\nproduktens beståndsdelar. Användning till barn\nunder 12 år rekommenderas inte. Får inte\nanvändas till barn under 3 år. Före användning\nska du kontakta en öron-, näs- och halsläkare\nsom kan bekräfta förekomsten av en\nöronvaxpropp och konstatera att eventuella\nstörningar beror på just det och inte på andra\nsjukdomar. Vid oönskade effekter kontakta din\nläkare eller tillverkaren. Om du ska använda\nprodukten tillsammans med andra\nläkemedel/medicintekniska produkter,\nkontakta först din läkare. Får inte förtäras eller\nanvändas i andra öppningar än örat."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
+          "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
+          "UDIProductionIdentifierTypeCode": [
+            {
+              "Value": "BATCH_NUMBER"
+            },
+            {
+              "Value": "EXPIRATION_DATE"
+            }
+          ],
+          "MultiComponentDeviceTypeCode": {
+            "Value": "DEVICE"
+          },
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          },
+          "HealthcareTradeItemReusabilityInformation": {
+            "ManufacturerDeclaredReusabilityTypeCode": {
+              "Value": "SINGLE_USE"
+            }
+          },
+          "TradeItemSterilityInformation": {
+            "InitialManufacturerSterilisationCode": [
+              {
+                "Value": "NOT_STERILISED"
+              }
+            ],
+            "InitialSterilisationPriorToUseCode": [
+              {
+                "Value": "NO_STERILISATION_REQUIRED"
+              }
+            ]
+          }
+        }
+      },
+      "RegulatedTradeItemModule": {
+        "RegulatoryInformation": [
+          {
+            "RegulatoryAct": "MDR",
+            "RegulatoryAgency": "EU"
+          }
+        ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TradeItemDescriptionModule": {
+        "TradeItemDescriptionInformation": {
+          "TradeItemDescription": [
+            {
+              "LanguageCode": "it",
+              "Value": "NATURAVERDE PHARMA CONI CERATI"
+            },
+            {
+              "LanguageCode": "fi",
+              "Value": "NATURAVERDE PHARMA KORVAKYNTTILÄ"
+            }
+          ]
+        }
+      },
+      "IsTradeItemABaseUnit": true,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "BASE_UNIT_OR_EACH"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices",
+        "AdditionalTradeItemClassification": [
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "76"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+              }
+            ]
+          },
+          {
+            "AdditionalTradeItemClassificationSystemCode": {
+              "Value": "88"
+            },
+            "AdditionalTradeItemClassificationValue": [
+              {
+                "AdditionalTradeItemClassificationCodeValue": "Q0399"
+              }
+            ]
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "IT-MF-000018589"
+            }
+          ],
+          "ContactName": "Aurora Srl"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-27T07:15:17",
+        "EffectiveDateTime": "2025-10-24T10:58:56.534",
+        "PublicationDateTime": "2026-03-27T07:15:17"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "8017690CONESX6",
+          "GlobalModelDescription": [
+            {
+              "LanguageCode": "en",
+              "Value": "Cono per l’igiene dell’orecchio"
+            }
+          ]
+        }
+      ],
+      "Gtin": "08029241103068",
+      "AdditionalTradeItemIdentification": [
+        {
+          "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+          "Value": "2390103120"
+        }
+      ]
+    },
+    "Identifier": "Draft_832988ef-b91f-4fef-80fa-d4bb16a33534"
+  }
+}

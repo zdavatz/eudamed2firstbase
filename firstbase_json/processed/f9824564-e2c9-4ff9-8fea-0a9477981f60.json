@@ -1,0 +1,478 @@
+{
+  "DraftItem": {
+    "TradeItem": {
+      "IsBrandBankPublication": false,
+      "TargetSector": [
+        "UDI_REGISTRY"
+      ],
+      "MedicalDeviceTradeItemModule": {
+        "MedicalDeviceInformation": {
+          "EUMedicalDeviceStatusCode": {
+            "Value": "ON_MARKET"
+          }
+        }
+      },
+      "IsTradeItemABaseUnit": false,
+      "IsTradeItemADespatchUnit": true,
+      "IsTradeItemAnOrderableUnit": true,
+      "TradeItemUnitDescriptorCode": {
+        "Value": "CASE"
+      },
+      "TradeItemTradeChannelCode": [
+        {
+          "Value": "UDI_REGISTRY"
+        }
+      ],
+      "InformationProviderOfTradeItem": {
+        "Gln": "7612345000480",
+        "PartyName": "EUDAMED Public Download Importing"
+      },
+      "GdsnTradeItemClassification": {
+        "GpcSegmentCode": "51000000",
+        "GpcClassCode": "51150100",
+        "GpcFamilyCode": "51150000",
+        "GpcCategoryCode": "10005844",
+        "GpcCategoryName": "Medical Devices"
+      },
+      "NextLowerLevelTradeItemInformation": {
+        "QuantityOfChildren": 1,
+        "TotalQuantityOfNextLowerLevelTradeItem": 10,
+        "ChildTradeItem": [
+          {
+            "QuantityOfNextLowerLevelTradeItem": 10,
+            "Gtin": "25414566410651"
+          }
+        ]
+      },
+      "TargetMarket": {
+        "TargetMarketCountryCode": {
+          "Value": "097"
+        }
+      },
+      "TradeItemContactInformation": [
+        {
+          "ContactTypeCode": {
+            "Value": "EMA"
+          },
+          "AdditionalPartyIdentification": [
+            {
+              "AdditionalPartyIdentificationTypeCode": "SRN",
+              "Value": "BE-MF-000000691"
+            }
+          ],
+          "ContactName": "Ansell Healthcare Europe NV"
+        }
+      ],
+      "TradeItemSynchronisationDates": {
+        "LastChangeDateTime": "2026-03-19T16:46:57",
+        "EffectiveDateTime": "2026-03-19T16:46:57",
+        "PublicationDateTime": "2026-03-19T16:46:57"
+      },
+      "GlobalModelInformation": [
+        {
+          "GlobalModelNumber": "5414566MF92134DK"
+        }
+      ],
+      "Gtin": "35414566460653"
+    },
+    "CatalogueItemChildItemLink": [
+      {
+        "Quantity": 10,
+        "CatalogueItem": {
+          "Identifier": "6ec1a90a-529c-452b-9803-dd231a801647",
+          "TradeItem": {
+            "IsBrandBankPublication": false,
+            "TargetSector": [
+              "UDI_REGISTRY"
+            ],
+            "HealthcareItemInformationModule": {
+              "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
+                "ClinicalStorageHandlingInformation": [
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC02"
+                    }
+                  },
+                  {
+                    "ClinicalStorageHandlingTypeCode": {
+                      "Value": "SHC05"
+                    }
+                  }
+                ]
+              }
+            },
+            "MedicalDeviceTradeItemModule": {
+              "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
+                "UdidDeviceCount": 200,
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
+                "UDIProductionIdentifierTypeCode": [
+                  {
+                    "Value": "BATCH_NUMBER"
+                  },
+                  {
+                    "Value": "EXPIRATION_DATE"
+                  }
+                ],
+                "MultiComponentDeviceTypeCode": {
+                  "Value": "DEVICE"
+                },
+                "EUMedicalDeviceStatusCode": {
+                  "Value": "ON_MARKET"
+                },
+                "HealthcareTradeItemReusabilityInformation": {
+                  "ManufacturerDeclaredReusabilityTypeCode": {
+                    "Value": "SINGLE_USE"
+                  }
+                },
+                "TradeItemSterilityInformation": {
+                  "InitialManufacturerSterilisationCode": [
+                    {
+                      "Value": "NOT_STERILISED"
+                    }
+                  ],
+                  "InitialSterilisationPriorToUseCode": [
+                    {
+                      "Value": "NO_STERILISATION_REQUIRED"
+                    }
+                  ]
+                }
+              }
+            },
+            "ReferencedFileDetailInformationModule": {
+              "ReferencedFileHeader": [
+                {
+                  "ReferencedFileTypeCode": {
+                    "Value": "IFU"
+                  },
+                  "UniformResourceIdentifier": "https://www.ansell.com/eu/en/products/micro-touch-blue-nitrile",
+                  "IsPrimaryFile": "TRUE"
+                }
+              ]
+            },
+            "RegulatedTradeItemModule": {
+              "RegulatoryInformation": [
+                {
+                  "RegulatoryAct": "MDR",
+                  "RegulatoryAgency": "EU"
+                }
+              ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "056"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      }
+                    ]
+                  },
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "040"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "100"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "191"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "196"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "203"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "208"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "233"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "246"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "276"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "300"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "348"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "352"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "372"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "380"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "428"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "438"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "440"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "442"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "470"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "528"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "578"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "616"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "620"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "642"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "703"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "705"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "724"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "752"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "792"
+                        },
+                        "StartAvailabilityDateTime": "2022-01-10"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "TradeItemDescriptionModule": {
+              "TradeItemDescriptionInformation": {
+                "TradeItemDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Micro-Touch Blue Nitrile"
+                  }
+                ]
+              }
+            },
+            "IsTradeItemABaseUnit": true,
+            "IsTradeItemADespatchUnit": false,
+            "IsTradeItemAnOrderableUnit": true,
+            "TradeItemUnitDescriptorCode": {
+              "Value": "BASE_UNIT_OR_EACH"
+            },
+            "TradeItemTradeChannelCode": [
+              {
+                "Value": "UDI_REGISTRY"
+              }
+            ],
+            "InformationProviderOfTradeItem": {
+              "Gln": "7612345000480",
+              "PartyName": "EUDAMED Public Download Importing"
+            },
+            "GdsnTradeItemClassification": {
+              "GpcSegmentCode": "51000000",
+              "GpcClassCode": "51150100",
+              "GpcFamilyCode": "51150000",
+              "GpcCategoryCode": "10005844",
+              "GpcCategoryName": "Medical Devices",
+              "AdditionalTradeItemClassification": [
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "76"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "EU_CLASS_I"
+                    }
+                  ]
+                },
+                {
+                  "AdditionalTradeItemClassificationSystemCode": {
+                    "Value": "88"
+                  },
+                  "AdditionalTradeItemClassificationValue": [
+                    {
+                      "AdditionalTradeItemClassificationCodeValue": "T01020204"
+                    }
+                  ]
+                }
+              ]
+            },
+            "TargetMarket": {
+              "TargetMarketCountryCode": {
+                "Value": "097"
+              }
+            },
+            "TradeItemContactInformation": [
+              {
+                "ContactTypeCode": {
+                  "Value": "EMA"
+                },
+                "AdditionalPartyIdentification": [
+                  {
+                    "AdditionalPartyIdentificationTypeCode": "SRN",
+                    "Value": "BE-MF-000000691"
+                  }
+                ],
+                "ContactName": "Ansell Healthcare Europe NV"
+              }
+            ],
+            "TradeItemSynchronisationDates": {
+              "LastChangeDateTime": "2026-03-19T16:46:57",
+              "EffectiveDateTime": "2023-09-28T17:11:33.958",
+              "PublicationDateTime": "2026-03-19T16:46:57"
+            },
+            "GlobalModelInformation": [
+              {
+                "GlobalModelNumber": "5414566MF92134DK",
+                "GlobalModelDescription": [
+                  {
+                    "LanguageCode": "en",
+                    "Value": "Nitrile Examination/Treatment Glove"
+                  }
+                ]
+              }
+            ],
+            "Gtin": "25414566410651",
+            "AdditionalTradeItemIdentification": [
+              {
+                "AdditionalTradeItemIdentificationTypeCode": "MANUFACTURER_PART_NUMBER",
+                "Value": "313041065 S"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "Identifier": "Draft_f9824564-e2c9-4ff9-8fea-0a9477981f60"
+  }
+}
