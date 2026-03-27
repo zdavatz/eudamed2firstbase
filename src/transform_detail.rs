@@ -263,7 +263,12 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- Healthcare item module (clinical sizes, storage, warnings, latex, tissue) ---
     // 097.078: all description fields must use consistent language codes
     let primary_lang = trade_names.first().map(|(l, _)| l.as_str()).unwrap_or("en");
-    let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr, primary_lang);
+    // 097.010: System/Procedure Packs don't need tissue boolean fields
+    let is_system_or_pack = basic_udi
+        .and_then(|b| b.multi_component_code())
+        .map(|c| c != "DEVICE")
+        .unwrap_or(false);
+    let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr, primary_lang, is_system_or_pack);
 
     // --- Chemical regulation module (substances) ---
     // 097.095: Legacy devices must not have CMR_SUBSTANCE or ENDOCRINE_SUBSTANCE
@@ -359,24 +364,40 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         healthcare_item_module: healthcare_module,
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
-                is_implantable: Some(bool_str(basic_udi.and_then(|b| b.implantable).unwrap_or(false))),
+                is_implantable: if is_system_or_pack { None } else {
+                    Some(bool_str(basic_udi.and_then(|b| b.implantable).unwrap_or(false)))
+                },
                 // 097.015: required when implantable=true and risk class=EU_CLASS_IIB
                 is_exempt_from_implant_obligations: {
-                    let implantable = basic_udi.and_then(|b| b.implantable).unwrap_or(false);
-                    if implantable && risk_class_gs1 == "EU_CLASS_IIB" {
-                        Some(false)
-                    } else {
+                    if is_system_or_pack {
                         None
+                    } else {
+                        let implantable = basic_udi.and_then(|b| b.implantable).unwrap_or(false);
+                        if implantable && risk_class_gs1 == "EU_CLASS_IIB" {
+                            Some(false)
+                        } else {
+                            None
+                        }
                     }
                 },
                 device_count,
                 direct_marking,
-                measuring_function: Some(basic_udi.and_then(|b| b.measuring_function).unwrap_or(false)),
-                is_active: Some(basic_udi.and_then(|b| b.active).unwrap_or(false)),
-                administer_medicine: Some(basic_udi.and_then(|b| b.administering_medicine).unwrap_or(false)),
-                is_medicinal_product: Some(basic_udi.and_then(|b| b.medicinal_product).unwrap_or(false)),
-                is_reprocessed: device.reprocessed,
-                is_reusable_surgical: Some(basic_udi.and_then(|b| b.reusable).unwrap_or(false)),
+                measuring_function: if is_system_or_pack { None } else {
+                    Some(basic_udi.and_then(|b| b.measuring_function).unwrap_or(false))
+                },
+                is_active: if is_system_or_pack { None } else {
+                    Some(basic_udi.and_then(|b| b.active).unwrap_or(false))
+                },
+                administer_medicine: if is_system_or_pack { None } else {
+                    Some(basic_udi.and_then(|b| b.administering_medicine).unwrap_or(false))
+                },
+                is_medicinal_product: if is_system_or_pack { None } else {
+                    Some(basic_udi.and_then(|b| b.medicinal_product).unwrap_or(false))
+                },
+                is_reprocessed: if is_system_or_pack { None } else { device.reprocessed },
+                is_reusable_surgical: if is_system_or_pack { None } else {
+                    Some(basic_udi.and_then(|b| b.reusable).unwrap_or(false))
+                },
                 production_identifier_types: production_ids,
                 annex_xvi_types: Vec::new(),
                 special_device_type,
@@ -648,7 +669,7 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
     contacts
 }
 
-fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>, is_ivdr: bool, primary_lang: &str) -> Option<HealthcareItemInformationModule> {
+fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>, is_ivdr: bool, primary_lang: &str, is_system_or_pack: bool) -> Option<HealthcareItemInformationModule> {
     let clinical_sizes = build_clinical_sizes(device);
     let storage_handling = build_storage_handling(device, primary_lang);
     let clinical_warnings = build_clinical_warnings(device);
@@ -658,10 +679,16 @@ fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdi
         info: HealthcareItemInformation {
             // 097.046: microbial substance mandatory for IVDR/IVDD
             contains_microbial_substance: if is_ivdr { Some(false) } else { None },
-            human_blood_derivative: Some(bool_str(basic_udi.and_then(|b| b.human_product).unwrap_or(false))),
+            human_blood_derivative: if is_system_or_pack { None } else {
+                Some(bool_str(basic_udi.and_then(|b| b.human_product).unwrap_or(false)))
+            },
             contains_latex,
-            human_tissue: Some(bool_str(basic_udi.and_then(|b| b.human_tissues).unwrap_or(false))),
-            animal_tissue: Some(basic_udi.and_then(|b| b.animal_tissues).unwrap_or(false)),
+            human_tissue: if is_system_or_pack { None } else {
+                Some(bool_str(basic_udi.and_then(|b| b.human_tissues).unwrap_or(false)))
+            },
+            animal_tissue: if is_system_or_pack { None } else {
+                Some(basic_udi.and_then(|b| b.animal_tissues).unwrap_or(false))
+            },
             storage_handling,
             clinical_sizes,
             clinical_warnings,
