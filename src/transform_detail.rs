@@ -1551,7 +1551,17 @@ pub fn transform_detail_document(
             },
             certification_module: None,
             referenced_file_module: None,
-            regulated_trade_item_module: None,
+            regulated_trade_item_module: {
+                let pkg_reg_act = basic_udi
+                    .and_then(|b| b.regulatory_act())
+                    .unwrap_or_else(|| "MDR".to_string());
+                Some(RegulatedTradeItemModule {
+                    info: vec![RegulatoryInformation {
+                        act: pkg_reg_act,
+                        agency: "EU".to_string(),
+                    }],
+                })
+            },
             sales_module: None,
             description_module: None,
             is_base_unit: false,
