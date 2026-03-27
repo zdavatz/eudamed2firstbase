@@ -558,6 +558,16 @@ impl BasicUdiDiData {
         })
     }
 
+    /// Check if device is SPP (System/Procedure Pack) based on criterion field
+    /// criterion="SPP" → FLD-UDID-261 → systemOrProcedurePackTypeCode
+    /// criterion="STANDARD" → FLD-UDID-12 → multiComponentDeviceTypeCode
+    pub fn is_spp(&self) -> bool {
+        self.multi_component.as_ref()
+            .and_then(|mc| mc.criterion.as_ref())
+            .map(|c| c == "SPP")
+            .unwrap_or(false)
+    }
+
     /// Extract risk class code suffix (e.g. "refdata.risk-class.class-iia" → "class-iia")
     pub fn risk_class_code(&self) -> Option<String> {
         self.risk_class.as_ref()?.code.clone()

@@ -74,10 +74,10 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- Reusability ---
     let reusability = build_reusability(device);
 
-    // 097.010: System/Procedure Packs have reduced dataset
+    // SPP detection: criterion="SPP" (FLD-UDID-261) → systemOrProcedurePackTypeCode
+    // criterion="STANDARD" (FLD-UDID-12) → multiComponentDeviceTypeCode (normal device)
     let is_system_or_pack = basic_udi
-        .and_then(|b| b.multi_component_code())
-        .map(|c| c != "DEVICE")
+        .map(|b| b.is_spp())
         .unwrap_or(false);
 
     // --- Contacts ---
