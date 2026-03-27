@@ -421,18 +421,23 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                     None
                 },
                 // 097.049: SPP requires systemOrProcedurePackMedicalPurposeDescription
+                // Source: BUDI medicalPurpose (NOT additionalDescription — those are separate fields)
                 system_or_procedure_pack_purpose: if is_system_or_pack {
-                    let descs = device.additional_description_texts();
-                    if descs.is_empty() {
-                        // Fallback: use trade name as purpose description
-                        trade_names.iter()
-                            .map(|(lang, text)| LangValue {
-                                language_code: lang.clone(),
-                                value: text.clone(),
-                            })
-                            .collect()
+                    let purpose_texts = basic_udi
+                        .map(|b| b.medical_purpose_texts())
+                        .unwrap_or_default();
+                    if purpose_texts.is_empty() {
+                        // Fallback: use device name from BUDI
+                        let name = basic_udi.and_then(|b| b.device_name.as_ref())
+                            .filter(|n| !n.is_empty())
+                            .cloned()
+                            .unwrap_or_else(|| device.primary_di_code());
+                        vec![LangValue {
+                            language_code: primary_lang.to_string(),
+                            value: name,
+                        }]
                     } else {
-                        descs.iter()
+                        purpose_texts.iter()
                             .map(|(lang, text)| LangValue {
                                 language_code: lang.clone(),
                                 value: text.clone(),

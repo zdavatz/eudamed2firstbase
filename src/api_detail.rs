@@ -491,6 +491,7 @@ pub struct BasicUdiDiData {
     pub manufacturer: Option<BasicUdiManufacturer>,
     pub authorised_representative: Option<BasicUdiAuthorisedRep>,
     pub device_certificate_info_list_for_display: Option<Vec<DeviceCertificate>>,
+    pub medical_purpose: Option<MultiLangText>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -568,6 +569,11 @@ impl BasicUdiDiData {
         let code = self.legislation.as_ref()?.code.as_ref()?;
         let suffix = code.rsplit('.').next().unwrap_or(code);
         Some(suffix.to_uppercase())
+    }
+
+    /// Extract medical purpose texts (for SPP devices)
+    pub fn medical_purpose_texts(&self) -> Vec<(String, String)> {
+        extract_lang_texts(self.medical_purpose.as_ref())
     }
 }
 
