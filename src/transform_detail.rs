@@ -74,21 +74,29 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- Reusability ---
     let reusability = build_reusability(device);
 
+    // 097.010: System/Procedure Packs have reduced dataset
+    let is_system_or_pack = basic_udi
+        .and_then(|b| b.multi_component_code())
+        .map(|c| c != "DEVICE")
+        .unwrap_or(false);
+
     // --- Contacts ---
     let mut contacts = build_contacts(device);
 
-    // 097.009/097.026: EMA contact with SRN is mandatory for non-system/procedure-pack devices.
-    let has_ema = contacts.iter().any(|c| c.contact_type.value == "EMA");
+    // SPP devices use EPP contact type, non-SPP use EMA
+    // 097.009/097.026: EMA/EPP contact with SRN is mandatory
+    let contact_type_code = if is_system_or_pack { "EPP" } else { "EMA" };
+    let has_contact = contacts.iter().any(|c| c.contact_type.value == contact_type_code);
     let mfr_srn_val = basic_udi
         .and_then(|b| b.manufacturer.as_ref())
         .and_then(|m| m.srn.clone())
         .unwrap_or_else(|| "XX-MF-000000000".to_string());
-    if !has_ema {
+    if !has_contact {
         let mfr_name = basic_udi
             .and_then(|b| b.manufacturer.as_ref())
             .and_then(|m| m.name.clone());
         contacts.push(TradeItemContactInformation {
-            contact_type: CodeValue { value: "EMA".to_string() },
+            contact_type: CodeValue { value: contact_type_code.to_string() },
             party_identification: vec![AdditionalPartyIdentification {
                 type_code: "SRN".to_string(),
                 value: mfr_srn_val.clone(),
@@ -263,11 +271,6 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- Healthcare item module (clinical sizes, storage, warnings, latex, tissue) ---
     // 097.078: all description fields must use consistent language codes
     let primary_lang = trade_names.first().map(|(l, _)| l.as_str()).unwrap_or("en");
-    // 097.010: System/Procedure Packs don't need tissue boolean fields
-    let is_system_or_pack = basic_udi
-        .and_then(|b| b.multi_component_code())
-        .map(|c| c != "DEVICE")
-        .unwrap_or(false);
     let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr, primary_lang, is_system_or_pack);
 
     // --- Chemical regulation module (substances) ---
@@ -1465,9 +1468,9 @@ pub fn transform_detail_document(
     // Base unit is no longer the despatch unit when packages exist
     base_trade_item.is_despatch_unit = false;
 
-    // Extract EMA/EAR contacts for package DIs (SRN only, for CH-REP filtering)
+    // Extract EMA/EPP/EAR contacts for package DIs (SRN only, for CH-REP filtering)
     let pkg_contacts: Vec<TradeItemContactInformation> = base_trade_item.contact_information.iter()
-        .filter(|c| c.contact_type.value == "EMA" || c.contact_type.value == "EAR")
+        .filter(|c| c.contact_type.value == "EMA" || c.contact_type.value == "EPP" || c.contact_type.value == "EAR")
         .cloned()
         .collect();
 
