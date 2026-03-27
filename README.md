@@ -97,13 +97,13 @@ src/
   mappings.rs                # Code mapping tables (country, risk class, clinical sizes, units, issuing agency, CMR, multiComponent)
   xlsx_export.rs             # NDJSON detail -> XLSX spreadsheet export
   version_db.rs              # SQLite version tracking DB (per-section change detection)
-  scan.rs                    # Fast parallel GTIN scanner for push_to_api.sh (rayon, string search)
+  scan.rs                    # Fast parallel GTIN scanner for push_to_firstbase.sh (rayon, string search)
 
 download.sh                # Unified download + convert script (listing + detail + Basic UDI-DI + convert)
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
-push_to_api.sh             # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
+push_to_firstbase.sh             # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
 log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with full GS1 response)
 ```
 
@@ -265,9 +265,9 @@ curl -s -X POST 'https://test-webapi-firstbase.gs1.ch:5443/CatalogueItemPublicat
 
 You can publish multiple items in a single request by adding more objects to the `Items` array. The response returns a `RequestIdentifier` on success.
 
-#### 4. Bulk Workflow: push_to_api.sh
+#### 4. Bulk Workflow: push_to_firstbase.sh
 
-The `push_to_api.sh` script handles the full workflow:
+The `push_to_firstbase.sh` script handles the full workflow:
 
 - **All devices** (MDR/IVDR/MDD/AIMDD/IVDD) → `Live/CreateMany` (batches of 100) → poll `RequestStatus/Get` until Done → `AddMany` (publish to recipient) → poll `RequestStatus/Get` until Done
 
@@ -276,11 +276,11 @@ The `push_to_api.sh` script handles the full workflow:
 Since 2026-03-10, GS1 rule 097.096 was downgraded from error to warning — legacy devices (MDD/AIMDD/IVDD) can now be published too. Includes automatic throttling (1s for ≤60 files, 8s for larger batches), HTTP 429 retry with `retry-after` backoff.
 
 ```bash
-./push_to_api.sh 7612345000527                    # push all UUID files in firstbase_json/
-./push_to_api.sh -v 7612345000527                 # verbose: show curl connection details
-./push_to_api.sh 7612345000527 --dir /path/to/dir # push files from a custom directory
-./push_to_api.sh 7612345000527 --dry-run          # show what would be pushed, no API calls
-./push_to_api.sh --status <reqid>                  # query status of a previous request
+./push_to_firstbase.sh 7612345000527                    # push all UUID files in firstbase_json/
+./push_to_firstbase.sh -v 7612345000527                 # verbose: show curl connection details
+./push_to_firstbase.sh 7612345000527 --dir /path/to/dir # push files from a custom directory
+./push_to_firstbase.sh 7612345000527 --dry-run          # show what would be pushed, no API calls
+./push_to_firstbase.sh --status <reqid>                  # query status of a previous request
 ```
 
 The first positional argument is the recipient GLN (PublishToGln) — the GLN of the data pool or company to publish to (e.g. `7612345000527` for GS1 Switzerland UDI Data Dump, `7612345000350` for SuperAdmin Company CH).
@@ -291,7 +291,7 @@ Environment variables for credentials:
 export FIRSTBASE_EMAIL="you@example.com"
 export FIRSTBASE_PASSWORD="your-api-password"
 export FIRSTBASE_GLN="7612345000480"
-./push_to_api.sh 7612345000527
+./push_to_firstbase.sh 7612345000527
 ```
 
 All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), refreshes the auth token, then publishes to the specified recipient GLN via `AddMany` and polls until Done. Both steps retry HTTP 429 with `retryAfter` backoff. Per-UUID ACCEPTED/REJECTED results are logged to the `push_log` table in `db/version_tracking.db` (with error codes, request ID, publish GLN). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
