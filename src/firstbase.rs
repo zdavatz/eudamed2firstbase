@@ -232,6 +232,8 @@ pub struct MedicalDeviceInformation {
     pub special_device_type: Option<CodeValue>,
     #[serde(rename = "MultiComponentDeviceTypeCode", skip_serializing_if = "Option::is_none")]
     pub multi_component_type: Option<CodeValue>,
+    #[serde(rename = "SystemOrProcedurePackTypeCode", skip_serializing_if = "Option::is_none")]
+    pub system_or_procedure_pack_type: Option<CodeValue>,
     #[serde(rename = "IsNewDevice", skip_serializing_if = "Option::is_none")]
     pub is_new_device: Option<bool>,
     // IVDR-specific fields (097.046)

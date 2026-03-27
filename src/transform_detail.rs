@@ -406,6 +406,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                         .and_then(|b| b.multi_component_code())
                         .unwrap_or_else(|| "DEVICE".to_string()),
                 }),
+                // SystemOrProcedurePackTypeCode: set for SPP devices
+                system_or_procedure_pack_type: if is_system_or_pack {
+                    Some(CodeValue {
+                        value: basic_udi
+                            .and_then(|b| b.multi_component_code())
+                            .unwrap_or_else(|| "DEVICE".to_string()),
+                    })
+                } else {
+                    None
+                },
                 // 097.047: isNewDevice mandatory for IVDR
                 is_new_device: if is_ivdr { Some(device.new_device.unwrap_or(false)) } else { device.new_device },
                 // 097.046: IVDR-specific boolean fields, default to false

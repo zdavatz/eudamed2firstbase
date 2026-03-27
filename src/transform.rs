@@ -573,6 +573,7 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
                 annex_xvi_types: annex_xvi,
                 special_device_type: None,
                 multi_component_type: multi_component,
+                system_or_procedure_pack_type: None,
                 is_new_device: None,
                 is_reagent: None,
                 is_instrument: None,

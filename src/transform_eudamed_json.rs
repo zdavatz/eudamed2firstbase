@@ -218,6 +218,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
                 annex_xvi_types: Vec::new(),
                 special_device_type: None,
                 multi_component_type: None,
+                system_or_procedure_pack_type: None,
                 is_new_device: None,
                 is_reagent: None,
                 is_instrument: None,
