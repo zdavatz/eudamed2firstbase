@@ -405,11 +405,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                 production_identifier_types: production_ids,
                 annex_xvi_types: Vec::new(),
                 special_device_type,
-                multi_component_type: Some(CodeValue {
-                    value: basic_udi
-                        .and_then(|b| b.multi_component_code())
-                        .unwrap_or_else(|| "DEVICE".to_string()),
-                }),
+                // 097.050: SPP uses SystemOrProcedurePackTypeCode, NOT MultiComponentDeviceTypeCode
+                multi_component_type: if is_system_or_pack {
+                    None
+                } else {
+                    Some(CodeValue {
+                        value: basic_udi
+                            .and_then(|b| b.multi_component_code())
+                            .unwrap_or_else(|| "DEVICE".to_string()),
+                    })
+                },
                 // SystemOrProcedurePackTypeCode + MedicalPurposeDescription: set for SPP devices
                 system_or_procedure_pack_type: if is_system_or_pack {
                     Some(CodeValue {
