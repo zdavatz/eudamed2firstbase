@@ -13,15 +13,18 @@ cargo run gui                                 # also launches GUI
 The GUI provides:
 - SRN input (multiple SRNs, one per line or space/comma-separated)
 - Limit per SRN option
+- Push target selector: **GS1 firstbase** or **Swissdamed** (radio buttons)
+- Target-specific credentials (collapsible):
+  - Firstbase: email, password, provider GLN, publish-to GLN
+  - Swissdamed: client ID, client secret, API base URL
 - Dry run mode (download & convert only, no push)
-- GS1 firstbase credentials (collapsible: email, password, provider GLN, publish-to GLN)
-- One-click pipeline: Download listings → Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (10 parallel, 3 retries) → Download Basic UDI-DI (10 parallel, 3 retries) → Convert to firstbase JSON (with version tracking)
+- One-click pipeline: Download listings → Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (10 parallel, 3 retries) → Download Basic UDI-DI (10 parallel, 3 retries) → Convert to target format (firstbase JSON or Swissdamed JSON, with version tracking)
 - Download log written to `eudamed_json/log/download.log` (same format as `download.sh`)
 - Live scrollable log output with file save paths
 - Persistent settings across restarts (`settings.json`)
 - Auto-saved logs to `logs/`
 
-Environment variables `FIRSTBASE_EMAIL` and `FIRSTBASE_PASSWORD` override saved credentials.
+Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
 
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 

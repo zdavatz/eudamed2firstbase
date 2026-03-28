@@ -20,11 +20,22 @@ enum WorkerMsg {
     Done { ok: bool, summary: String },
 }
 
+/// Target system for push.
+#[derive(Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+enum PushTarget {
+    #[default]
+    Firstbase,
+    Swissdamed,
+}
+
 /// Persistent state saved between sessions.
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 struct Settings {
     srns: String,
     limit: String,
+    #[serde(default)]
+    push_target: PushTarget,
+    // GS1 firstbase credentials
     #[serde(default)]
     firstbase_email: String,
     #[serde(default)]
@@ -33,6 +44,13 @@ struct Settings {
     publish_to_gln: String,
     #[serde(default)]
     provider_gln: String,
+    // Swissdamed credentials
+    #[serde(default)]
+    swissdamed_client_id: String,
+    #[serde(default)]
+    swissdamed_client_secret: String,
+    #[serde(default)]
+    swissdamed_base_url: String,
     dry_run: bool,
 }
 
@@ -74,6 +92,19 @@ impl App {
         }
         if settings.provider_gln.is_empty() {
             settings.provider_gln = "7612345000480".to_string();
+        }
+        // Swissdamed env vars
+        if let Ok(v) = std::env::var("SWISSDAMED_CLIENT_ID") {
+            if !v.is_empty() { settings.swissdamed_client_id = v; }
+        }
+        if let Ok(v) = std::env::var("SWISSDAMED_CLIENT_SECRET") {
+            if !v.is_empty() { settings.swissdamed_client_secret = v; }
+        }
+        if let Ok(v) = std::env::var("SWISSDAMED_BASE_URL") {
+            if !v.is_empty() { settings.swissdamed_base_url = v; }
+        }
+        if settings.swissdamed_base_url.is_empty() {
+            settings.swissdamed_base_url = "https://playground.swissdamed.ch".to_string();
         }
 
         let last_saved = serde_json::to_string(&settings).unwrap_or_default();
@@ -200,58 +231,102 @@ impl eframe::App for App {
                 ui.checkbox(&mut self.settings.dry_run, "Dry run (download & convert only)");
             });
 
-            ui.add_space(8.0);
+            ui.add_space(4.0);
 
-            // --- Credentials (collapsible) ---
-            ui.collapsing("GS1 firstbase Credentials", |ui| {
-                self.show_credentials = true;
-                ui.horizontal(|ui| {
-                    ui.label("Email:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.settings.firstbase_email)
-                            .desired_width(300.0),
-                    );
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Password:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.settings.firstbase_password)
-                            .desired_width(300.0)
-                            .password(true),
-                    );
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Provider GLN:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.settings.provider_gln)
-                            .desired_width(300.0),
-                    );
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Publish To GLN:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.settings.publish_to_gln)
-                            .desired_width(300.0)
-                            .hint_text("7612345000527"),
-                    );
-                });
+            // --- Push target selector ---
+            ui.horizontal(|ui| {
+                ui.label("Target:");
+                ui.radio_value(&mut self.settings.push_target, PushTarget::Firstbase, "GS1 firstbase");
+                ui.radio_value(&mut self.settings.push_target, PushTarget::Swissdamed, "Swissdamed");
             });
 
             ui.add_space(8.0);
 
+            // --- Credentials (collapsible, conditional on target) ---
+            match self.settings.push_target {
+                PushTarget::Firstbase => {
+                    ui.collapsing("GS1 firstbase Credentials", |ui| {
+                        self.show_credentials = true;
+                        ui.horizontal(|ui| {
+                            ui.label("Email:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.settings.firstbase_email)
+                                    .desired_width(300.0),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Password:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.settings.firstbase_password)
+                                    .desired_width(300.0)
+                                    .password(true),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Provider GLN:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.settings.provider_gln)
+                                    .desired_width(300.0),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Publish To GLN:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.settings.publish_to_gln)
+                                    .desired_width(300.0)
+                                    .hint_text("7612345000527"),
+                            );
+                        });
+                    });
+                }
+                PushTarget::Swissdamed => {
+                    ui.collapsing("Swissdamed Credentials", |ui| {
+                        self.show_credentials = true;
+                        ui.horizontal(|ui| {
+                            ui.label("Client ID:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.settings.swissdamed_client_id)
+                                    .desired_width(300.0),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Client Secret:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.settings.swissdamed_client_secret)
+                                    .desired_width(300.0)
+                                    .password(true),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("API Base URL:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.settings.swissdamed_base_url)
+                                    .desired_width(300.0),
+                            );
+                        });
+                    });
+                }
+            }
+
+            ui.add_space(8.0);
+
             // --- Action button ---
+            let target_name = match self.settings.push_target {
+                PushTarget::Firstbase => "firstbase",
+                PushTarget::Swissdamed => "Swissdamed",
+            };
             let button_text = if self.running {
-                "Running..."
+                "Running...".to_string()
             } else if self.settings.dry_run {
-                "Download & Convert"
+                "Download & Convert".to_string()
             } else {
-                "Download, Convert & Push"
+                format!("Download, Convert & Push to {}", target_name)
             };
 
             let can_start = !self.running && !self.settings.srns.trim().is_empty();
 
             if ui
-                .add_enabled(can_start, egui::Button::new(button_text).min_size(egui::vec2(200.0, 36.0)))
+                .add_enabled(can_start, egui::Button::new(&button_text).min_size(egui::vec2(200.0, 36.0)))
                 .clicked()
             {
                 self.start_pipeline(ctx.clone());
@@ -364,31 +439,13 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         return;
     }
 
-    // --- Step 2: Convert to firstbase JSON ---
-    let _ = tx.send(WorkerMsg::Progress {
-        step: "Convert".into(),
-        detail: "Converting EUDAMED JSON to GS1 firstbase format...".into(),
-    });
-    ctx.request_repaint();
-
+    // --- Step 2: Convert ---
     let data_dir = PathBuf::from(download::DEFAULT_DATA_DIR);
     let detail_dir = data_dir.join("detail");
     let basic_dir = data_dir.join("basic");
 
-    let config_path = Path::new("config.toml");
-    let config = match crate::config::load_config(config_path) {
-        Ok(c) => c,
-        Err(e) => {
-            done(false, &format!("Config error: {}", e));
-            return;
-        }
-    };
-
     let basic_udi_cache = crate::load_basic_udi_cache(&basic_dir);
     log(&format!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len()));
-
-    let output_dir = Path::new("firstbase_json");
-    let _ = std::fs::create_dir_all(output_dir);
 
     let db_path = Path::new(crate::version_db::VERSION_DB_PATH);
     let conn = match crate::version_db::open_db(db_path) {
@@ -404,67 +461,157 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     let mut skipped = 0;
     let mut convert_errors = 0;
 
-    for uuid in &uuids {
-        let detail_path = detail_dir.join(format!("{}.json", uuid));
-        if !detail_path.exists() {
-            continue;
-        }
+    match settings.push_target {
+        PushTarget::Firstbase => {
+            let _ = tx.send(WorkerMsg::Progress {
+                step: "Convert".into(),
+                detail: "Converting EUDAMED JSON to GS1 firstbase format...".into(),
+            });
+            ctx.request_repaint();
 
-        let json_content = match std::fs::read_to_string(&detail_path) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
+            let config_path = Path::new("config.toml");
+            let config = match crate::config::load_config(config_path) {
+                Ok(c) => c,
+                Err(e) => {
+                    done(false, &format!("Config error: {}", e));
+                    return;
+                }
+            };
 
-        let mut version_rec = crate::version_db::extract_detail_versions(&json_content);
-        let budi_cache_path = basic_dir.join(format!("{}.json", uuid));
-        if let Ok(budi_json) = std::fs::read_to_string(&budi_cache_path) {
-            crate::version_db::merge_budi_versions(&mut version_rec, &budi_json);
-        }
-        version_rec.last_synced = Some(now_str.clone());
+            let output_dir = Path::new("firstbase_json");
+            let _ = std::fs::create_dir_all(output_dir);
 
-        let changes = match crate::version_db::detect_changes(&conn, &version_rec) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
+            for uuid in &uuids {
+                let detail_path = detail_dir.join(format!("{}.json", uuid));
+                if !detail_path.exists() {
+                    continue;
+                }
 
-        if !changes.has_any_change() {
-            skipped += 1;
-            continue;
-        }
-
-        match crate::api_detail::parse_api_detail(&json_content) {
-            Ok(detail) => {
-                let basic_udi = basic_udi_cache.get(uuid);
-                let document = crate::transform_detail::transform_detail_document(
-                    &detail, &config, basic_udi, uuid,
-                );
-                let draft_doc = crate::firstbase::DraftItemDocument {
-                    draft_item: document,
+                let json_content = match std::fs::read_to_string(&detail_path) {
+                    Ok(s) => s,
+                    Err(_) => continue,
                 };
 
-                let output_path = output_dir.join(format!("{}.json", uuid));
-                if let Ok(json) = serde_json::to_string_pretty(&draft_doc) {
-                    let _ = std::fs::write(&output_path, &json);
+                let mut version_rec = crate::version_db::extract_detail_versions(&json_content);
+                let budi_cache_path = basic_dir.join(format!("{}.json", uuid));
+                if let Ok(budi_json) = std::fs::read_to_string(&budi_cache_path) {
+                    crate::version_db::merge_budi_versions(&mut version_rec, &budi_json);
+                }
+                version_rec.last_synced = Some(now_str.clone());
+
+                let changes = match crate::version_db::detect_changes(&conn, &version_rec) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+
+                if !changes.has_any_change() {
+                    skipped += 1;
+                    continue;
                 }
 
-                let _ = crate::version_db::upsert_version(&conn, &version_rec);
-                converted += 1;
-            }
-            Err(e) => {
-                if convert_errors < 10 {
-                    log(&format!("  Convert error {}: {}", uuid, e));
+                match crate::api_detail::parse_api_detail(&json_content) {
+                    Ok(detail) => {
+                        let basic_udi = basic_udi_cache.get(uuid);
+                        let document = crate::transform_detail::transform_detail_document(
+                            &detail, &config, basic_udi, uuid,
+                        );
+                        let draft_doc = crate::firstbase::DraftItemDocument {
+                            draft_item: document,
+                        };
+
+                        let output_path = output_dir.join(format!("{}.json", uuid));
+                        if let Ok(json) = serde_json::to_string_pretty(&draft_doc) {
+                            let _ = std::fs::write(&output_path, &json);
+                        }
+
+                        let _ = crate::version_db::upsert_version(&conn, &version_rec);
+                        converted += 1;
+                    }
+                    Err(e) => {
+                        if convert_errors < 10 {
+                            log(&format!("  Convert error {}: {}", uuid, e));
+                        }
+                        convert_errors += 1;
+                    }
                 }
-                convert_errors += 1;
             }
+
+            log(&format!(
+                "Converted: {} new/changed, {} skipped (unchanged), {} errors -> {}",
+                converted, skipped, convert_errors, output_dir.display()
+            ));
+        }
+        PushTarget::Swissdamed => {
+            let _ = tx.send(WorkerMsg::Progress {
+                step: "Convert".into(),
+                detail: "Converting EUDAMED JSON to Swissdamed format...".into(),
+            });
+            ctx.request_repaint();
+
+            let output_dir = Path::new("swissdamed_json");
+            let _ = std::fs::create_dir_all(output_dir);
+
+            for uuid in &uuids {
+                let detail_path = detail_dir.join(format!("{}.json", uuid));
+                let basic_path = basic_dir.join(format!("{}.json", uuid));
+                if !detail_path.exists() || !basic_path.exists() {
+                    continue;
+                }
+
+                let detail_json = match std::fs::read_to_string(&detail_path) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+                let basic_json = match std::fs::read_to_string(&basic_path) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+
+                let device: crate::api_detail::ApiDeviceDetail = match serde_json::from_str(&detail_json) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        if convert_errors < 10 {
+                            log(&format!("  Convert error {}: {}", uuid, e));
+                        }
+                        convert_errors += 1;
+                        continue;
+                    }
+                };
+                let basic_udi: crate::api_detail::BasicUdiDiData = match serde_json::from_str(&basic_json) {
+                    Ok(b) => b,
+                    Err(_) => continue,
+                };
+
+                let is_spp = basic_udi.is_spp();
+                let payload = if is_spp {
+                    serde_json::to_string_pretty(&crate::swissdamed::to_spp_dto(&device, &basic_udi))
+                } else {
+                    serde_json::to_string_pretty(&crate::swissdamed::to_mdr_dto(&device, &basic_udi))
+                };
+
+                match payload {
+                    Ok(json) => {
+                        let out_path = output_dir.join(format!("{}.json", uuid));
+                        let _ = std::fs::write(&out_path, &json);
+                        converted += 1;
+                    }
+                    Err(e) => {
+                        if convert_errors < 10 {
+                            log(&format!("  Convert error {}: {}", uuid, e));
+                        }
+                        convert_errors += 1;
+                    }
+                }
+            }
+
+            log(&format!(
+                "Converted: {} to Swissdamed JSON, {} errors -> {}",
+                converted, convert_errors, output_dir.display()
+            ));
         }
     }
 
-    log(&format!(
-        "Converted: {} new/changed, {} skipped (unchanged), {} errors -> {}",
-        converted, skipped, convert_errors, output_dir.display()
-    ));
-
-    // --- Step 3: Push to GS1 firstbase (if not dry run) ---
+    // --- Step 3: Push (if not dry run) ---
     if settings.dry_run {
         log("");
         done(true, &format!(
@@ -474,33 +621,58 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         return;
     }
 
-    if settings.firstbase_email.is_empty() || settings.firstbase_password.is_empty() {
-        log("");
-        done(false, "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set");
-        return;
+    match settings.push_target {
+        PushTarget::Firstbase => {
+            if settings.firstbase_email.is_empty() || settings.firstbase_password.is_empty() {
+                log("");
+                done(false, "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set");
+                return;
+            }
+            if settings.publish_to_gln.is_empty() {
+                log("");
+                done(false, "Cannot push: Publish To GLN not set");
+                return;
+            }
+
+            let _ = tx.send(WorkerMsg::Progress {
+                step: "Push".into(),
+                detail: "Pushing to GS1 firstbase Catalogue Item API...".into(),
+            });
+            ctx.request_repaint();
+            log("Push functionality uses push_to_firstbase.sh");
+            log(&format!(
+                "Run: ./push_to_firstbase.sh {}",
+                settings.publish_to_gln
+            ));
+
+            done(true, &format!(
+                "Pipeline complete. {} downloaded, {} converted. Run push_to_firstbase.sh to publish.",
+                uuids.len(), converted
+            ));
+        }
+        PushTarget::Swissdamed => {
+            if settings.swissdamed_client_id.is_empty() || settings.swissdamed_client_secret.is_empty() {
+                log("");
+                done(false, "Cannot push: Swissdamed Client ID or Client Secret not set");
+                return;
+            }
+
+            let _ = tx.send(WorkerMsg::Progress {
+                step: "Push".into(),
+                detail: "Pushing to Swissdamed M2M API...".into(),
+            });
+            ctx.request_repaint();
+            log("Push functionality uses push_to_swissdamed.sh");
+            log(&format!(
+                "Run: SWISSDAMED_CLIENT_ID=... SWISSDAMED_CLIENT_SECRET=... ./push_to_swissdamed.sh"
+            ));
+
+            done(true, &format!(
+                "Pipeline complete. {} downloaded, {} converted. Run push_to_swissdamed.sh to publish.",
+                uuids.len(), converted
+            ));
+        }
     }
-
-    if settings.publish_to_gln.is_empty() {
-        log("");
-        done(false, "Cannot push: Publish To GLN not set");
-        return;
-    }
-
-    let _ = tx.send(WorkerMsg::Progress {
-        step: "Push".into(),
-        detail: "Pushing to GS1 firstbase Catalogue Item API...".into(),
-    });
-    ctx.request_repaint();
-    log("Push functionality uses push_to_firstbase.sh");
-    log(&format!(
-        "Run: ./push_to_firstbase.sh {}",
-        settings.publish_to_gln
-    ));
-
-    done(true, &format!(
-        "Pipeline complete. {} downloaded, {} converted. Run push_to_firstbase.sh to publish.",
-        uuids.len(), converted
-    ));
 }
 
 /// Load the embedded app icon as an `egui::IconData`.
