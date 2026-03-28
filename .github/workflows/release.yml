@@ -354,6 +354,23 @@ jobs:
           # Set application category (required)
           $submission.applicationCategory = "BooksAndReference_EReader"
 
+          # Set store listing (required: at least one language)
+          $submission.listings = @{
+            "en-us" = @{
+              baseListing = @{
+                title = "Eudamed2Firstbase"
+                description = "Convert EUDAMED medical device data to GS1 firstbase and Swissdamed JSON format. Download from the EU EUDAMED database, convert to GS1 GDSN format, and push to firstbase or Swissdamed APIs."
+                releaseNotes = "Initial release"
+                keywords = @("EUDAMED", "medical device", "GS1", "firstbase", "UDI", "Swissdamed")
+                copyrightAndTrademarkInfo = "Copyright 2026 ywesee GmbH"
+                licenseTerms = "GNU General Public License v3.0"
+                privacyPolicy = "https://github.com/zdavatz/eudamed2firstbase"
+                websiteUrl = "https://github.com/zdavatz/eudamed2firstbase"
+                images = @()
+              }
+            }
+          }
+
           # Remove old packages (mark as PendingDelete)
           if ($submission.applicationPackages) {
             foreach ($pkg in $submission.applicationPackages) {
