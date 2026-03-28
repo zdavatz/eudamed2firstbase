@@ -37,7 +37,7 @@ fn main() -> Result<()> {
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("ndjson");
             process_ndjson(Path::new(input_dir), &config)
         }
-        Some("eudamed2firstbase") | Some("eudamed_json") => {
+        Some("firstbase") | Some("eudamed2firstbase") | Some("eudamed_json") => {
             // Convert EUDAMED JSON → GS1 Firstbase JSON
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json/detail");
             process_eudamed_json_dir(Path::new(input_dir), &config)
