@@ -21,8 +21,7 @@ PLAYGROUND_BASE="https://playground.swissdamed.ch"
 PRODUCTION_BASE=""  # TODO: production URL not yet published
 API_BASE="$PLAYGROUND_BASE"
 
-INPUT_DIR="eudamed_json/detail"
-BASIC_UDI_CACHE="eudamed_json/basic"
+INPUT_DIR="swissdamed_json"
 DB_PATH="db/version_tracking.db"
 
 CLIENT_ID="${SWISSDAMED_CLIENT_ID:?Set SWISSDAMED_CLIENT_ID in ~/.bashrc}"
@@ -133,10 +132,6 @@ for f in "$INPUT_DIR"/*.json; do
         SKIPPED_PUSHED=$((SKIPPED_PUSHED + 1))
         continue
     fi
-    # Skip if no basic file
-    if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" ]]; then
-        continue
-    fi
     PUSH_FILES+=("$f")
 done
 
@@ -164,222 +159,24 @@ PUSH_TOTAL=${#PUSH_FILES[@]}
 for f in "${PUSH_FILES[@]}"; do
     [[ -f "$f" ]] || continue
     uuid=$(basename "$f" .json)
-    budi_file="$BASIC_UDI_CACHE/$uuid.json"
 
-    # Determine endpoint from legislation
+    # Read pre-built Swissdamed JSON (from cargo run swissdamed)
+    PAYLOAD=$(cat "$f")
+
+    # Extract endpoint from correlationId — determine from basicUdi fields
     ENDPOINT=$(python3 -c "
 import json
-with open('$budi_file') as f:
-    bd = json.load(f)
-
-mc = bd.get('multiComponent', {})
-mc_code = mc.get('code', '') if isinstance(mc, dict) else ''
-suffix = mc_code.rsplit('.', 1)[-1] if '.' in mc_code else mc_code
-
-if suffix in ('system', 'procedure-pack', 'spp-procedure-pack'):
+d = json.load(open('$f'))
+bu = d.get('basicUdi', {})
+if 'prActorCode' in bu and 'medicinalPurpose' in bu:
     print('spp')
+elif 'mfActorCode' not in bu:
+    print('mdr')
 else:
-    leg = bd.get('legislation', {})
-    leg_code = leg.get('code', '') if isinstance(leg, dict) else ''
-    act = leg_code.rsplit('.', 1)[-1] if '.' in leg_code else leg_code
-    print(act.lower())
-" 2>/dev/null)
+    print('mdr')
+" 2>/dev/null || echo "mdr")
 
     API_PATH="/v1/m2m/udi/data/$ENDPOINT"
-
-    # Build Swissdamed JSON payload
-    PAYLOAD=$(python3 -c "
-import json, sys
-
-with open('$f') as fh:
-    device = json.load(fh)
-with open('$budi_file') as fh:
-    budi = json.load(fh)
-
-def lang_texts(mlt):
-    if not mlt or not isinstance(mlt, dict):
-        return []
-    texts = mlt.get('texts', [])
-    if not texts:
-        return []
-    result = []
-    for t in texts:
-        text = t.get('text', '')
-        if not text:
-            continue
-        lang_obj = t.get('language', {})
-        lang = lang_obj.get('isoCode', 'en') if isinstance(lang_obj, dict) else 'en'
-        result.append({'language': lang, 'text': text})
-    return result
-
-def extract_issuing_entity(code):
-    if not code:
-        return 'GS1'
-    suffix = code.rsplit('.', 1)[-1] if '.' in code else code
-    return suffix.upper()
-
-def di_code(di_obj):
-    if not di_obj or not isinstance(di_obj, dict):
-        return None
-    code = di_obj.get('code', '')
-    if not code:
-        return None
-    agency = di_obj.get('issuingAgency', {})
-    agency_code = agency.get('code', '') if isinstance(agency, dict) else ''
-    return {'diCode': code, 'issuingEntityCode': extract_issuing_entity(agency_code)}
-
-# Primary DI
-primary = di_code(device.get('primaryDi'))
-if not primary:
-    sys.exit(1)
-
-# Secondary DI
-secondary = di_code(device.get('secondaryDi'))
-
-# Basic UDI-DI identifier
-basic_udi_id = di_code(budi.get('basicUdi'))
-if not basic_udi_id:
-    basic_udi_id = {'diCode': '', 'issuingEntityCode': 'GS1'}
-
-# Risk class
-rc = budi.get('riskClass', {})
-rc_code = rc.get('code', '') if isinstance(rc, dict) else ''
-risk_class = rc_code.rsplit('.', 1)[-1].upper().replace('-', '_') if rc_code else 'CLASS_I'
-
-# Multi component type
-mc = budi.get('multiComponent', {})
-mc_code_raw = mc.get('code', '') if isinstance(mc, dict) else ''
-mc_suffix = mc_code_raw.rsplit('.', 1)[-1] if '.' in mc_code_raw else mc_code_raw
-mc_type = {'system': 'SYSTEM', 'procedure-pack': 'PROCEDURE_PACK', 'spp-procedure-pack': 'SPP_PROCEDURE_PACK'}.get(mc_suffix, 'DEVICE')
-
-# Manufacturer SRN
-mfr = budi.get('manufacturer', {})
-mfr_srn = mfr.get('srn', '') if isinstance(mfr, dict) else ''
-
-# Nomenclature codes
-noms = device.get('cndNomenclatures', [])
-nom_codes = [n.get('code', '') for n in (noms or []) if n.get('code')]
-
-# Production identifiers
-pi = device.get('udiPiType', {})
-prod_ids = []
-if pi and isinstance(pi, dict):
-    if pi.get('batchNumber'): prod_ids.append('BATCH_NUMBER')
-    if pi.get('serializationNumber'): prod_ids.append('SERIALISATION_NUMBER')
-    if pi.get('manufacturingDate'): prod_ids.append('MANUFACTURING_DATE')
-    if pi.get('expirationDate'): prod_ids.append('EXPIRATION_DATE')
-    if pi.get('softwareIdentification'): prod_ids.append('SOFTWARE_IDENTIFICATION')
-
-# Storage handling
-shc_list = []
-for shc in (device.get('storageHandlingConditions') or []):
-    tc = shc.get('typeCode', '')
-    suffix = tc.rsplit('.', 1)[-1] if '.' in tc else tc
-    descs = lang_texts(shc.get('description'))
-    shc_list.append({'type': suffix, 'description': descs})
-
-# Critical warnings
-warn_list = []
-for w in (device.get('criticalWarnings') or []):
-    tc = w.get('typeCode', '')
-    suffix = tc.rsplit('.', 1)[-1] if '.' in tc else tc
-    descs = lang_texts(w.get('description'))
-    warn_list.append({'type': suffix, 'description': descs})
-
-# Packages (containedItem hierarchy)
-packages = []
-# TODO: flatten containedItem tree to PackageUdiDiDto list
-
-endpoint = '$ENDPOINT'
-uuid = '$uuid'
-
-if endpoint == 'spp':
-    payload = {
-        'correlationId': uuid,
-        'basicUdi': {
-            'deviceName': budi.get('deviceName'),
-            'modelName': budi.get('deviceModel'),
-            'identifier': basic_udi_id,
-            'riskClass': risk_class,
-            'type': mc_type,
-            'medicinalPurpose': lang_texts(budi.get('medicalPurpose')),
-            'prActorCode': mfr_srn,
-        },
-        'udiDi': {
-            'tradeNames': lang_texts(device.get('tradeName')),
-            'referenceNumber': device.get('reference', '') or '',
-            'additionalDescription': lang_texts(device.get('additionalDescription')),
-            'website': device.get('additionalInformationUrl'),
-            'sterile': device.get('sterile', False) or False,
-            'sterilization': device.get('sterilization', False) or False,
-            'nomenclatureCodes': nom_codes,
-            'storageHandlingConditions': shc_list,
-            'criticalWarnings': warn_list,
-            'identifier': primary,
-            'secondaryIdentifier': secondary,
-            'productionIdentifiers': prod_ids,
-            'packages': packages,
-        },
-    }
-else:
-    payload = {
-        'correlationId': uuid,
-        'basicUdi': {
-            'deviceName': budi.get('deviceName'),
-            'modelName': budi.get('deviceModel'),
-            'animalTissuesCells': budi.get('animalTissues', False) or False,
-            'humanTissuesCells': budi.get('humanTissues', False) or False,
-            'type': mc_type,
-            'active': budi.get('active', False) or False,
-            'administeringMedicine': budi.get('administeringMedicine', False) or False,
-            'humanProductCheck': budi.get('humanProduct', False) or False,
-            'implantable': budi.get('implantable', False) or False,
-            'measuringFunction': budi.get('measuringFunction', False) or False,
-            'medicinalProductCheck': budi.get('medicinalProduct', False) or False,
-            'reusable': budi.get('reusable', False) or False,
-            'identifier': basic_udi_id,
-            'riskClass': risk_class,
-            'mfActorCode': mfr_srn,
-        },
-        'udiDi': {
-            'tradeNames': lang_texts(device.get('tradeName')),
-            'referenceNumber': device.get('reference', '') or '',
-            'additionalDescription': lang_texts(device.get('additionalDescription')),
-            'website': device.get('additionalInformationUrl'),
-            'sterile': device.get('sterile', False) or False,
-            'sterilization': device.get('sterilization', False) or False,
-            'nomenclatureCodes': nom_codes,
-            'storageHandlingConditions': shc_list,
-            'criticalWarnings': warn_list,
-            'identifier': primary,
-            'secondaryIdentifier': secondary,
-            'productionIdentifiers': prod_ids,
-            'packages': packages,
-            'baseQuantity': device.get('baseQuantity', 1) or 1,
-            'numberOfReuses': device.get('maxNumberOfReuses', -1) if device.get('maxNumberOfReuses') is not None else -1,
-            'latex': device.get('latex', False) or False,
-            'clinicalSizes': [],
-            'reprocessed': device.get('reprocessed', False) or False,
-            'cmrSubstances': [],
-            'endocrineSubstances': [],
-        },
-    }
-
-# Remove None values
-def clean(obj):
-    if isinstance(obj, dict):
-        return {k: clean(v) for k, v in obj.items() if v is not None}
-    elif isinstance(obj, list):
-        return [clean(i) for i in obj]
-    return obj
-
-print(json.dumps(clean(payload)))
-" 2>/dev/null)
-
-    if [[ -z "$PAYLOAD" ]]; then
-        ((SKIPPED++)) || true
-        continue
-    fi
 
     $VERBOSE && echo "  POST $API_BASE$API_PATH ($uuid → $ENDPOINT)"
 
@@ -388,7 +185,7 @@ print(json.dumps(clean(payload)))
         -X POST "$API_BASE$API_PATH" \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $TOKEN" \
-        -d "$PAYLOAD")
+        -d @"$f")
 
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     BODY=$(echo "$RESPONSE" | sed '$d')

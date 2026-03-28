@@ -42,6 +42,12 @@ fn main() -> Result<()> {
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json/detail");
             process_eudamed_json_dir(Path::new(input_dir), &config)
         }
+        Some("swissdamed") => {
+            // Convert EUDAMED JSON → Swissdamed JSON (almost 1:1 mapping)
+            let detail_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json/detail");
+            let basic_dir = args.get(3).map(|s| s.as_str()).unwrap_or("eudamed_json/basic");
+            process_swissdamed(Path::new(detail_dir), Path::new(basic_dir))
+        }
         Some("scan") => {
             // Fast parallel scan of firstbase JSON files — outputs "filepath\tGTIN" per line
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("firstbase_json");
@@ -689,6 +695,65 @@ fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicU
             None
         }
     }
+}
+
+/// Convert EUDAMED JSON → Swissdamed JSON (almost 1:1 mapping)
+fn process_swissdamed(detail_dir: &Path, basic_dir: &Path) -> Result<()> {
+    use rayon::prelude::*;
+
+    let output_dir = Path::new("swissdamed_json");
+    std::fs::create_dir_all(output_dir)?;
+
+    // Collect detail files
+    let entries: Vec<_> = std::fs::read_dir(detail_dir)?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
+        .collect();
+
+    println!("Processing {} detail files from {}", entries.len(), detail_dir.display());
+
+    let results: Vec<_> = entries.par_iter().filter_map(|entry| {
+        let path = entry.path();
+        let stem = path.file_stem()?.to_string_lossy().to_string();
+        let basic_path = basic_dir.join(format!("{}.json", stem));
+
+        // Read detail JSON
+        let detail_json = std::fs::read_to_string(&path).ok()?;
+        let device: api_detail::ApiDeviceDetail = serde_json::from_str(&detail_json).ok()?;
+
+        // Read basic JSON
+        let basic_json = std::fs::read_to_string(&basic_path).ok()?;
+        let basic_udi: api_detail::BasicUdiDiData = serde_json::from_str(&basic_json).ok()?;
+
+        // Determine endpoint and build payload
+        let endpoint = swissdamed::legislation_endpoint(&basic_udi);
+        let is_spp = basic_udi.is_spp();
+
+        let payload = if is_spp {
+            serde_json::to_string_pretty(&swissdamed::to_spp_dto(&device, &basic_udi)).ok()?
+        } else {
+            serde_json::to_string_pretty(&swissdamed::to_mdr_dto(&device, &basic_udi)).ok()?
+        };
+
+        // Write output
+        let out_path = output_dir.join(format!("{}.json", stem));
+        std::fs::write(&out_path, &payload).ok()?;
+
+        Some((stem, endpoint.to_string()))
+    }).collect();
+
+    // Summary
+    let mut endpoint_counts: HashMap<String, u32> = HashMap::new();
+    for (_, endpoint) in &results {
+        *endpoint_counts.entry(endpoint.clone()).or_insert(0) += 1;
+    }
+
+    println!("Converted {} files to swissdamed_json/", results.len());
+    for (endpoint, count) in &endpoint_counts {
+        println!("  {}: {}", endpoint, count);
+    }
+
+    Ok(())
 }
 
 /// Load Basic UDI-DI cache: maps UDI-DI UUID → BasicUdiDiData
