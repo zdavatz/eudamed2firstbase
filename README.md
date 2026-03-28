@@ -14,7 +14,7 @@ Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON 
 ./download.sh --srn SRN1 SRN2 --50            # multiple SRNs, limit 50 per SRN
 ```
 
-The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run eudamed_json`.
+The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run firstbase`.
 
 The `--srn` option uses server-side filtering via the API's `srn=` parameter, which matches manufacturer SRN (`manufacturerSrn`) and authorised representative SRN (`authorisedRepresentativeSrn`). **Note:** Swiss SRNs (`CH-MF-*`, `CH-AR-*`) are not registered in EUDAMED — use the actual EU/EEA manufacturer SRNs (e.g. `DE-MF-*`, `BE-MF-*`) instead. Multiple SRNs can be specified after `--srn` and their results are combined. Listing data is stored in temp files (only used for UUID extraction) — device details are saved directly as `eudamed_json/<uuid>.json`.
 
@@ -30,7 +30,7 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 ### Mode 2: EUDAMED JSON (individual device files) — primary mode
 
 1. Place EUDAMED JSON files in the `eudamed_json/` directory
-2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
+2. Run: `cargo run firstbase` or `cargo run firstbase <directory>`
 3. Output: one firstbase JSON file per input file in `firstbase_json/`
 4. EUDAMED files stay in `eudamed_json/detail/` and `eudamed_json/basic/` — version DB tracks what's been processed
 5. Auto-detects file type:
