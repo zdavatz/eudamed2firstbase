@@ -4,6 +4,7 @@ mod config;
 mod eudamed;
 mod eudamed_json;
 mod firstbase;
+mod gui;
 mod mappings;
 mod transform;
 mod transform_api;
@@ -26,6 +27,18 @@ const BASIC_UDI_CACHE_DIR: &str = "eudamed_json/basic";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
+
+    // No arguments → launch GUI
+    if args.len() <= 1 {
+        gui::run_gui().map_err(|e| anyhow::anyhow!("GUI error: {}", e))?;
+        return Ok(());
+    }
+
+    // "gui" subcommand also launches GUI
+    if args.get(1).map(|s| s.as_str()) == Some("gui") {
+        gui::run_gui().map_err(|e| anyhow::anyhow!("GUI error: {}", e))?;
+        return Ok(());
+    }
 
     let config_path = Path::new("config.toml");
     let config = config::load_config(config_path)

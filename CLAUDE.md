@@ -12,7 +12,9 @@ EUDAMED to GS1 firstbase JSON converter. Five input modes: DTX PullResponse XML,
 
 ```bash
 cargo build
-cargo run                                            # XML mode: xml/ -> firstbase_json/
+cargo run                                            # GUI mode (default): cross-platform egui window
+cargo run gui                                        # GUI mode (explicit)
+cargo run xml                                        # XML mode: xml/ -> firstbase_json/
 cargo run ndjson                                     # API listing mode: ndjson/ -> firstbase_json/
 cargo run detail <details.ndjson> [listing.ndjson]   # API detail mode with optional listing merge
 cargo run firstbase                                  # Convert EUDAMED JSON → GS1 Firstbase: eudamed_json/detail/ -> firstbase_json/
@@ -36,6 +38,9 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 
 ## Architecture
 
+- **gui.rs**: Cross-platform GUI (egui/eframe). SRN input, credentials (GS1 firstbase email/password, provider GLN, publish-to GLN), dry run toggle, one-click pipeline (download listings → parallel detail/basic download → convert with version tracking). Settings auto-saved to `settings.json` on every change. Worker thread communicates via `mpsc::channel`. Parallel downloads (10 threads) via rayon. App icon embedded at compile time from `assets/icon_256x256.png`.
+- **build.rs**: Windows icon embedding via `winresource` (compiles `assets/icon.ico` into executable).
+- **bundle_macos.sh**: macOS `.app` bundle creation (binary + icon.icns + Info.plist). Output: `target/release/eudamed2firstbase.app`.
 - **eudamed.rs**: XML parsing using `roxmltree` DOM traversal (not serde). Switched from `quick-xml` serde due to element ordering issues. Uses `local_name()` to handle namespace prefixes transparently.
 - **api_json.rs**: EUDAMED public API listing NDJSON parsing (serde). Flat `ApiDevice` struct.
 - **api_detail.rs**: EUDAMED public API detail NDJSON parsing (serde). Rich `ApiDeviceDetail` struct with clinical sizes, substances (CMR, endocrine, medicinal, human product), market info, warnings, product designer, secondary DI, direct marking, unit of use, linked devices. Also contains `BasicUdiDiData` struct for Basic UDI-DI records (MDR booleans, multiComponent, riskClass, manufacturer/AR, basicUdi code, legislation). `extract_lang_texts` handles `allLanguagesApplicable: true` with null language by defaulting to "en". `BasicUdiDiData::regulatory_act()` extracts legislation code (MDR/IVDR/MDD/AIMDD/IVDD) — more accurate than risk class inference for distinguishing MDR from MDD.

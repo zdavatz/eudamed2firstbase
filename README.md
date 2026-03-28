@@ -1,8 +1,28 @@
 # eudamed2firstbase
 
-Rust CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Supports five input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), EUDAMED JSON (individual device files), and XLSX export.
+Rust GUI + CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Cross-platform GUI (macOS + Windows) for one-click download, convert, and push. Also supports CLI with five input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), EUDAMED JSON (individual device files), and XLSX export.
 
-## Quick Start: Download & Convert from EUDAMED API
+## GUI (recommended)
+
+```bash
+cargo run                                     # launch GUI (default when no arguments)
+cargo run gui                                 # also launches GUI
+./bundle_macos.sh                             # build macOS .app bundle
+```
+
+The GUI provides:
+- SRN input (multiple SRNs, one per line or space/comma-separated)
+- Limit per SRN option
+- Dry run mode (download & convert only, no push)
+- GS1 firstbase credentials (collapsible: email, password, provider GLN, publish-to GLN)
+- One-click pipeline: Download listings → Download details (10 parallel) → Download Basic UDI-DI (10 parallel) → Convert to firstbase JSON (with version tracking)
+- Live scrollable log output with file save paths
+- Persistent settings across restarts (`settings.json`)
+- Auto-saved logs to `logs/`
+
+Environment variables `FIRSTBASE_EMAIL` and `FIRSTBASE_PASSWORD` override saved credentials.
+
+## Quick Start: Download & Convert from EUDAMED API (CLI)
 
 ```bash
 ./download.sh --10                            # download and convert first 10 products
@@ -83,7 +103,8 @@ cas_number = "50-28-2"
 
 ```
 src/
-  main.rs                    # CLI entry point: routing for xml/ndjson/detail/eudamed_json modes
+  main.rs                    # Entry point: GUI (no args) or CLI routing for xml/ndjson/detail/eudamed_json modes
+  gui.rs                     # Cross-platform GUI (egui/eframe): SRN input, credentials, download+convert pipeline
   config.rs                  # config.toml parsing
   eudamed.rs                 # EUDAMED XML parsing (roxmltree DOM)
   api_json.rs                # EUDAMED API listing NDJSON parsing (serde)
@@ -100,6 +121,9 @@ src/
   scan.rs                    # Fast parallel GTIN scanner for push_to_firstbase.sh (rayon, string search)
   swissdamed.rs              # Swissdamed M2M API mapper (EUDAMED JSON → Swissdamed JSON, ~1:1)
 
+build.rs                   # Windows icon embedding (winresource)
+bundle_macos.sh            # macOS .app bundle creation script
+assets/                    # App icons: icon.icns (macOS), icon.ico (Windows), icon_256x256.png (GUI)
 download.sh                # Unified download + convert script (listing + detail + Basic UDI-DI + convert)
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
