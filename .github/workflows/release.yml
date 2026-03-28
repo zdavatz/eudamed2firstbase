@@ -278,6 +278,8 @@ jobs:
           $msix = Get-ChildItem artifacts/*.msix | Select-Object -First 1
           Write-Host "Submitting: $($msix.FullName)"
 
-          # Configure and submit
+          # Configure credentials
           msstore reconfigure --tenantId $env:MSSTORE_TENANT_ID --clientId $env:MSSTORE_CLIENT_ID --clientSecret $env:MSSTORE_CLIENT_SECRET
-          msstore update 9P889JD1XWS2 --package $msix.FullName
+
+          # Publish MSIX to Microsoft Store
+          msstore publish $msix.DirectoryName
