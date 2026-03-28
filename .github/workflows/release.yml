@@ -136,9 +136,16 @@ jobs:
           APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          MACOS_PROVISIONING_PROFILE: ${{ secrets.MACOS_PROVISIONING_PROFILE }}
         run: |
           VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
           APP="target/release/eudamed2firstbase.app"
+
+          # Embed provisioning profile in .app bundle
+          if [ -n "$MACOS_PROVISIONING_PROFILE" ]; then
+            echo "$MACOS_PROVISIONING_PROFILE" | base64 --decode > "$APP/Contents/embedded.provisionprofile"
+            echo "Embedded provisioning profile"
+          fi
 
           # Re-sign with App Store entitlements (sandbox)
           APP_IDENTITY=$(security find-identity -v build.keychain | grep "Mac App Distribution\|3rd Party Mac Developer Application" | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
