@@ -32,7 +32,7 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 1. Place EUDAMED JSON files in the `eudamed_json/` directory
 2. Run: `cargo run eudamed_json` or `cargo run eudamed_json <directory>`
 3. Output: one firstbase JSON file per input file in `firstbase_json/`
-4. Successfully processed files move to `eudamed_json/processed/`
+4. EUDAMED files stay in `eudamed_json/detail/` and `eudamed_json/basic/` — version DB tracks what's been processed
 5. Auto-detects file type:
    - **UDI-DI level** (has `primaryDi`): full conversion with GTIN, trade name, clinical sizes, market info (ORIGINAL_PLACED/ADDITIONAL split), storage, warnings, substances (CMR/endocrine/medicinal → ChemicalRegulationModule), product designer (EPD contact with address/email/phone), secondary DI, direct marking, unit of use, related devices (REPLACED/REPLACED_BY), regulatory module (MDR/IVDR+EU), packaging hierarchy from `containedItem` (nested CatalogueItemChildItemLink with PACK_OR_INNER_PACK/CASE descriptors, EMA/EAR contacts on package DIs). Merges Basic UDI-DI data from cache for MDR mandatory fields (active, implantable, measuringFunction, multiComponent, tissue, manufacturer/AR SRN, risk class). On cache miss, fetches Basic UDI-DI on demand from EUDAMED API.
    - **Device level** (Basic UDI-DI, no `primaryDi`): manufacturer/AR contact info, risk class, device flags — no GTIN
@@ -174,7 +174,7 @@ The download script uses the EUDAMED public API at `https://ec.europa.eu/tools/e
 
 - **Basic UDI-DI endpoint**: `GET /basicUdiData/udiDiData/{uuid}?languageIso2Code=en` — Basic UDI-DI record for a UDI-DI UUID
 
-The detail endpoint provides richer data but lacks manufacturer/AR SRN, risk class, and MDR mandatory boolean fields (active, implantable, measuringFunction, multiComponent, tissue). These are merged from the Basic UDI-DI cache (`/tmp/basic_udi_cache/`) and/or listing data.
+The detail endpoint provides richer data but lacks manufacturer/AR SRN, risk class, and MDR mandatory boolean fields (active, implantable, measuringFunction, multiComponent, tissue). These are merged from the Basic UDI-DI cache (`eudamed_json/basic/`) and/or listing data.
 
 ## Validation
 
