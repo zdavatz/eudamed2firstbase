@@ -132,15 +132,23 @@ jobs:
         run: |
           $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
 
+          # Find Windows SDK tools dynamically
+          $sdkBin = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\makeappx.exe" -ErrorAction SilentlyContinue | Sort-Object -Descending | Select-Object -First 1
+          if (-not $sdkBin) {
+            Write-Error "makeappx.exe not found in Windows SDK"
+            exit 1
+          }
+          $sdkDir = $sdkBin.DirectoryName
+          Write-Host "Using Windows SDK at: $sdkDir"
+
           # Prepare MSIX layout
           $msixDir = "msix_staging"
           New-Item -ItemType Directory -Force -Path $msixDir
           Copy-Item target\release\eudamed2firstbase.exe $msixDir\
-          Copy-Item windows\assets\* $msixDir\ -Recurse
 
-          # Update version in manifest
-          $manifest = Get-Content windows\AppxManifest.xml
-          $manifest = $manifest -replace 'Version="0\.1\.0\.0"', "Version=`"${version}.0`""
+          # Update version in manifest and copy
+          $manifest = Get-Content windows\AppxManifest.xml -Raw
+          $manifest = $manifest -replace 'Version="1\.0\.0\.0"', "Version=`"${version}.0`""
           Set-Content -Path "$msixDir\AppxManifest.xml" -Value $manifest
 
           # Copy assets into msix staging
@@ -148,7 +156,7 @@ jobs:
           Copy-Item windows\assets\* "$msixDir\assets\"
 
           # Create MSIX using makeappx
-          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe" pack /d $msixDir /p "eudamed2firstbase-${version}-windows-x64.msix" /o
+          & "$sdkDir\makeappx.exe" pack /d $msixDir /p "eudamed2firstbase-${version}-windows-x64.msix" /o
 
       - name: Sign MSIX (if certificate available)
         if: env.WINDOWS_CERTIFICATE != ''
@@ -158,9 +166,10 @@ jobs:
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
+          $sdkBin = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\signtool.exe" -ErrorAction SilentlyContinue | Sort-Object -Descending | Select-Object -First 1
           $certBytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
           [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
-          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd SHA256 /a /f cert.pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD "eudamed2firstbase-${version}-windows-x64.msix"
+          & $sdkBin.FullName sign /fd SHA256 /a /f cert.pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD "eudamed2firstbase-${version}-windows-x64.msix"
           Remove-Item cert.pfx
 
       - name: Upload Windows artifacts
