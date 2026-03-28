@@ -199,3 +199,26 @@ jobs:
             artifacts/windows-packages/*.zip
             artifacts/windows-packages/*.msix
           generate_release_notes: true
+
+  publish-microsoft-store:
+    needs: [build-windows]
+    runs-on: windows-latest
+    if: vars.MSSTORE_ENABLED == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-packages
+          path: artifacts
+
+      - name: Publish to Microsoft Store
+        uses: microsoft/store-submission@v1
+        with:
+          command: update
+          productId: 9P889JD1XWS2
+          packagePath: artifacts/eudamed2firstbase-*-windows-x64.msix
+          aadTenantId: ${{ secrets.MSSTORE_TENANT_ID }}
+          aadClientId: ${{ secrets.MSSTORE_CLIENT_ID }}
+          aadClientSecret: ${{ secrets.MSSTORE_CLIENT_SECRET }}
