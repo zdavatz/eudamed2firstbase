@@ -26,6 +26,34 @@ The GUI provides:
 
 Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
 
+## Release / Distribution
+
+Releases are built via GitHub Actions on tag push (`v*`):
+
+**macOS** (notarized DMG, universal arm64+x86_64):
+```bash
+./bundle_macos.sh                    # Local: native release, no signing
+./bundle_macos.sh --universal        # Local: universal binary (arm64 + x86_64)
+./bundle_macos.sh --sign             # Local: universal + code sign
+./bundle_macos.sh --dmg              # Local: universal + sign + DMG
+./bundle_macos.sh --notarize         # Local: universal + sign + DMG + notarize
+```
+
+**Windows** (portable ZIP + MSIX for Windows Store):
+- Built on `windows-latest` runner in GitHub Actions
+- MSIX package created with `makeappx.exe` from `windows/AppxManifest.xml`
+- Portable ZIP also available for direct distribution
+
+**Creating a release:**
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+**Required GitHub secrets for signing/notarization:**
+- macOS: `MACOS_CERTIFICATE`, `MACOS_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`
+- Windows: `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`
+
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 
 ```bash

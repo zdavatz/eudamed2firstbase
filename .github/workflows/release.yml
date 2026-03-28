@@ -1,0 +1,192 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Build universal binary
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+          lipo -create \
+            target/aarch64-apple-darwin/release/eudamed2firstbase \
+            target/x86_64-apple-darwin/release/eudamed2firstbase \
+            -output target/release/eudamed2firstbase-universal
+
+      - name: Create .app bundle
+        run: |
+          APP="target/release/eudamed2firstbase.app"
+          rm -rf "$APP"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp target/release/eudamed2firstbase-universal "$APP/Contents/MacOS/eudamed2firstbase"
+          cp assets/icon.icns "$APP/Contents/Resources/AppIcon.icns"
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          cat > "$APP/Contents/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key><string>eudamed2firstbase</string>
+              <key>CFBundleDisplayName</key><string>eudamed2firstbase</string>
+              <key>CFBundleIdentifier</key><string>com.ywesee.eudamed2firstbase</string>
+              <key>CFBundleVersion</key><string>${VERSION}</string>
+              <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+              <key>CFBundleExecutable</key><string>eudamed2firstbase</string>
+              <key>CFBundleIconFile</key><string>AppIcon</string>
+              <key>CFBundlePackageType</key><string>APPL</string>
+              <key>NSHighResolutionCapable</key><true/>
+              <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+              <key>LSMinimumSystemVersion</key><string>11.0</string>
+              <key>LSApplicationCategoryType</key><string>public.app-category.business</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Code sign (if certificate available)
+        if: env.MACOS_CERTIFICATE != ''
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          security list-keychains -d user -s build.keychain
+          IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID" | head -1 | sed 's/.*"\(.*\)"/\1/')
+          codesign --force --options runtime \
+            --sign "$IDENTITY" \
+            --entitlements entitlements.plist \
+            --deep \
+            target/release/eudamed2firstbase.app
+
+      - name: Create DMG
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          STAGING=$(mktemp -d)
+          cp -R target/release/eudamed2firstbase.app "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create -volname "eudamed2firstbase" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            "eudamed2firstbase-${VERSION}-macos-universal.dmg"
+          rm -rf "$STAGING"
+
+      - name: Notarize (if credentials available)
+        if: env.APPLE_ID != ''
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          DMG="eudamed2firstbase-${VERSION}-macos-universal.dmg"
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple "$DMG"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: eudamed2firstbase-*-macos-universal.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item target\release\eudamed2firstbase.exe dist\
+          Compress-Archive -Path dist\* -DestinationPath "eudamed2firstbase-${version}-windows-x64.zip"
+
+      - name: Create MSIX package for Windows Store
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
+
+          # Prepare MSIX layout
+          $msixDir = "msix_staging"
+          New-Item -ItemType Directory -Force -Path $msixDir
+          Copy-Item target\release\eudamed2firstbase.exe $msixDir\
+          Copy-Item windows\assets\* $msixDir\ -Recurse
+
+          # Update version in manifest
+          $manifest = Get-Content windows\AppxManifest.xml
+          $manifest = $manifest -replace 'Version="0\.1\.0\.0"', "Version=`"${version}.0`""
+          Set-Content -Path "$msixDir\AppxManifest.xml" -Value $manifest
+
+          # Copy assets into msix staging
+          New-Item -ItemType Directory -Force -Path "$msixDir\assets"
+          Copy-Item windows\assets\* "$msixDir\assets\"
+
+          # Create MSIX using makeappx
+          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe" pack /d $msixDir /p "eudamed2firstbase-${version}-windows-x64.msix" /o
+
+      - name: Sign MSIX (if certificate available)
+        if: env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
+          $certBytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
+          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd SHA256 /a /f cert.pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD "eudamed2firstbase-${version}-windows-x64.msix"
+          Remove-Item cert.pfx
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: |
+            eudamed2firstbase-*-windows-x64.zip
+            eudamed2firstbase-*-windows-x64.msix
+
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/macos-dmg/*.dmg
+            artifacts/windows-packages/*.zip
+            artifacts/windows-packages/*.msix
+          generate_release_notes: true
