@@ -3,3 +3,5 @@ logs/
 db/*.db
 target/
 settings.json
+p8/
+*.p8
