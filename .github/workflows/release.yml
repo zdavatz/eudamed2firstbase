@@ -354,6 +354,15 @@ jobs:
           # Set application category (required)
           $submission.applicationCategory = "BooksAndReference_EReader"
 
+          # Set target device families
+          $submission.allowTargetFutureDeviceFamilies = @{
+            Desktop = $true
+            Mobile = $false
+            Xbox = $false
+            Holographic = $false
+          }
+          $submission.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies = $true
+
           # Set store listing (required: at least one language)
           $submission.listings = @{
             "en-us" = @{
