@@ -215,7 +215,11 @@ jobs:
 
       - name: Install Microsoft Store CLI
         shell: pwsh
-        run: dotnet tool install -g Microsoft.Apps.WindowsAppStoreSubmission
+        run: |
+          winget install "Microsoft Store Developer CLI" --accept-source-agreements --accept-package-agreements 2>$null
+          if (-not (Get-Command msstore -ErrorAction SilentlyContinue)) {
+            dotnet tool install -g MSStore.CLI
+          }
 
       - name: Publish to Microsoft Store
         shell: pwsh
@@ -227,8 +231,6 @@ jobs:
           $msix = Get-ChildItem artifacts/*.msix | Select-Object -First 1
           Write-Host "Submitting: $($msix.FullName)"
 
-          # Configure msstore CLI
+          # Configure and submit
           msstore reconfigure --tenantId $env:MSSTORE_TENANT_ID --clientId $env:MSSTORE_CLIENT_ID --clientSecret $env:MSSTORE_CLIENT_SECRET
-
-          # Update submission with new MSIX package
           msstore update 9P889JD1XWS2 --package $msix.FullName
