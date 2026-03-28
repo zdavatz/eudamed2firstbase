@@ -156,7 +156,20 @@ pub fn open_db(path: &Path) -> Result<Connection> {
             rejected INTEGER DEFAULT 0,
             publish_gln TEXT
         );
-        CREATE INDEX IF NOT EXISTS idx_request_log_status ON request_log(status);",
+        CREATE INDEX IF NOT EXISTS idx_request_log_status ON request_log(status);
+
+        CREATE TABLE IF NOT EXISTS swissdamed_push_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT NOT NULL,
+            correlation_id TEXT,
+            pushed_at TEXT NOT NULL,
+            endpoint TEXT NOT NULL,
+            status TEXT NOT NULL,
+            error_code TEXT,
+            error_msg TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_swissdamed_uuid ON swissdamed_push_log(uuid);
+        CREATE INDEX IF NOT EXISTS idx_swissdamed_status ON swissdamed_push_log(status);",
     )?;
 
     Ok(conn)

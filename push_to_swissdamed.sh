@@ -90,18 +90,65 @@ print(json.dumps(data, indent=2))
     exit 0
 fi
 
-# --- Collect files to push ---
-echo "Scanning $INPUT_DIR/ for EUDAMED JSON files..."
-FILE_COUNT=$(find "$INPUT_DIR" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
-echo "Found $FILE_COUNT files"
+# --- Ensure swissdamed_push_log table exists ---
+python3 -c "
+import sqlite3, os
+os.makedirs(os.path.dirname('$DB_PATH') or '.', exist_ok=True)
+conn = sqlite3.connect('$DB_PATH')
+conn.execute('''CREATE TABLE IF NOT EXISTS swissdamed_push_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT NOT NULL, correlation_id TEXT, pushed_at TEXT NOT NULL,
+    endpoint TEXT NOT NULL, status TEXT NOT NULL,
+    error_code TEXT, error_msg TEXT
+)''')
+conn.execute('CREATE INDEX IF NOT EXISTS idx_swissdamed_uuid ON swissdamed_push_log(uuid)')
+conn.execute('CREATE INDEX IF NOT EXISTS idx_swissdamed_status ON swissdamed_push_log(status)')
+conn.commit()
+conn.close()
+" 2>/dev/null
 
-if [[ $FILE_COUNT -eq 0 ]]; then
-    echo "No files to push."
+# --- Collect files to push (skip already pushed) ---
+echo "Scanning $INPUT_DIR/ for unpushed EUDAMED JSON files..."
+PUSHED_UUIDS=$(python3 -c "
+import sqlite3
+conn = sqlite3.connect('$DB_PATH')
+try:
+    rows = conn.execute('SELECT DISTINCT uuid FROM swissdamed_push_log WHERE status=\"ACCEPTED\"').fetchall()
+    for r in rows:
+        print(r[0])
+except:
+    pass
+conn.close()
+" 2>/dev/null)
+
+PUSH_FILES=()
+SKIPPED_PUSHED=0
+TOTAL_FILES=0
+for f in "$INPUT_DIR"/*.json; do
+    [[ -f "$f" ]] || continue
+    TOTAL_FILES=$((TOTAL_FILES + 1))
+    uuid=$(basename "$f" .json)
+    # Skip if already pushed to Swissdamed
+    if echo "$PUSHED_UUIDS" | grep -q "^${uuid}$" 2>/dev/null; then
+        SKIPPED_PUSHED=$((SKIPPED_PUSHED + 1))
+        continue
+    fi
+    # Skip if no basic file
+    if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+        continue
+    fi
+    PUSH_FILES+=("$f")
+done
+
+echo "Found $TOTAL_FILES files, ${#PUSH_FILES[@]} to push, $SKIPPED_PUSHED already pushed"
+
+if [[ ${#PUSH_FILES[@]} -eq 0 ]]; then
+    echo "No new files to push."
     exit 0
 fi
 
 if $DRY_RUN; then
-    echo "[DRY RUN] Would push $FILE_COUNT files to $API_BASE"
+    echo "[DRY RUN] Would push ${#PUSH_FILES[@]} files to $API_BASE"
     exit 0
 fi
 
@@ -112,18 +159,12 @@ get_token
 # --- Push devices ---
 SUBMITTED=0
 FAILED=0
-SKIPPED=0
+PUSH_TOTAL=${#PUSH_FILES[@]}
 
-for f in "$INPUT_DIR"/*.json; do
+for f in "${PUSH_FILES[@]}"; do
     [[ -f "$f" ]] || continue
     uuid=$(basename "$f" .json)
     budi_file="$BASIC_UDI_CACHE/$uuid.json"
-
-    # Skip if no BUDI cache
-    if [[ ! -f "$budi_file" ]]; then
-        ((SKIPPED++)) || true
-        continue
-    fi
 
     # Determine endpoint from legislation
     ENDPOINT=$(python3 -c "
@@ -352,8 +393,24 @@ print(json.dumps(clean(payload)))
     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
     BODY=$(echo "$RESPONSE" | sed '$d')
 
+    # Log result to swissdamed_push_log
+    log_swissdamed() {
+        local s_uuid="$1" s_status="$2" s_endpoint="$3" s_err_code="$4" s_err_msg="$5"
+        python3 -c "
+import sqlite3
+from datetime import datetime, timezone
+conn = sqlite3.connect('$DB_PATH')
+now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+conn.execute('INSERT INTO swissdamed_push_log (uuid,correlation_id,pushed_at,endpoint,status,error_code,error_msg) VALUES (?,?,?,?,?,?,?)',
+    ('$s_uuid','$s_uuid',now,'$s_endpoint','$s_status','$s_err_code','$s_err_msg'))
+conn.commit()
+conn.close()
+" 2>/dev/null
+    }
+
     if [[ "$HTTP_CODE" == "202" ]]; then
         ((SUBMITTED++)) || true
+        log_swissdamed "$uuid" "ACCEPTED" "$ENDPOINT" "" ""
         $VERBOSE && echo "    202 Accepted"
     elif [[ "$HTTP_CODE" == "429" ]]; then
         echo "    429 Rate limited — waiting 60s"
@@ -365,20 +422,24 @@ print(json.dumps(clean(payload)))
             -H "Authorization: Bearer $TOKEN" \
             -d "$PAYLOAD")
         HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
         if [[ "$HTTP_CODE" == "202" ]]; then
             ((SUBMITTED++)) || true
+            log_swissdamed "$uuid" "ACCEPTED" "$ENDPOINT" "" ""
         else
             ((FAILED++)) || true
+            log_swissdamed "$uuid" "REJECTED" "$ENDPOINT" "$HTTP_CODE" "$(echo "$BODY" | head -c 200)"
             echo "    FAIL ($uuid): HTTP $HTTP_CODE"
         fi
     else
         ((FAILED++)) || true
+        log_swissdamed "$uuid" "REJECTED" "$ENDPOINT" "$HTTP_CODE" "$(echo "$BODY" | head -c 200)"
         echo "  FAIL ($uuid): HTTP $HTTP_CODE — $(echo "$BODY" | head -c 200)"
     fi
 
     # Progress
-    TOTAL=$((SUBMITTED + FAILED + SKIPPED))
-    [[ $((TOTAL % 100)) -eq 0 ]] && echo "  Progress: $TOTAL/$FILE_COUNT (submitted=$SUBMITTED failed=$FAILED skipped=$SKIPPED)"
+    DONE=$((SUBMITTED + FAILED))
+    [[ $((DONE % 100)) -eq 0 && $DONE -gt 0 ]] && echo "  Progress: $DONE/$PUSH_TOTAL (submitted=$SUBMITTED failed=$FAILED)"
 
     # Throttle
     sleep 0.5
