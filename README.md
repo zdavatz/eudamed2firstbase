@@ -26,13 +26,12 @@ Environment variables `FIRSTBASE_EMAIL` and `FIRSTBASE_PASSWORD` override saved 
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 
 ```bash
-./download.sh --10                            # download and convert first 10 products
-./download.sh --100                           # download and convert first 100 products
-./download.sh --srn IN-MF-000014457           # all products for a manufacturer SRN
-./download.sh --srn IN-MF-000014457 --50      # first 50 products for a specific SRN
-./download.sh --srn DE-AR-000006322           # all products for an authorised rep SRN
-./download.sh --srn SRN1 SRN2 SRN3            # multiple SRNs combined into one file
-./download.sh --srn SRN1 SRN2 --50            # multiple SRNs, limit 50 per SRN
+cargo run download --srn IN-MF-000014457              # all products for a manufacturer SRN
+cargo run download --srn IN-MF-000014457 --50          # first 50 products for a specific SRN
+cargo run download --srn SRN1 SRN2 SRN3                # multiple SRNs
+cargo run download --srn SRN1 SRN2 --50                # multiple SRNs, limit 50 per SRN
+cargo run download --srn SRN1 --convert                # download + auto-convert to firstbase JSON
+./download.sh --srn IN-MF-000014457                    # legacy bash script (same functionality)
 ```
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run firstbase`.
@@ -104,7 +103,8 @@ cas_number = "50-28-2"
 
 ```
 src/
-  main.rs                    # Entry point: GUI (no args) or CLI routing for xml/ndjson/detail/eudamed_json modes
+  main.rs                    # Entry point: GUI (no args) or CLI routing for download/xml/ndjson/detail/eudamed_json modes
+  download.rs                # Shared EUDAMED download module (listings, version check, parallel fetch, retry)
   gui.rs                     # Cross-platform GUI (egui/eframe): SRN input, credentials, download+convert pipeline
   config.rs                  # config.toml parsing
   eudamed.rs                 # EUDAMED XML parsing (roxmltree DOM)

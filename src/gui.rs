@@ -8,7 +8,8 @@ use std::thread;
 
 use eframe::egui;
 
-const DATA_DIR: &str = "eudamed_json";
+use crate::download::{self, DownloadConfig, DownloadEvent, DownloadProgress};
+
 const SETTINGS_PATH: &str = "settings.json";
 const LOGS_DIR: &str = "logs";
 
@@ -285,17 +286,32 @@ impl eframe::App for App {
     }
 }
 
+/// GUI adapter for the shared download progress trait.
+struct GuiProgress {
+    tx: mpsc::Sender<WorkerMsg>,
+    ctx: egui::Context,
+}
+
+impl DownloadProgress for GuiProgress {
+    fn on_event(&self, event: DownloadEvent) {
+        let msg = match event {
+            DownloadEvent::Log(s) => WorkerMsg::Log(s),
+            DownloadEvent::Progress { step, detail } => WorkerMsg::Progress { step, detail },
+        };
+        let _ = self.tx.send(msg);
+        self.ctx.request_repaint();
+    }
+}
+
 /// Run the full download → convert → push pipeline in a background thread.
 fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Context) {
+    let gui_progress = GuiProgress {
+        tx: tx.clone(),
+        ctx: ctx.clone(),
+    };
+
     let log = |msg: &str| {
         let _ = tx.send(WorkerMsg::Log(msg.to_string()));
-        ctx.request_repaint();
-    };
-    let progress = |step: &str, detail: &str| {
-        let _ = tx.send(WorkerMsg::Progress {
-            step: step.to_string(),
-            detail: detail.to_string(),
-        });
         ctx.request_repaint();
     };
     let done = |ok: bool, summary: &str| {
@@ -327,169 +343,37 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         limit.map(|l| format!(", limit {} per SRN", l)).unwrap_or_default()
     ));
 
-    // --- Step 1: Download from EUDAMED ---
-    progress("Download", "Fetching listings from EUDAMED API...");
+    // --- Step 1: Download from EUDAMED (shared module) ---
+    let dl_config = DownloadConfig {
+        srns,
+        limit,
+        ..Default::default()
+    };
 
-    let eudamed_base = "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData";
-    let basic_base = "https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData";
-    let data_dir = PathBuf::from(DATA_DIR);
-    let detail_dir = data_dir.join("detail");
-    let basic_dir = data_dir.join("basic");
-    let log_dir = data_dir.join("log");
-    let _ = std::fs::create_dir_all(&detail_dir);
-    let _ = std::fs::create_dir_all(&basic_dir);
-    let _ = std::fs::create_dir_all(&log_dir);
-    let download_log_path = log_dir.join("download.log");
-
-    // Download listings to get UUIDs with version numbers
-    let uuid_versions = match download_listings(eudamed_base, &srns, limit, &log) {
-        Ok(u) => u,
+    let dl_result = match download::run_download(&dl_config, &gui_progress) {
+        Ok(r) => r,
         Err(e) => {
-            done(false, &format!("Listing download failed: {}", e));
+            done(false, &format!("Download failed: {}", e));
             return;
         }
     };
 
-    if uuid_versions.is_empty() {
+    let uuids = dl_result.all_uuids();
+    if uuids.is_empty() {
         done(false, "No devices found for the given SRN(s)");
         return;
     }
 
-    let uuids: Vec<String> = uuid_versions.iter().map(|(u, _)| u.clone()).collect();
-    log(&format!("{} UUIDs extracted from listings", uuids.len()));
-
-    // Open version DB early for pre-download version check
-    let _ = std::fs::create_dir_all("db");
-    let db_path = Path::new(crate::version_db::VERSION_DB_PATH);
-    let conn = match crate::version_db::open_db(db_path) {
-        Ok(c) => c,
-        Err(e) => {
-            done(false, &format!("Version DB error: {}", e));
-            return;
-        }
-    };
-
-    // Pre-download version check: compare listing versionNumber against version DB
-    // Only download detail/basic for new or changed devices
-    let mut need_download = Vec::new();
-    let mut unchanged = 0;
-    for (uuid, listing_version) in &uuid_versions {
-        let db_version = crate::version_db::get_version(&conn, uuid)
-            .ok()
-            .flatten()
-            .and_then(|r| r.udi_version);
-        if let Some(db_ver) = db_version {
-            if Some(db_ver) == *listing_version {
-                // File on disk and version unchanged — skip download
-                unchanged += 1;
-                continue;
-            }
-        }
-        need_download.push(uuid.clone());
-    }
-
-    log(&format!(
-        "Version check: {} new/changed, {} unchanged (skipping download)",
-        need_download.len(), unchanged
-    ));
-
-    // Shared download log file (thread-safe)
-    let download_log_file = std::sync::Arc::new(std::sync::Mutex::new(
-        std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&download_log_path)
-            .ok(),
-    ));
-
-    // Download detail files (parallel, 10 concurrent)
-    let need_detail: Vec<&String> = need_download.iter()
-        .filter(|uuid| !detail_dir.join(format!("{}.json", uuid)).exists())
-        .collect();
-    let detail_cached = need_download.len() - need_detail.len();
-    progress("Download", &format!("Downloading {} detail files ({} cached)...", need_detail.len(), detail_cached));
-
-    let detail_downloaded = std::sync::atomic::AtomicUsize::new(0);
-    let eudamed_base_owned = eudamed_base.to_string();
-    let detail_dir_owned = detail_dir.clone();
-    let dl_log = download_log_file.clone();
-    rayon::ThreadPoolBuilder::new().num_threads(10).build().unwrap()
-        .install(|| {
-            use rayon::prelude::*;
-            need_detail.par_iter().for_each(|uuid| {
-                let full_url = format!("{}/{}?languageIso2Code=en", eudamed_base_owned, uuid);
-                for attempt in 1..=3 {
-                    match ureq::get(&full_url).call() {
-                        Ok(resp) => {
-                            if let Ok(body) = resp.into_body().read_to_string() {
-                                let path = detail_dir_owned.join(format!("{}.json", uuid));
-                                let _ = std::fs::write(&path, &body);
-                                detail_downloaded.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                                if let Ok(mut guard) = dl_log.lock() {
-                                    if let Some(ref mut f) = *guard {
-                                        let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
-                                        let _ = writeln!(f, "{} detail {}.json", ts, uuid);
-                                    }
-                                }
-                            }
-                            return;
-                        }
-                        Err(_) if attempt < 3 => {
-                            std::thread::sleep(std::time::Duration::from_secs(attempt * 2));
-                        }
-                        Err(_) => {}
-                    }
-                }
-            });
-        });
-    let detail_downloaded = detail_downloaded.load(std::sync::atomic::Ordering::Relaxed);
-    log(&format!("Details: {} downloaded, {} cached -> {}", detail_downloaded, detail_cached, detail_dir.display()));
-
-    // Download Basic UDI-DI files (parallel, 10 concurrent)
-    let need_basic: Vec<&String> = need_download.iter()
-        .filter(|uuid| !basic_dir.join(format!("{}.json", uuid)).exists())
-        .collect();
-    let basic_cached = need_download.len() - need_basic.len();
-    progress("Download", &format!("Downloading {} Basic UDI-DI files ({} cached)...", need_basic.len(), basic_cached));
-
-    let basic_downloaded = std::sync::atomic::AtomicUsize::new(0);
-    let basic_base_owned = basic_base.to_string();
-    let basic_dir_owned = basic_dir.clone();
-    let dl_log2 = download_log_file.clone();
-    rayon::ThreadPoolBuilder::new().num_threads(10).build().unwrap()
-        .install(|| {
-            use rayon::prelude::*;
-            need_basic.par_iter().for_each(|uuid| {
-                let full_url = format!("{}/{}?languageIso2Code=en", basic_base_owned, uuid);
-                for attempt in 1..=3 {
-                    match ureq::get(&full_url).call() {
-                        Ok(resp) => {
-                            if let Ok(body) = resp.into_body().read_to_string() {
-                                let path = basic_dir_owned.join(format!("{}.json", uuid));
-                                let _ = std::fs::write(&path, &body);
-                                if let Ok(mut guard) = dl_log2.lock() {
-                                    if let Some(ref mut f) = *guard {
-                                        let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
-                                        let _ = writeln!(f, "{} basic {}.json", ts, uuid);
-                                    }
-                                }
-                                basic_downloaded.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                            }
-                            return;
-                        }
-                        Err(_) if attempt < 3 => {
-                            std::thread::sleep(std::time::Duration::from_secs(attempt * 2));
-                        }
-                        Err(_) => {}
-                    }
-                }
-            });
-        });
-    let basic_downloaded = basic_downloaded.load(std::sync::atomic::Ordering::Relaxed);
-    log(&format!("Basic UDI-DI: {} downloaded, {} cached -> {}", basic_downloaded, basic_cached, basic_dir.display()));
-
     // --- Step 2: Convert to firstbase JSON ---
-    progress("Convert", "Converting EUDAMED JSON to GS1 firstbase format...");
+    let _ = tx.send(WorkerMsg::Progress {
+        step: "Convert".into(),
+        detail: "Converting EUDAMED JSON to GS1 firstbase format...".into(),
+    });
+    ctx.request_repaint();
+
+    let data_dir = PathBuf::from(download::DEFAULT_DATA_DIR);
+    let detail_dir = data_dir.join("detail");
+    let basic_dir = data_dir.join("basic");
 
     let config_path = Path::new("config.toml");
     let config = match crate::config::load_config(config_path) {
@@ -500,16 +384,13 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         }
     };
 
-    // Load Basic UDI-DI cache
     let basic_udi_cache = crate::load_basic_udi_cache(&basic_dir);
     log(&format!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len()));
 
     let output_dir = Path::new("firstbase_json");
     let _ = std::fs::create_dir_all(output_dir);
 
-    // Open version tracking DB
     let db_path = Path::new(crate::version_db::VERSION_DB_PATH);
-    let _ = std::fs::create_dir_all("db");
     let conn = match crate::version_db::open_db(db_path) {
         Ok(c) => c,
         Err(e) => {
@@ -534,7 +415,6 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             Err(_) => continue,
         };
 
-        // Version tracking
         let mut version_rec = crate::version_db::extract_detail_versions(&json_content);
         let budi_cache_path = basic_dir.join(format!("{}.json", uuid));
         if let Ok(budi_json) = std::fs::read_to_string(&budi_cache_path) {
@@ -552,7 +432,6 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             continue;
         }
 
-        // Parse and convert
         match crate::api_detail::parse_api_detail(&json_content) {
             Ok(detail) => {
                 let basic_udi = basic_udi_cache.get(uuid);
@@ -607,7 +486,11 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         return;
     }
 
-    progress("Push", "Pushing to GS1 firstbase Catalogue Item API...");
+    let _ = tx.send(WorkerMsg::Progress {
+        step: "Push".into(),
+        detail: "Pushing to GS1 firstbase Catalogue Item API...".into(),
+    });
+    ctx.request_repaint();
     log("Push functionality uses push_to_firstbase.sh");
     log(&format!(
         "Run: ./push_to_firstbase.sh {}",
@@ -618,88 +501,6 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         "Pipeline complete. {} downloaded, {} converted. Run push_to_firstbase.sh to publish.",
         uuids.len(), converted
     ));
-}
-
-/// Download EUDAMED listings and extract UUIDs with version numbers.
-fn download_listings(
-    base_url: &str,
-    srns: &[String],
-    limit: Option<usize>,
-    log: &dyn Fn(&str),
-) -> anyhow::Result<Vec<(String, Option<u32>)>> {
-    let mut all_entries: Vec<(String, Option<u32>)> = Vec::new();
-    let page_size = 300;
-
-    for srn in srns {
-        log(&format!("Downloading listing for SRN {}...", srn));
-        let mut page = 0;
-        let mut srn_count = 0;
-
-        loop {
-            let url = format!(
-                "{}?page={}&pageSize={}&srn={}&iso2Code=en&languageIso2Code=en",
-                base_url, page, page_size, srn
-            );
-
-            let resp = ureq::get(&url).call()?;
-            let body: String = resp.into_body().read_to_string()?;
-
-            let json: serde_json::Value = serde_json::from_str(&body)?;
-            let content = json.get("content").and_then(|c| c.as_array());
-
-            if let Some(items) = content {
-                if items.is_empty() {
-                    break;
-                }
-
-                for item in items {
-                    if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
-                        let version = item.get("versionNumber")
-                            .and_then(|v| v.as_u64())
-                            .map(|v| v as u32);
-                        all_entries.push((uuid.to_string(), version));
-                        srn_count += 1;
-
-                        if let Some(lim) = limit {
-                            if srn_count >= lim {
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if let Some(lim) = limit {
-                    if srn_count >= lim {
-                        break;
-                    }
-                }
-
-                let total_pages = json.get("totalPages").and_then(|t| t.as_u64()).unwrap_or(1);
-                page += 1;
-                if page >= total_pages as usize {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
-        log(&format!("  SRN {}: {} devices", srn, srn_count));
-    }
-
-    // Deduplicate by UUID (keep highest version)
-    all_entries.sort_by(|a, b| a.0.cmp(&b.0));
-    all_entries.dedup_by(|a, b| {
-        if a.0 == b.0 {
-            // Keep the higher version in b
-            if a.1 > b.1 { b.1 = a.1; }
-            true
-        } else {
-            false
-        }
-    });
-
-    Ok(all_entries)
 }
 
 /// Load the embedded app icon as an `egui::IconData`.

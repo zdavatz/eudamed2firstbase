@@ -14,6 +14,9 @@ EUDAMED to GS1 firstbase JSON converter. Five input modes: DTX PullResponse XML,
 cargo build
 cargo run                                            # GUI mode (default): cross-platform egui window
 cargo run gui                                        # GUI mode (explicit)
+cargo run download --srn DE-MF-000017808             # Download from EUDAMED API (replaces download.sh)
+cargo run download --srn SRN1 SRN2 --50              # Multiple SRNs, limit 50 per SRN
+cargo run download --srn SRN1 --convert              # Download + auto-convert to firstbase JSON
 cargo run xml                                        # XML mode: xml/ -> firstbase_json/
 cargo run ndjson                                     # API listing mode: ndjson/ -> firstbase_json/
 cargo run detail <details.ndjson> [listing.ndjson]   # API detail mode with optional listing merge
@@ -38,7 +41,8 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 
 ## Architecture
 
-- **gui.rs**: Cross-platform GUI (egui/eframe). SRN input, credentials (GS1 firstbase email/password, provider GLN, publish-to GLN), dry run toggle, one-click pipeline (download listings → pre-download version check → parallel detail/basic download → convert with version tracking). Pre-download version check compares listing `versionNumber` against `udi_version` in version DB — unchanged devices skip download entirely. Settings auto-saved to `settings.json` on every change. Worker thread communicates via `mpsc::channel`. Parallel downloads (10 threads) via rayon with 3 retries. Download log written to `eudamed_json/log/download.log` (same as `download.sh`). App icon embedded at compile time from `assets/icon_256x256.png`.
+- **download.rs**: Shared download module used by both GUI and CLI. `DownloadProgress` trait enables different progress reporting (GUI → mpsc channel, CLI → stderr). `run_download()` orchestrates the full pipeline: listing pagination with SRN filter, pre-download version check (compares listing `versionNumber` against `udi_version` in version DB — unchanged devices skip download entirely), parallel detail/basic download (10 threads, 3 retries, exponential backoff), completeness check with retry (5 retries), download log to `eudamed_json/log/download.log`. `DownloadConfig` struct for SRNs, limit, parallelism. `DownloadResult` returns all UUIDs, counts, and which needed downloading.
+- **gui.rs**: Cross-platform GUI (egui/eframe). SRN input, credentials (GS1 firstbase email/password, provider GLN, publish-to GLN), dry run toggle, one-click pipeline using shared `download::run_download()` + convert with version tracking. `GuiProgress` adapter forwards `DownloadEvent` to `WorkerMsg` via mpsc channel. Settings auto-saved to `settings.json` on every change. App icon embedded at compile time from `assets/icon_256x256.png`.
 - **build.rs**: Windows icon embedding via `winresource` (compiles `assets/icon.ico` into executable).
 - **bundle_macos.sh**: macOS `.app` bundle creation (binary + icon.icns + Info.plist). Output: `target/release/eudamed2firstbase.app`.
 - **eudamed.rs**: XML parsing using `roxmltree` DOM traversal (not serde). Switched from `quick-xml` serde due to element ordering issues. Uses `local_name()` to handle namespace prefixes transparently.

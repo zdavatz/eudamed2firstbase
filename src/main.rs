@@ -1,6 +1,7 @@
 mod api_detail;
 mod api_json;
 mod config;
+mod download;
 mod eudamed;
 mod eudamed_json;
 mod firstbase;
@@ -45,6 +46,41 @@ fn main() -> Result<()> {
         .context("Failed to load config.toml")?;
 
     match args.get(1).map(|s| s.as_str()) {
+        Some("download") => {
+            // Download from EUDAMED API (replaces download.sh)
+            let (srns, limit) = parse_download_args(&args[2..]);
+            if srns.is_empty() && limit.is_none() {
+                eprintln!("Usage: eudamed2firstbase download [--N] [--srn <SRN> ...]");
+                eprintln!("  --N              Number of products per SRN (e.g. --10, --100)");
+                eprintln!("  --srn <SRN> ...  Filter by manufacturer/AR SRN(s)");
+                std::process::exit(1);
+            }
+            let dl_config = download::DownloadConfig {
+                srns,
+                limit,
+                ..Default::default()
+            };
+            let progress = download::StderrProgress;
+            let result = download::run_download(&dl_config, &progress)?;
+            if result.uuid_versions.is_empty() {
+                eprintln!("No devices found.");
+            } else {
+                eprintln!(
+                    "\nDone: {} UUIDs, {} new/changed, {} unchanged, {} detail downloaded, {} basic downloaded",
+                    result.uuid_versions.len(),
+                    result.need_download.len(),
+                    result.unchanged_skipped,
+                    result.detail_downloaded,
+                    result.basic_downloaded,
+                );
+            }
+            // Auto-convert if --convert flag present
+            if args.iter().any(|a| a == "--convert") {
+                eprintln!("\n=== Converting to firstbase JSON ===");
+                process_eudamed_json_dir(Path::new("eudamed_json/detail"), &config)?;
+            }
+            Ok(())
+        }
         Some("ndjson") => {
             // Process NDJSON file(s) from ndjson/ directory (listing format)
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("ndjson");
@@ -108,6 +144,29 @@ fn main() -> Result<()> {
             }
         }
     }
+}
+
+fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>) {
+    let mut srns = Vec::new();
+    let mut limit = None;
+    let mut i = 0;
+
+    while i < args.len() {
+        if args[i] == "--srn" {
+            i += 1;
+            while i < args.len() && !args[i].starts_with("--") {
+                srns.push(args[i].clone());
+                i += 1;
+            }
+        } else if args[i].starts_with("--") && args[i][2..].parse::<usize>().is_ok() {
+            limit = Some(args[i][2..].parse().unwrap());
+            i += 1;
+        } else {
+            i += 1;
+        }
+    }
+
+    (srns, limit)
 }
 
 fn process_xml_dir(config: &config::Config) -> Result<()> {
