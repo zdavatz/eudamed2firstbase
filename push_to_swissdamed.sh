@@ -2,7 +2,7 @@
 # push_to_swissdamed.sh — Push EUDAMED devices to Swissdamed M2M API
 #
 # Usage:
-#   ./push_to_swissdamed.sh                          # push all eudamed_json/processed/ files
+#   ./push_to_swissdamed.sh                          # push all eudamed_json/detail/ files
 #   ./push_to_swissdamed.sh --playground              # use playground environment (default)
 #   ./push_to_swissdamed.sh --production              # use production environment
 #   ./push_to_swissdamed.sh --status <correlationId>  # check submit status
@@ -21,8 +21,8 @@ PLAYGROUND_BASE="https://playground.swissdamed.ch"
 PRODUCTION_BASE=""  # TODO: production URL not yet published
 API_BASE="$PLAYGROUND_BASE"
 
-INPUT_DIR="eudamed_json/processed"
-BASIC_UDI_CACHE="/tmp/basic_udi_cache"
+INPUT_DIR="eudamed_json/detail"
+BASIC_UDI_CACHE="eudamed_json/basic"
 DB_PATH="db/version_tracking.db"
 
 CLIENT_ID="${SWISSDAMED_CLIENT_ID:?Set SWISSDAMED_CLIENT_ID in ~/.bashrc}"

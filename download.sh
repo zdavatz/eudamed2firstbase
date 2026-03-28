@@ -50,7 +50,11 @@ USER_AGENT="Mozilla/5.0 (compatible; EUDAMED-downloader/2.0)"
 PARALLEL=10
 PAGE_SIZE=300
 EUDAMED_JSON_DIR="eudamed_json"
-mkdir -p "$EUDAMED_JSON_DIR"
+DETAIL_DIR="$EUDAMED_JSON_DIR/detail"
+BASIC_DIR="$EUDAMED_JSON_DIR/basic"
+LOG_DIR="$EUDAMED_JSON_DIR/log"
+DOWNLOAD_LOG="$LOG_DIR/download.log"
+mkdir -p "$DETAIL_DIR" "$BASIC_DIR" "$LOG_DIR"
 
 # Temp files for listing/UUIDs (not persisted)
 LISTING=$(mktemp /tmp/eudamed_listing_XXXXXX.ndjson)
@@ -141,14 +145,14 @@ UUID_COUNT=$(wc -l < "$UUIDS")
 echo "  $UUID_COUNT UUIDs extracted"
 
 # --- Step 3: Download details as individual JSON files ---
-echo "=== Step 3: Downloading details to $EUDAMED_JSON_DIR/ ($PARALLEL parallel) ==="
+echo "=== Step 3: Downloading details to $DETAIL_DIR/ ($PARALLEL parallel) ==="
 TMPDIR_DL=$(mktemp -d)
 
 # Resume support: count already downloaded files
 NEED_DETAIL=0
 HAVE_DETAIL=0
 while IFS= read -r uuid; do
-    if [[ -f "$EUDAMED_JSON_DIR/$uuid.json" && -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+    if [[ -f "$DETAIL_DIR/$uuid.json" && -s "$DETAIL_DIR/$uuid.json" ]]; then
         HAVE_DETAIL=$((HAVE_DETAIL + 1))
     else
         NEED_DETAIL=$((NEED_DETAIL + 1))
@@ -160,10 +164,10 @@ if [[ $HAVE_DETAIL -gt 0 ]]; then
 fi
 
 if [[ $NEED_DETAIL -gt 0 ]]; then
-    # Create fetch script — saves directly to eudamed_json/
+    # Create fetch script — saves to eudamed_json/detail/ and logs to download.log
     cat > "$TMPDIR_DL/fetch.sh" << 'FETCHEOF'
 #!/bin/bash
-uuid="$1"; outdir="$2"; base_url="$3"; ua="$4"
+uuid="$1"; outdir="$2"; base_url="$3"; ua="$4"; logfile="$5"
 [[ -f "$outdir/$uuid.json" && -s "$outdir/$uuid.json" ]] && exit 0
 url="${base_url}/${uuid}?languageIso2Code=en"
 for attempt in 1 2 3; do
@@ -172,6 +176,7 @@ for attempt in 1 2 3; do
 done
 if [[ -n "${result:-}" ]]; then
     echo "$result" | jq '.' > "$outdir/$uuid.json" 2>/dev/null
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') detail $uuid.json" >> "$logfile"
 fi
 FETCHEOF
     chmod +x "$TMPDIR_DL/fetch.sh"
@@ -182,7 +187,7 @@ FETCHEOF
     mkdir -p "$BATCH_DIR"
     # Only fetch UUIDs not already downloaded
     while IFS= read -r uuid; do
-        if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+        if [[ ! -f "$DETAIL_DIR/$uuid.json" || ! -s "$DETAIL_DIR/$uuid.json" ]]; then
             echo "$uuid"
         fi
     done < "$UUIDS" | split -l "$BATCH_SIZE" -d -a 4 - "$BATCH_DIR/batch_"
@@ -191,26 +196,24 @@ FETCHEOF
     for batch_file in "$BATCH_DIR"/batch_*; do
         [[ -f "$batch_file" ]] || continue
         batch_count=$(wc -l < "$batch_file")
-        xargs -P "$PARALLEL" -I{} "$TMPDIR_DL/fetch.sh" {} "$EUDAMED_JSON_DIR" "$BASE_URL" "$USER_AGENT" < "$batch_file"
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_DL/fetch.sh" {} "$DETAIL_DIR" "$BASE_URL" "$USER_AGENT" "$DOWNLOAD_LOG" < "$batch_file"
         PROCESSED=$((PROCESSED + batch_count))
         echo "  Progress: $((HAVE_DETAIL + PROCESSED)) / $UUID_COUNT"
     done
 fi
 rm -rf "$TMPDIR_DL"
 
-DETAIL_COUNT=$(find "$EUDAMED_JSON_DIR" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
-echo "  Details: $DETAIL_COUNT files in $EUDAMED_JSON_DIR/"
+DETAIL_COUNT=$(find "$DETAIL_DIR" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
+echo "  Details: $DETAIL_COUNT files in $DETAIL_DIR/"
 
 # --- Step 3b: Download Basic UDI-DI data (MDR mandatory fields) ---
 BASIC_UDI_URL="https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData"
-BASIC_UDI_CACHE="/tmp/basic_udi_cache"
-mkdir -p "$BASIC_UDI_CACHE"
 
 # Count how many UUIDs still need Basic UDI-DI data
 NEED_BASIC=0
 HAVE_BASIC=0
 while IFS= read -r uuid; do
-    if [[ -f "$BASIC_UDI_CACHE/$uuid.json" && -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+    if [[ -f "$BASIC_DIR/$uuid.json" && -s "$BASIC_DIR/$uuid.json" ]]; then
         HAVE_BASIC=$((HAVE_BASIC + 1))
     else
         NEED_BASIC=$((NEED_BASIC + 1))
@@ -222,10 +225,10 @@ echo "=== Step 3b: Downloading Basic UDI-DI data ($NEED_BASIC needed, $HAVE_BASI
 if [[ $NEED_BASIC -gt 0 ]]; then
     TMPDIR_BDL=$(mktemp -d)
 
-    # Create fetch script for Basic UDI-DI
+    # Create fetch script for Basic UDI-DI with logging
     cat > "$TMPDIR_BDL/fetch_basic.sh" << 'FETCHEOF'
 #!/bin/bash
-uuid="$1"; cache_dir="$2"; base_url="$3"; ua="$4"
+uuid="$1"; cache_dir="$2"; base_url="$3"; ua="$4"; logfile="$5"
 [[ -f "$cache_dir/$uuid.json" && -s "$cache_dir/$uuid.json" ]] && exit 0
 url="${base_url}/${uuid}?languageIso2Code=en"
 for attempt in 1 2 3; do
@@ -234,6 +237,7 @@ for attempt in 1 2 3; do
 done
 if [[ -n "${result:-}" ]]; then
     echo "$result" > "$cache_dir/$uuid.json" 2>/dev/null
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') basic $uuid.json" >> "$logfile"
 fi
 FETCHEOF
     chmod +x "$TMPDIR_BDL/fetch_basic.sh"
@@ -243,7 +247,7 @@ FETCHEOF
     mkdir -p "$BATCH_DIR"
     # Only fetch UUIDs not already cached
     while IFS= read -r uuid; do
-        if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+        if [[ ! -f "$BASIC_DIR/$uuid.json" || ! -s "$BASIC_DIR/$uuid.json" ]]; then
             echo "$uuid"
         fi
     done < "$UUIDS" | split -l 50 -d -a 4 - "$BATCH_DIR/batch_"
@@ -252,15 +256,15 @@ FETCHEOF
     for batch_file in "$BATCH_DIR"/batch_*; do
         [[ -f "$batch_file" ]] || continue
         batch_count=$(wc -l < "$batch_file")
-        xargs -P "$PARALLEL" -I{} "$TMPDIR_BDL/fetch_basic.sh" {} "$BASIC_UDI_CACHE" "$BASIC_UDI_URL" "$USER_AGENT" < "$batch_file"
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_BDL/fetch_basic.sh" {} "$BASIC_DIR" "$BASIC_UDI_URL" "$USER_AGENT" "$DOWNLOAD_LOG" < "$batch_file"
         BASIC_PROCESSED=$((BASIC_PROCESSED + batch_count))
         echo "  Basic UDI-DI progress: $BASIC_PROCESSED / $NEED_BASIC"
     done
     rm -rf "$TMPDIR_BDL"
 fi
 
-BASIC_TOTAL=$(find "$BASIC_UDI_CACHE" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
-echo "  Basic UDI-DI cache: $BASIC_TOTAL files in $BASIC_UDI_CACHE/"
+BASIC_TOTAL=$(find "$BASIC_DIR" -maxdepth 1 -name '*.json' -type f | wc -l | tr -d ' ')
+echo "  Basic UDI-DI: $BASIC_TOTAL files in $BASIC_DIR/"
 
 # --- Step 3c: Completeness check — verify all 3 data levels exist ---
 echo "=== Step 3c: Completeness check ==="
@@ -269,11 +273,11 @@ MISSING_BASIC=0
 MISSING_DETAIL_UUIDS=""
 MISSING_BASIC_UUIDS=""
 while IFS= read -r uuid; do
-    if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+    if [[ ! -f "$DETAIL_DIR/$uuid.json" || ! -s "$DETAIL_DIR/$uuid.json" ]]; then
         MISSING_DETAIL=$((MISSING_DETAIL + 1))
         [[ $MISSING_DETAIL -le 5 ]] && MISSING_DETAIL_UUIDS="$MISSING_DETAIL_UUIDS    $uuid (Detail)\n"
     fi
-    if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+    if [[ ! -f "$BASIC_DIR/$uuid.json" || ! -s "$BASIC_DIR/$uuid.json" ]]; then
         MISSING_BASIC=$((MISSING_BASIC + 1))
         [[ $MISSING_BASIC -le 5 ]] && MISSING_BASIC_UUIDS="$MISSING_BASIC_UUIDS    $uuid (Basic UDI-DI)\n"
     fi
@@ -293,7 +297,7 @@ if [[ $MISSING_DETAIL -gt 0 || $MISSING_BASIC -gt 0 ]]; then
         TMPDIR_RETRY=$(mktemp -d)
         RETRY_LIST="$TMPDIR_RETRY/retry.txt"
         while IFS= read -r uuid; do
-            if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+            if [[ ! -f "$BASIC_DIR/$uuid.json" || ! -s "$BASIC_DIR/$uuid.json" ]]; then
                 echo "$uuid"
             fi
         done < "$UUIDS" > "$RETRY_LIST"
@@ -312,13 +316,13 @@ if [[ -n "${result:-}" ]]; then
 fi
 FETCHEOF
         chmod +x "$TMPDIR_RETRY/fetch_basic.sh"
-        xargs -P "$PARALLEL" -I{} "$TMPDIR_RETRY/fetch_basic.sh" {} "$BASIC_UDI_CACHE" "$BASIC_UDI_URL" "$USER_AGENT" < "$RETRY_LIST"
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_RETRY/fetch_basic.sh" {} "$BASIC_DIR" "$BASIC_UDI_URL" "$USER_AGENT" < "$RETRY_LIST"
         rm -rf "$TMPDIR_RETRY"
 
         # Re-check
         STILL_MISSING=0
         while IFS= read -r uuid; do
-            if [[ ! -f "$BASIC_UDI_CACHE/$uuid.json" || ! -s "$BASIC_UDI_CACHE/$uuid.json" ]]; then
+            if [[ ! -f "$BASIC_DIR/$uuid.json" || ! -s "$BASIC_DIR/$uuid.json" ]]; then
                 STILL_MISSING=$((STILL_MISSING + 1))
             fi
         done < "$UUIDS"
@@ -335,7 +339,7 @@ FETCHEOF
         TMPDIR_RETRY=$(mktemp -d)
         RETRY_LIST="$TMPDIR_RETRY/retry.txt"
         while IFS= read -r uuid; do
-            if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+            if [[ ! -f "$DETAIL_DIR/$uuid.json" || ! -s "$DETAIL_DIR/$uuid.json" ]]; then
                 echo "$uuid"
             fi
         done < "$UUIDS" > "$RETRY_LIST"
@@ -354,12 +358,12 @@ if [[ -n "${result:-}" ]]; then
 fi
 FETCHEOF
         chmod +x "$TMPDIR_RETRY/fetch_detail.sh"
-        xargs -P "$PARALLEL" -I{} "$TMPDIR_RETRY/fetch_detail.sh" {} "$EUDAMED_JSON_DIR" "$BASE_URL" "$USER_AGENT" < "$RETRY_LIST"
+        xargs -P "$PARALLEL" -I{} "$TMPDIR_RETRY/fetch_detail.sh" {} "$DETAIL_DIR" "$BASE_URL" "$USER_AGENT" < "$RETRY_LIST"
         rm -rf "$TMPDIR_RETRY"
 
         STILL_MISSING=0
         while IFS= read -r uuid; do
-            if [[ ! -f "$EUDAMED_JSON_DIR/$uuid.json" || ! -s "$EUDAMED_JSON_DIR/$uuid.json" ]]; then
+            if [[ ! -f "$DETAIL_DIR/$uuid.json" || ! -s "$DETAIL_DIR/$uuid.json" ]]; then
                 STILL_MISSING=$((STILL_MISSING + 1))
             fi
         done < "$UUIDS"

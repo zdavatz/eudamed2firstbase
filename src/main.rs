@@ -22,7 +22,7 @@ use std::io::BufRead;
 use std::path::Path;
 
 /// Default directory for cached Basic UDI-DI data
-const BASIC_UDI_CACHE_DIR: &str = "/tmp/basic_udi_cache";
+const BASIC_UDI_CACHE_DIR: &str = "eudamed_json/basic";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
         }
         Some("eudamed_json") => {
             // Process individual EUDAMED JSON files (one-to-one)
-            let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json");
+            let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json/detail");
             process_eudamed_json_dir(Path::new(input_dir), &config)
         }
         Some("scan") => {
@@ -632,17 +632,7 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
         }
     }
 
-    // Move successfully processed files to eudamed_json/processed/
-    if !processed_files.is_empty() {
-        std::fs::create_dir_all(&processed_dir)?;
-        for path in &processed_files {
-            let dest = processed_dir.join(path.file_name().unwrap());
-            if let Err(e) = std::fs::rename(path, &dest) {
-                eprintln!("  Warning: could not move {} to processed/: {}", path.display(), e);
-            }
-        }
-        println!("Moved {} file(s) to {}", processed_files.len(), processed_dir.display());
-    }
+    // Files stay in eudamed_json/detail/ — version DB tracks what's been processed
 
     // Print change summary
     if !change_summary.is_empty() {
