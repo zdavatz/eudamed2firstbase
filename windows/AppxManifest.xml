@@ -6,14 +6,14 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="ywesee.eudamed2firstbase"
-    Publisher="CN=ywesee"
-    Version="0.1.0.0"
+    Name="yweseeGmbH.Eudamed2Firstbase"
+    Publisher="CN=3F71A827-F362-4FF2-A406-EA63C19EA85B"
+    Version="1.0.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>eudamed2firstbase</DisplayName>
-    <PublisherDisplayName>ywesee</PublisherDisplayName>
+    <DisplayName>Eudamed2Firstbase</DisplayName>
+    <PublisherDisplayName>ywesee GmbH</PublisherDisplayName>
     <Logo>assets\StoreLogo.png</Logo>
     <Description>EUDAMED to GS1 firstbase and Swissdamed converter for medical device data</Description>
   </Properties>
