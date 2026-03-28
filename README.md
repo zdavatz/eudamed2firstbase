@@ -15,7 +15,8 @@ The GUI provides:
 - Limit per SRN option
 - Dry run mode (download & convert only, no push)
 - GS1 firstbase credentials (collapsible: email, password, provider GLN, publish-to GLN)
-- One-click pipeline: Download listings → Download details (10 parallel) → Download Basic UDI-DI (10 parallel) → Convert to firstbase JSON (with version tracking)
+- One-click pipeline: Download listings → Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (10 parallel, 3 retries) → Download Basic UDI-DI (10 parallel, 3 retries) → Convert to firstbase JSON (with version tracking)
+- Download log written to `eudamed_json/log/download.log` (same format as `download.sh`)
 - Live scrollable log output with file save paths
 - Persistent settings across restarts (`settings.json`)
 - Auto-saved logs to `logs/`

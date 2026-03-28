@@ -38,7 +38,7 @@ Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `te
 
 ## Architecture
 
-- **gui.rs**: Cross-platform GUI (egui/eframe). SRN input, credentials (GS1 firstbase email/password, provider GLN, publish-to GLN), dry run toggle, one-click pipeline (download listings → parallel detail/basic download → convert with version tracking). Settings auto-saved to `settings.json` on every change. Worker thread communicates via `mpsc::channel`. Parallel downloads (10 threads) via rayon. App icon embedded at compile time from `assets/icon_256x256.png`.
+- **gui.rs**: Cross-platform GUI (egui/eframe). SRN input, credentials (GS1 firstbase email/password, provider GLN, publish-to GLN), dry run toggle, one-click pipeline (download listings → pre-download version check → parallel detail/basic download → convert with version tracking). Pre-download version check compares listing `versionNumber` against `udi_version` in version DB — unchanged devices skip download entirely. Settings auto-saved to `settings.json` on every change. Worker thread communicates via `mpsc::channel`. Parallel downloads (10 threads) via rayon with 3 retries. Download log written to `eudamed_json/log/download.log` (same as `download.sh`). App icon embedded at compile time from `assets/icon_256x256.png`.
 - **build.rs**: Windows icon embedding via `winresource` (compiles `assets/icon.ico` into executable).
 - **bundle_macos.sh**: macOS `.app` bundle creation (binary + icon.icns + Info.plist). Output: `target/release/eudamed2firstbase.app`.
 - **eudamed.rs**: XML parsing using `roxmltree` DOM traversal (not serde). Switched from `quick-xml` serde due to element ordering issues. Uses `local_name()` to handle namespace prefixes transparently.

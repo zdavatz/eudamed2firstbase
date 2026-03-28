@@ -335,11 +335,14 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     let data_dir = PathBuf::from(DATA_DIR);
     let detail_dir = data_dir.join("detail");
     let basic_dir = data_dir.join("basic");
+    let log_dir = data_dir.join("log");
     let _ = std::fs::create_dir_all(&detail_dir);
     let _ = std::fs::create_dir_all(&basic_dir);
+    let _ = std::fs::create_dir_all(&log_dir);
+    let download_log_path = log_dir.join("download.log");
 
-    // Download listings to get UUIDs
-    let uuids = match download_listings(eudamed_base, &srns, limit, &log) {
+    // Download listings to get UUIDs with version numbers
+    let uuid_versions = match download_listings(eudamed_base, &srns, limit, &log) {
         Ok(u) => u,
         Err(e) => {
             done(false, &format!("Listing download failed: {}", e));
@@ -347,23 +350,69 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         }
     };
 
-    if uuids.is_empty() {
+    if uuid_versions.is_empty() {
         done(false, "No devices found for the given SRN(s)");
         return;
     }
 
+    let uuids: Vec<String> = uuid_versions.iter().map(|(u, _)| u.clone()).collect();
     log(&format!("{} UUIDs extracted from listings", uuids.len()));
 
+    // Open version DB early for pre-download version check
+    let _ = std::fs::create_dir_all("db");
+    let db_path = Path::new(crate::version_db::VERSION_DB_PATH);
+    let conn = match crate::version_db::open_db(db_path) {
+        Ok(c) => c,
+        Err(e) => {
+            done(false, &format!("Version DB error: {}", e));
+            return;
+        }
+    };
+
+    // Pre-download version check: compare listing versionNumber against version DB
+    // Only download detail/basic for new or changed devices
+    let mut need_download = Vec::new();
+    let mut unchanged = 0;
+    for (uuid, listing_version) in &uuid_versions {
+        let db_version = crate::version_db::get_version(&conn, uuid)
+            .ok()
+            .flatten()
+            .and_then(|r| r.udi_version);
+        if let Some(db_ver) = db_version {
+            if Some(db_ver) == *listing_version {
+                // File on disk and version unchanged — skip download
+                unchanged += 1;
+                continue;
+            }
+        }
+        need_download.push(uuid.clone());
+    }
+
+    log(&format!(
+        "Version check: {} new/changed, {} unchanged (skipping download)",
+        need_download.len(), unchanged
+    ));
+
+    // Shared download log file (thread-safe)
+    let download_log_file = std::sync::Arc::new(std::sync::Mutex::new(
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&download_log_path)
+            .ok(),
+    ));
+
     // Download detail files (parallel, 10 concurrent)
-    let need_detail: Vec<&String> = uuids.iter()
+    let need_detail: Vec<&String> = need_download.iter()
         .filter(|uuid| !detail_dir.join(format!("{}.json", uuid)).exists())
         .collect();
-    let detail_cached = uuids.len() - need_detail.len();
+    let detail_cached = need_download.len() - need_detail.len();
     progress("Download", &format!("Downloading {} detail files ({} cached)...", need_detail.len(), detail_cached));
 
     let detail_downloaded = std::sync::atomic::AtomicUsize::new(0);
     let eudamed_base_owned = eudamed_base.to_string();
     let detail_dir_owned = detail_dir.clone();
+    let dl_log = download_log_file.clone();
     rayon::ThreadPoolBuilder::new().num_threads(10).build().unwrap()
         .install(|| {
             use rayon::prelude::*;
@@ -376,6 +425,12 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                                 let path = detail_dir_owned.join(format!("{}.json", uuid));
                                 let _ = std::fs::write(&path, &body);
                                 detail_downloaded.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                if let Ok(mut guard) = dl_log.lock() {
+                                    if let Some(ref mut f) = *guard {
+                                        let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
+                                        let _ = writeln!(f, "{} detail {}.json", ts, uuid);
+                                    }
+                                }
                             }
                             return;
                         }
@@ -391,15 +446,16 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     log(&format!("Details: {} downloaded, {} cached -> {}", detail_downloaded, detail_cached, detail_dir.display()));
 
     // Download Basic UDI-DI files (parallel, 10 concurrent)
-    let need_basic: Vec<&String> = uuids.iter()
+    let need_basic: Vec<&String> = need_download.iter()
         .filter(|uuid| !basic_dir.join(format!("{}.json", uuid)).exists())
         .collect();
-    let basic_cached = uuids.len() - need_basic.len();
+    let basic_cached = need_download.len() - need_basic.len();
     progress("Download", &format!("Downloading {} Basic UDI-DI files ({} cached)...", need_basic.len(), basic_cached));
 
     let basic_downloaded = std::sync::atomic::AtomicUsize::new(0);
     let basic_base_owned = basic_base.to_string();
     let basic_dir_owned = basic_dir.clone();
+    let dl_log2 = download_log_file.clone();
     rayon::ThreadPoolBuilder::new().num_threads(10).build().unwrap()
         .install(|| {
             use rayon::prelude::*;
@@ -411,6 +467,12 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                             if let Ok(body) = resp.into_body().read_to_string() {
                                 let path = basic_dir_owned.join(format!("{}.json", uuid));
                                 let _ = std::fs::write(&path, &body);
+                                if let Ok(mut guard) = dl_log2.lock() {
+                                    if let Some(ref mut f) = *guard {
+                                        let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
+                                        let _ = writeln!(f, "{} basic {}.json", ts, uuid);
+                                    }
+                                }
                                 basic_downloaded.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                             }
                             return;
@@ -558,14 +620,14 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     ));
 }
 
-/// Download EUDAMED listings and extract UUIDs.
+/// Download EUDAMED listings and extract UUIDs with version numbers.
 fn download_listings(
     base_url: &str,
     srns: &[String],
     limit: Option<usize>,
     log: &dyn Fn(&str),
-) -> anyhow::Result<Vec<String>> {
-    let mut all_uuids = Vec::new();
+) -> anyhow::Result<Vec<(String, Option<u32>)>> {
+    let mut all_entries: Vec<(String, Option<u32>)> = Vec::new();
     let page_size = 300;
 
     for srn in srns {
@@ -592,7 +654,10 @@ fn download_listings(
 
                 for item in items {
                     if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
-                        all_uuids.push(uuid.to_string());
+                        let version = item.get("versionNumber")
+                            .and_then(|v| v.as_u64())
+                            .map(|v| v as u32);
+                        all_entries.push((uuid.to_string(), version));
                         srn_count += 1;
 
                         if let Some(lim) = limit {
@@ -622,11 +687,19 @@ fn download_listings(
         log(&format!("  SRN {}: {} devices", srn, srn_count));
     }
 
-    // Deduplicate
-    all_uuids.sort();
-    all_uuids.dedup();
+    // Deduplicate by UUID (keep highest version)
+    all_entries.sort_by(|a, b| a.0.cmp(&b.0));
+    all_entries.dedup_by(|a, b| {
+        if a.0 == b.0 {
+            // Keep the higher version in b
+            if a.1 > b.1 { b.1 = a.1; }
+            true
+        } else {
+            false
+        }
+    });
 
-    Ok(all_uuids)
+    Ok(all_entries)
 }
 
 /// Load the embedded app icon as an `egui::IconData`.
