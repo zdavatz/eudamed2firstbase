@@ -497,6 +497,20 @@ Push 26.03.2026: 274 SRNs, 18,007 items → 7,009 ACCEPTED, 1,862 REJECTED. G541
 
 **Note on Target Market:** Pilot runs with TM=097 (Austria). The 097.xxx validation rules (097.038/039/040/020) must remain as errors — they prevent DRIFT before EUDAMED M2M errors are produced. The 756.xxx (Swiss) rules are not yet fully implemented. Only 097.040 has a Swiss equivalent (756.540). A TM=097→756 swap to bypass blocking rules is deferred.
 
+## Screenshots
+
+macOS App Store screenshots (2560×1600 Retina) in `screenshots/`:
+
+| Screenshot | Description |
+|---|---|
+| `screenshot_1_main.png` | Main window — empty state with SRN input |
+| `screenshot_2_running.png` | Download in progress with live log output |
+| `screenshot_3_done.png` | Completed pipeline with success summary |
+| `screenshot_4_swissdamed.png` | Swissdamed target with credentials and dry run |
+| `screenshot_5_firstbase_creds.png` | GS1 firstbase credentials expanded |
+
+Generated via `generate_screenshots.py` (requires Pillow in `.venv`).
+
 ## Dependencies
 
 - `roxmltree` - XML DOM parsing with namespace support

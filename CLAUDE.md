@@ -106,6 +106,10 @@ Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 - **#12 097.054: Non-EU manufacturers missing AR SRN**: 150x. Non-EU manufacturers without Authorised Representative SRN in EUDAMED. No fallback placeholder (unlike EMA/manufacturer SRN).
 - **#13 097.083: medicinalProduct=true without substance data**: 6x. Device flagged as containing medicinal product but no substance details in EUDAMED API.
 
+## Screenshots
+
+macOS App Store screenshots (2560×1600 Retina) generated via `generate_screenshots.py` into `screenshots/`. Requires `.venv` with Pillow. Icon at `assets/icon_256x256.png` (trimmed, no border padding).
+
 ## Reference Files (in maik/)
 
 - `EUDAMED_APP-DTX-000084634.xml` - Input reference
