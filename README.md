@@ -53,10 +53,11 @@ git push origin v0.1.0
 **Sandbox support:** The GUI detects macOS App Sandbox and redirects all file I/O to the container directory (`~/Library/Containers/com.ywesee.eudamed2firstbase/Data/`). Non-sandboxed builds use the current working directory.
 
 **Required GitHub secrets for signing/notarization/store:**
-- macOS: `MACOS_CERTIFICATE`, `MACOS_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`
-- Windows signing: `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`
+- macOS signing: `MACOS_CERTIFICATE`, `MACOS_CERTIFICATE_PASSWORD`, `MACOS_INSTALLER_CERTIFICATE`, `MACOS_INSTALLER_CERTIFICATE_PASSWORD`
+- macOS App Store: `MACOS_PROVISIONING_PROFILE`, `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER_ID`, `APPLE_TEAM_ID`
+- macOS notarization (DMG): `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`
 - Microsoft Store: `MSSTORE_TENANT_ID`, `MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` + variable `MSSTORE_ENABLED=true`
-- Store ID: `9P889JD1XWS2` (yweseeGmbH.Eudamed2Firstbase)
+- App IDs: macOS App Store (Apple ID: 6761303902), Microsoft Store (9P889JD1XWS2, yweseeGmbH.Eudamed2Firstbase)
 
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 
