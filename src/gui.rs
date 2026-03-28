@@ -10,8 +10,12 @@ use eframe::egui;
 
 use crate::download::{self, DownloadConfig, DownloadEvent, DownloadProgress};
 
-const SETTINGS_PATH: &str = "settings.json";
-const LOGS_DIR: &str = "logs";
+fn settings_path() -> PathBuf {
+    download::app_data_dir().join("settings.json")
+}
+fn logs_dir() -> PathBuf {
+    download::app_data_dir().join("logs")
+}
 
 /// Messages from the worker thread to the GUI.
 enum WorkerMsg {
@@ -56,7 +60,7 @@ struct Settings {
 
 impl Settings {
     fn load() -> Self {
-        std::fs::read_to_string(SETTINGS_PATH)
+        std::fs::read_to_string(&settings_path())
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default()
@@ -64,7 +68,7 @@ impl Settings {
 
     fn save(&self) {
         if let Ok(json) = serde_json::to_string_pretty(self) {
-            let _ = std::fs::write(SETTINGS_PATH, json);
+            let _ = std::fs::write(&settings_path(), json);
         }
     }
 }
@@ -123,9 +127,10 @@ impl App {
         if self.log_lines.is_empty() {
             return;
         }
-        let _ = std::fs::create_dir_all(LOGS_DIR);
+        let log_dir = logs_dir();
+        let _ = std::fs::create_dir_all(&log_dir);
         let timestamp = chrono::Local::now().format("%Y-%m-%d_%H%M%S");
-        let path = PathBuf::from(LOGS_DIR).join(format!("{}.log", timestamp));
+        let path = log_dir.join(format!("{}.log", timestamp));
         if let Ok(mut f) = std::fs::File::create(&path) {
             for line in &self.log_lines {
                 let _ = writeln!(f, "{}", line);
@@ -447,8 +452,8 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     let basic_udi_cache = crate::load_basic_udi_cache(&basic_dir);
     log(&format!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len()));
 
-    let db_path = Path::new(crate::version_db::VERSION_DB_PATH);
-    let conn = match crate::version_db::open_db(db_path) {
+    let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+    let conn = match crate::version_db::open_db(&db_path) {
         Ok(c) => c,
         Err(e) => {
             done(false, &format!("Version DB error: {}", e));
@@ -469,8 +474,10 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             });
             ctx.request_repaint();
 
-            let config_path = Path::new("config.toml");
-            let config = match crate::config::load_config(config_path) {
+            let config_path = download::app_data_dir().join("config.toml");
+            // Fall back to current dir if not in container
+            let config_path = if config_path.exists() { config_path } else { PathBuf::from("config.toml") };
+            let config = match crate::config::load_config(&config_path) {
                 Ok(c) => c,
                 Err(e) => {
                     done(false, &format!("Config error: {}", e));
@@ -478,8 +485,8 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 }
             };
 
-            let output_dir = Path::new("firstbase_json");
-            let _ = std::fs::create_dir_all(output_dir);
+            let output_dir = download::app_data_dir().join("firstbase_json");
+            let _ = std::fs::create_dir_all(&output_dir);
 
             for uuid in &uuids {
                 let detail_path = detail_dir.join(format!("{}.json", uuid));
@@ -548,8 +555,8 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             });
             ctx.request_repaint();
 
-            let output_dir = Path::new("swissdamed_json");
-            let _ = std::fs::create_dir_all(output_dir);
+            let output_dir = download::app_data_dir().join("swissdamed_json");
+            let _ = std::fs::create_dir_all(&output_dir);
 
             for uuid in &uuids {
                 let detail_path = detail_dir.join(format!("{}.json", uuid));

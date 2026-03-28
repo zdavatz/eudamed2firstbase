@@ -50,6 +50,8 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
+**Sandbox support:** The GUI detects macOS App Sandbox and redirects all file I/O to the container directory (`~/Library/Containers/com.ywesee.eudamed2firstbase/Data/`). Non-sandboxed builds use the current working directory.
+
 **Required GitHub secrets for signing/notarization/store:**
 - macOS: `MACOS_CERTIFICATE`, `MACOS_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`
 - Windows signing: `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`

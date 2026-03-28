@@ -14,6 +14,23 @@ pub const BASIC_UDI_BASE_URL: &str =
 pub const DEFAULT_PAGE_SIZE: usize = 300;
 pub const DEFAULT_DATA_DIR: &str = "eudamed_json";
 
+/// Returns the application data directory.
+/// Under macOS App Sandbox, uses the container directory.
+/// Otherwise, uses the current working directory.
+pub fn app_data_dir() -> PathBuf {
+    // macOS sandbox: APP_SANDBOX_CONTAINER_ID env var is set
+    if let Ok(container) = std::env::var("APP_SANDBOX_CONTAINER_ID") {
+        if !container.is_empty() {
+            if let Some(home) = std::env::var_os("HOME") {
+                // Sandbox container maps HOME to ~/Library/Containers/<bundle-id>/Data
+                return PathBuf::from(home);
+            }
+        }
+    }
+    // Non-sandboxed: use current working directory
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
 /// Progress/log messages emitted during the download pipeline.
 pub enum DownloadEvent {
     Log(String),
@@ -53,7 +70,7 @@ impl Default for DownloadConfig {
         Self {
             srns: Vec::new(),
             limit: None,
-            data_dir: PathBuf::from(DEFAULT_DATA_DIR),
+            data_dir: app_data_dir().join(DEFAULT_DATA_DIR),
             parallel_threads: 10,
             max_retries: 3,
         }
@@ -120,9 +137,10 @@ pub fn run_download(
     log(&format!("{} UUIDs extracted from listings", uuid_versions.len()));
 
     // --- Step 2: Pre-download version check ---
-    std::fs::create_dir_all("db")?;
-    let db_path = Path::new(crate::version_db::VERSION_DB_PATH);
-    let conn = crate::version_db::open_db(db_path)?;
+    let db_dir = app_data_dir().join("db");
+    std::fs::create_dir_all(&db_dir)?;
+    let db_path = db_dir.join("version_tracking.db");
+    let conn = crate::version_db::open_db(&db_path)?;
 
     let (need_download, unchanged_skipped) =
         filter_unchanged(&uuid_versions, &conn, progress);
