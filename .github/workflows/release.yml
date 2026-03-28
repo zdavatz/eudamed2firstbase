@@ -347,10 +347,12 @@ jobs:
           Write-Host "Created submission: $subId"
           Write-Host "Upload URL available: $($uploadUrl.Length -gt 0)"
 
-          # Update submission: add our MSIX package to the packages list
-          # Mark any existing packages for deletion, add our new one
+          # Update submission: add our MSIX package and set required fields
           $submission = $subResp
           $msixFileName = $msix.Name
+
+          # Set application category (required)
+          $submission.applicationCategory = "BooksAndReference_EReader"
 
           # Remove old packages (mark as PendingDelete)
           if ($submission.applicationPackages) {
