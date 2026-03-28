@@ -287,14 +287,6 @@ jobs:
           name: windows-packages
           path: artifacts
 
-      - name: Install Microsoft Store CLI
-        shell: pwsh
-        run: |
-          winget install "Microsoft Store Developer CLI" --accept-source-agreements --accept-package-agreements 2>$null
-          if (-not (Get-Command msstore -ErrorAction SilentlyContinue)) {
-            dotnet tool install -g MSStore.CLI
-          }
-
       - name: Publish to Microsoft Store
         shell: pwsh
         env:
@@ -305,8 +297,60 @@ jobs:
           $msix = Get-ChildItem artifacts/*.msix | Select-Object -First 1
           Write-Host "Submitting: $($msix.FullName)"
 
-          # Configure credentials
-          msstore reconfigure --tenantId $env:MSSTORE_TENANT_ID --clientId $env:MSSTORE_CLIENT_ID --clientSecret $env:MSSTORE_CLIENT_SECRET
+          # Get OAuth2 token from Azure AD
+          $tokenBody = @{
+            grant_type    = "client_credentials"
+            client_id     = $env:MSSTORE_CLIENT_ID
+            client_secret = $env:MSSTORE_CLIENT_SECRET
+            resource      = "https://manage.devcenter.microsoft.com"
+          }
+          $tokenResp = Invoke-RestMethod -Method Post `
+            -Uri "https://login.microsoftonline.com/$($env:MSSTORE_TENANT_ID)/oauth2/token" `
+            -Body $tokenBody
+          $token = $tokenResp.access_token
+          Write-Host "Got access token"
 
-          # Publish MSIX to Microsoft Store
-          msstore publish $msix.DirectoryName
+          $headers = @{
+            Authorization = "Bearer $token"
+            "Content-Type" = "application/json"
+          }
+
+          # Get app info and current submission
+          $appId = "9P889JD1XWS2"
+          $appResp = Invoke-RestMethod -Method Get `
+            -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId" `
+            -Headers $headers
+          Write-Host "App: $($appResp.primaryName)"
+
+          # If there's a pending submission, delete it
+          if ($appResp.pendingApplicationSubmission) {
+            $pendingId = $appResp.pendingApplicationSubmission.id
+            Write-Host "Deleting pending submission: $pendingId"
+            Invoke-RestMethod -Method Delete `
+              -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId/submissions/$pendingId" `
+              -Headers $headers
+          }
+
+          # Create new submission
+          $subResp = Invoke-RestMethod -Method Post `
+            -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId/submissions" `
+            -Headers $headers
+          $subId = $subResp.id
+          $uploadUrl = $subResp.fileUploadUrl
+          Write-Host "Created submission: $subId"
+
+          # Upload MSIX as ZIP to the upload URL
+          $zipPath = "$($msix.FullName).upload.zip"
+          Compress-Archive -Path $msix.FullName -DestinationPath $zipPath
+          $zipBytes = [System.IO.File]::ReadAllBytes($zipPath)
+          Invoke-RestMethod -Method Put -Uri $uploadUrl `
+            -Headers @{"x-ms-blob-type" = "BlockBlob"} `
+            -Body $zipBytes `
+            -ContentType "application/octet-stream"
+          Write-Host "Uploaded package"
+
+          # Commit the submission
+          Invoke-RestMethod -Method Post `
+            -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId/submissions/$subId/commit" `
+            -Headers $headers
+          Write-Host "Submission committed: $subId"
