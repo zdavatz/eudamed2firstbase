@@ -379,6 +379,6 @@ fi
 
 # --- Step 4: Convert to firstbase JSON ---
 echo "=== Step 4: Converting to firstbase JSON ==="
-cargo run --quiet -- eudamed_json
+cargo run --quiet -- eudamed2firstbase
 
 echo "=== Done! ==="
