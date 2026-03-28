@@ -158,8 +158,12 @@ src/
   swissdamed.rs              # Swissdamed M2M API mapper (EUDAMED JSON → Swissdamed JSON, ~1:1)
 
 build.rs                   # Windows icon embedding (winresource)
-bundle_macos.sh            # macOS .app bundle creation script
+bundle_macos.sh            # macOS .app bundle (--universal, --sign, --dmg, --notarize)
+entitlements.plist         # Hardened Runtime entitlements (Developer ID distribution)
+entitlements-appstore.plist # Mac App Store entitlements (sandboxed)
 assets/                    # App icons: icon.icns (macOS), icon.ico (Windows), icon_256x256.png (GUI)
+windows/                   # AppxManifest.xml + Store tile assets for MSIX/Microsoft Store
+.github/workflows/         # CI/CD: build + sign + publish to GitHub/MS Store/App Store on tag push
 download.sh                # Unified download + convert script (listing + detail + Basic UDI-DI + convert)
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
