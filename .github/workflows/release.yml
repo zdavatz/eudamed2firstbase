@@ -213,12 +213,22 @@ jobs:
           name: windows-packages
           path: artifacts
 
+      - name: Install Microsoft Store CLI
+        shell: pwsh
+        run: dotnet tool install -g Microsoft.Apps.WindowsAppStoreSubmission
+
       - name: Publish to Microsoft Store
-        uses: microsoft/store-submission@v1
-        with:
-          command: update
-          productId: 9P889JD1XWS2
-          packagePath: artifacts/eudamed2firstbase-*-windows-x64.msix
-          aadTenantId: ${{ secrets.MSSTORE_TENANT_ID }}
-          aadClientId: ${{ secrets.MSSTORE_CLIENT_ID }}
-          aadClientSecret: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+        shell: pwsh
+        env:
+          MSSTORE_TENANT_ID: ${{ secrets.MSSTORE_TENANT_ID }}
+          MSSTORE_CLIENT_ID: ${{ secrets.MSSTORE_CLIENT_ID }}
+          MSSTORE_CLIENT_SECRET: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+        run: |
+          $msix = Get-ChildItem artifacts/*.msix | Select-Object -First 1
+          Write-Host "Submitting: $($msix.FullName)"
+
+          # Configure msstore CLI
+          msstore reconfigure --tenantId $env:MSSTORE_TENANT_ID --clientId $env:MSSTORE_CLIENT_ID --clientSecret $env:MSSTORE_CLIENT_SECRET
+
+          # Update submission with new MSIX package
+          msstore update 9P889JD1XWS2 --package $msix.FullName

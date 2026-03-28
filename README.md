@@ -50,9 +50,11 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-**Required GitHub secrets for signing/notarization:**
+**Required GitHub secrets for signing/notarization/store:**
 - macOS: `MACOS_CERTIFICATE`, `MACOS_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`
-- Windows: `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`
+- Windows signing: `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`
+- Microsoft Store: `MSSTORE_TENANT_ID`, `MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` + variable `MSSTORE_ENABLED=true`
+- Store ID: `9P889JD1XWS2` (yweseeGmbH.Eudamed2Firstbase)
 
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 
