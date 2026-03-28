@@ -98,12 +98,14 @@ src/
   xlsx_export.rs             # NDJSON detail -> XLSX spreadsheet export
   version_db.rs              # SQLite version tracking DB (per-section change detection)
   scan.rs                    # Fast parallel GTIN scanner for push_to_firstbase.sh (rayon, string search)
+  swissdamed.rs              # Swissdamed M2M API mapper (EUDAMED JSON → Swissdamed JSON, ~1:1)
 
 download.sh                # Unified download + convert script (listing + detail + Basic UDI-DI + convert)
 download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
-push_to_firstbase.sh             # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
+push_to_firstbase.sh       # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
+push_to_swissdamed.sh      # Push EUDAMED JSON to Swissdamed M2M API (OAuth2, per-legislation endpoints)
 log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with full GS1 response)
 ```
 
