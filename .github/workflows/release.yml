@@ -338,26 +338,61 @@ jobs:
               -Headers $headers
           }
 
-          # Create new submission
+          # Create new submission (clones the last published one)
           $subResp = Invoke-RestMethod -Method Post `
             -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId/submissions" `
             -Headers $headers
           $subId = $subResp.id
           $uploadUrl = $subResp.fileUploadUrl
           Write-Host "Created submission: $subId"
+          Write-Host "Upload URL available: $($uploadUrl.Length -gt 0)"
 
-          # Upload MSIX as ZIP to the upload URL
-          $zipPath = "$($msix.FullName).upload.zip"
-          Compress-Archive -Path $msix.FullName -DestinationPath $zipPath
+          # Update submission: add our MSIX package to the packages list
+          # Mark any existing packages for deletion, add our new one
+          $submission = $subResp
+          $msixFileName = $msix.Name
+
+          # Remove old packages (mark as PendingDelete)
+          if ($submission.applicationPackages) {
+            foreach ($pkg in $submission.applicationPackages) {
+              $pkg.fileStatus = "PendingDelete"
+            }
+          } else {
+            $submission.applicationPackages = @()
+          }
+
+          # Add our new package
+          $newPackage = @{
+            fileName = $msixFileName
+            fileStatus = "PendingUpload"
+            minimumDirectXVersion = "None"
+            minimumSystemRam = "None"
+          }
+          $submission.applicationPackages += $newPackage
+
+          # PUT the updated submission JSON
+          $updateBody = $submission | ConvertTo-Json -Depth 20 -Compress
+          Invoke-RestMethod -Method Put `
+            -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId/submissions/$subId" `
+            -Headers $headers `
+            -Body $updateBody `
+            -ContentType "application/json; charset=utf-8"
+          Write-Host "Updated submission with package: $msixFileName"
+
+          # Upload MSIX as ZIP to the Azure Blob upload URL
+          # The ZIP must contain the MSIX file with the exact name specified above
+          $zipPath = [System.IO.Path]::Combine($env:TEMP, "upload.zip")
+          Compress-Archive -Path $msix.FullName -DestinationPath $zipPath -Force
           $zipBytes = [System.IO.File]::ReadAllBytes($zipPath)
           Invoke-RestMethod -Method Put -Uri $uploadUrl `
             -Headers @{"x-ms-blob-type" = "BlockBlob"} `
             -Body $zipBytes `
             -ContentType "application/octet-stream"
-          Write-Host "Uploaded package"
+          Write-Host "Uploaded package ZIP ($([math]::Round($zipBytes.Length/1MB, 2)) MB)"
 
           # Commit the submission
-          Invoke-RestMethod -Method Post `
+          $commitResp = Invoke-RestMethod -Method Post `
             -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId/submissions/$subId/commit" `
             -Headers $headers
           Write-Host "Submission committed: $subId"
+          Write-Host "Commit status: $($commitResp.status)"
