@@ -81,8 +81,10 @@ pub struct App {
     rx: Option<mpsc::Receiver<WorkerMsg>>,
     show_credentials: bool,
     icon_texture: Option<egui::TextureHandle>,
-    /// Height of the top panel (SRN + settings), draggable splitter
-    top_panel_height: f32,
+    /// Size of the settings panel, draggable splitter
+    split_size: f32,
+    /// true = horizontal (left/right), false = vertical (top/bottom)
+    horizontal_split: bool,
 }
 
 impl App {
@@ -125,7 +127,8 @@ impl App {
             rx: None,
             show_credentials: false,
             icon_texture: None,
-            top_panel_height: 300.0,
+            split_size: 300.0,
+            horizontal_split: false,
         }
     }
 
@@ -213,14 +216,140 @@ impl eframe::App for App {
 
         // --- Everything in CentralPanel with manual splitter ---
         egui::CentralPanel::default().show(ctx, |ui| {
-            let available_height = ui.available_height();
-            self.top_panel_height = self.top_panel_height.clamp(100.0, available_height - 100.0);
+            // Toggle button for split direction
+            // Horizontal = settings left, log right (side by side)
+            // Vertical = settings top, log bottom (stacked)
+            ui.horizontal(|ui| {
+                if ui.selectable_label(self.horizontal_split, "⬌ Horizontal").clicked() {
+                    self.horizontal_split = true;
+                    self.split_size = ui.available_width() * 0.4;
+                }
+                if ui.selectable_label(!self.horizontal_split, "⬍ Vertical").clicked() {
+                    self.horizontal_split = false;
+                    self.split_size = 300.0;
+                }
+            });
+            ui.separator();
 
-            // --- Top: SRN input + settings (scrollable, fixed height) ---
-            egui::ScrollArea::vertical()
-                .id_salt("settings_scroll")
-                .max_height(self.top_panel_height)
-                .show(ui, |ui| {
+            if self.horizontal_split {
+                // --- Horizontal: Settings left, Log right ---
+                let available_width = ui.available_width();
+                self.split_size = self.split_size.clamp(200.0, available_width - 200.0);
+
+                let available_height = ui.available_height();
+                let available_width = ui.available_width();
+                self.split_size = self.split_size.clamp(200.0, available_width - 200.0);
+
+                // Use columns layout for proper horizontal split
+                let left_width = self.split_size;
+
+                // Left: Settings
+                let left_rect = egui::Rect::from_min_size(
+                    ui.cursor().min,
+                    egui::vec2(left_width, available_height),
+                );
+                let mut left_ui = ui.new_child(egui::UiBuilder::new().max_rect(left_rect));
+                egui::ScrollArea::vertical()
+                    .id_salt("settings_horiz")
+                    .show(&mut left_ui, |ui| {
+                        ui.set_min_width(left_width - 20.0);
+                        ui.label("SRNs (one per line or space-separated):");
+                        ui.add(
+                            egui::TextEdit::multiline(&mut self.settings.srns)
+                                .desired_rows(8)
+                                .desired_width(f32::INFINITY)
+                                .hint_text("DE-MF-000012345"),
+                        );
+                        ui.add_space(4.0);
+                        ui.horizontal(|ui| {
+                            ui.label("Limit per SRN:");
+                            ui.add(egui::TextEdit::singleline(&mut self.settings.limit).desired_width(60.0).hint_text("all"));
+                            ui.checkbox(&mut self.settings.dry_run, "Dry run");
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Target:");
+                            ui.radio_value(&mut self.settings.push_target, PushTarget::Firstbase, "GS1 firstbase");
+                            ui.radio_value(&mut self.settings.push_target, PushTarget::Swissdamed, "Swissdamed");
+                        });
+                        ui.add_space(4.0);
+                        match self.settings.push_target {
+                            PushTarget::Firstbase => {
+                                ui.collapsing("GS1 firstbase Credentials", |ui| {
+                                    ui.horizontal(|ui| { ui.label("Email:"); ui.add(egui::TextEdit::singleline(&mut self.settings.firstbase_email).desired_width(200.0)); });
+                                    ui.horizontal(|ui| { ui.label("Password:"); ui.add(egui::TextEdit::singleline(&mut self.settings.firstbase_password).desired_width(200.0).password(true)); });
+                                    ui.horizontal(|ui| { ui.label("Provider GLN:"); ui.add(egui::TextEdit::singleline(&mut self.settings.provider_gln).desired_width(150.0)); });
+                                    ui.horizontal(|ui| { ui.label("Publish To GLN:"); ui.add(egui::TextEdit::singleline(&mut self.settings.publish_to_gln).desired_width(150.0)); });
+                                });
+                            }
+                            PushTarget::Swissdamed => {
+                                ui.collapsing("Swissdamed Credentials", |ui| {
+                                    ui.horizontal(|ui| { ui.label("Client ID:"); ui.add(egui::TextEdit::singleline(&mut self.settings.swissdamed_client_id).desired_width(200.0)); });
+                                    ui.horizontal(|ui| { ui.label("Client Secret:"); ui.add(egui::TextEdit::singleline(&mut self.settings.swissdamed_client_secret).desired_width(200.0).password(true)); });
+                                    ui.horizontal(|ui| { ui.label("Base URL:"); ui.add(egui::TextEdit::singleline(&mut self.settings.swissdamed_base_url).desired_width(250.0)); });
+                                });
+                            }
+                        }
+                        ui.add_space(4.0);
+                        let can_start = !self.running && !self.settings.srns.trim().is_empty();
+                        let target_name = match self.settings.push_target { PushTarget::Firstbase => "firstbase", PushTarget::Swissdamed => "Swissdamed" };
+                        let btn = if self.settings.dry_run { "Download & Convert".to_string() } else { format!("Download, Convert & Push to {}", target_name) };
+                        if ui.add_enabled(can_start, egui::Button::new(&btn).min_size(egui::vec2(180.0, 30.0))).clicked() {
+                            self.start_pipeline(ctx.clone());
+                        }
+                    });
+
+                // Splitter
+                let splitter_rect = egui::Rect::from_min_size(
+                    egui::pos2(left_rect.right(), left_rect.top()),
+                    egui::vec2(8.0, available_height),
+                );
+                let splitter_response = ui.allocate_rect(splitter_rect, egui::Sense::drag());
+                let color = if splitter_response.hovered() || splitter_response.dragged() {
+                    ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::ResizeHorizontal);
+                    ui.painter().rect_filled(splitter_rect, 0.0, egui::Color32::from_gray(160));
+                    egui::Color32::from_gray(120)
+                } else {
+                    egui::Color32::from_gray(200)
+                };
+                let cx = splitter_rect.center().x;
+                for dx in [-2.0, 0.0, 2.0] {
+                    ui.painter().line_segment(
+                        [egui::pos2(cx + dx, splitter_rect.top() + 30.0), egui::pos2(cx + dx, splitter_rect.bottom() - 30.0)],
+                        egui::Stroke::new(1.0, color),
+                    );
+                }
+                if splitter_response.dragged() {
+                    self.split_size += splitter_response.drag_delta().x;
+                }
+
+                // Right: Log
+                let right_rect = egui::Rect::from_min_size(
+                    egui::pos2(splitter_rect.right(), left_rect.top()),
+                    egui::vec2(available_width - left_width - 8.0, available_height),
+                );
+                let mut right_ui = ui.new_child(egui::UiBuilder::new().max_rect(right_rect));
+                right_ui.label("Log:");
+                egui::ScrollArea::vertical()
+                    .id_salt("log_horiz")
+                    .stick_to_bottom(true)
+                    .show(&mut right_ui, |ui| {
+                        let log_text = self.log_lines.join("\n");
+                        ui.add(
+                            egui::TextEdit::multiline(&mut log_text.as_str())
+                                .font(egui::TextStyle::Monospace)
+                                .desired_width(f32::INFINITY)
+                                .desired_rows(20)
+                        );
+                    });
+            } else {
+                // --- Vertical: Settings top, Log bottom ---
+                let available_height = ui.available_height();
+                self.split_size = self.split_size.clamp(100.0, available_height - 100.0);
+
+                egui::ScrollArea::vertical()
+                    .id_salt("settings_scroll")
+                    .max_height(self.split_size)
+                    .show(ui, |ui| {
             // Load icon texture once
             let icon_texture = self.icon_texture.get_or_insert_with(|| {
                 let png_bytes = include_bytes!("../assets/icon_256x256.png");
@@ -394,7 +523,7 @@ impl eframe::App for App {
                 );
             }
             if splitter_response.dragged() {
-                self.top_panel_height += splitter_response.drag_delta().y;
+                self.split_size += splitter_response.drag_delta().y;
             }
 
             // --- Bottom: Log output ---
@@ -410,6 +539,7 @@ impl eframe::App for App {
                             .desired_rows(20)
                     );
                 });
+            } // end vertical else
         });
 
         // Auto-save settings when they change
