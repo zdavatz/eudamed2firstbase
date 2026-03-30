@@ -325,6 +325,9 @@ fn download_listings(
                     break;
                 }
 
+                let total_pages = json.get("totalPages").and_then(|t| t.as_u64()).unwrap_or(1);
+                let total_elements = json.get("totalElements").and_then(|t| t.as_u64());
+
                 for item in items {
                     if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
                         let version = item
@@ -342,13 +345,20 @@ fn download_listings(
                     }
                 }
 
+                progress.on_event(DownloadEvent::Log(format!(
+                    "  Listing page {}/{} — {} devices so far{}",
+                    page + 1,
+                    total_pages,
+                    srn_count,
+                    total_elements.map(|t| format!(" (of {} total)", t)).unwrap_or_default()
+                )));
+
                 if let Some(lim) = limit {
                     if srn_count >= lim {
                         break;
                     }
                 }
 
-                let total_pages = json.get("totalPages").and_then(|t| t.as_u64()).unwrap_or(1);
                 page += 1;
                 if page >= total_pages as usize {
                     break;
@@ -440,10 +450,12 @@ fn parallel_fetch(
     });
 
     let downloaded = AtomicUsize::new(0);
+    let total_need = need.len();
     let base_url_owned = base_url.to_string();
     let target_dir_owned = target_dir.to_path_buf();
     let dl_log = download_log.clone();
     let prefix = log_prefix.to_string();
+    let last_reported = AtomicUsize::new(0);
 
     rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -458,7 +470,17 @@ fn parallel_fetch(
                             if let Ok(body) = resp.into_body().read_to_string() {
                                 let path = target_dir_owned.join(format!("{}.json", uuid));
                                 let _ = std::fs::write(&path, &body);
-                                downloaded.fetch_add(1, Ordering::Relaxed);
+                                let count = downloaded.fetch_add(1, Ordering::Relaxed) + 1;
+                                // Report progress every 10 files or at the end
+                                let prev = last_reported.load(Ordering::Relaxed);
+                                if count == total_need || count >= prev + 10 {
+                                    if last_reported.compare_exchange(prev, count, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
+                                        progress.on_event(DownloadEvent::Log(format!(
+                                            "  {} {}/{} downloaded",
+                                            prefix, count, total_need
+                                        )));
+                                    }
+                                }
                                 if let Ok(mut guard) = dl_log.lock() {
                                     if let Some(ref mut f) = *guard {
                                         let ts =

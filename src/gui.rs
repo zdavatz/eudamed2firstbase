@@ -145,11 +145,28 @@ impl App {
         self.rx = Some(rx);
         self.running = true;
         self.log_lines.clear();
+        self.log_lines.push("Pipeline started...".to_string());
 
         let settings = self.settings.clone();
 
         thread::spawn(move || {
-            run_pipeline(settings, tx, ctx);
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                run_pipeline(settings, tx.clone(), ctx.clone());
+            }));
+            if let Err(panic_info) = result {
+                let msg = if let Some(s) = panic_info.downcast_ref::<String>() {
+                    s.clone()
+                } else if let Some(s) = panic_info.downcast_ref::<&str>() {
+                    s.to_string()
+                } else {
+                    "Unknown panic".to_string()
+                };
+                let _ = tx.send(WorkerMsg::Done {
+                    ok: false,
+                    summary: format!("Pipeline panicked: {}", msg),
+                });
+                ctx.request_repaint();
+            }
         });
     }
 }

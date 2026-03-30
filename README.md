@@ -20,7 +20,9 @@ The GUI provides:
 - Dry run mode (download & convert only, no push)
 - One-click pipeline: Download listings → Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (10 parallel, 3 retries) → Download Basic UDI-DI (10 parallel, 3 retries) → Convert to target format (firstbase JSON or Swissdamed JSON, with version tracking)
 - Download log written to `eudamed_json/log/download.log` (same format as `download.sh`)
+- Live progress reporting: listing pages ("page 2/54 — 40 devices so far (of 1074 total)"), detail/basic download counters ("detail 10/1074 downloaded"), conversion summary
 - Live scrollable log output with file save paths
+- Worker thread panic protection: panics in the background pipeline are caught and displayed in the log (not silently lost)
 - Persistent settings across restarts (`settings.json`)
 - Auto-saved logs to `logs/`
 
