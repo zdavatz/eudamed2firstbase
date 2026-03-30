@@ -38,8 +38,32 @@ pub struct EndocrineSubstanceIds {
     pub cas_number: Option<String>,
 }
 
+const DEFAULT_CONFIG: &str = r#"
+[provider]
+gln = "7612345000480"
+party_name = "EUDAMED Public Download Importing"
+
+[target_market]
+country_code = "097"
+
+[gpc]
+segment_code = "51000000"
+class_code = "51150100"
+family_code = "51150000"
+category_code = "10005844"
+category_name = "Medical Devices"
+
+[endocrine_substances.Estradiol]
+ec_number = "200-023-8"
+cas_number = "50-28-2"
+"#;
+
 pub fn load_config(path: &Path) -> Result<Config> {
-    let content = std::fs::read_to_string(path)?;
+    let content = if path.exists() {
+        std::fs::read_to_string(path)?
+    } else {
+        DEFAULT_CONFIG.to_string()
+    };
     let config: Config = toml::from_str(&content)?;
     Ok(config)
 }
