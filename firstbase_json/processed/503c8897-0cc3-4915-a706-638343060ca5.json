@@ -7,7 +7,10 @@
       ],
       "HealthcareItemInformationModule": {
         "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
           "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
           "ClinicalStorageHandlingInformation": [
             {
               "ClinicalStorageHandlingTypeCode": {
@@ -55,7 +58,14 @@
       },
       "MedicalDeviceTradeItemModule": {
         "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
           "UdidDeviceCount": 100,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
           "UDIProductionIdentifierTypeCode": [
             {
               "Value": "BATCH_NUMBER"
@@ -67,15 +77,9 @@
               "Value": "EXPIRATION_DATE"
             }
           ],
-          "SystemOrProcedurePackTypeCode": {
+          "MultiComponentDeviceTypeCode": {
             "Value": "SYSTEM"
           },
-          "SystemOrProcedurePackMedicalPurposeDescription": [
-            {
-              "LanguageCode": "de",
-              "Value": "Unsterile Abdecksysteme"
-            }
-          ],
           "EUMedicalDeviceStatusCode": {
             "Value": "ON_MARKET"
           },
@@ -105,6 +109,36 @@
             "RegulatoryAgency": "EU"
           }
         ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  }
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  }
+                }
+              ]
+            }
+          ]
+        }
       },
       "TradeItemDescriptionModule": {
         "TradeItemDescriptionInformation": {
@@ -174,7 +208,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -186,9 +220,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:03",
+        "LastChangeDateTime": "2026-03-27T18:10:26",
         "EffectiveDateTime": "2024-12-10T11:45:20.789",
-        "PublicationDateTime": "2026-03-27T16:42:03"
+        "PublicationDateTime": "2026-03-27T18:10:26"
       },
       "GlobalModelInformation": [
         {

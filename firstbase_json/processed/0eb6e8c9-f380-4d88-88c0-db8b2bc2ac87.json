@@ -72,9 +72,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:02",
-        "EffectiveDateTime": "2026-03-27T16:42:02",
-        "PublicationDateTime": "2026-03-27T16:42:02"
+        "LastChangeDateTime": "2026-03-27T18:10:25",
+        "EffectiveDateTime": "2026-03-27T18:10:25",
+        "PublicationDateTime": "2026-03-27T18:10:25"
       },
       "GlobalModelInformation": [
         {
@@ -87,7 +87,7 @@
       {
         "Quantity": 14,
         "CatalogueItem": {
-          "Identifier": "709758f2-82b3-44a6-b6a9-66ee98e50b89",
+          "Identifier": "ba3074eb-3537-4890-a2bb-860268610e8a",
           "TradeItem": {
             "IsBrandBankPublication": false,
             "TargetSector": [
@@ -277,9 +277,9 @@
               }
             ],
             "TradeItemSynchronisationDates": {
-              "LastChangeDateTime": "2026-03-27T16:42:02",
+              "LastChangeDateTime": "2026-03-27T18:10:25",
               "EffectiveDateTime": "2026-02-19T15:16:42.836",
-              "PublicationDateTime": "2026-03-27T16:42:02"
+              "PublicationDateTime": "2026-03-27T18:10:25"
             },
             "GlobalModelInformation": [
               {

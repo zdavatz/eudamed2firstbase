@@ -60,7 +60,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -72,9 +72,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:04",
-        "EffectiveDateTime": "2026-03-27T16:42:04",
-        "PublicationDateTime": "2026-03-27T16:42:04"
+        "LastChangeDateTime": "2026-03-27T18:10:27",
+        "EffectiveDateTime": "2026-03-27T18:10:27",
+        "PublicationDateTime": "2026-03-27T18:10:27"
       },
       "GlobalModelInformation": [
         {
@@ -87,7 +87,7 @@
       {
         "Quantity": 1,
         "CatalogueItem": {
-          "Identifier": "cdaa18ac-cb25-49b5-b8ea-2cd1dd9759db",
+          "Identifier": "c0ed6003-1715-4b8d-a91f-d6d57e1c184f",
           "TradeItem": {
             "IsBrandBankPublication": false,
             "TargetSector": [
@@ -148,7 +148,7 @@
             "TradeItemContactInformation": [
               {
                 "ContactTypeCode": {
-                  "Value": "EPP"
+                  "Value": "EMA"
                 },
                 "AdditionalPartyIdentification": [
                   {
@@ -160,9 +160,9 @@
               }
             ],
             "TradeItemSynchronisationDates": {
-              "LastChangeDateTime": "2026-03-27T16:42:04",
-              "EffectiveDateTime": "2026-03-27T16:42:04",
-              "PublicationDateTime": "2026-03-27T16:42:04"
+              "LastChangeDateTime": "2026-03-27T18:10:27",
+              "EffectiveDateTime": "2026-03-27T18:10:27",
+              "PublicationDateTime": "2026-03-27T18:10:27"
             },
             "GlobalModelInformation": [
               {
@@ -175,7 +175,7 @@
             {
               "Quantity": 1,
               "CatalogueItem": {
-                "Identifier": "54edacee-981f-4f9b-af16-a5619c7d741b",
+                "Identifier": "cb1240e7-26d5-46b3-86a4-a834f8928d1f",
                 "TradeItem": {
                   "IsBrandBankPublication": false,
                   "TargetSector": [
@@ -183,7 +183,10 @@
                   ],
                   "HealthcareItemInformationModule": {
                     "HealthcareItemInformation": {
+                      "DoesTradeItemContainHumanBloodDerivative": "FALSE",
                       "DoesTradeItemContainLatex": "FALSE",
+                      "DoesTradeItemContainHumanTissue": "FALSE",
+                      "DoesTradeItemContainAnimalTissue": false,
                       "ClinicalStorageHandlingInformation": [
                         {
                           "ClinicalStorageHandlingTypeCode": {
@@ -281,6 +284,7 @@
                   },
                   "MedicalDeviceTradeItemModule": {
                     "MedicalDeviceInformation": {
+                      "IsTradeItemImplantable": "FALSE",
                       "UdidDeviceCount": 1,
                       "DirectPartMarkingIdentifier": [
                         {
@@ -288,6 +292,12 @@
                           "Value": "07350096320012"
                         }
                       ],
+                      "HasDeviceMeasuringFunction": false,
+                      "IsActiveDevice": true,
+                      "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                      "IsDeviceMedicinalProduct": false,
+                      "IsReprocessedSingleUseDevice": false,
+                      "IsReusableSurgicalInstrument": false,
                       "UDIProductionIdentifierTypeCode": [
                         {
                           "Value": "SERIAL_NUMBER"
@@ -296,15 +306,9 @@
                           "Value": "MANUFACTURING_DATE"
                         }
                       ],
-                      "SystemOrProcedurePackTypeCode": {
+                      "MultiComponentDeviceTypeCode": {
                         "Value": "SYSTEM"
                       },
-                      "SystemOrProcedurePackMedicalPurposeDescription": [
-                        {
-                          "LanguageCode": "en",
-                          "Value": "Penguin Instrument "
-                        }
-                      ],
                       "EUMedicalDeviceStatusCode": {
                         "Value": "ON_MARKET"
                       },
@@ -345,6 +349,25 @@
                         "RegulatoryAgency": "EU"
                       }
                     ]
+                  },
+                  "SalesInformationModule": {
+                    "SalesInformation": {
+                      "TargetMarketSalesConditions": [
+                        {
+                          "TargetMarketConsumerSalesConditionCode": {
+                            "Value": "ORIGINAL_PLACED"
+                          },
+                          "SalesConditionTargetMarketCountry": [
+                            {
+                              "CountryCode": {
+                                "Value": "752"
+                              },
+                              "StartAvailabilityDateTime": "2015-05-11"
+                            }
+                          ]
+                        }
+                      ]
+                    }
                   },
                   "TradeItemDescriptionModule": {
                     "TradeItemDescriptionInformation": {
@@ -414,7 +437,7 @@
                   "TradeItemContactInformation": [
                     {
                       "ContactTypeCode": {
-                        "Value": "EPP"
+                        "Value": "EMA"
                       },
                       "AdditionalPartyIdentification": [
                         {
@@ -426,9 +449,9 @@
                     }
                   ],
                   "TradeItemSynchronisationDates": {
-                    "LastChangeDateTime": "2026-03-27T16:42:04",
+                    "LastChangeDateTime": "2026-03-27T18:10:27",
                     "EffectiveDateTime": "2024-04-29T17:30:59.525",
-                    "PublicationDateTime": "2026-03-27T16:42:04"
+                    "PublicationDateTime": "2026-03-27T18:10:27"
                   },
                   "GlobalModelInformation": [
                     {

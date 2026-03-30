@@ -60,7 +60,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -72,9 +72,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:04",
-        "EffectiveDateTime": "2026-03-27T16:42:04",
-        "PublicationDateTime": "2026-03-27T16:42:04"
+        "LastChangeDateTime": "2026-03-27T18:10:27",
+        "EffectiveDateTime": "2026-03-27T18:10:27",
+        "PublicationDateTime": "2026-03-27T18:10:27"
       },
       "GlobalModelInformation": [
         {
@@ -87,7 +87,7 @@
       {
         "Quantity": 16,
         "CatalogueItem": {
-          "Identifier": "b8aaed97-7321-459c-84aa-b5c4ea1fb277",
+          "Identifier": "1e017870-f001-40c9-8fbf-7701a65b0058",
           "TradeItem": {
             "IsBrandBankPublication": false,
             "TargetSector": [
@@ -95,7 +95,10 @@
             ],
             "HealthcareItemInformationModule": {
               "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
                 "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
                 "ClinicalStorageHandlingInformation": [
                   {
                     "ClinicalStorageHandlingTypeCode": {
@@ -149,7 +152,14 @@
             },
             "MedicalDeviceTradeItemModule": {
               "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
                 "UdidDeviceCount": 1,
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
                 "UDIProductionIdentifierTypeCode": [
                   {
                     "Value": "BATCH_NUMBER"
@@ -161,15 +171,9 @@
                     "Value": "EXPIRATION_DATE"
                   }
                 ],
-                "SystemOrProcedurePackTypeCode": {
+                "MultiComponentDeviceTypeCode": {
                   "Value": "SYSTEM"
                 },
-                "SystemOrProcedurePackMedicalPurposeDescription": [
-                  {
-                    "LanguageCode": "de",
-                    "Value": "Sterile Abdecksysteme"
-                  }
-                ],
                 "EUMedicalDeviceStatusCode": {
                   "Value": "ON_MARKET"
                 },
@@ -199,6 +203,24 @@
                   "RegulatoryAgency": "EU"
                 }
               ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "276"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
             },
             "TradeItemDescriptionModule": {
               "TradeItemDescriptionInformation": {
@@ -268,7 +290,7 @@
             "TradeItemContactInformation": [
               {
                 "ContactTypeCode": {
-                  "Value": "EPP"
+                  "Value": "EMA"
                 },
                 "AdditionalPartyIdentification": [
                   {
@@ -280,9 +302,9 @@
               }
             ],
             "TradeItemSynchronisationDates": {
-              "LastChangeDateTime": "2026-03-27T16:42:04",
+              "LastChangeDateTime": "2026-03-27T18:10:27",
               "EffectiveDateTime": "2024-06-06T14:31:35.704",
-              "PublicationDateTime": "2026-03-27T16:42:04"
+              "PublicationDateTime": "2026-03-27T18:10:27"
             },
             "GlobalModelInformation": [
               {

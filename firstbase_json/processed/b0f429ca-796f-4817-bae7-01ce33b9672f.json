@@ -7,7 +7,10 @@
       ],
       "HealthcareItemInformationModule": {
         "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
           "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
           "ClinicalStorageHandlingInformation": [
             {
               "ClinicalStorageHandlingTypeCode": {
@@ -120,7 +123,14 @@
       },
       "MedicalDeviceTradeItemModule": {
         "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
           "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
           "UDIProductionIdentifierTypeCode": [
             {
               "Value": "SERIAL_NUMBER"
@@ -129,15 +139,9 @@
               "Value": "MANUFACTURING_DATE"
             }
           ],
-          "SystemOrProcedurePackTypeCode": {
+          "MultiComponentDeviceTypeCode": {
             "Value": "SYSTEM"
           },
-          "SystemOrProcedurePackMedicalPurposeDescription": [
-            {
-              "LanguageCode": "en",
-              "Value": "05450104542015"
-            }
-          ],
           "EUMedicalDeviceStatusCode": {
             "Value": "ON_MARKET"
           },
@@ -167,6 +171,199 @@
             "RegulatoryAgency": "EU"
           }
         ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  },
+                  "StartAvailabilityDateTime": "2018-07-25"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "StartAvailabilityDateTime": "2019-09-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "StartAvailabilityDateTime": "2018-10-04"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "100"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "StartAvailabilityDateTime": "2018-08-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "StartAvailabilityDateTime": "2018-08-23"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "StartAvailabilityDateTime": "2019-01-16"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "StartAvailabilityDateTime": "2025-10-28"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "352"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  },
+                  "StartAvailabilityDateTime": "2018-11-12"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "StartAvailabilityDateTime": "2018-10-15"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "StartAvailabilityDateTime": "2020-01-17"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "438"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  },
+                  "StartAvailabilityDateTime": "2021-03-11"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "470"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "StartAvailabilityDateTime": "2019-01-10"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "StartAvailabilityDateTime": "2019-11-19"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  },
+                  "StartAvailabilityDateTime": "2022-02-14"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "StartAvailabilityDateTime": "2019-03-26"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "703"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "StartAvailabilityDateTime": "2019-05-24"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  },
+                  "StartAvailabilityDateTime": "2020-02-14"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "792"
+                  },
+                  "StartAvailabilityDateTime": "2023-12-04"
+                }
+              ]
+            }
+          ]
+        }
       },
       "TradeItemDescriptionModule": {
         "TradeItemDescriptionInformation": {
@@ -236,7 +433,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -248,9 +445,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:04",
+        "LastChangeDateTime": "2026-03-27T18:10:27",
         "EffectiveDateTime": "2025-11-10T17:23:06.547",
-        "PublicationDateTime": "2026-03-27T16:42:04"
+        "PublicationDateTime": "2026-03-27T18:10:27"
       },
       "GlobalModelInformation": [
         {

@@ -84,7 +84,10 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        // Light theme: white background, black text
+        cc.egui_ctx.set_visuals(egui::Visuals::light());
+
         let mut settings = Settings::load();
 
         // Env vars override saved credentials

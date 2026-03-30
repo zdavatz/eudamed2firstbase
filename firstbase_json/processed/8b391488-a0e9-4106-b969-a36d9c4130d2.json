@@ -7,7 +7,10 @@
       ],
       "HealthcareItemInformationModule": {
         "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
           "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
           "ClinicalStorageHandlingInformation": [
             {
               "ClinicalStorageHandlingTypeCode": {
@@ -74,6 +77,7 @@
       },
       "MedicalDeviceTradeItemModule": {
         "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
           "UdidDeviceCount": 1,
           "DirectPartMarkingIdentifier": [
             {
@@ -81,20 +85,20 @@
               "Value": "08720299497627"
             }
           ],
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
           "UDIProductionIdentifierTypeCode": [
             {
               "Value": "SERIAL_NUMBER"
             }
           ],
-          "SystemOrProcedurePackTypeCode": {
+          "MultiComponentDeviceTypeCode": {
             "Value": "SYSTEM"
           },
-          "SystemOrProcedurePackMedicalPurposeDescription": [
-            {
-              "LanguageCode": "en",
-              "Value": "Concord Birth Trolley"
-            }
-          ],
           "EUMedicalDeviceStatusCode": {
             "Value": "ON_MARKET"
           },
@@ -124,6 +128,86 @@
             "RegulatoryAgency": "EU"
           }
         ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "StartAvailabilityDateTime": "2024-11-01"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "StartAvailabilityDateTime": "2024-06-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "StartAvailabilityDateTime": "2024-06-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "StartAvailabilityDateTime": "2026-02-05"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  },
+                  "StartAvailabilityDateTime": "2024-06-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "StartAvailabilityDateTime": "2024-06-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "StartAvailabilityDateTime": "2024-12-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  },
+                  "StartAvailabilityDateTime": "2025-01-01"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "StartAvailabilityDateTime": "2025-06-24"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "StartAvailabilityDateTime": "2024-11-01"
+                }
+              ]
+            }
+          ]
+        }
       },
       "TradeItemDescriptionModule": {
         "TradeItemDescriptionInformation": {
@@ -193,7 +277,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -205,9 +289,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:04",
+        "LastChangeDateTime": "2026-03-27T18:10:27",
         "EffectiveDateTime": "2024-08-26T17:13:00.846",
-        "PublicationDateTime": "2026-03-27T16:42:04"
+        "PublicationDateTime": "2026-03-27T18:10:27"
       },
       "GlobalModelInformation": [
         {

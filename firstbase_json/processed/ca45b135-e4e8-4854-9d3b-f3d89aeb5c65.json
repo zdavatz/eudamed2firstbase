@@ -60,7 +60,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -84,9 +84,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:04",
-        "EffectiveDateTime": "2026-03-27T16:42:04",
-        "PublicationDateTime": "2026-03-27T16:42:04"
+        "LastChangeDateTime": "2026-03-27T18:10:28",
+        "EffectiveDateTime": "2026-03-27T18:10:28",
+        "PublicationDateTime": "2026-03-27T18:10:28"
       },
       "GlobalModelInformation": [
         {
@@ -99,7 +99,7 @@
       {
         "Quantity": 10,
         "CatalogueItem": {
-          "Identifier": "6bd16782-47b6-4a7a-9ad5-a13c5483e31f",
+          "Identifier": "a8429a78-1b25-4234-aed9-62fc98a0ce1d",
           "TradeItem": {
             "IsBrandBankPublication": false,
             "TargetSector": [
@@ -107,7 +107,10 @@
             ],
             "HealthcareItemInformationModule": {
               "HealthcareItemInformation": {
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
                 "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false,
                 "ClinicalStorageHandlingInformation": [
                   {
                     "ClinicalStorageHandlingTypeCode": {
@@ -155,7 +158,14 @@
             },
             "MedicalDeviceTradeItemModule": {
               "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
                 "UdidDeviceCount": 1,
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
                 "UDIProductionIdentifierTypeCode": [
                   {
                     "Value": "BATCH_NUMBER"
@@ -164,15 +174,9 @@
                     "Value": "EXPIRATION_DATE"
                   }
                 ],
-                "SystemOrProcedurePackTypeCode": {
+                "MultiComponentDeviceTypeCode": {
                   "Value": "SYSTEM"
                 },
-                "SystemOrProcedurePackMedicalPurposeDescription": [
-                  {
-                    "LanguageCode": "en",
-                    "Value": "Hydrocolloid Dressing"
-                  }
-                ],
                 "EUMedicalDeviceStatusCode": {
                   "Value": "ON_MARKET"
                 },
@@ -202,6 +206,101 @@
                   "RegulatoryAgency": "EU"
                 }
               ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "276"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "056"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "203"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "208"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "246"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "250"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "380"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "442"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "470"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "528"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "578"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "642"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "703"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "724"
+                        }
+                      },
+                      {
+                        "CountryCode": {
+                          "Value": "752"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
             },
             "TradeItemDescriptionModule": {
               "TradeItemDescriptionInformation": {
@@ -271,7 +370,7 @@
             "TradeItemContactInformation": [
               {
                 "ContactTypeCode": {
-                  "Value": "EPP"
+                  "Value": "EMA"
                 },
                 "AdditionalPartyIdentification": [
                   {
@@ -295,9 +394,9 @@
               }
             ],
             "TradeItemSynchronisationDates": {
-              "LastChangeDateTime": "2026-03-27T16:42:04",
+              "LastChangeDateTime": "2026-03-27T18:10:28",
               "EffectiveDateTime": "2024-06-21T03:37:11.63",
-              "PublicationDateTime": "2026-03-27T16:42:04"
+              "PublicationDateTime": "2026-03-27T18:10:28"
             },
             "GlobalModelInformation": [
               {

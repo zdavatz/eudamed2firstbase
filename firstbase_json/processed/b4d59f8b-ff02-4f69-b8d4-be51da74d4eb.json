@@ -7,7 +7,10 @@
       ],
       "HealthcareItemInformationModule": {
         "HealthcareItemInformation": {
+          "DoesTradeItemContainHumanBloodDerivative": "FALSE",
           "DoesTradeItemContainLatex": "FALSE",
+          "DoesTradeItemContainHumanTissue": "FALSE",
+          "DoesTradeItemContainAnimalTissue": false,
           "ClinicalStorageHandlingInformation": [
             {
               "ClinicalStorageHandlingTypeCode": {
@@ -120,7 +123,14 @@
       },
       "MedicalDeviceTradeItemModule": {
         "MedicalDeviceInformation": {
+          "IsTradeItemImplantable": "FALSE",
           "UdidDeviceCount": 1,
+          "HasDeviceMeasuringFunction": false,
+          "IsActiveDevice": false,
+          "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+          "IsDeviceMedicinalProduct": false,
+          "IsReprocessedSingleUseDevice": false,
+          "IsReusableSurgicalInstrument": false,
           "UDIProductionIdentifierTypeCode": [
             {
               "Value": "SERIAL_NUMBER"
@@ -129,15 +139,9 @@
               "Value": "MANUFACTURING_DATE"
             }
           ],
-          "SystemOrProcedurePackTypeCode": {
+          "MultiComponentDeviceTypeCode": {
             "Value": "SYSTEM"
           },
-          "SystemOrProcedurePackMedicalPurposeDescription": [
-            {
-              "LanguageCode": "en",
-              "Value": "05450104433061"
-            }
-          ],
           "EUMedicalDeviceStatusCode": {
             "Value": "ON_MARKET"
           },
@@ -167,6 +171,206 @@
             "RegulatoryAgency": "EU"
           }
         ]
+      },
+      "SalesInformationModule": {
+        "SalesInformation": {
+          "TargetMarketSalesConditions": [
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ORIGINAL_PLACED"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "380"
+                  },
+                  "StartAvailabilityDateTime": "2000-01-18"
+                }
+              ]
+            },
+            {
+              "TargetMarketConsumerSalesConditionCode": {
+                "Value": "ADDITIONAL_MARKET_AVAILABILITY"
+              },
+              "SalesConditionTargetMarketCountry": [
+                {
+                  "CountryCode": {
+                    "Value": "040"
+                  },
+                  "StartAvailabilityDateTime": "2002-08-28"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "056"
+                  },
+                  "StartAvailabilityDateTime": "2002-10-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "100"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "191"
+                  },
+                  "StartAvailabilityDateTime": "2019-12-18"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "196"
+                  },
+                  "StartAvailabilityDateTime": "2017-03-27"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "203"
+                  },
+                  "StartAvailabilityDateTime": "2002-07-11"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "208"
+                  },
+                  "StartAvailabilityDateTime": "2000-01-21"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "233"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "246"
+                  },
+                  "StartAvailabilityDateTime": "2002-07-29"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "250"
+                  },
+                  "StartAvailabilityDateTime": "2000-05-31"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "276"
+                  },
+                  "StartAvailabilityDateTime": "2000-04-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "300"
+                  },
+                  "StartAvailabilityDateTime": "2000-06-13"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "348"
+                  },
+                  "StartAvailabilityDateTime": "2005-09-19"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "352"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "372"
+                  },
+                  "StartAvailabilityDateTime": "2002-04-04"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "428"
+                  },
+                  "StartAvailabilityDateTime": "2001-12-20"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "438"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "440"
+                  },
+                  "StartAvailabilityDateTime": "2005-04-28"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "442"
+                  },
+                  "StartAvailabilityDateTime": "2001-12-07"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "470"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "528"
+                  },
+                  "StartAvailabilityDateTime": "2000-11-30"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "578"
+                  },
+                  "StartAvailabilityDateTime": "2004-11-03"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "616"
+                  },
+                  "StartAvailabilityDateTime": "2021-04-22"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "620"
+                  },
+                  "StartAvailabilityDateTime": "2000-05-02"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "642"
+                  },
+                  "StartAvailabilityDateTime": "2020-06-02"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "703"
+                  }
+                },
+                {
+                  "CountryCode": {
+                    "Value": "705"
+                  },
+                  "StartAvailabilityDateTime": "2008-04-15"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "724"
+                  },
+                  "StartAvailabilityDateTime": "2000-07-19"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "752"
+                  },
+                  "StartAvailabilityDateTime": "2001-02-15"
+                },
+                {
+                  "CountryCode": {
+                    "Value": "792"
+                  },
+                  "StartAvailabilityDateTime": "2000-12-18"
+                }
+              ]
+            }
+          ]
+        }
       },
       "TradeItemDescriptionModule": {
         "TradeItemDescriptionInformation": {
@@ -236,7 +440,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -248,9 +452,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:04",
+        "LastChangeDateTime": "2026-03-27T18:10:27",
         "EffectiveDateTime": "2025-11-03T14:02:36.112",
-        "PublicationDateTime": "2026-03-27T16:42:04"
+        "PublicationDateTime": "2026-03-27T18:10:27"
       },
       "GlobalModelInformation": [
         {

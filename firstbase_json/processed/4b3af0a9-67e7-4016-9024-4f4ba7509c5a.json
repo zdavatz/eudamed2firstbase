@@ -60,7 +60,7 @@
       "TradeItemContactInformation": [
         {
           "ContactTypeCode": {
-            "Value": "EPP"
+            "Value": "EMA"
           },
           "AdditionalPartyIdentification": [
             {
@@ -84,9 +84,9 @@
         }
       ],
       "TradeItemSynchronisationDates": {
-        "LastChangeDateTime": "2026-03-27T16:42:03",
-        "EffectiveDateTime": "2026-03-27T16:42:03",
-        "PublicationDateTime": "2026-03-27T16:42:03"
+        "LastChangeDateTime": "2026-03-27T18:10:26",
+        "EffectiveDateTime": "2026-03-27T18:10:26",
+        "PublicationDateTime": "2026-03-27T18:10:26"
       },
       "GlobalModelInformation": [
         {
@@ -99,7 +99,7 @@
       {
         "Quantity": 1,
         "CatalogueItem": {
-          "Identifier": "8b2886e1-c28c-4890-8506-2bcf5f9cca96",
+          "Identifier": "6d116ce7-7cb1-4a1d-b2d2-214804f7427d",
           "TradeItem": {
             "IsBrandBankPublication": false,
             "TargetSector": [
@@ -107,11 +107,15 @@
             ],
             "HealthcareItemInformationModule": {
               "HealthcareItemInformation": {
-                "DoesTradeItemContainLatex": "FALSE"
+                "DoesTradeItemContainHumanBloodDerivative": "FALSE",
+                "DoesTradeItemContainLatex": "FALSE",
+                "DoesTradeItemContainHumanTissue": "FALSE",
+                "DoesTradeItemContainAnimalTissue": false
               }
             },
             "MedicalDeviceTradeItemModule": {
               "MedicalDeviceInformation": {
+                "IsTradeItemImplantable": "FALSE",
                 "UdidDeviceCount": 1,
                 "DirectPartMarkingIdentifier": [
                   {
@@ -119,6 +123,12 @@
                     "Value": "04719871630143"
                   }
                 ],
+                "HasDeviceMeasuringFunction": false,
+                "IsActiveDevice": false,
+                "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct": false,
+                "IsDeviceMedicinalProduct": false,
+                "IsReprocessedSingleUseDevice": false,
+                "IsReusableSurgicalInstrument": false,
                 "UDIProductionIdentifierTypeCode": [
                   {
                     "Value": "SERIAL_NUMBER"
@@ -127,15 +137,9 @@
                     "Value": "MANUFACTURING_DATE"
                   }
                 ],
-                "SystemOrProcedurePackTypeCode": {
+                "MultiComponentDeviceTypeCode": {
                   "Value": "SYSTEM"
                 },
-                "SystemOrProcedurePackMedicalPurposeDescription": [
-                  {
-                    "LanguageCode": "en",
-                    "Value": "Alginate Mixer MX-300"
-                  }
-                ],
                 "EUMedicalDeviceStatusCode": {
                   "Value": "ON_MARKET"
                 },
@@ -165,6 +169,24 @@
                   "RegulatoryAgency": "EU"
                 }
               ]
+            },
+            "SalesInformationModule": {
+              "SalesInformation": {
+                "TargetMarketSalesConditions": [
+                  {
+                    "TargetMarketConsumerSalesConditionCode": {
+                      "Value": "ORIGINAL_PLACED"
+                    },
+                    "SalesConditionTargetMarketCountry": [
+                      {
+                        "CountryCode": {
+                          "Value": "528"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
             },
             "TradeItemDescriptionModule": {
               "TradeItemDescriptionInformation": {
@@ -234,7 +256,7 @@
             "TradeItemContactInformation": [
               {
                 "ContactTypeCode": {
-                  "Value": "EPP"
+                  "Value": "EMA"
                 },
                 "AdditionalPartyIdentification": [
                   {
@@ -258,9 +280,9 @@
               }
             ],
             "TradeItemSynchronisationDates": {
-              "LastChangeDateTime": "2026-03-27T16:42:03",
+              "LastChangeDateTime": "2026-03-27T18:10:26",
               "EffectiveDateTime": "2026-03-10T09:55:01.87",
-              "PublicationDateTime": "2026-03-27T16:42:03"
+              "PublicationDateTime": "2026-03-27T18:10:26"
             },
             "GlobalModelInformation": [
               {

@@ -5,3 +5,8 @@ target/
 settings.json
 p8/
 *.p8
+eudamed_json/processed/
+eudamed_json/detail/
+eudamed_json/basic/
+swissdamed_json/
+firstbase_json/
