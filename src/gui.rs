@@ -211,13 +211,16 @@ impl eframe::App for App {
             }
         }
 
-        // --- Top panel: SRN input + settings (resizable) ---
-        egui::TopBottomPanel::top("settings_panel")
-            .resizable(true)
-            .default_height(self.top_panel_height)
-            .min_height(150.0)
-            .max_height(ctx.screen_rect().height() - 100.0)
-            .show(ctx, |ui| {
+        // --- Everything in CentralPanel with manual splitter ---
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let available_height = ui.available_height();
+            self.top_panel_height = self.top_panel_height.clamp(100.0, available_height - 100.0);
+
+            // --- Top: SRN input + settings (scrollable, fixed height) ---
+            egui::ScrollArea::vertical()
+                .id_salt("settings_scroll")
+                .max_height(self.top_panel_height)
+                .show(ui, |ui| {
             // Load icon texture once
             let icon_texture = self.icon_texture.get_or_insert_with(|| {
                 let png_bytes = include_bytes!("../assets/icon_256x256.png");
@@ -246,7 +249,7 @@ impl eframe::App for App {
             ui.label("SRNs (one per line or space-separated):");
             ui.add(
                 egui::TextEdit::multiline(&mut self.settings.srns)
-                    .desired_rows(3)
+                    .desired_rows(5)
                     .desired_width(f32::INFINITY)
                     .hint_text("DE-MF-000012345\nFR-MF-000067890"),
             );
@@ -366,10 +369,35 @@ impl eframe::App for App {
                 self.start_pipeline(ctx.clone());
             }
 
-        });
+            });
 
-        // --- Bottom panel: Log output (fills remaining space) ---
-        egui::CentralPanel::default().show(ctx, |ui| {
+            // --- Draggable splitter bar ---
+            let splitter_response = ui.allocate_response(
+                egui::vec2(ui.available_width(), 8.0),
+                egui::Sense::drag(),
+            );
+            let splitter_rect = splitter_response.rect;
+            let visuals = if splitter_response.hovered() || splitter_response.dragged() {
+                ui.painter().rect_filled(splitter_rect, 0.0, egui::Color32::from_gray(160));
+                ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::ResizeVertical);
+                egui::Color32::from_gray(120)
+            } else {
+                egui::Color32::from_gray(200)
+            };
+            // Draw grip lines
+            let center_y = splitter_rect.center().y;
+            for dy in [-2.0, 0.0, 2.0] {
+                ui.painter().line_segment(
+                    [egui::pos2(splitter_rect.left() + 50.0, center_y + dy),
+                     egui::pos2(splitter_rect.right() - 50.0, center_y + dy)],
+                    egui::Stroke::new(1.0, visuals),
+                );
+            }
+            if splitter_response.dragged() {
+                self.top_panel_height += splitter_response.drag_delta().y;
+            }
+
+            // --- Bottom: Log output ---
             ui.label("Log:");
             egui::ScrollArea::vertical()
                 .stick_to_bottom(true)
