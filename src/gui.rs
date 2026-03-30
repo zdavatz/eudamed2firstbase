@@ -570,6 +570,21 @@ impl DownloadProgress for GuiProgress {
 
 /// Run the full download → convert → push pipeline in a background thread.
 fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Context) {
+    // Redirect stderr to /dev/null to prevent eprintln! panics when GUI has no terminal
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::FromRawFd;
+        if let Ok(devnull) = std::fs::OpenOptions::new().write(true).open("/dev/null") {
+            use std::os::unix::io::IntoRawFd;
+            let fd = devnull.into_raw_fd();
+            unsafe {
+                // dup2(fd, 2) redirects stderr to /dev/null
+                extern "C" { fn dup2(oldfd: i32, newfd: i32) -> i32; }
+                dup2(fd, 2);
+            }
+        }
+    }
+
     let gui_progress = GuiProgress {
         tx: tx.clone(),
         ctx: ctx.clone(),
