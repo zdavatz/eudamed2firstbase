@@ -25,6 +25,7 @@ The GUI provides:
 - Worker thread panic protection: panics in the background pipeline are caught and displayed in the log (not silently lost)
 - Persistent settings across restarts (`settings.json`)
 - Auto-saved logs to `logs/`
+- All data stored in `~/eudamed2firstbase/` (Windows: `%USERPROFILE%\eudamed2firstbase\`)
 
 Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
 
