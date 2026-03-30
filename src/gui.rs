@@ -661,21 +661,25 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 return;
             }
 
-            let _ = tx.send(WorkerMsg::Progress {
-                step: "Push".into(),
-                detail: "Pushing to GS1 firstbase Catalogue Item API...".into(),
-            });
+            log("[Push] Pushing to GS1 firstbase Catalogue Item API...");
             ctx.request_repaint();
-            log("Push functionality uses push_to_firstbase.sh");
-            log(&format!(
-                "Run: ./push_to_firstbase.sh {}",
-                settings.publish_to_gln
-            ));
 
-            done(true, &format!(
-                "Pipeline complete. {} downloaded, {} converted. Run push_to_firstbase.sh to publish.",
-                uuids.len(), converted
-            ));
+            let push_result = push_to_firstbase(
+                &settings,
+                &log,
+            );
+
+            match push_result {
+                Ok((accepted, rejected)) => {
+                    done(true, &format!(
+                        "Pipeline complete. {} downloaded, {} converted, {} pushed ({} accepted, {} rejected).",
+                        uuids.len(), converted, accepted + rejected, accepted, rejected
+                    ));
+                }
+                Err(e) => {
+                    done(false, &format!("Push failed: {}", e));
+                }
+            }
         }
         PushTarget::Swissdamed => {
             if settings.swissdamed_client_id.is_empty() || settings.swissdamed_client_secret.is_empty() {
@@ -700,6 +704,294 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             ));
         }
     }
+}
+
+/// Push firstbase JSON files to GS1 Catalogue Item API
+fn push_to_firstbase(
+    settings: &Settings,
+    log: &dyn Fn(&str),
+) -> anyhow::Result<(u32, u32)> {
+    let api_base = "https://test-webapi-firstbase.gs1.ch:5443";
+    let firstbase_dir = download::app_data_dir().join("firstbase_json");
+
+    // Collect pushable files (numeric GTIN)
+    let mut files: Vec<std::path::PathBuf> = Vec::new();
+    if firstbase_dir.exists() {
+        for entry in std::fs::read_dir(&firstbase_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().map(|e| e == "json").unwrap_or(false) {
+                files.push(path);
+            }
+        }
+    }
+
+    if files.is_empty() {
+        log("No firstbase JSON files to push.");
+        return Ok((0, 0));
+    }
+
+    log(&format!("Found {} firstbase JSON files", files.len()));
+
+    // Filter: only numeric GTINs
+    let mut pushable: Vec<(std::path::PathBuf, String, serde_json::Value)> = Vec::new();
+    for f in &files {
+        if let Ok(content) = std::fs::read_to_string(f) {
+            if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
+                let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if !gtin.is_empty() && gtin.chars().all(|c| c.is_ascii_digit()) {
+                    let ident = doc.pointer("/DraftItem/Identifier")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    pushable.push((f.clone(), ident, doc));
+                }
+            }
+        }
+    }
+
+    log(&format!("{} files with numeric GTIN (pushable)", pushable.len()));
+    if pushable.is_empty() {
+        return Ok((0, 0));
+    }
+
+    // --- Helper: HTTP POST with JSON ---
+    let http_post = |url: &str, auth: &str, body: &str| -> anyhow::Result<String> {
+        let mut req = ureq::post(url).header("Content-Type", "application/json");
+        if !auth.is_empty() {
+            req = req.header("Authorization", &format!("bearer {}", auth));
+        }
+        let mut resp = req.send(body.as_bytes())?;
+        Ok(resp.body_mut().read_to_string()?)
+    };
+
+    // --- Get token (with retry) ---
+    let get_token = |email: &str, password: &str, gln: &str| -> anyhow::Result<String> {
+        let body = serde_json::json!({
+            "UserEmail": email,
+            "Password": password,
+            "Gln": gln,
+        });
+        for attempt in 1..=3 {
+            match http_post(&format!("{}/Account/Token", api_base), "", &body.to_string()) {
+                Ok(token_raw) => {
+                    let token = token_raw.trim_matches('"').to_string();
+                    if token.len() > 20 {
+                        return Ok(token);
+                    }
+                }
+                Err(e) => {
+                    if attempt < 3 {
+                        std::thread::sleep(std::time::Duration::from_secs(10));
+                    } else {
+                        return Err(anyhow::anyhow!("Token failed after 3 attempts: {}", e));
+                    }
+                }
+            }
+        }
+        Err(anyhow::anyhow!("Token failed"))
+    };
+
+    log("[Push] Getting token...");
+    let mut token = get_token(&settings.firstbase_email, &settings.firstbase_password, &settings.provider_gln)?;
+    log(&format!("Token obtained ({} chars)", token.len()));
+
+    let mut total_accepted: u32 = 0;
+    let mut total_rejected: u32 = 0;
+    let batch_size = 100;
+    let processed_dir = firstbase_dir.join("processed");
+    let _ = std::fs::create_dir_all(&processed_dir);
+
+    // --- CreateMany in batches ---
+    let total = pushable.len();
+    let mut all_publish_items: Vec<serde_json::Value> = Vec::new();
+
+    for (bi, batch) in pushable.chunks(batch_size).enumerate() {
+        let batch_start = bi * batch_size + 1;
+        let batch_end = (batch_start + batch.len()).min(total);
+        log(&format!("[Push] CreateMany batch {}: items {}-{} of {}", bi + 1, batch_start, batch_end, total));
+
+        // Build payload
+        let items: Vec<serde_json::Value> = batch.iter().filter_map(|(_, _, doc)| {
+            let draft = doc.get("DraftItem")?;
+            let mut item = serde_json::json!({
+                "Identifier": draft.get("Identifier")?,
+                "TradeItem": draft.get("TradeItem")?,
+            });
+            if let Some(children) = draft.get("CatalogueItemChildItemLink") {
+                item.as_object_mut()?.insert("CatalogueItemChildItemLink".into(), children.clone());
+            }
+            Some(item)
+        }).collect();
+
+        let payload = serde_json::json!({
+            "DocumentCommand": "Add",
+            "Items": items,
+        });
+
+        // Submit with retry for 429
+        let mut req_id = String::new();
+        for attempt in 1..=3 {
+            match http_post(
+                &format!("{}/CatalogueItem/Live/CreateMany", api_base),
+                &token,
+                &payload.to_string(),
+            ) {
+                Ok(resp_body) => {
+                    if let Ok(body) = serde_json::from_str::<serde_json::Value>(&resp_body) {
+                        req_id = body.get("RequestIdentifier")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                    }
+                    break;
+                }
+                Err(e) if e.to_string().contains("429") => {
+                    log(&format!("  429 rate limited — waiting 60s (attempt {}/3)", attempt));
+                    std::thread::sleep(std::time::Duration::from_secs(60));
+                }
+                Err(e) => {
+                    log(&format!("  CreateMany error: {}", e));
+                    break;
+                }
+            }
+        }
+
+        if req_id.is_empty() {
+            log(&format!("  FAIL: no RequestIdentifier"));
+            total_rejected += batch.len() as u32;
+            continue;
+        }
+
+        log(&format!("  Submitted: {}", req_id));
+
+        // Collect publish items
+        for (_, ident, doc) in batch {
+            let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                .and_then(|v| v.as_str()).unwrap_or("");
+            let tm = doc.pointer("/DraftItem/TradeItem/TargetMarket/TargetMarketCountryCode/Value")
+                .and_then(|v| v.as_str()).unwrap_or("097");
+            all_publish_items.push(serde_json::json!({
+                "Identifier": ident,
+                "DataSource": settings.provider_gln,
+                "Gtin": gtin,
+                "TargetMarket": tm,
+                "PublishToGln": [settings.publish_to_gln],
+            }));
+        }
+
+        // Poll until Done
+        for poll in 1..=24 {
+            std::thread::sleep(std::time::Duration::from_secs(15));
+            let poll_body = serde_json::json!({
+                "RequestIdentifier": req_id,
+                "IncludeGs1Response": true,
+            });
+            match http_post(&format!("{}/RequestStatus/Get", api_base), &token, &poll_body.to_string()) {
+                Ok(resp_body) => {
+                    if let Ok(body) = serde_json::from_str::<serde_json::Value>(&resp_body) {
+                        let status = body.get("Status").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        if status == "Done" || status == "Failed" {
+                            let gs1 = body.pointer("/Gs1ResponseMessage/GS1Response");
+                            if let Some(responses) = gs1.and_then(|v| v.as_array()) {
+                                for r in responses {
+                                    if let Some(tr) = r.get("TransactionResponse").and_then(|v| v.as_array()) {
+                                        total_accepted += tr.len() as u32;
+                                    }
+                                }
+                            }
+                            log(&format!("  Poll {}: {} (accepted so far: {})", poll, status, total_accepted));
+                            break;
+                        }
+                        if poll % 4 == 0 {
+                            log(&format!("  Poll {}: {}", poll, status));
+                        }
+                    }
+                }
+                Err(e) => {
+                    log(&format!("  Poll error: {}", e));
+                    break;
+                }
+            }
+        }
+
+        // Throttle between batches
+        std::thread::sleep(std::time::Duration::from_secs(8));
+    }
+
+    // --- AddMany: publish to recipient ---
+    if !all_publish_items.is_empty() && !settings.publish_to_gln.is_empty() {
+        log(&format!("[Push] Refreshing token before AddMany..."));
+        token = get_token(&settings.firstbase_email, &settings.firstbase_password, &settings.provider_gln)?;
+
+        log(&format!("[Push] Publishing {} items via AddMany to {}...", all_publish_items.len(), settings.publish_to_gln));
+
+        for (pi, pub_batch) in all_publish_items.chunks(batch_size).enumerate() {
+            let payload = serde_json::json!({ "Items": pub_batch });
+
+            for attempt in 1..=3 {
+                match http_post(
+                    &format!("{}/CatalogueItemPublication/AddMany", api_base),
+                    &token,
+                    &payload.to_string(),
+                ) {
+                    Ok(resp_body) => {
+                        let pub_req_id = serde_json::from_str::<serde_json::Value>(&resp_body)
+                            .ok()
+                            .and_then(|b| b.get("RequestIdentifier")?.as_str().map(|s| s.to_string()))
+                            .unwrap_or_default();
+                        if !pub_req_id.is_empty() {
+                            log(&format!("  AddMany batch {}: {}", pi + 1, pub_req_id));
+                            // Poll AddMany
+                            for poll in 1..=24 {
+                                std::thread::sleep(std::time::Duration::from_secs(15));
+                                let poll_body = serde_json::json!({
+                                    "RequestIdentifier": pub_req_id,
+                                    "IncludeGs1Response": true,
+                                });
+                                if let Ok(poll_resp) = http_post(
+                                    &format!("{}/RequestStatus/Get", api_base),
+                                    &token,
+                                    &poll_body.to_string(),
+                                ) {
+                                    if let Ok(body) = serde_json::from_str::<serde_json::Value>(&poll_resp) {
+                                        let status = body.get("Status").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                        if status == "Done" || status == "Failed" {
+                                            log(&format!("  AddMany poll {}: {}", poll, status));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    Err(e) if e.to_string().contains("429") => {
+                        log(&format!("  AddMany 429 — waiting 60s (attempt {}/3)", attempt));
+                        std::thread::sleep(std::time::Duration::from_secs(60));
+                    }
+                    Err(e) => {
+                        log(&format!("  AddMany error: {}", e));
+                        break;
+                    }
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_secs(8));
+        }
+    }
+
+    // Move successfully pushed files to processed/
+    for (path, _, _) in &pushable {
+        if let Some(name) = path.file_name() {
+            let dest = processed_dir.join(name);
+            let _ = std::fs::rename(path, &dest);
+        }
+    }
+    log(&format!("[Push] Moved {} files to processed/", pushable.len()));
+
+    Ok((total_accepted, total_rejected))
 }
 
 /// Load the embedded app icon as an `egui::IconData`.
