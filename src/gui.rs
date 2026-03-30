@@ -1087,6 +1087,10 @@ fn push_to_firstbase(
     let processed_dir = firstbase_dir.join("processed");
     let _ = std::fs::create_dir_all(&processed_dir);
 
+    // Collect detailed results for HTML log
+    let mut accepted_ids: Vec<String> = Vec::new();
+    let mut error_details: Vec<(String, String, String)> = Vec::new(); // (identifier, error_code, description)
+
     // --- CreateMany in batches ---
     let total = pushable.len();
     let mut all_publish_items: Vec<serde_json::Value> = Vec::new();
@@ -1182,14 +1186,63 @@ fn push_to_firstbase(
                         let status = body.get("Status").and_then(|v| v.as_str()).unwrap_or("unknown");
                         if status == "Done" || status == "Failed" {
                             let gs1 = body.pointer("/Gs1ResponseMessage/GS1Response");
+                            let mut batch_accepted = 0u32;
+                            let mut batch_rejected = 0u32;
                             if let Some(responses) = gs1.and_then(|v| v.as_array()) {
                                 for r in responses {
+                                    // Accepted
                                     if let Some(tr) = r.get("TransactionResponse").and_then(|v| v.as_array()) {
-                                        total_accepted += tr.len() as u32;
+                                        for t in tr {
+                                            batch_accepted += 1;
+                                            if let Some(ident) = t.pointer("/TransactionIdentifier/Value").and_then(|v| v.as_str()) {
+                                                accepted_ids.push(ident.to_string());
+                                            }
+                                        }
+                                    }
+                                    // Errors from TransactionException
+                                    if let Some(te) = r.get("TransactionException").and_then(|v| v.as_array()) {
+                                        for exc in te {
+                                            let ident = exc.pointer("/TransactionIdentifier/Value").and_then(|v| v.as_str()).unwrap_or("");
+                                            for ce in exc.get("CommandException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                for de in ce.get("DocumentException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                    let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or(ident);
+                                                    for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                        for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                            batch_rejected += 1;
+                                                            let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
+                                                            let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
+                                                            error_details.push((doc_id.to_string(), code.to_string(), desc.chars().take(200).collect()));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // Errors from GS1Exception
+                                    if let Some(ge) = r.get("GS1Exception").and_then(|v| v.as_array()) {
+                                        for exc in ge {
+                                            if let Some(obj) = exc.as_object() {
+                                                for ce in obj.get("CommandException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                    for de in ce.get("DocumentException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                        let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or("");
+                                                        for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                            for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                                batch_rejected += 1;
+                                                                let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
+                                                                let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
+                                                                error_details.push((doc_id.to_string(), code.to_string(), desc.chars().take(200).collect()));
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
-                            log(&format!("  Poll {}: {} (accepted so far: {})", poll, status, total_accepted));
+                            total_accepted += batch_accepted;
+                            total_rejected += batch_rejected;
+                            log(&format!("  Poll {}: {} ({} accepted, {} errors)", poll, status, batch_accepted, batch_rejected));
                             break;
                         }
                         if poll % 4 == 0 {
@@ -1304,27 +1357,73 @@ fn push_to_firstbase(
     }
     log(&format!("[Push] Moved {} files to processed/", moved));
 
-    // Write HTML log
+    // Write HTML log with full error details
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
     let log_file = log_dir.join(format!("{}.log.html", chrono::Local::now().format("%M.%H_%d.%m.%Y")));
-    let html = format!(
+
+    // Aggregate errors by code
+    let mut error_counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+    for (_, code, _) in &error_details {
+        *error_counts.entry(code.clone()).or_insert(0) += 1;
+    }
+    let mut sorted_errors: Vec<_> = error_counts.iter().collect();
+    sorted_errors.sort_by(|a, b| b.1.cmp(a.1));
+
+    let mut html = format!(
         "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log</title>\
-        <style>body{{font-family:monospace;margin:20px}}table{{border-collapse:collapse;width:100%}}\
-        th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}}th{{background:#f0f0f0}}\
-        .ok{{color:green}}.err{{color:red}}</style></head><body>\
+        <style>body{{font-family:monospace;margin:20px}}h1{{font-size:18px}}\
+        table{{border-collapse:collapse;width:100%;margin:10px 0}}\
+        th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}}\
+        th{{background:#f0f0f0}}.ok{{color:green}}.err{{color:red}}\
+        .summary{{background:#f8f8f8;padding:10px;margin:10px 0}}\
+        </style></head><body>\
         <h1>GS1 Firstbase Push Log</h1>\
-        <p>Timestamp: {}</p>\
-        <p>Publish GLN: {}</p>\
-        <p class='ok'>Accepted: {}</p>\
-        <p class='err'>Rejected: {}</p>\
-        <p>Total pushable: {} (skipped no GTIN: {})</p>\
-        </body></html>",
+        <div class='summary'>\
+        <b>Timestamp:</b> {}<br>\
+        <b>Publish GLN:</b> {}<br>\
+        <b>Accepted:</b> <span class='ok'>{}</span> | \
+        <b>Rejected:</b> <span class='err'>{}</span><br>\
+        <b>Total pushable:</b> {} (skipped no GTIN: {})\
+        </div>",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
         settings.publish_to_gln,
         total_accepted, total_rejected,
         pushable.len(), skipped_no_gtin,
     );
+
+    // Error summary table
+    if !sorted_errors.is_empty() {
+        html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>Count</th><th>Error Code</th></tr>");
+        for (code, count) in &sorted_errors {
+            html.push_str(&format!("<tr><td>{}</td><td>{}</td></tr>", count, code));
+        }
+        html.push_str("</table>");
+    }
+
+    // Detailed errors (first 500)
+    if !error_details.is_empty() {
+        html.push_str("<h2 class='err'>Error Details</h2><table><tr><th>#</th><th>Identifier</th><th>Error Code</th><th>Description</th></tr>");
+        for (i, (ident, code, desc)) in error_details.iter().enumerate().take(500) {
+            html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                i + 1, ident, code, desc));
+        }
+        if error_details.len() > 500 {
+            html.push_str(&format!("<tr><td colspan='4'>... and {} more</td></tr>", error_details.len() - 500));
+        }
+        html.push_str("</table>");
+    }
+
+    // Accepted list
+    if !accepted_ids.is_empty() {
+        html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>Identifier</th></tr>", accepted_ids.len()));
+        for (i, ident) in accepted_ids.iter().enumerate() {
+            html.push_str(&format!("<tr><td>{}</td><td>{}</td></tr>", i + 1, ident));
+        }
+        html.push_str("</table>");
+    }
+
+    html.push_str("</body></html>");
     let _ = std::fs::write(&log_file, &html);
     log(&format!("[Push] HTML log: {}", log_file.display()));
 
