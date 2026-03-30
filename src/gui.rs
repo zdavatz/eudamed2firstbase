@@ -1378,18 +1378,22 @@ fn push_to_firstbase(
         th{{background:#f0f0f0}}.ok{{color:green}}.err{{color:red}}\
         .summary{{background:#f8f8f8;padding:10px;margin:10px 0}}\
         </style></head><body>\
-        <h1>GS1 Firstbase Push Log</h1>\
+        <h1>GS1 Firstbase Push Log (v{version})</h1>\
         <div class='summary'>\
-        <b>Timestamp:</b> {}<br>\
-        <b>Publish GLN:</b> {}<br>\
-        <b>Accepted:</b> <span class='ok'>{}</span> | \
-        <b>Rejected:</b> <span class='err'>{}</span><br>\
-        <b>Total pushable:</b> {} (skipped no GTIN: {})\
+        <b>Version:</b> {version}<br>\
+        <b>Timestamp:</b> {timestamp}<br>\
+        <b>Publish GLN:</b> {gln}<br>\
+        <b>Accepted:</b> <span class='ok'>{accepted}</span> | \
+        <b>Rejected:</b> <span class='err'>{rejected}</span><br>\
+        <b>Total pushable:</b> {pushable} (skipped no GTIN: {skipped})\
         </div>",
-        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
-        settings.publish_to_gln,
-        total_accepted, total_rejected,
-        pushable.len(), skipped_no_gtin,
+        version = env!("CARGO_PKG_VERSION"),
+        timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
+        gln = settings.publish_to_gln,
+        accepted = total_accepted,
+        rejected = total_rejected,
+        pushable = pushable.len(),
+        skipped = skipped_no_gtin,
     );
 
     // Error summary table
