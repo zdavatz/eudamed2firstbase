@@ -253,7 +253,7 @@ jobs:
           Exec=eudamed2firstbase
           Icon=eudamed2firstbase
           Type=Application
-          Categories=Office;Medical;
+          Categories=Office;
           Comment=EUDAMED to GS1 firstbase and Swissdamed converter
           DESKTOP
 
