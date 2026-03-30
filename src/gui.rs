@@ -1089,7 +1089,8 @@ fn push_to_firstbase(
 
     // Collect detailed results for HTML log
     let mut accepted_ids: Vec<String> = Vec::new();
-    let mut error_details: Vec<(String, String, String)> = Vec::new(); // (identifier, error_code, description)
+    let mut error_details: Vec<(String, String, String, String)> = Vec::new(); // (identifier, gtin, error_code, description)
+    let mut raw_responses: Vec<String> = Vec::new();
 
     // --- CreateMany in batches ---
     let total = pushable.len();
@@ -1185,6 +1186,7 @@ fn push_to_firstbase(
                     if let Ok(body) = serde_json::from_str::<serde_json::Value>(&resp_body) {
                         let status = body.get("Status").and_then(|v| v.as_str()).unwrap_or("unknown");
                         if status == "Done" || status == "Failed" {
+                            raw_responses.push(serde_json::to_string_pretty(&body).unwrap_or_default());
                             let gs1 = body.pointer("/Gs1ResponseMessage/GS1Response");
                             let mut batch_accepted = 0u32;
                             let mut batch_rejected = 0u32;
@@ -1207,11 +1209,12 @@ fn push_to_firstbase(
                                                 for de in ce.get("DocumentException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                     let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or(ident);
                                                     for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                        let gtin = ae.get("Gtin").and_then(|v| v.as_str()).unwrap_or("");
                                                         for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                             batch_rejected += 1;
                                                             let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
                                                             let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
-                                                            error_details.push((doc_id.to_string(), code.to_string(), desc.chars().take(200).collect()));
+                                                            error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), desc.chars().take(200).collect()));
                                                         }
                                                     }
                                                 }
@@ -1226,11 +1229,12 @@ fn push_to_firstbase(
                                                     for de in ce.get("DocumentException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                         let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or("");
                                                         for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                            let gtin = ae.get("Gtin").and_then(|v| v.as_str()).unwrap_or("");
                                                             for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                                 batch_rejected += 1;
                                                                 let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
                                                                 let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
-                                                                error_details.push((doc_id.to_string(), code.to_string(), desc.chars().take(200).collect()));
+                                                                error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), desc.chars().take(200).collect()));
                                                             }
                                                         }
                                                     }
@@ -1364,7 +1368,7 @@ fn push_to_firstbase(
 
     // Aggregate errors by code
     let mut error_counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
-    for (_, code, _) in &error_details {
+    for (_, _, code, _) in &error_details {
         *error_counts.entry(code.clone()).or_insert(0) += 1;
     }
     let mut sorted_errors: Vec<_> = error_counts.iter().collect();
@@ -1407,13 +1411,13 @@ fn push_to_firstbase(
 
     // Detailed errors (first 500)
     if !error_details.is_empty() {
-        html.push_str("<h2 class='err'>Error Details</h2><table><tr><th>#</th><th>Identifier</th><th>Error Code</th><th>Description</th></tr>");
-        for (i, (ident, code, desc)) in error_details.iter().enumerate().take(500) {
-            html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                i + 1, ident, code, desc));
+        html.push_str("<h2 class='err'>Error Details</h2><table><tr><th>#</th><th>Identifier</th><th>GTIN</th><th>Error Code</th><th>Description</th></tr>");
+        for (i, (ident, gtin, code, desc)) in error_details.iter().enumerate().take(500) {
+            html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                i + 1, ident, gtin, code, desc));
         }
         if error_details.len() > 500 {
-            html.push_str(&format!("<tr><td colspan='4'>... and {} more</td></tr>", error_details.len() - 500));
+            html.push_str(&format!("<tr><td colspan='5'>... and {} more</td></tr>", error_details.len() - 500));
         }
         html.push_str("</table>");
     }
@@ -1425,6 +1429,15 @@ fn push_to_firstbase(
             html.push_str(&format!("<tr><td>{}</td><td>{}</td></tr>", i + 1, ident));
         }
         html.push_str("</table>");
+    }
+
+    // Raw JSON responses
+    if !raw_responses.is_empty() {
+        html.push_str("<h2>Raw API Responses</h2>");
+        for (i, raw) in raw_responses.iter().enumerate() {
+            html.push_str(&format!("<h3>Batch {}</h3><pre>{}</pre>", i + 1,
+                raw.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
+        }
     }
 
     html.push_str("</body></html>");

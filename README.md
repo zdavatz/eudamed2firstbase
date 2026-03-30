@@ -179,7 +179,7 @@ download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
 push_to_firstbase.sh       # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
 push_to_swissdamed.sh      # Push EUDAMED JSON to Swissdamed M2M API (OAuth2, per-legislation endpoints)
-log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with full GS1 response)
+log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with GTIN-mapped errors + raw API JSON)
 ```
 
 ## What it does
