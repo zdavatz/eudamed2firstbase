@@ -27,7 +27,18 @@ pub fn app_data_dir() -> PathBuf {
             }
         }
     }
-    // Non-sandboxed: use current working directory
+    // Windows MSIX/Store: use package-specific folder if available,
+    // otherwise LOCALAPPDATA to avoid permission issues in Program Files
+    #[cfg(target_os = "windows")]
+    {
+        // MSIX packaged apps get a writable LOCALAPPDATA subfolder automatically
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            let dir = PathBuf::from(local_app_data).join("eudamed2firstbase");
+            let _ = std::fs::create_dir_all(&dir);
+            return dir;
+        }
+    }
+    // Non-sandboxed Linux/macOS: use current working directory
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
