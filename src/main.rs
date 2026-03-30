@@ -1,3 +1,6 @@
+// Hide console window on Windows when running as GUI
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod api_detail;
 mod api_json;
 mod config;
