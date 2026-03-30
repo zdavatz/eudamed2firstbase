@@ -23,22 +23,28 @@ pub fn app_data_dir() -> PathBuf {
         if !container.is_empty() {
             if let Some(home) = std::env::var_os("HOME") {
                 // Sandbox container maps HOME to ~/Library/Containers/<bundle-id>/Data
-                return PathBuf::from(home);
+                let dir = PathBuf::from(home).join("eudamed2firstbase");
+                let _ = std::fs::create_dir_all(&dir);
+                return dir;
             }
         }
     }
-    // Windows MSIX/Store: use package-specific folder if available,
-    // otherwise LOCALAPPDATA to avoid permission issues in Program Files
+
+    // All platforms: ~/eudamed2firstbase/
+    // Windows: %USERPROFILE%\eudamed2firstbase\
+    // Linux/macOS: ~/eudamed2firstbase/
     #[cfg(target_os = "windows")]
-    {
-        // MSIX packaged apps get a writable LOCALAPPDATA subfolder automatically
-        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-            let dir = PathBuf::from(local_app_data).join("eudamed2firstbase");
-            let _ = std::fs::create_dir_all(&dir);
-            return dir;
-        }
+    let home = std::env::var_os("USERPROFILE");
+    #[cfg(not(target_os = "windows"))]
+    let home = std::env::var_os("HOME");
+
+    if let Some(home) = home {
+        let dir = PathBuf::from(home).join("eudamed2firstbase");
+        let _ = std::fs::create_dir_all(&dir);
+        return dir;
     }
-    // Non-sandboxed Linux/macOS: use current working directory
+
+    // Fallback: current working directory
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
