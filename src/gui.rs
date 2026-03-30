@@ -81,6 +81,8 @@ pub struct App {
     rx: Option<mpsc::Receiver<WorkerMsg>>,
     show_credentials: bool,
     icon_texture: Option<egui::TextureHandle>,
+    /// Height of the top panel (SRN + settings), draggable splitter
+    top_panel_height: f32,
 }
 
 impl App {
@@ -123,6 +125,7 @@ impl App {
             rx: None,
             show_credentials: false,
             icon_texture: None,
+            top_panel_height: 300.0,
         }
     }
 
@@ -208,7 +211,13 @@ impl eframe::App for App {
             }
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        // --- Top panel: SRN input + settings (resizable) ---
+        egui::TopBottomPanel::top("settings_panel")
+            .resizable(true)
+            .default_height(self.top_panel_height)
+            .min_height(150.0)
+            .max_height(ctx.screen_rect().height() - 100.0)
+            .show(ctx, |ui| {
             // Load icon texture once
             let icon_texture = self.icon_texture.get_or_insert_with(|| {
                 let png_bytes = include_bytes!("../assets/icon_256x256.png");
@@ -357,14 +366,12 @@ impl eframe::App for App {
                 self.start_pipeline(ctx.clone());
             }
 
-            ui.add_space(8.0);
-            ui.separator();
+        });
 
-            // --- Log output ---
+        // --- Bottom panel: Log output (fills remaining space) ---
+        egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Log:");
-            let text_height = ui.available_height();
             egui::ScrollArea::vertical()
-                .max_height(text_height)
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
                     let log_text = self.log_lines.join("\n");

@@ -18,7 +18,9 @@ The GUI provides:
   - Firstbase: email, password, provider GLN, publish-to GLN
   - Swissdamed: client ID, client secret, API base URL
 - Dry run mode (download & convert only, no push)
-- One-click pipeline: Download listings → Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (10 parallel, 3 retries) → Download Basic UDI-DI (10 parallel, 3 retries) → Convert to target format (firstbase JSON or Swissdamed JSON, with version tracking)
+- Resizable splitter between settings panel and log panel
+- One-click pipeline: Download → Convert → Push (full Firstbase API push in Rust: CreateMany + polling + AddMany, no shell script needed)
+- Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (10 parallel, 3 retries) → Download Basic UDI-DI (10 parallel, 3 retries) → Convert to target format → Push with token retry, 429 backoff, and RequestStatus polling
 - Download log written to `eudamed_json/log/download.log` (same format as `download.sh`)
 - Live progress reporting: listing pages ("page 2/54 — 40 devices so far (of 1074 total)"), detail/basic download counters ("detail 10/1074 downloaded"), conversion summary
 - Live scrollable log output with file save paths
