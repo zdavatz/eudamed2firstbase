@@ -85,6 +85,8 @@ pub struct App {
     split_size: f32,
     /// true = horizontal (left/right), false = vertical (top/bottom)
     horizontal_split: bool,
+    /// Skip download, only convert + push
+    skip_download: bool,
 }
 
 impl App {
@@ -129,6 +131,7 @@ impl App {
             icon_texture: None,
             split_size: 300.0,
             horizontal_split: false,
+            skip_download: false,
         }
     }
 
@@ -157,10 +160,11 @@ impl App {
         self.log_lines.push("Pipeline started...".to_string());
 
         let settings = self.settings.clone();
+        let skip_download = self.skip_download;
 
         thread::spawn(move || {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                run_pipeline(settings, tx.clone(), ctx.clone());
+                run_pipeline(settings, tx.clone(), ctx.clone(), skip_download);
             }));
             if let Err(panic_info) = result {
                 let msg = if let Some(s) = panic_info.downcast_ref::<String>() {
@@ -294,6 +298,13 @@ impl eframe::App for App {
                         let target_name = match self.settings.push_target { PushTarget::Firstbase => "firstbase", PushTarget::Swissdamed => "Swissdamed" };
                         let btn = if self.settings.dry_run { "Download & Convert".to_string() } else { format!("Download, Convert & Push to {}", target_name) };
                         if ui.add_enabled(can_start, egui::Button::new(&btn).min_size(egui::vec2(180.0, 30.0))).clicked() {
+                            self.skip_download = false;
+                            self.start_pipeline(ctx.clone());
+                        }
+                        let conv_btn = if self.settings.dry_run { "Convert only".to_string() } else { format!("Convert & Push to {}", target_name) };
+                        if ui.add_enabled(can_start, egui::Button::new(&conv_btn).min_size(egui::vec2(160.0, 30.0)))
+                            .on_hover_text("Skip download, use existing files").clicked() {
+                            self.skip_download = true;
                             self.start_pipeline(ctx.clone());
                         }
                     });
@@ -491,12 +502,29 @@ impl eframe::App for App {
 
             let can_start = !self.running && !self.settings.srns.trim().is_empty();
 
-            if ui
-                .add_enabled(can_start, egui::Button::new(&button_text).min_size(egui::vec2(200.0, 36.0)))
-                .clicked()
-            {
-                self.start_pipeline(ctx.clone());
-            }
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(can_start, egui::Button::new(&button_text).min_size(egui::vec2(200.0, 36.0)))
+                    .clicked()
+                {
+                    self.skip_download = false;
+                    self.start_pipeline(ctx.clone());
+                }
+
+                let convert_text = if self.settings.dry_run {
+                    "Convert only".to_string()
+                } else {
+                    format!("Convert & Push to {}", target_name)
+                };
+                if ui
+                    .add_enabled(can_start, egui::Button::new(&convert_text).min_size(egui::vec2(180.0, 36.0)))
+                    .on_hover_text("Skip download, use existing files")
+                    .clicked()
+                {
+                    self.skip_download = true;
+                    self.start_pipeline(ctx.clone());
+                }
+            });
 
             });
 
@@ -569,7 +597,7 @@ impl DownloadProgress for GuiProgress {
 }
 
 /// Run the full download → convert → push pipeline in a background thread.
-fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Context) {
+fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Context, skip_download: bool) {
     // Redirect stderr to /dev/null to prevent eprintln! panics when GUI has no terminal
     #[cfg(unix)]
     {
@@ -623,31 +651,51 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         limit.map(|l| format!(", limit {} per SRN", l)).unwrap_or_default()
     ));
 
-    // --- Step 1: Download from EUDAMED (shared module) ---
-    let dl_config = DownloadConfig {
-        srns,
-        limit,
-        ..Default::default()
-    };
+    let data_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR);
+    let detail_dir = data_dir.join("detail");
+    let basic_dir = data_dir.join("basic");
 
-    let dl_result = match download::run_download(&dl_config, &gui_progress) {
-        Ok(r) => r,
-        Err(e) => {
-            done(false, &format!("Download failed: {}", e));
+    let uuids: Vec<String>;
+
+    if skip_download {
+        log("[Skip] Using existing downloaded files (no EUDAMED download)");
+        // Collect UUIDs from existing detail files
+        uuids = std::fs::read_dir(&detail_dir)
+            .map(|entries| entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
+                .map(|e| e.path().file_stem().unwrap().to_string_lossy().to_string())
+                .collect())
+            .unwrap_or_default();
+        log(&format!("Found {} existing detail files", uuids.len()));
+        if uuids.is_empty() {
+            done(false, "No detail files found. Run Download first.");
             return;
         }
-    };
+    } else {
+        // --- Step 1: Download from EUDAMED (shared module) ---
+        let dl_config = DownloadConfig {
+            srns,
+            limit,
+            ..Default::default()
+        };
 
-    let uuids = dl_result.all_uuids();
-    if uuids.is_empty() {
-        done(false, "No devices found for the given SRN(s)");
-        return;
+        let dl_result = match download::run_download(&dl_config, &gui_progress) {
+            Ok(r) => r,
+            Err(e) => {
+                done(false, &format!("Download failed: {}", e));
+                return;
+            }
+        };
+
+        uuids = dl_result.all_uuids();
+        if uuids.is_empty() {
+            done(false, "No devices found for the given SRN(s)");
+            return;
+        }
     }
 
     // --- Step 2: Convert ---
-    let data_dir = PathBuf::from(download::DEFAULT_DATA_DIR);
-    let detail_dir = data_dir.join("detail");
-    let basic_dir = data_dir.join("basic");
 
     let basic_udi_cache = crate::load_basic_udi_cache(&basic_dir);
     log(&format!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len()));
@@ -913,8 +961,9 @@ fn push_to_firstbase(
 
     log(&format!("Found {} firstbase JSON files", files.len()));
 
-    // Filter: only numeric GTINs
-    let mut pushable: Vec<(std::path::PathBuf, String, serde_json::Value)> = Vec::new();
+    // Filter: only numeric GTINs (skip HIBC/IFA to prevent batch rejection)
+    let mut pushable: Vec<(std::path::PathBuf, String, String, serde_json::Value)> = Vec::new();
+    let mut skipped_no_gtin = 0;
     for f in &files {
         if let Ok(content) = std::fs::read_to_string(f) {
             if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -926,13 +975,16 @@ fn push_to_firstbase(
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
-                    pushable.push((f.clone(), ident, doc));
+                    let uuid = ident.strip_prefix("Draft_").unwrap_or(&ident).to_string();
+                    pushable.push((f.clone(), ident, uuid, doc));
+                } else {
+                    skipped_no_gtin += 1;
                 }
             }
         }
     }
 
-    log(&format!("{} files with numeric GTIN (pushable)", pushable.len()));
+    log(&format!("{} files with numeric GTIN (pushable), {} skipped (no GTIN)", pushable.len(), skipped_no_gtin));
     if pushable.is_empty() {
         return Ok((0, 0));
     }
@@ -993,9 +1045,13 @@ fn push_to_firstbase(
         let batch_end = (batch_start + batch.len()).min(total);
         log(&format!("[Push] CreateMany batch {}: items {}-{} of {}", bi + 1, batch_start, batch_end, total));
 
-        // Build payload
-        let items: Vec<serde_json::Value> = batch.iter().filter_map(|(_, _, doc)| {
+        // Build payload — double-check GTIN filter to prevent batch rejection
+        let items: Vec<serde_json::Value> = batch.iter().filter_map(|(_, _, _, doc)| {
             let draft = doc.get("DraftItem")?;
+            let gtin = draft.pointer("/TradeItem/Gtin")?.as_str()?;
+            if gtin.is_empty() || !gtin.chars().all(|c| c.is_ascii_digit()) {
+                return None;
+            }
             let mut item = serde_json::json!({
                 "Identifier": draft.get("Identifier")?,
                 "TradeItem": draft.get("TradeItem")?,
@@ -1047,8 +1103,8 @@ fn push_to_firstbase(
 
         log(&format!("  Submitted: {}", req_id));
 
-        // Collect publish items
-        for (_, ident, doc) in batch {
+        // Collect publish items + track successful files
+        for (_, ident, _, doc) in batch {
             let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
                 .and_then(|v| v.as_str()).unwrap_or("");
             let tm = doc.pointer("/DraftItem/TradeItem/TargetMarket/TargetMarketCountryCode/Value")
@@ -1162,14 +1218,64 @@ fn push_to_firstbase(
         }
     }
 
-    // Move successfully pushed files to processed/
-    for (path, _, _) in &pushable {
+    // Log push results to SQLite DB
+    let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+    if let Ok(conn) = rusqlite::Connection::open(&db_path) {
+        let _ = conn.execute_batch("CREATE TABLE IF NOT EXISTS push_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL, gtin TEXT NOT NULL DEFAULT '',
+            pushed_at TEXT NOT NULL, request_id TEXT, status TEXT NOT NULL,
+            error_code TEXT, error_msg TEXT, publish_gln TEXT
+        )");
+        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+        let mut logged = 0;
+        for (_, _, uuid, doc) in &pushable {
+            let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                .and_then(|v| v.as_str()).unwrap_or("");
+            let status = if total_accepted > 0 { "PUSHED" } else { "UNKNOWN" };
+            let _ = conn.execute(
+                "INSERT INTO push_log (uuid,gtin,pushed_at,status,publish_gln) VALUES (?1,?2,?3,?4,?5)",
+                rusqlite::params![uuid, gtin, now, status, settings.publish_to_gln],
+            );
+            logged += 1;
+        }
+        log(&format!("[Push] Logged {} items to push_log DB", logged));
+    }
+
+    // Move only pushable files to processed/ (all were submitted, even if some batches failed)
+    let mut moved = 0;
+    for (path, _, _, _) in &pushable {
         if let Some(name) = path.file_name() {
             let dest = processed_dir.join(name);
-            let _ = std::fs::rename(path, &dest);
+            if std::fs::rename(path, &dest).is_ok() {
+                moved += 1;
+            }
         }
     }
-    log(&format!("[Push] Moved {} files to processed/", pushable.len()));
+    log(&format!("[Push] Moved {} files to processed/", moved));
+
+    // Write HTML log
+    let log_dir = download::app_data_dir().join("log");
+    let _ = std::fs::create_dir_all(&log_dir);
+    let log_file = log_dir.join(format!("{}.log.html", chrono::Local::now().format("%M.%H_%d.%m.%Y")));
+    let html = format!(
+        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log</title>\
+        <style>body{{font-family:monospace;margin:20px}}table{{border-collapse:collapse;width:100%}}\
+        th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}}th{{background:#f0f0f0}}\
+        .ok{{color:green}}.err{{color:red}}</style></head><body>\
+        <h1>GS1 Firstbase Push Log</h1>\
+        <p>Timestamp: {}</p>\
+        <p>Publish GLN: {}</p>\
+        <p class='ok'>Accepted: {}</p>\
+        <p class='err'>Rejected: {}</p>\
+        <p>Total pushable: {} (skipped no GTIN: {})</p>\
+        </body></html>",
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
+        settings.publish_to_gln,
+        total_accepted, total_rejected,
+        pushable.len(), skipped_no_gtin,
+    );
+    let _ = std::fs::write(&log_file, &html);
+    log(&format!("[Push] HTML log: {}", log_file.display()));
 
     Ok((total_accepted, total_rejected))
 }
