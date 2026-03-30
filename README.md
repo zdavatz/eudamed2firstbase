@@ -1,6 +1,6 @@
 # eudamed2firstbase
 
-Rust GUI + CLI tool that converts EUDAMED medical device data into GS1 firstbase JSON format. Cross-platform GUI (macOS + Windows) for one-click download, convert, and push. Also supports CLI with five input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), EUDAMED JSON (individual device files), and XLSX export.
+Rust GUI + CLI tool that converts EUDAMED medical device data into GS1 firstbase and Swissdamed JSON format. Cross-platform GUI (macOS + Windows + Linux) for one-click download, convert, and push. Distributed via GitHub Releases (macOS DMG, Windows MSIX/ZIP, Linux AppImage/tar.gz) and Microsoft Store. Also supports CLI with five input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), EUDAMED JSON (individual device files), and XLSX export.
 
 ## GUI (recommended)
 
