@@ -85,8 +85,8 @@ pub struct App {
     split_size: f32,
     /// true = horizontal (left/right), false = vertical (top/bottom)
     horizontal_split: bool,
-    /// Skip download, only convert + push
-    skip_download: bool,
+    /// Pipeline mode: 0=full, 1=skip download (all files), 2=SRN filter only (no download)
+    pipeline_mode: u8,
 }
 
 impl App {
@@ -131,7 +131,7 @@ impl App {
             icon_texture: None,
             split_size: 300.0,
             horizontal_split: false,
-            skip_download: false,
+            pipeline_mode: 0,
         }
     }
 
@@ -160,11 +160,11 @@ impl App {
         self.log_lines.push("Pipeline started...".to_string());
 
         let settings = self.settings.clone();
-        let skip_download = self.skip_download;
+        let pipeline_mode = self.pipeline_mode;
 
         thread::spawn(move || {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                run_pipeline(settings, tx.clone(), ctx.clone(), skip_download);
+                run_pipeline(settings, tx.clone(), ctx.clone(), pipeline_mode);
             }));
             if let Err(panic_info) = result {
                 let msg = if let Some(s) = panic_info.downcast_ref::<String>() {
@@ -296,15 +296,14 @@ impl eframe::App for App {
                         ui.add_space(4.0);
                         let can_start = !self.running && !self.settings.srns.trim().is_empty();
                         let target_name = match self.settings.push_target { PushTarget::Firstbase => "firstbase", PushTarget::Swissdamed => "Swissdamed" };
-                        let btn = if self.settings.dry_run { "Download & Convert".to_string() } else { format!("Download, Convert & Push to {}", target_name) };
-                        if ui.add_enabled(can_start, egui::Button::new(&btn).min_size(egui::vec2(180.0, 30.0))).clicked() {
-                            self.skip_download = false;
+                        let btn = if self.settings.dry_run { "Download & Convert".to_string() } else { format!("DL+Push {}", target_name) };
+                        if ui.add_enabled(can_start, egui::Button::new(&btn).min_size(egui::vec2(120.0, 28.0))).clicked() {
+                            self.pipeline_mode = 0;
                             self.start_pipeline(ctx.clone());
                         }
-                        let conv_btn = if self.settings.dry_run { "Convert only".to_string() } else { format!("Convert & Push to {}", target_name) };
-                        if ui.add_enabled(can_start, egui::Button::new(&conv_btn).min_size(egui::vec2(160.0, 30.0)))
-                            .on_hover_text("Skip download, use existing files").clicked() {
-                            self.skip_download = true;
+                        if ui.add_enabled(can_start, egui::Button::new("Convert & Push SRNs").min_size(egui::vec2(140.0, 28.0)))
+                            .on_hover_text("No download — find SRN products, convert & push").clicked() {
+                            self.pipeline_mode = 2;
                             self.start_pipeline(ctx.clone());
                         }
                     });
@@ -504,24 +503,38 @@ impl eframe::App for App {
 
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(can_start, egui::Button::new(&button_text).min_size(egui::vec2(200.0, 36.0)))
+                    .add_enabled(can_start, egui::Button::new(&button_text).min_size(egui::vec2(200.0, 32.0)))
                     .clicked()
                 {
-                    self.skip_download = false;
+                    self.pipeline_mode = 0;
                     self.start_pipeline(ctx.clone());
                 }
 
                 let convert_text = if self.settings.dry_run {
-                    "Convert only".to_string()
+                    "Convert only (all)".to_string()
                 } else {
-                    format!("Convert & Push to {}", target_name)
+                    format!("Convert & Push (all)")
                 };
                 if ui
-                    .add_enabled(can_start, egui::Button::new(&convert_text).min_size(egui::vec2(180.0, 36.0)))
-                    .on_hover_text("Skip download, use existing files")
+                    .add_enabled(can_start, egui::Button::new(&convert_text).min_size(egui::vec2(150.0, 32.0)))
+                    .on_hover_text("Skip download, convert+push all existing files")
                     .clicked()
                 {
-                    self.skip_download = true;
+                    self.pipeline_mode = 1;
+                    self.start_pipeline(ctx.clone());
+                }
+
+                let srn_text = if self.settings.dry_run {
+                    "Convert SRNs only".to_string()
+                } else {
+                    format!("Convert & Push SRNs")
+                };
+                if ui
+                    .add_enabled(can_start, egui::Button::new(&srn_text).min_size(egui::vec2(150.0, 32.0)))
+                    .on_hover_text("No download — find SRN products in existing files, convert & push")
+                    .clicked()
+                {
+                    self.pipeline_mode = 2;
                     self.start_pipeline(ctx.clone());
                 }
             });
@@ -597,7 +610,7 @@ impl DownloadProgress for GuiProgress {
 }
 
 /// Run the full download → convert → push pipeline in a background thread.
-fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Context, skip_download: bool) {
+fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Context, pipeline_mode: u8) {
     // Redirect stderr to /dev/null to prevent eprintln! panics when GUI has no terminal
     #[cfg(unix)]
     {
@@ -655,11 +668,43 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     let detail_dir = data_dir.join("detail");
     let basic_dir = data_dir.join("basic");
 
-    let uuids: Vec<String>;
+    let mut uuids: Vec<String>;
 
-    if skip_download {
+    if pipeline_mode == 2 {
+        // Mode 2: SRN filter — scan basic/ files for matching manufacturer SRN
+        log("[SRN Filter] Scanning basic files for matching SRNs...");
+        let srn_set: std::collections::HashSet<String> = srns.iter().cloned().collect();
+        uuids = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&basic_dir) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.extension().map(|e| e == "json").unwrap_or(false) {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        if let Ok(bd) = serde_json::from_str::<serde_json::Value>(&content) {
+                            let mfr_srn = bd.pointer("/manufacturer/srn")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+                            let ar_srn = bd.pointer("/authorisedRepresentative/srn")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+                            if srn_set.contains(mfr_srn) || srn_set.contains(ar_srn) {
+                                if let Some(stem) = path.file_stem() {
+                                    uuids.push(stem.to_string_lossy().to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        log(&format!("Found {} devices matching {} SRNs", uuids.len(), srn_set.len()));
+        if uuids.is_empty() {
+            done(false, "No devices found for the given SRN(s). Run Download first.");
+            return;
+        }
+    } else if pipeline_mode == 1 {
+        // Mode 1: skip download, use all existing detail files
         log("[Skip] Using existing downloaded files (no EUDAMED download)");
-        // Collect UUIDs from existing detail files
         uuids = std::fs::read_dir(&detail_dir)
             .map(|entries| entries
                 .filter_map(|e| e.ok())
@@ -760,6 +805,12 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 };
 
                 if !changes.has_any_change() {
+                    // If unchanged but firstbase JSON exists in processed/, copy it back for re-push
+                    let processed_path = output_dir.join("processed").join(format!("{}.json", uuid));
+                    let output_path = output_dir.join(format!("{}.json", uuid));
+                    if processed_path.exists() && !output_path.exists() {
+                        let _ = std::fs::copy(&processed_path, &output_path);
+                    }
                     skipped += 1;
                     continue;
                 }
