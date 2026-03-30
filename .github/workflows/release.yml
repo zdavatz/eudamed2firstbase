@@ -350,6 +350,7 @@ jobs:
 
   release:
     needs: [build-macos, build-windows, build-linux]
+    if: always() && (needs.build-windows.result == 'success' || needs.build-linux.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
