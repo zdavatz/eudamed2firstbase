@@ -188,9 +188,9 @@ jobs:
               "eudamed2firstbase-${VERSION}-macos-appstore.pkg"
           fi
 
-          # Store the API key for xcrun
+          # Store the API key for xcrun (must base64-decode the secret)
           mkdir -p ~/.private_keys
-          echo "$APPLE_API_KEY_P8" > ~/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8
+          echo "$APPLE_API_KEY_P8" | base64 --decode > ~/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8
 
           # Upload to App Store Connect
           xcrun altool --upload-app \
