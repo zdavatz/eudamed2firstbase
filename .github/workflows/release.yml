@@ -459,7 +459,7 @@ jobs:
               baseListing = @{
                 title = "Eudamed2Firstbase"
                 description = "Convert EUDAMED medical device data to GS1 firstbase and Swissdamed JSON format. Download from the EU EUDAMED database, convert to GS1 GDSN format, and push to firstbase or Swissdamed APIs."
-                releaseNotes = "Initial release"
+                releaseNotes = "$env:GITHUB_REF_NAME`: $(git log -1 --format=%s)"
                 keywords = @("EUDAMED", "medical device", "GS1", "firstbase", "UDI", "Swissdamed")
                 copyrightAndTrademarkInfo = "Copyright 2026 ywesee GmbH"
                 licenseTerms = "GNU General Public License v3.0"
