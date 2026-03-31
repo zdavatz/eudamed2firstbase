@@ -220,9 +220,17 @@ impl eframe::App for App {
 
         // --- Everything in CentralPanel with manual splitter ---
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Toggle button for split direction
+            // Toggle button for split direction + icon top-right
             // Horizontal = settings left, log right (side by side)
             // Vertical = settings top, log bottom (stacked)
+            let icon_texture = self.icon_texture.get_or_insert_with(|| {
+                let png_bytes = include_bytes!("../assets/icon_256x256.png");
+                let img = image::load_from_memory(png_bytes).unwrap().into_rgba8();
+                let size = [img.width() as usize, img.height() as usize];
+                let pixels = img.into_raw();
+                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+                ctx.load_texture("app-icon", color_image, egui::TextureOptions::LINEAR)
+            });
             ui.horizontal(|ui| {
                 if ui.selectable_label(self.horizontal_split, "⬌ Horizontal").clicked() {
                     self.horizontal_split = true;
@@ -232,6 +240,15 @@ impl eframe::App for App {
                     self.horizontal_split = false;
                     self.split_size = 300.0;
                 }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let icon_button = ui.add(
+                        egui::ImageButton::new(egui::load::SizedTexture::new(icon_texture.id(), egui::vec2(24.0, 24.0)))
+                            .frame(false),
+                    ).on_hover_text("zdavatz@ywesee.com");
+                    if icon_button.clicked() {
+                        let _ = open::that("mailto:zdavatz@ywesee.com");
+                    }
+                });
             });
             ui.separator();
 
@@ -366,30 +383,6 @@ impl eframe::App for App {
                     .id_salt("settings_scroll")
                     .max_height(self.split_size)
                     .show(ui, |ui| {
-            // Load icon texture once
-            let icon_texture = self.icon_texture.get_or_insert_with(|| {
-                let png_bytes = include_bytes!("../assets/icon_256x256.png");
-                let img = image::load_from_memory(png_bytes).unwrap().into_rgba8();
-                let size = [img.width() as usize, img.height() as usize];
-                let pixels = img.into_raw();
-                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
-                ctx.load_texture("app-icon", color_image, egui::TextureOptions::LINEAR)
-            });
-
-            ui.horizontal(|ui| {
-                ui.heading("eudamed2firstbase");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let icon_button = ui.add(
-                        egui::ImageButton::new(egui::load::SizedTexture::new(icon_texture.id(), egui::vec2(48.0, 48.0)))
-                            .frame(false),
-                    ).on_hover_text("zdavatz@ywesee.com");
-                    if icon_button.clicked() {
-                        let _ = open::that("mailto:zdavatz@ywesee.com");
-                    }
-                });
-            });
-            ui.add_space(4.0);
-
             // --- SRN input ---
             ui.label("SRNs (one per line or space-separated):");
             ui.add(
