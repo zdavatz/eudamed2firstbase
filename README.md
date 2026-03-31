@@ -369,7 +369,7 @@ export FIRSTBASE_GLN="7612345000480"
 ./push_to_firstbase.sh 7612345000527
 ```
 
-All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), refreshes the auth token, then publishes to the specified recipient GLN via `AddMany` and polls until Done. Both steps retry HTTP 429 with `retryAfter` backoff. Per-UUID ACCEPTED/REJECTED results are logged to the `push_log` table in `db/version_tracking.db` (with error codes, request ID, publish GLN). Successfully sent files are moved to `firstbase_json/processed/`; failed files stay in place. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
+All devices are created as live products via `Live/CreateMany` (batches of 100, `DocumentCommand: "Add"`). The script polls `RequestStatus/Get` until async processing is Done (up to 6 minutes), refreshes the auth token, then publishes to the specified recipient GLN via `AddMany` and polls until Done. Both steps retry HTTP 429 with `retryAfter` backoff. Per-UUID ACCEPTED/REJECTED results are logged to `push_log`, `push_session`, and `push_error` tables in `db/version_tracking.db`. Successfully sent files are moved to `firstbase_json/processed/`; rejected files stay in `firstbase_json/` for retry via "Repush failed" button. GTIN deduplication prefers MDR/IVDR over MDD/legacy when same GTIN exists in multiple files. Files without a valid numeric GTIN (HIBC/IFA devices) are automatically skipped to prevent whole-batch rejection.
 
 **Credentials:** `FIRSTBASE_EMAIL` and `FIRSTBASE_PASSWORD` must be set as environment variables (in `~/.bashrc`). The script will abort if they are not set.
 
@@ -494,7 +494,7 @@ Bug reports are tracked as [GitHub Issues](https://github.com/zdavatz/eudamed2fi
 | [#5](https://github.com/zdavatz/eudamed2firstbase/issues/5) | GS1 Rule | NOT_INTENDED_FOR_EU_MARKET rejected for non-EU market devices | 097.039 | Closed (warning since 25.03.2026) |
 | [#6](https://github.com/zdavatz/eudamed2firstbase/issues/6) | Mapping | 1:n Mapping Gaps: EUDAMED → GS1 fallback resolvers | — | Open (17 gaps documented) |
 | [#7](https://github.com/zdavatz/eudamed2firstbase/issues/7) | Mapping | GDSN mandatory gaps: packaging hierarchy & issuingEntityCode | — | Open (2 gaps, 6 implemented) |
-| [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | — | Open (first case 26.03.2026) |
+| [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | v1.0.25 | Fixed (dedup in push, MDR preferred) |
 | [#9](https://github.com/zdavatz/eudamed2firstbase/issues/9) | Data Quality | MDR Class IIB implantable without certificate | 097.041 | Open (332x, EUDAMED) |
 | [#10](https://github.com/zdavatz/eudamed2firstbase/issues/10) | GS1 Rule | Updateable rules block field changes after first sync | 097.029, 097.036 | Open (GS1 disabling soon) |
 | [#11](https://github.com/zdavatz/eudamed2firstbase/issues/11) | Mapping | Language mismatch in StorageHandling fallback | 097.078 | Closed (fixed 26.03.2026) |

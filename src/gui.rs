@@ -306,6 +306,12 @@ impl eframe::App for App {
                             self.pipeline_mode = 2;
                             self.start_pipeline(ctx.clone());
                         }
+                        let can_repush = !self.running;
+                        if ui.add_enabled(can_repush, egui::Button::new("Repush failed").min_size(egui::vec2(120.0, 28.0)))
+                            .on_hover_text("Push remaining files in firstbase_json/ (rejected from last push)").clicked() {
+                            self.pipeline_mode = 3;
+                            self.start_pipeline(ctx.clone());
+                        }
                     });
 
                 // Splitter
@@ -643,6 +649,138 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         ctx.request_repaint();
     };
 
+    // Mode 3: Repush failed — read rejected GTINs from DB, move from processed/, push
+    if pipeline_mode == 3 {
+        match settings.push_target {
+            PushTarget::Firstbase => {
+                if settings.firstbase_email.is_empty() || settings.firstbase_password.is_empty() {
+                    done(false, "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set");
+                    return;
+                }
+                if settings.publish_to_gln.is_empty() {
+                    done(false, "Cannot push: Publish To GLN not set");
+                    return;
+                }
+
+                let firstbase_dir = download::app_data_dir().join("firstbase_json");
+                let processed_dir = firstbase_dir.join("processed");
+
+                // Read rejected GTINs from the most recent push session in DB
+                let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+                let conn = match rusqlite::Connection::open(&db_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        done(false, &format!("DB error: {}", e));
+                        return;
+                    }
+                };
+
+                // Get latest session that has actual errors
+                let latest_session: Option<i64> = conn.query_row(
+                    "SELECT ps.id FROM push_session ps \
+                     WHERE EXISTS (SELECT 1 FROM push_error pe WHERE pe.session_id=ps.id AND pe.gtin != '') \
+                     ORDER BY ps.id DESC LIMIT 1",
+                    [], |row| row.get(0),
+                ).ok();
+
+                let session_id = match latest_session {
+                    Some(id) => id,
+                    None => {
+                        done(false, "No push session with errors found in DB. Run a push first.");
+                        return;
+                    }
+                };
+
+                log(&format!("[Repush] Reading rejected GTINs from push session {}", session_id));
+
+                // Get distinct rejected GTINs from push_error for that session
+                let mut stmt = conn.prepare(
+                    "SELECT DISTINCT gtin FROM push_error WHERE session_id=?1 AND gtin != ''"
+                ).unwrap();
+                let rejected_gtins: std::collections::HashSet<String> = stmt
+                    .query_map(rusqlite::params![session_id], |row| row.get::<_, String>(0))
+                    .unwrap()
+                    .filter_map(|r| r.ok())
+                    .collect();
+
+                if rejected_gtins.is_empty() {
+                    done(false, "No rejected GTINs found in last push session");
+                    return;
+                }
+                log(&format!("[Repush] Found {} rejected GTINs", rejected_gtins.len()));
+
+                // Scan processed/ for files matching rejected GTINs, move them back
+                let mut restored = 0;
+                if let Ok(entries) = std::fs::read_dir(&processed_dir) {
+                    for entry in entries.filter_map(|e| e.ok()) {
+                        let path = entry.path();
+                        if path.extension().map(|e| e == "json").unwrap_or(false) {
+                            if let Ok(content) = std::fs::read_to_string(&path) {
+                                if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
+                                    let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                                        .and_then(|v| v.as_str()).unwrap_or("");
+                                    if rejected_gtins.contains(gtin) {
+                                        if let Some(name) = path.file_name() {
+                                            let dest = firstbase_dir.join(name);
+                                            if std::fs::rename(&path, &dest).is_ok() {
+                                                restored += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                log(&format!("[Repush] Restored {} files from processed/ to firstbase_json/", restored));
+
+                // Also count how many rejected files are already in firstbase_json/
+                let mut already_present = 0;
+                if let Ok(entries) = std::fs::read_dir(&firstbase_dir) {
+                    for entry in entries.filter_map(|e| e.ok()) {
+                        let path = entry.path();
+                        if path.extension().map(|e| e == "json").unwrap_or(false) {
+                            if let Ok(content) = std::fs::read_to_string(&path) {
+                                if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
+                                    let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                                        .and_then(|v| v.as_str()).unwrap_or("");
+                                    if rejected_gtins.contains(gtin) {
+                                        already_present += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let total_to_push = restored + already_present;
+                if total_to_push == 0 {
+                    done(false, "No rejected files found in processed/ or firstbase_json/");
+                    return;
+                }
+                log(&format!("[Repush] {} files to repush ({} restored + {} already in firstbase_json/)", total_to_push, restored, already_present));
+
+                log("[Repush] Pushing to GS1 firstbase Catalogue Item API...");
+                ctx.request_repaint();
+                match push_to_firstbase(&settings, &log) {
+                    Ok((accepted, rejected)) => {
+                        done(true, &format!(
+                            "Repush complete. {} accepted, {} rejected.",
+                            accepted, rejected
+                        ));
+                    }
+                    Err(e) => {
+                        done(false, &format!("Repush failed: {}", e));
+                    }
+                }
+            }
+            PushTarget::Swissdamed => {
+                done(false, "Repush not yet implemented for Swissdamed");
+            }
+        }
+        return;
+    }
+
     // Parse SRNs
     let srns: Vec<String> = settings
         .srns
@@ -951,8 +1089,8 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             match push_result {
                 Ok((accepted, rejected)) => {
                     done(true, &format!(
-                        "Pipeline complete. {} downloaded, {} converted, {} pushed ({} accepted, {} rejected).",
-                        uuids.len(), converted, accepted + rejected, accepted, rejected
+                        "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.",
+                        uuids.len(), converted, accepted, rejected
                     ));
                 }
                 Err(e) => {
@@ -1035,19 +1173,63 @@ fn push_to_firstbase(
         }
     }
 
-    log(&format!("{} files with numeric GTIN (pushable), {} skipped (no GTIN)", pushable.len(), skipped_no_gtin));
+    // Deduplicate by GTIN: prefer MDR/IVDR (has GlobalModelNumber) over MDD/legacy
+    let before_dedup = pushable.len();
+    {
+        let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut to_remove: Vec<usize> = Vec::new();
+        for (i, (_, _, _, doc)) in pushable.iter().enumerate() {
+            let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                .and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let has_gmn = doc.pointer("/DraftItem/TradeItem/GlobalModelInformation")
+                .and_then(|v| v.as_array())
+                .and_then(|a| a.first())
+                .and_then(|g| g.get("GlobalModelNumber"))
+                .and_then(|v| v.as_str())
+                .map(|s| !s.is_empty())
+                .unwrap_or(false);
+            if let Some(&prev_idx) = seen.get(&gtin) {
+                // Duplicate GTIN — keep the one with GMN (MDR/IVDR)
+                if has_gmn {
+                    to_remove.push(prev_idx);
+                    seen.insert(gtin, i);
+                } else {
+                    to_remove.push(i);
+                }
+            } else {
+                seen.insert(gtin, i);
+            }
+        }
+        to_remove.sort_unstable_by(|a, b| b.cmp(a));
+        for idx in to_remove {
+            pushable.remove(idx);
+        }
+    }
+    let deduped = before_dedup - pushable.len();
+
+    log(&format!("{} files with numeric GTIN (pushable), {} skipped (no GTIN), {} deduped (same GTIN)", pushable.len(), skipped_no_gtin, deduped));
     if pushable.is_empty() {
         return Ok((0, 0));
     }
 
     // --- Helper: HTTP POST with JSON ---
+    let http_agent = ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .build()
+        .new_agent();
     let http_post = |url: &str, auth: &str, body: &str| -> anyhow::Result<String> {
-        let mut req = ureq::post(url).header("Content-Type", "application/json");
+        let mut req = http_agent.post(url).header("Content-Type", "application/json");
         if !auth.is_empty() {
             req = req.header("Authorization", &format!("bearer {}", auth));
         }
         let mut resp = req.send(body.as_bytes())?;
-        Ok(resp.body_mut().read_to_string()?)
+        let status = resp.status();
+        let resp_body = resp.body_mut().read_to_string()?;
+        if status.as_u16() >= 400 {
+            Err(anyhow::anyhow!("http {}: {}", status, resp_body))
+        } else {
+            Ok(resp_body)
+        }
     };
 
     // --- Get token (with retry) ---
@@ -1089,7 +1271,8 @@ fn push_to_firstbase(
 
     // Collect detailed results for HTML log
     let mut accepted_ids: Vec<String> = Vec::new();
-    let mut error_details: Vec<(String, String, String, String)> = Vec::new(); // (identifier, gtin, error_code, description)
+    let mut rejected_gtins: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut error_details: Vec<(String, String, String, String, String)> = Vec::new(); // (identifier, gtin, error_code, attribute_name, description)
     let mut raw_responses: Vec<String> = Vec::new();
 
     // --- CreateMany in batches ---
@@ -1145,15 +1328,34 @@ fn push_to_firstbase(
                     std::thread::sleep(std::time::Duration::from_secs(60));
                 }
                 Err(e) => {
-                    log(&format!("  CreateMany error: {}", e));
+                    let err_str = e.to_string();
+                    log(&format!("  CreateMany error: {}", &err_str[..err_str.len().min(500)]));
+                    // Try to parse error response body for details (after "http NNN: ")
+                    if let Some(json_start) = err_str.find('{') {
+                        if let Ok(body) = serde_json::from_str::<serde_json::Value>(&err_str[json_start..]) {
+                            raw_responses.push(serde_json::to_string_pretty(&body).unwrap_or_default());
+                            // Parse RequestIdentifier if present
+                            if let Some(rid) = body.get("RequestIdentifier").and_then(|v| v.as_str()) {
+                                req_id = rid.to_string();
+                            }
+                        }
+                    }
                     break;
                 }
             }
         }
 
         if req_id.is_empty() {
-            log(&format!("  FAIL: no RequestIdentifier"));
+            log(&format!("  FAIL: no RequestIdentifier — marking all {} items as rejected", batch.len()));
             total_rejected += batch.len() as u32;
+            // Mark all GTINs in this batch as rejected
+            for (_, _, _, doc) in batch {
+                let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                    .and_then(|v| v.as_str()).unwrap_or("");
+                if !gtin.is_empty() {
+                    rejected_gtins.insert(gtin.to_string());
+                }
+            }
             continue;
         }
 
@@ -1210,11 +1412,15 @@ fn push_to_firstbase(
                                                     let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or(ident);
                                                     for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                         let gtin = ae.get("Gtin").and_then(|v| v.as_str()).unwrap_or("");
+                                                        let attr_name = ae.get("AttributeName").and_then(|v| v.as_str()).unwrap_or("");
+                                                        if !gtin.is_empty() {
+                                                            rejected_gtins.insert(gtin.to_string());
+                                                        }
                                                         for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                             batch_rejected += 1;
                                                             let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
                                                             let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
-                                                            error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), desc.chars().take(200).collect()));
+                                                            error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), attr_name.to_string(), desc.chars().take(200).collect()));
                                                         }
                                                     }
                                                 }
@@ -1230,11 +1436,15 @@ fn push_to_firstbase(
                                                         let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or("");
                                                         for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                             let gtin = ae.get("Gtin").and_then(|v| v.as_str()).unwrap_or("");
+                                                            let attr_name = ae.get("AttributeName").and_then(|v| v.as_str()).unwrap_or("");
+                                                            if !gtin.is_empty() {
+                                                                rejected_gtins.insert(gtin.to_string());
+                                                            }
                                                             for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
                                                                 batch_rejected += 1;
                                                                 let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
                                                                 let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
-                                                                error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), desc.chars().take(200).collect()));
+                                                                error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), attr_name.to_string(), desc.chars().take(200).collect()));
                                                             }
                                                         }
                                                     }
@@ -1326,32 +1536,108 @@ fn push_to_firstbase(
         }
     }
 
-    // Log push results to SQLite DB
+    // --- Store everything in SQLite DB ---
     let db_path = download::app_data_dir().join("db").join("version_tracking.db");
-    if let Ok(conn) = rusqlite::Connection::open(&db_path) {
-        let _ = conn.execute_batch("CREATE TABLE IF NOT EXISTS push_log (
+    let conn = match rusqlite::Connection::open(&db_path) {
+        Ok(c) => c,
+        Err(e) => {
+            log(&format!("[Push] DB error: {}", e));
+            return Ok((0, 0));
+        }
+    };
+    let _ = conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS push_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL, gtin TEXT NOT NULL DEFAULT '',
             pushed_at TEXT NOT NULL, request_id TEXT, status TEXT NOT NULL,
             error_code TEXT, error_msg TEXT, publish_gln TEXT
-        )");
-        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
-        let mut logged = 0;
-        for (_, _, uuid, doc) in &pushable {
+        );
+        CREATE TABLE IF NOT EXISTS push_session (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_ts TEXT NOT NULL,
+            version TEXT NOT NULL,
+            publish_gln TEXT NOT NULL,
+            total_pushable INTEGER NOT NULL DEFAULT 0,
+            skipped_no_gtin INTEGER NOT NULL DEFAULT 0,
+            total_accepted INTEGER NOT NULL DEFAULT 0,
+            total_rejected INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS push_error (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            uuid TEXT NOT NULL DEFAULT '',
+            gtin TEXT NOT NULL DEFAULT '',
+            error_code TEXT NOT NULL DEFAULT '',
+            attribute_name TEXT NOT NULL DEFAULT '',
+            error_description TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (session_id) REFERENCES push_session(id)
+        );
+    ");
+    // Migration: add attribute_name column if missing (existing DBs)
+    let _ = conn.execute("ALTER TABLE push_error ADD COLUMN attribute_name TEXT NOT NULL DEFAULT ''", []);
+
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+
+    // Insert push session (accepted/rejected updated after file move)
+    let _ = conn.execute(
+        "INSERT INTO push_session (session_ts, version, publish_gln, total_pushable, skipped_no_gtin, total_accepted, total_rejected) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        rusqlite::params![now, env!("CARGO_PKG_VERSION"), settings.publish_to_gln, pushable.len(), skipped_no_gtin, 0, 0],
+    );
+    let session_id = conn.last_insert_rowid();
+
+    // Build GTIN → UUID lookup from pushable items
+    let gtin_to_uuid: std::collections::HashMap<String, String> = pushable.iter()
+        .filter_map(|(_, _, uuid, doc)| {
             let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-                .and_then(|v| v.as_str()).unwrap_or("");
-            let status = if total_accepted > 0 { "PUSHED" } else { "UNKNOWN" };
-            let _ = conn.execute(
-                "INSERT INTO push_log (uuid,gtin,pushed_at,status,publish_gln) VALUES (?1,?2,?3,?4,?5)",
-                rusqlite::params![uuid, gtin, now, status, settings.publish_to_gln],
-            );
-            logged += 1;
-        }
-        log(&format!("[Push] Logged {} items to push_log DB", logged));
+                .and_then(|v| v.as_str())?.to_string();
+            if gtin.is_empty() { return None; }
+            Some((gtin, uuid.clone()))
+        })
+        .collect();
+
+    // Insert error details with UUID and attribute_name
+    for (_, gtin, code, attr_name, desc) in &error_details {
+        let uuid = gtin_to_uuid.get(gtin).cloned().unwrap_or_default();
+        let _ = conn.execute(
+            "INSERT INTO push_error (session_id, uuid, gtin, error_code, attribute_name, error_description) VALUES (?1,?2,?3,?4,?5,?6)",
+            rusqlite::params![session_id, uuid, gtin, code, attr_name, desc],
+        );
     }
 
-    // Move only pushable files to processed/ (all were submitted, even if some batches failed)
+    // Insert per-item push_log with ACCEPTED/REJECTED + error codes
+    let mut logged = 0;
+    for (_, _, uuid, doc) in &pushable {
+        let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+            .and_then(|v| v.as_str()).unwrap_or("");
+        let status = if rejected_gtins.contains(gtin) { "REJECTED" } else { "ACCEPTED" };
+        // Collect error codes for this GTIN
+        let error_codes: Vec<&str> = error_details.iter()
+            .filter(|(_, g, _, _, _)| g == gtin)
+            .map(|(_, _, c, _, _)| c.as_str())
+            .collect();
+        let error_code_str = if error_codes.is_empty() { String::new() } else {
+            let mut dedup: Vec<&str> = error_codes.clone();
+            dedup.sort();
+            dedup.dedup();
+            dedup.join(",")
+        };
+        let _ = conn.execute(
+            "INSERT INTO push_log (uuid,gtin,pushed_at,status,error_code,publish_gln) VALUES (?1,?2,?3,?4,?5,?6)",
+            rusqlite::params![uuid, gtin, now, status, error_code_str, settings.publish_to_gln],
+        );
+        logged += 1;
+    }
+    log(&format!("[Push] Logged {} items to push_log DB (session {})", logged, session_id));
+
+    // Move only ACCEPTED files to processed/ — rejected files stay for retry
     let mut moved = 0;
-    for (path, _, _, _) in &pushable {
+    let mut kept = 0;
+    for (path, _, _, doc) in &pushable {
+        let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+            .and_then(|v| v.as_str()).unwrap_or("");
+        if rejected_gtins.contains(gtin) {
+            kept += 1;
+            continue;
+        }
         if let Some(name) = path.file_name() {
             let dest = processed_dir.join(name);
             if std::fs::rename(path, &dest).is_ok() {
@@ -1359,92 +1645,26 @@ fn push_to_firstbase(
             }
         }
     }
-    log(&format!("[Push] Moved {} files to processed/", moved));
+    log(&format!("[Push] Moved {} accepted files to processed/, {} rejected files kept for retry", moved, kept));
+    log(&format!("[Push] API response: {} error entries from {} rejected devices",
+        total_rejected, rejected_gtins.len()));
 
-    // Write HTML log with full error details
+    // Update session with file-level counts
+    let _ = conn.execute(
+        "UPDATE push_session SET total_accepted=?1, total_rejected=?2 WHERE id=?3",
+        rusqlite::params![moved, kept, session_id],
+    );
+
+    // --- Generate HTML log from DB ---
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
     let log_file = log_dir.join(format!("{}.log.html", chrono::Local::now().format("%M.%H_%d.%m.%Y")));
-
-    // Aggregate errors by code
-    let mut error_counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
-    for (_, _, code, _) in &error_details {
-        *error_counts.entry(code.clone()).or_insert(0) += 1;
-    }
-    let mut sorted_errors: Vec<_> = error_counts.iter().collect();
-    sorted_errors.sort_by(|a, b| b.1.cmp(a.1));
-
-    let mut html = format!(
-        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log</title>\
-        <style>body{{font-family:monospace;margin:20px}}h1{{font-size:18px}}\
-        table{{border-collapse:collapse;width:100%;margin:10px 0}}\
-        th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}}\
-        th{{background:#f0f0f0}}.ok{{color:green}}.err{{color:red}}\
-        .summary{{background:#f8f8f8;padding:10px;margin:10px 0}}\
-        </style></head><body>\
-        <h1>GS1 Firstbase Push Log (v{version})</h1>\
-        <div class='summary'>\
-        <b>Version:</b> {version}<br>\
-        <b>Timestamp:</b> {timestamp}<br>\
-        <b>Publish GLN:</b> {gln}<br>\
-        <b>Accepted:</b> <span class='ok'>{accepted}</span> | \
-        <b>Rejected:</b> <span class='err'>{rejected}</span><br>\
-        <b>Total pushable:</b> {pushable} (skipped no GTIN: {skipped})\
-        </div>",
-        version = env!("CARGO_PKG_VERSION"),
-        timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
-        gln = settings.publish_to_gln,
-        accepted = total_accepted,
-        rejected = total_rejected,
-        pushable = pushable.len(),
-        skipped = skipped_no_gtin,
-    );
-
-    // Error summary table
-    if !sorted_errors.is_empty() {
-        html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>Count</th><th>Error Code</th></tr>");
-        for (code, count) in &sorted_errors {
-            html.push_str(&format!("<tr><td>{}</td><td>{}</td></tr>", count, code));
-        }
-        html.push_str("</table>");
-    }
-
-    // Detailed errors (first 500)
-    if !error_details.is_empty() {
-        html.push_str("<h2 class='err'>Error Details</h2><table><tr><th>#</th><th>Identifier</th><th>GTIN</th><th>Error Code</th><th>Description</th></tr>");
-        for (i, (ident, gtin, code, desc)) in error_details.iter().enumerate().take(500) {
-            html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                i + 1, ident, gtin, code, desc));
-        }
-        if error_details.len() > 500 {
-            html.push_str(&format!("<tr><td colspan='5'>... and {} more</td></tr>", error_details.len() - 500));
-        }
-        html.push_str("</table>");
-    }
-
-    // Accepted list
-    if !accepted_ids.is_empty() {
-        html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>Identifier</th></tr>", accepted_ids.len()));
-        for (i, ident) in accepted_ids.iter().enumerate() {
-            html.push_str(&format!("<tr><td>{}</td><td>{}</td></tr>", i + 1, ident));
-        }
-        html.push_str("</table>");
-    }
-
-    // Raw JSON responses
-    if !raw_responses.is_empty() {
-        html.push_str("<h2>Raw API Responses</h2>");
-        for (i, raw) in raw_responses.iter().enumerate() {
-            html.push_str(&format!("<h3>Batch {}</h3><pre>{}</pre>", i + 1,
-                raw.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
-        }
-    }
-
-    html.push_str("</body></html>");
+    let html = generate_push_html(&conn, session_id, &raw_responses);
     let _ = std::fs::write(&log_file, &html);
     log(&format!("[Push] HTML log: {}", log_file.display()));
 
-    Ok((total_accepted, total_rejected))
+    // Return file-level counts (not API-level error counts)
+    Ok((moved as u32, kept as u32))
 }
 
 /// Load the embedded app icon as an `egui::IconData`.
@@ -1457,6 +1677,170 @@ fn load_icon() -> Option<egui::IconData> {
         width: w,
         height: h,
     })
+}
+
+/// Generate HTML push log from the database for a given session.
+fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> String {
+    // Read session info
+    let (version, timestamp, gln, total_pushable, skipped, accepted, rejected) = conn
+        .query_row(
+            "SELECT version, session_ts, publish_gln, total_pushable, skipped_no_gtin, total_accepted, total_rejected FROM push_session WHERE id=?1",
+            rusqlite::params![session_id],
+            |row| Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(4)?,
+                row.get::<_, i64>(5)?,
+                row.get::<_, i64>(6)?,
+            )),
+        )
+        .unwrap_or_default();
+
+    let mut html = format!(
+        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log</title>\
+        <style>body{{font-family:monospace;margin:20px}}h1{{font-size:18px}}\
+        table{{border-collapse:collapse;width:100%;margin:10px 0}}\
+        th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}}\
+        th{{background:#f0f0f0}}.ok{{color:green}}.err{{color:red}}\
+        .summary{{background:#f8f8f8;padding:10px;margin:10px 0}}\
+        pre{{background:#f4f4f4;padding:10px;overflow-x:auto;max-height:600px;font-size:12px}}\
+        </style></head><body>\
+        <h1>GS1 Firstbase Push Log (v{version})</h1>\
+        <div class='summary'>\
+        <b>Version:</b> {version}<br>\
+        <b>Timestamp:</b> {timestamp}<br>\
+        <b>Publish GLN:</b> {gln}<br>\
+        <b>Accepted:</b> <span class='ok'>{accepted}</span> | \
+        <b>Rejected:</b> <span class='err'>{rejected}</span><br>\
+        <b>Total pushable:</b> {pushable} (skipped no GTIN: {skipped})\
+        </div>",
+        version = version,
+        timestamp = timestamp,
+        gln = gln,
+        accepted = accepted,
+        rejected = rejected,
+        pushable = total_pushable,
+        skipped = skipped,
+    );
+
+    // Error summary: aggregate by error_code with affected devices count
+    {
+        let mut stmt = conn.prepare(
+            "SELECT error_code, COUNT(*) as total, COUNT(DISTINCT gtin) as devices \
+             FROM push_error WHERE session_id=?1 GROUP BY error_code ORDER BY total DESC"
+        ).unwrap();
+        let rows: Vec<(String, i64, i64)> = stmt.query_map(rusqlite::params![session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        }).unwrap().filter_map(|r| r.ok()).collect();
+
+        if !rows.is_empty() {
+            html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>Error Code</th><th>Errors</th><th>Affected Devices</th></tr>");
+            for (code, count, devices) in &rows {
+                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", code, count, devices));
+            }
+            html.push_str("</table>");
+        }
+    }
+
+    // Rejected devices: grouped by GTIN/UUID with error codes and affected attributes
+    {
+        // First get distinct GTINs
+        let mut stmt = conn.prepare(
+            "SELECT COALESCE(NULLIF(uuid,''), '—') as uuid, gtin \
+             FROM push_error WHERE session_id=?1 GROUP BY gtin ORDER BY gtin"
+        ).unwrap();
+        let devices: Vec<(String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        }).unwrap().filter_map(|r| r.ok()).collect();
+
+        if !devices.is_empty() {
+            html.push_str(&format!("<h2 class='err'>Rejected Devices ({})</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th><th>Errors</th></tr>", devices.len()));
+
+            // For each device, get error codes with their attribute names
+            let mut detail_stmt = conn.prepare(
+                "SELECT error_code, GROUP_CONCAT(DISTINCT attribute_name) \
+                 FROM push_error WHERE session_id=?1 AND gtin=?2 GROUP BY error_code ORDER BY error_code"
+            ).unwrap();
+
+            for (i, (uuid, gtin)) in devices.iter().enumerate() {
+                let code_details: Vec<String> = detail_stmt.query_map(
+                    rusqlite::params![session_id, gtin],
+                    |row| {
+                        let code: String = row.get(0)?;
+                        let attrs: String = row.get(1)?;
+                        Ok(if attrs.is_empty() {
+                            code
+                        } else {
+                            format!("{} ({})", code, attrs)
+                        })
+                    },
+                ).unwrap().filter_map(|r| r.ok()).collect();
+
+                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1, uuid, gtin, code_details.join("; ")));
+            }
+            html.push_str("</table>");
+        }
+    }
+
+    // Full error details from push_error (first 500)
+    {
+        let mut stmt = conn.prepare(
+            "SELECT uuid, gtin, error_code, attribute_name, error_description FROM push_error WHERE session_id=?1 LIMIT 500"
+        ).unwrap();
+        let rows: Vec<(String, String, String, String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
+        }).unwrap().filter_map(|r| r.ok()).collect();
+
+        let total_errors: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM push_error WHERE session_id=?1",
+            rusqlite::params![session_id], |row| row.get(0),
+        ).unwrap_or(0);
+
+        if !rows.is_empty() {
+            html.push_str(&format!("<h2 class='err'>Error Details ({} total)</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th><th>Error Code</th><th>Attribute</th><th>Description</th></tr>", total_errors));
+            for (i, (uuid, gtin, code, attr, desc)) in rows.iter().enumerate() {
+                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1, uuid, gtin, code, attr, desc));
+            }
+            if total_errors > 500 {
+                html.push_str(&format!("<tr><td colspan='6'>... and {} more</td></tr>", total_errors - 500));
+            }
+            html.push_str("</table>");
+        }
+    }
+
+    // Accepted list from push_log
+    {
+        let mut stmt = conn.prepare(
+            "SELECT uuid, gtin FROM push_log WHERE pushed_at=(SELECT session_ts FROM push_session WHERE id=?1) AND status='ACCEPTED' ORDER BY gtin"
+        ).unwrap();
+        let rows: Vec<(String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        }).unwrap().filter_map(|r| r.ok()).collect();
+
+        if !rows.is_empty() {
+            html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th></tr>", rows.len()));
+            for (i, (uuid, gtin)) in rows.iter().enumerate() {
+                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", i + 1, uuid, gtin));
+            }
+            html.push_str("</table>");
+        }
+    }
+
+    // Raw JSON responses
+    if !raw_responses.is_empty() {
+        html.push_str("<h2>Raw API Responses</h2>");
+        for (i, raw) in raw_responses.iter().enumerate() {
+            html.push_str(&format!("<h3>Batch {}</h3><pre>{}</pre>", i + 1,
+                raw.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
+        }
+    }
+
+    html.push_str("</body></html>");
+    html
 }
 
 /// Launch the GUI application.
