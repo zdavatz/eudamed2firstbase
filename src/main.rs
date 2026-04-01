@@ -141,16 +141,23 @@ fn main() -> Result<()> {
                     "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData?page=0&pageSize=1&srn={}&iso2Code=en&languageIso2Code=en",
                     srn
                 );
-                let count = match agent.get(&url).call() {
-                    Ok(mut resp) => {
-                        let body = resp.body_mut().read_to_string().unwrap_or_default();
-                        serde_json::from_str::<serde_json::Value>(&body)
-                            .ok()
-                            .and_then(|v| v.get("totalElements")?.as_i64())
-                            .unwrap_or(-1)
+                let mut count = -1i64;
+                for attempt in 1..=3 {
+                    match agent.get(&url).call() {
+                        Ok(mut resp) => {
+                            let body = resp.body_mut().read_to_string().unwrap_or_default();
+                            count = serde_json::from_str::<serde_json::Value>(&body)
+                                .ok()
+                                .and_then(|v| v.get("totalElements")?.as_i64())
+                                .unwrap_or(-1);
+                            break;
+                        }
+                        Err(_) if attempt < 3 => {
+                            std::thread::sleep(std::time::Duration::from_secs(2 * attempt as u64));
+                        }
+                        Err(_) => {}
                     }
-                    Err(_) => -1,
-                };
+                }
                 (srn.clone(), count)
             }).collect();
 
