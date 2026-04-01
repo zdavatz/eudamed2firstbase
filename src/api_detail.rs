@@ -430,7 +430,7 @@ impl ApiDeviceDetail {
 }
 
 fn extract_lang_texts(mlt: Option<&MultiLangText>) -> Vec<(String, String)> {
-    mlt.and_then(|t| t.texts.as_ref())
+    let raw: Vec<(String, String)> = mlt.and_then(|t| t.texts.as_ref())
         .map(|texts| {
             texts
                 .iter()
@@ -456,7 +456,23 @@ fn extract_lang_texts(mlt: Option<&MultiLangText>) -> Vec<(String, String)> {
                 })
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+    // Merge duplicate languages with " / " (097.078: at most one iteration per languageCode)
+    merge_by_language(raw)
+}
+
+/// Merge entries with the same language code by joining texts with " / ".
+fn merge_by_language(entries: Vec<(String, String)>) -> Vec<(String, String)> {
+    let mut map: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    for (lang, text) in entries {
+        map.entry(lang)
+            .and_modify(|existing| {
+                existing.push_str(" / ");
+                existing.push_str(&text);
+            })
+            .or_insert(text);
+    }
+    map.into_iter().collect()
 }
 
 /// Parse one NDJSON line into an ApiDeviceDetail

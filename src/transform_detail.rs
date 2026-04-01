@@ -1402,7 +1402,7 @@ fn extract_last_segment(code: &str) -> String {
 fn extract_descriptions(
     mlt: &Option<crate::api_detail::MultiLangText>,
 ) -> Vec<LangValue> {
-    mlt.as_ref()
+    let raw: Vec<(String, String)> = mlt.as_ref()
         .and_then(|t| t.texts.as_ref())
         .map(|texts| {
             texts
@@ -1416,14 +1416,24 @@ fn extract_descriptions(
                     let lang = lt.language.as_ref()
                         .and_then(|l| l.iso_code.clone())
                         .unwrap_or_else(|| "en".to_string());
-                    Some(LangValue {
-                        language_code: lang,
-                        value: text,
-                    })
+                    Some((lang, text))
                 })
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+    // Merge duplicate languages with " / " (097.078: at most one iteration per languageCode)
+    let mut map: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    for (lang, text) in raw {
+        map.entry(lang)
+            .and_modify(|existing| {
+                existing.push_str(" / ");
+                existing.push_str(&text);
+            })
+            .or_insert(text);
+    }
+    map.into_iter()
+        .map(|(lang, text)| LangValue { language_code: lang, value: text })
+        .collect()
 }
 
 /// Package level info extracted from containedItem hierarchy.

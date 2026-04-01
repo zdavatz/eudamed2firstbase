@@ -494,12 +494,13 @@ Bug reports are tracked as [GitHub Issues](https://github.com/zdavatz/eudamed2fi
 | [#5](https://github.com/zdavatz/eudamed2firstbase/issues/5) | GS1 Rule | NOT_INTENDED_FOR_EU_MARKET rejected for non-EU market devices | 097.039 | Closed (warning since 25.03.2026) |
 | [#6](https://github.com/zdavatz/eudamed2firstbase/issues/6) | Mapping | 1:n Mapping Gaps: EUDAMED → GS1 fallback resolvers | — | Open (17 gaps documented) |
 | [#7](https://github.com/zdavatz/eudamed2firstbase/issues/7) | Mapping | GDSN mandatory gaps: packaging hierarchy & issuingEntityCode | — | Open (2 gaps, 6 implemented) |
-| [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | v1.0.25 | Fixed (dedup in push, MDR preferred) |
+| [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | v1.0.28 | Fixed (dedup + MDD files moved to processed/) |
 | [#9](https://github.com/zdavatz/eudamed2firstbase/issues/9) | Data Quality | MDR Class IIB implantable without certificate | 097.041 | Open (332x, EUDAMED) |
 | [#10](https://github.com/zdavatz/eudamed2firstbase/issues/10) | GS1 Rule | Updateable rules block field changes after first sync | 097.029, 097.036 | Open (GS1 disabling soon) |
 | [#11](https://github.com/zdavatz/eudamed2firstbase/issues/11) | Mapping | Language mismatch in StorageHandling fallback | 097.078 | Closed (fixed 26.03.2026) |
 | [#12](https://github.com/zdavatz/eudamed2firstbase/issues/12) | Data Quality | Non-EU manufacturers missing Authorised Representative SRN | 097.054 | Open (150x, EUDAMED) |
 | [#13](https://github.com/zdavatz/eudamed2firstbase/issues/13) | Data Quality | medicinalProduct=true without regulated substance data | 097.083 | Open (6x, EUDAMED) |
+| [#18](https://github.com/zdavatz/eudamed2firstbase/issues/18) | Mapping | Duplicate languageCode in tradeItemDescription | 097.078 | Fixed v1.0.28 (merge with " / ") |
 
 Push 26.03.2026: 274 SRNs, 18,007 items → 7,009 ACCEPTED, 1,862 REJECTED. G541 mapping fixes deployed (SPP_PROCEDURE_PACK, COLOUR, BODY_WEIGHT_KG, MU999). G361 empty address fix deployed. GTIN batch filter added.
 

@@ -1123,6 +1123,8 @@ fn push_to_firstbase(
 ) -> anyhow::Result<(u32, u32)> {
     let api_base = "https://test-webapi-firstbase.gs1.ch:5443";
     let firstbase_dir = download::app_data_dir().join("firstbase_json");
+    let processed_dir = firstbase_dir.join("processed");
+    let _ = std::fs::create_dir_all(&processed_dir);
 
     // Collect pushable files (numeric GTIN)
     let mut files: Vec<std::path::PathBuf> = Vec::new();
@@ -1167,6 +1169,7 @@ fn push_to_firstbase(
     }
 
     // Deduplicate by GTIN: prefer MDR/IVDR (has GlobalModelNumber) over MDD/legacy
+    // Move MDD duplicates to processed/ so they don't get re-pushed (Issue #8)
     let before_dedup = pushable.len();
     {
         let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
@@ -1195,12 +1198,17 @@ fn push_to_firstbase(
         }
         to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for idx in to_remove {
+            let (path, _, _, _) = &pushable[idx];
+            if let Some(name) = path.file_name() {
+                let dest = processed_dir.join(name);
+                let _ = std::fs::rename(path, &dest);
+            }
             pushable.remove(idx);
         }
     }
     let deduped = before_dedup - pushable.len();
 
-    log(&format!("{} files with numeric GTIN (pushable), {} skipped (no GTIN), {} deduped (same GTIN)", pushable.len(), skipped_no_gtin, deduped));
+    log(&format!("{} files with numeric GTIN (pushable), {} skipped (no GTIN), {} deduped (same GTIN, moved to processed/)", pushable.len(), skipped_no_gtin, deduped));
     if pushable.is_empty() {
         return Ok((0, 0));
     }
@@ -1259,8 +1267,6 @@ fn push_to_firstbase(
     let mut total_accepted: u32 = 0;
     let mut total_rejected: u32 = 0;
     let batch_size = 100;
-    let processed_dir = firstbase_dir.join("processed");
-    let _ = std::fs::create_dir_all(&processed_dir);
 
     // Collect detailed results for HTML log
     let mut accepted_ids: Vec<String> = Vec::new();
