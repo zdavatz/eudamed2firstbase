@@ -23,6 +23,9 @@ cargo run detail <details.ndjson> [listing.ndjson]   # API detail mode with opti
 cargo run firstbase                                  # Convert EUDAMED JSON → GS1 Firstbase: eudamed_json/detail/ -> firstbase_json/
 cargo run swissdamed                                 # Convert EUDAMED JSON → Swissdamed: eudamed_json/detail/ + basic/ -> swissdamed_json/
 cargo run xlsx <details.ndjson>                      # XLSX export: detail NDJSON -> xlsx/<stem>.xlsx
+cargo run count SRN1 SRN2                            # Count devices per SRN from EUDAMED API (parallel)
+cargo run count --file srns.txt                      # Count from text file (one SRN per line)
+cargo run count --xlsx file.xlsx [col]               # Count from XLSX (default col 4=D), writes GTIN_Count column back
 cargo run scan [dir]                                 # Fast parallel GTIN scan of firstbase JSON (used by push_to_firstbase.sh)
 ./download.sh --10                                   # Download + convert 10 products from EUDAMED API
 ```

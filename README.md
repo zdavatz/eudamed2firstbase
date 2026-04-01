@@ -76,6 +76,12 @@ cargo run download --srn SRN1 SRN2 SRN3                # multiple SRNs
 cargo run download --srn SRN1 SRN2 --50                # multiple SRNs, limit 50 per SRN
 cargo run download --srn SRN1 --convert                # download + auto-convert to firstbase JSON
 ./download.sh --srn IN-MF-000014457                    # legacy bash script (same functionality)
+
+# Count devices per SRN (parallel EUDAMED API queries)
+cargo run count DE-MF-000006701 US-MF-000021065        # count for specific SRNs (TSV output)
+cargo run count --file srns.txt                        # count from text file
+cargo run count --xlsx file.xlsx                       # count from XLSX col D, writes GTIN_Count column back
+cargo run count --xlsx file.xlsx 6                     # custom column number
 ```
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run firstbase`.

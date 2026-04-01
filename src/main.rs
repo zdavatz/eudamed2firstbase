@@ -100,6 +100,79 @@ fn main() -> Result<()> {
             let basic_dir = args.get(3).map(|s| s.as_str()).unwrap_or("eudamed_json/basic");
             process_swissdamed(Path::new(detail_dir), Path::new(basic_dir))
         }
+        Some("count") => {
+            // Count devices per SRN from EUDAMED API (parallel)
+            // Usage: cargo run count SRN1 SRN2 ...
+            //    or: cargo run count --file srns.txt
+            //    or: cargo run count --xlsx file.xlsx [col]
+            let srns: Vec<String> = if args.get(2).map(|s| s.as_str()) == Some("--file") {
+                let path = args.get(3).expect("Usage: count --file <file>");
+                std::fs::read_to_string(path)?
+                    .lines()
+                    .map(|l| l.trim().to_string())
+                    .filter(|s| !s.is_empty() && s.contains("-MF-"))
+                    .collect()
+            } else if args.get(2).map(|s| s.as_str()) == Some("--xlsx") {
+                let path = args.get(3).expect("Usage: count --xlsx <file.xlsx> [col]");
+                let col: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(4); // default col D=4
+                count_srns_xlsx(path, col)?
+            } else {
+                args[2..].iter().map(|s| s.to_string()).collect()
+            };
+            if srns.is_empty() {
+                anyhow::bail!("No SRNs provided");
+            }
+            let unique: Vec<String> = {
+                let mut s: Vec<String> = srns.clone();
+                s.sort();
+                s.dedup();
+                s
+            };
+            eprintln!("Querying {} unique SRNs (10 parallel)...", unique.len());
+
+            let agent = ureq::Agent::config_builder()
+                .http_status_as_error(false)
+                .timeout_global(Some(std::time::Duration::from_secs(10)))
+                .build()
+                .new_agent();
+
+            let results: Vec<(String, i64)> = unique.par_iter().map(|srn| {
+                let url = format!(
+                    "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData?page=0&pageSize=1&srn={}&iso2Code=en&languageIso2Code=en",
+                    srn
+                );
+                let count = match agent.get(&url).call() {
+                    Ok(mut resp) => {
+                        let body = resp.body_mut().read_to_string().unwrap_or_default();
+                        serde_json::from_str::<serde_json::Value>(&body)
+                            .ok()
+                            .and_then(|v| v.get("totalElements")?.as_i64())
+                            .unwrap_or(-1)
+                    }
+                    Err(_) => -1,
+                };
+                (srn.clone(), count)
+            }).collect();
+
+            let result_map: HashMap<String, i64> = results.into_iter().collect();
+
+            // If --xlsx mode, write back to the file
+            if args.get(2).map(|s| s.as_str()) == Some("--xlsx") {
+                let path = args.get(3).unwrap();
+                let col: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(4);
+                write_counts_xlsx(path, col, &result_map)?;
+                let total: i64 = result_map.values().filter(|&&v| v >= 0).sum();
+                eprintln!("Done. {} SRNs, {} total devices. Written to {}", result_map.len(), total, path);
+            } else {
+                // Print TSV to stdout
+                for (srn, count) in &result_map {
+                    println!("{}\t{}", srn, if *count >= 0 { count.to_string() } else { "ERROR".to_string() });
+                }
+                let total: i64 = result_map.values().filter(|&&v| v >= 0).sum();
+                eprintln!("Done. {} SRNs, {} total devices.", result_map.len(), total);
+            }
+            Ok(())
+        }
         Some("scan") => {
             // Fast parallel scan of firstbase JSON files — outputs "filepath\tGTIN" per line
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("firstbase_json");
@@ -828,6 +901,70 @@ fn process_swissdamed(detail_dir: &Path, basic_dir: &Path) -> Result<()> {
         println!("  {}: {}", endpoint, count);
     }
 
+    Ok(())
+}
+
+/// Read SRNs from an xlsx file column (1-based)
+fn count_srns_xlsx(path: &str, col: usize) -> Result<Vec<String>> {
+    use calamine::{Reader, open_workbook, Xlsx};
+    let mut workbook: Xlsx<_> = open_workbook(path)
+        .with_context(|| format!("Cannot open {}", path))?;
+    let sheet_name = workbook.sheet_names().first().cloned()
+        .ok_or_else(|| anyhow::anyhow!("No sheets in xlsx"))?;
+    let range = workbook.worksheet_range(&sheet_name)?;
+    let mut srns = Vec::new();
+    for row in range.rows().skip(1) { // skip header
+        if let Some(cell) = row.get(col - 1) {
+            let s = cell.to_string().trim().to_string();
+            if !s.is_empty() && s.contains("-MF-") {
+                srns.push(s);
+            }
+        }
+    }
+    Ok(srns)
+}
+
+/// Write GTIN counts back to xlsx file: reads original, adds count column
+fn write_counts_xlsx(path: &str, srn_col: usize, counts: &HashMap<String, i64>) -> Result<()> {
+    use calamine::{Reader, open_workbook, Xlsx};
+    use rust_xlsxwriter::Workbook;
+
+    let mut workbook: Xlsx<_> = open_workbook(path)?;
+    let sheet_name = workbook.sheet_names().first().cloned().unwrap();
+    let range = workbook.worksheet_range(&sheet_name)?;
+
+    let mut wb = Workbook::new();
+    let ws = wb.add_worksheet();
+
+    for (r, row) in range.rows().enumerate() {
+        for (c, cell) in row.iter().enumerate() {
+            match cell {
+                calamine::Data::String(s) => { ws.write_string(r as u32, c as u16, s)?; }
+                calamine::Data::Float(f) => { ws.write_number(r as u32, c as u16, *f)?; }
+                calamine::Data::Int(i) => { ws.write_number(r as u32, c as u16, *i as f64)?; }
+                calamine::Data::Bool(b) => { ws.write_boolean(r as u32, c as u16, *b)?; }
+                calamine::Data::DateTime(dt) => { ws.write_string(r as u32, c as u16, &dt.to_string())?; }
+                calamine::Data::DateTimeIso(s) => { ws.write_string(r as u32, c as u16, s)?; }
+                calamine::Data::DurationIso(s) => { ws.write_string(r as u32, c as u16, s)?; }
+                calamine::Data::Error(_) | calamine::Data::Empty => {}
+            }
+        }
+        // Add count column
+        if r == 0 {
+            ws.write_string(r as u32, row.len() as u16, "GTIN_Count")?;
+        } else {
+            let srn = row.get(srn_col - 1).map(|c| c.to_string().trim().to_string()).unwrap_or_default();
+            if let Some(&count) = counts.get(&srn) {
+                if count >= 0 {
+                    ws.write_number(r as u32, row.len() as u16, count as f64)?;
+                } else {
+                    ws.write_string(r as u32, row.len() as u16, "ERROR")?;
+                }
+            }
+        }
+    }
+
+    wb.save(path)?;
     Ok(())
 }
 
