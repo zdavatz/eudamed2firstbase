@@ -298,6 +298,13 @@ pub fn run_download(
         }
     }
 
+    // --- Step 7: Extract versions from downloaded detail files into udi_versions DB ---
+    if !need_download.is_empty() {
+        log(&format!("Indexing {} downloaded detail files into version DB...", need_download.len()));
+        let version_count = index_detail_versions(&detail_dir, &need_download, &conn, progress);
+        log(&format!("Indexed {} detail file versions in udi_versions DB", version_count));
+    }
+
     Ok(DownloadResult {
         uuid_versions,
         need_download,
@@ -307,6 +314,126 @@ pub fn run_download(
         basic_downloaded,
         basic_cached,
     })
+}
+
+/// Extract version numbers from specific detail JSON files and upsert into udi_versions.
+/// Uses rayon for parallel JSON parsing, then batch-inserts into SQLite.
+fn index_detail_versions(
+    detail_dir: &Path,
+    uuids: &[String],
+    conn: &rusqlite::Connection,
+    progress: &dyn DownloadProgress,
+) -> usize {
+    if uuids.is_empty() {
+        return 0;
+    }
+
+    // Parallel: read + parse version records
+    let records: Vec<crate::version_db::VersionRecord> = uuids
+        .par_iter()
+        .filter_map(|uuid| {
+            let path = detail_dir.join(format!("{}.json", uuid));
+            let content = std::fs::read_to_string(&path).ok()?;
+            let mut rec = crate::version_db::extract_detail_versions(&content);
+            rec.last_synced = Some(chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string());
+            Some(rec)
+        })
+        .collect();
+
+    // Batch insert into DB using transactions
+    let mut count = 0;
+    let batch_size = 10000;
+    for chunk in records.chunks(batch_size) {
+        let tx = conn.unchecked_transaction().unwrap();
+        for rec in chunk {
+            if crate::version_db::upsert_version(&tx, rec).is_ok() {
+                count += 1;
+            }
+        }
+        let _ = tx.commit();
+        if records.len() > batch_size {
+            progress.on_event(DownloadEvent::Log(format!(
+                "  Indexed {}/{} versions...", count, records.len()
+            )));
+        }
+    }
+
+    count
+}
+
+/// Bulk-index all detail files in a directory into udi_versions DB.
+/// Skips files already indexed with matching hash. Used for initial population.
+pub fn index_all_detail_versions(
+    detail_dir: &Path,
+    conn: &rusqlite::Connection,
+    progress: &dyn DownloadProgress,
+) -> usize {
+    let files: Vec<std::path::PathBuf> = std::fs::read_dir(detail_dir)
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().map(|e| e == "json").unwrap_or(false))
+        .collect();
+
+    if files.is_empty() {
+        return 0;
+    }
+
+    progress.on_event(DownloadEvent::Log(format!(
+        "  Scanning {} detail files for version indexing...", files.len()
+    )));
+
+    // Get existing hashes for fast skip
+    let existing_hashes: std::collections::HashMap<String, String> = {
+        let mut stmt = conn.prepare(
+            "SELECT uuid, detail_hash FROM udi_versions WHERE detail_hash IS NOT NULL"
+        ).unwrap();
+        stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        }).unwrap().filter_map(|r| r.ok()).collect()
+    };
+    let existing_hashes = Arc::new(existing_hashes);
+    let skipped = AtomicUsize::new(0);
+
+    let records: Vec<crate::version_db::VersionRecord> = files
+        .par_iter()
+        .filter_map(|path| {
+            let uuid = path.file_stem()?.to_str()?.to_string();
+            let content = std::fs::read_to_string(path).ok()?;
+            let hash = crate::version_db::hash_json(&content);
+            if let Some(existing) = existing_hashes.get(&uuid) {
+                if *existing == hash {
+                    skipped.fetch_add(1, Ordering::Relaxed);
+                    return None;
+                }
+            }
+            let mut rec = crate::version_db::extract_detail_versions(&content);
+            rec.last_synced = Some(chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string());
+            Some(rec)
+        })
+        .collect();
+
+    progress.on_event(DownloadEvent::Log(format!(
+        "  {} new/changed, {} unchanged (skipped)", records.len(), skipped.load(Ordering::Relaxed)
+    )));
+
+    let mut count = 0;
+    let batch_size = 10000;
+    for chunk in records.chunks(batch_size) {
+        let tx = conn.unchecked_transaction().unwrap();
+        for rec in chunk {
+            if crate::version_db::upsert_version(&tx, rec).is_ok() {
+                count += 1;
+            }
+        }
+        let _ = tx.commit();
+        progress.on_event(DownloadEvent::Log(format!(
+            "  Indexed {}/{} versions...", count, records.len()
+        )));
+    }
+
+    count
 }
 
 /// Create the listing_cache table if it doesn't exist.
