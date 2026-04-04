@@ -15,6 +15,7 @@ mod transform_api;
 mod transform_detail;
 mod transform_eudamed_json;
 mod version_db;
+mod mail;
 mod scan;
 mod swissdamed;
 mod xlsx_export;
@@ -51,18 +52,23 @@ fn main() -> Result<()> {
     match args.get(1).map(|s| s.as_str()) {
         Some("download") => {
             // Download from EUDAMED API (replaces download.sh)
-            let (srns, limit) = parse_download_args(&args[2..]);
+            let (srns, limit, threads) = parse_download_args(&args[2..]);
             if srns.is_empty() && limit.is_none() {
-                eprintln!("Usage: eudamed2firstbase download [--N] [--srn <SRN> ...]");
+                eprintln!("Usage: eudamed2firstbase download [--N] [--srn <SRN> ...] [--threads N]");
                 eprintln!("  --N              Number of products per SRN (e.g. --10, --100)");
                 eprintln!("  --srn <SRN> ...  Filter by manufacturer/AR SRN(s)");
+                eprintln!("  --threads N      Parallel threads for listings (default 10) and downloads");
                 std::process::exit(1);
             }
-            let dl_config = download::DownloadConfig {
+            let mut dl_config = download::DownloadConfig {
                 srns,
                 limit,
                 ..Default::default()
             };
+            if let Some(t) = threads {
+                dl_config.parallel_threads = t;
+                dl_config.listing_threads = t;
+            }
             let progress = download::StderrProgress;
             let result = download::run_download(&dl_config, &progress)?;
             if result.uuid_versions.is_empty() {
@@ -99,6 +105,55 @@ fn main() -> Result<()> {
             let detail_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json/detail");
             let basic_dir = args.get(3).map(|s| s.as_str()).unwrap_or("eudamed_json/basic");
             process_swissdamed(Path::new(detail_dir), Path::new(basic_dir))
+        }
+        Some("mailto") => {
+            // Send file as email attachment via Gmail API
+            // Usage: cargo run mailto <file> --to <email> [--subject <subject>] [--from <email>] [--p12 <key>]
+            let mut file = None;
+            let mut to = None;
+            let mut subject = None;
+            let mut from: Option<String> = None;
+            let mut p12 = mail::DEFAULT_P12_KEY.to_string();
+            let mut i = 2;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--to" => { i += 1; to = args.get(i).cloned(); }
+                    "--subject" => { i += 1; subject = args.get(i).cloned(); }
+                    "--from" => { i += 1; from = args.get(i).cloned(); }
+                    "--p12" => { i += 1; if let Some(v) = args.get(i) { p12 = v.clone(); } }
+                    _ if file.is_none() => { file = Some(args[i].clone()); }
+                    _ => {}
+                }
+                i += 1;
+            }
+            let file = file.unwrap_or_else(|| {
+                eprintln!("Usage: eudamed2firstbase mailto <file> --to <email> [--subject <text>] [--from <email>] [--p12 <key>]");
+                std::process::exit(1);
+            });
+            let to = to.unwrap_or_else(|| {
+                eprintln!("--to <email> is required");
+                std::process::exit(1);
+            });
+            let from = from.unwrap_or_else(|| {
+                eprintln!("--from <email> is required");
+                std::process::exit(1);
+            });
+            let subject = subject.unwrap_or_else(|| {
+                format!("eudamed2firstbase: {}", std::path::Path::new(&file).file_name()
+                    .and_then(|n| n.to_str()).unwrap_or(&file))
+            });
+
+            mail::send_email_with_attachment(
+                &p12,
+                mail::DEFAULT_SERVICE_EMAIL,
+                &from,
+                &to,
+                &subject,
+                &format!("File attached: {}", std::path::Path::new(&file).file_name()
+                    .and_then(|n| n.to_str()).unwrap_or(&file)),
+                &file,
+            )?;
+            Ok(())
         }
         Some("count") => {
             // Count devices per SRN from EUDAMED API (parallel)
@@ -229,9 +284,10 @@ fn main() -> Result<()> {
     }
 }
 
-fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>) {
+fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>, Option<usize>) {
     let mut srns = Vec::new();
     let mut limit = None;
+    let mut threads = None;
     let mut i = 0;
 
     while i < args.len() {
@@ -239,6 +295,12 @@ fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>) {
             i += 1;
             while i < args.len() && !args[i].starts_with("--") {
                 srns.push(args[i].clone());
+                i += 1;
+            }
+        } else if args[i] == "--threads" {
+            i += 1;
+            if i < args.len() {
+                threads = args[i].parse().ok();
                 i += 1;
             }
         } else if args[i].starts_with("--") && args[i][2..].parse::<usize>().is_ok() {
@@ -249,7 +311,7 @@ fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>) {
         }
     }
 
-    (srns, limit)
+    (srns, limit, threads)
 }
 
 fn process_xml_dir(config: &config::Config) -> Result<()> {

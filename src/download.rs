@@ -79,6 +79,7 @@ pub struct DownloadConfig {
     pub limit: Option<usize>,
     pub data_dir: PathBuf,
     pub parallel_threads: usize,
+    pub listing_threads: usize,
     pub max_retries: u32,
 }
 
@@ -89,6 +90,7 @@ impl Default for DownloadConfig {
             limit: None,
             data_dir: app_data_dir().join(DEFAULT_DATA_DIR),
             parallel_threads: 10,
+            listing_threads: 10,
             max_retries: 3,
         }
     }
@@ -137,7 +139,7 @@ pub fn run_download(
         detail: "Fetching listings from EUDAMED API...".into(),
     });
 
-    let uuid_versions = download_listings(EUDAMED_BASE_URL, &config.srns, config.limit, progress)?;
+    let uuid_versions = download_listings(EUDAMED_BASE_URL, &config.srns, config.limit, config.listing_threads, progress)?;
 
     if uuid_versions.is_empty() {
         return Ok(DownloadResult {
@@ -307,93 +309,182 @@ pub fn run_download(
     })
 }
 
+/// Create the listing_cache table if it doesn't exist.
+fn ensure_listing_cache(conn: &rusqlite::Connection) {
+    let _ = conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS listing_cache (
+            uuid TEXT PRIMARY KEY,
+            srn TEXT NOT NULL DEFAULT '',
+            manufacturer_name TEXT NOT NULL DEFAULT '',
+            primary_di TEXT NOT NULL DEFAULT '',
+            trade_name TEXT NOT NULL DEFAULT '',
+            risk_class TEXT NOT NULL DEFAULT '',
+            device_status TEXT NOT NULL DEFAULT '',
+            version_number INTEGER,
+            listed_at TEXT NOT NULL DEFAULT ''
+        );
+    ");
+    // Migration: add manufacturer_name if missing
+    let _ = conn.execute("ALTER TABLE listing_cache ADD COLUMN manufacturer_name TEXT NOT NULL DEFAULT ''", []);
+}
+
+/// Download paginated listings for a single SRN. Returns entries found.
+fn download_listing_for_srn(
+    base_url: &str,
+    srn: &str,
+    limit: Option<usize>,
+    conn: &Mutex<rusqlite::Connection>,
+    progress: &dyn DownloadProgress,
+) -> Vec<(String, Option<u32>)> {
+    let mut entries: Vec<(String, Option<u32>)> = Vec::new();
+    let mut page = 0;
+    let mut srn_count = 0;
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+
+    loop {
+        let url = format!(
+            "{}?page={}&pageSize={}&srn={}&iso2Code=en&languageIso2Code=en",
+            base_url, page, DEFAULT_PAGE_SIZE, srn
+        );
+
+        let resp = match ureq::get(&url).call() {
+            Ok(r) => r,
+            Err(e) => {
+                progress.on_event(DownloadEvent::Log(format!(
+                    "  SRN {} page {} error: {}", srn, page, e
+                )));
+                break;
+            }
+        };
+        let body: String = match resp.into_body().read_to_string() {
+            Ok(b) => b,
+            Err(_) => break,
+        };
+
+        let json: serde_json::Value = match serde_json::from_str(&body) {
+            Ok(j) => j,
+            Err(_) => break,
+        };
+        let content = json.get("content").and_then(|c| c.as_array());
+
+        if let Some(items) = content {
+            if items.is_empty() {
+                break;
+            }
+
+            let total_pages = json.get("totalPages").and_then(|t| t.as_u64()).unwrap_or(1);
+            let total_elements = json.get("totalElements").and_then(|t| t.as_u64());
+
+            // Batch insert into DB
+            if let Ok(db) = conn.lock() {
+                for item in items {
+                    if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
+                        let version = item.get("versionNumber")
+                            .and_then(|v| v.as_u64()).map(|v| v as u32);
+                        let primary_di = item.get("primaryDi").and_then(|v| v.as_str()).unwrap_or("");
+                        let trade_name = item.get("tradeName").and_then(|v| v.as_str()).unwrap_or("");
+                        let risk_class = item.get("riskClass")
+                            .and_then(|v| v.get("code")).and_then(|v| v.as_str()).unwrap_or("");
+                        let device_status = item.get("deviceStatusType")
+                            .and_then(|v| v.get("code")).and_then(|v| v.as_str()).unwrap_or("");
+                        let mfr_srn = item.get("manufacturerSrn").and_then(|v| v.as_str()).unwrap_or(srn);
+                        let mfr_name = item.get("manufacturerName").and_then(|v| v.as_str()).unwrap_or("");
+
+                        let _ = db.execute(
+                            "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, listed_at) \
+                             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                            rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, now],
+                        );
+
+                        entries.push((uuid.to_string(), version));
+                        srn_count += 1;
+
+                        if let Some(lim) = limit {
+                            if srn_count >= lim { break; }
+                        }
+                    }
+                }
+            }
+
+            if page % 10 == 0 || page + 1 >= total_pages as usize {
+                progress.on_event(DownloadEvent::Log(format!(
+                    "  {} page {}/{} — {} devices{}",
+                    srn, page + 1, total_pages, srn_count,
+                    total_elements.map(|t| format!(" (of {} total)", t)).unwrap_or_default()
+                )));
+            }
+
+            if let Some(lim) = limit {
+                if srn_count >= lim { break; }
+            }
+
+            page += 1;
+            if page >= total_pages as usize {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    if srn_count > 0 || page == 0 {
+        progress.on_event(DownloadEvent::Log(format!(
+            "  SRN {}: {} devices", srn, srn_count
+        )));
+    }
+
+    entries
+}
+
 /// Download paginated listings from EUDAMED, filtered by SRN.
+/// Parallel: 10 SRNs at a time. Writes each page to listing_cache DB.
 /// Returns Vec<(uuid, Option<version_number>)>, deduplicated.
 fn download_listings(
     base_url: &str,
     srns: &[String],
     limit: Option<usize>,
+    listing_threads: usize,
     progress: &dyn DownloadProgress,
 ) -> anyhow::Result<Vec<(String, Option<u32>)>> {
-    let mut all_entries: Vec<(String, Option<u32>)> = Vec::new();
+    // Open DB for listing cache
+    let db_dir = app_data_dir().join("db");
+    std::fs::create_dir_all(&db_dir)?;
+    let db_path = db_dir.join("version_tracking.db");
+    let conn = rusqlite::Connection::open(&db_path)?;
+    ensure_listing_cache(&conn);
+    let conn = Mutex::new(conn);
 
-    for srn in srns {
-        progress.on_event(DownloadEvent::Log(format!(
-            "Downloading listing for SRN {}...",
-            srn
-        )));
-        let mut page = 0;
-        let mut srn_count = 0;
+    progress.on_event(DownloadEvent::Log(format!(
+        "Downloading listings for {} SRNs ({} parallel)...", srns.len(), listing_threads
+    )));
 
-        loop {
-            let url = format!(
-                "{}?page={}&pageSize={}&srn={}&iso2Code=en&languageIso2Code=en",
-                base_url, page, DEFAULT_PAGE_SIZE, srn
-            );
+    let base_url_owned = base_url.to_string();
+    let completed = AtomicUsize::new(0);
+    let total_srns = srns.len();
 
-            let resp = ureq::get(&url).call()?;
-            let body: String = resp.into_body().read_to_string()?;
-
-            let json: serde_json::Value = serde_json::from_str(&body)?;
-            let content = json.get("content").and_then(|c| c.as_array());
-
-            if let Some(items) = content {
-                if items.is_empty() {
-                    break;
+    // Parallel listing downloads
+    let all_entries: Vec<Vec<(String, Option<u32>)>> = rayon::ThreadPoolBuilder::new()
+        .num_threads(listing_threads)
+        .build()
+        .unwrap()
+        .install(|| {
+            srns.par_iter().map(|srn| {
+                let entries = download_listing_for_srn(&base_url_owned, srn, limit, &conn, progress);
+                let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
+                if done % 100 == 0 || done == total_srns {
+                    progress.on_event(DownloadEvent::Log(format!(
+                        "[Listing] {}/{} SRNs completed", done, total_srns
+                    )));
                 }
+                entries
+            }).collect()
+        });
 
-                let total_pages = json.get("totalPages").and_then(|t| t.as_u64()).unwrap_or(1);
-                let total_elements = json.get("totalElements").and_then(|t| t.as_u64());
-
-                for item in items {
-                    if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
-                        let version = item
-                            .get("versionNumber")
-                            .and_then(|v| v.as_u64())
-                            .map(|v| v as u32);
-                        all_entries.push((uuid.to_string(), version));
-                        srn_count += 1;
-
-                        if let Some(lim) = limit {
-                            if srn_count >= lim {
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                progress.on_event(DownloadEvent::Log(format!(
-                    "  Listing page {}/{} — {} devices so far{}",
-                    page + 1,
-                    total_pages,
-                    srn_count,
-                    total_elements.map(|t| format!(" (of {} total)", t)).unwrap_or_default()
-                )));
-
-                if let Some(lim) = limit {
-                    if srn_count >= lim {
-                        break;
-                    }
-                }
-
-                page += 1;
-                if page >= total_pages as usize {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
-        progress.on_event(DownloadEvent::Log(format!(
-            "  SRN {}: {} devices",
-            srn, srn_count
-        )));
-    }
+    let mut flat: Vec<(String, Option<u32>)> = all_entries.into_iter().flatten().collect();
 
     // Deduplicate by UUID (keep highest version)
-    all_entries.sort_by(|a, b| a.0.cmp(&b.0));
-    all_entries.dedup_by(|a, b| {
+    flat.sort_by(|a, b| a.0.cmp(&b.0));
+    flat.dedup_by(|a, b| {
         if a.0 == b.0 {
             if a.1 > b.1 {
                 b.1 = a.1;
@@ -404,7 +495,7 @@ fn download_listings(
         }
     });
 
-    Ok(all_entries)
+    Ok(flat)
 }
 
 /// Pre-download version check: compare listing versionNumber against version DB.

@@ -82,6 +82,10 @@ cargo run count DE-MF-000006701 US-MF-000021065        # count for specific SRNs
 cargo run count --file srns.txt                        # count from text file
 cargo run count --xlsx file.xlsx                       # count from XLSX col D, writes GTIN_Count column back
 cargo run count --xlsx file.xlsx 6                     # custom column number
+
+# Send file as email attachment via Gmail API (service account)
+cargo run mailto /tmp/report.csv --to "a@gs1.ch, b@gs1.ch" --from sender@ywesee.com --subject "Report"
+cargo run mailto file.xlsx --to recipient@example.com --from sender@example.com --p12 /path/to/key.p12
 ```
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run firstbase`.
