@@ -460,7 +460,11 @@ After initial submission of 100 devices (1341 errors, 15 patterns), the followin
 
 The `eudamed_json` mode uses a SQLite database (`db/version_tracking.db`) to track per-section version numbers for each UDI-DI. EUDAMED versions each section independently — a manufacturer address change increments `manufacturer.versionNumber` without touching the UDI-DI root version.
 
-On each run, the converter:
+Version numbers are indexed into `udi_versions` at two points:
+- **On download**: newly downloaded detail files are automatically indexed (parallel parse + batch DB insert)
+- **On conversion**: per-section version comparison determines what changed
+
+On each converter run:
 1. Computes SHA256 of the Detail API JSON (fast path: if hash unchanged → skip)
 2. If hash differs, compares per-section version numbers to identify what changed
 3. Logs a change summary: `NEW`, `MFR+CERT`, `STATUS+MARKET`, etc.
