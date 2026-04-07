@@ -57,12 +57,14 @@ $VERBOSE && CURL_VERBOSE="-v"
 
 # --- Helper: Get OAuth2 token ---
 get_token() {
-    local token_url="$API_BASE/oauth2/token"  # TODO: confirm token endpoint from OpenAPI
+    # Azure CIAM token endpoint (from OpenAPI spec securitySchemes)
+    local token_url="https://3a5c95df-c59f-418a-96fc-b8531bf24be8.ciamlogin.com/3a5c95df-c59f-418a-96fc-b8531bf24be8/oauth2/v2.0/token"
+    local scope="8d64e26d-ea71-4ab8-90d6-2acd795eb668/.default"
     $VERBOSE && echo "  POST $token_url"
 
     TOKEN=$(curl -s $CURL_VERBOSE --max-time 30 -X POST "$token_url" \
         -H 'Content-Type: application/x-www-form-urlencoded' \
-        -d "grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET" \
+        -d "grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET&scope=$scope" \
         | python3 -c "import json,sys; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
 
     if [[ ${#TOKEN} -lt 20 ]]; then

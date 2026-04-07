@@ -188,7 +188,8 @@ download_10k.sh            # Legacy: download 10k listings
 download_details.sh        # Legacy: download details from UUID list
 firstbase_validation.py    # Schema validation against GS1 Product API Swagger spec
 push_to_firstbase.sh       # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
-push_to_swissdamed.sh      # Push EUDAMED JSON to Swissdamed M2M API (OAuth2, per-legislation endpoints)
+push_to_swissdamed.sh      # Push swissdamed JSON to Swissdamed M2M API (OAuth2 Azure CIAM, per-legislation endpoints)
+swissdamed_json/           # Swissdamed M2M JSON output (526K+ devices: MDR/MDD/SPP/IVDR/IVDD/AIMDD)
 log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with GTIN-mapped errors + raw API JSON)
 ```
 
