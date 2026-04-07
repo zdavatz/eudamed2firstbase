@@ -220,25 +220,23 @@ pub struct PackageUdiDiDto {
 #[serde(rename_all = "camelCase")]
 pub struct LangText {
     pub language: String,
-    pub text: String,
+    pub text_value: String,
 }
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageHandlingConditionDto {
-    #[serde(rename = "type")]
-    pub condition_type: String,
+    pub storage_handling_condition_value: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub description: Vec<LangText>,
+    pub comments: Vec<LangText>,
 }
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CriticalWarningDto {
-    #[serde(rename = "type")]
-    pub warning_type: String,
+    pub warning_value: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub description: Vec<LangText>,
+    pub comments: Vec<LangText>,
 }
 
 #[derive(Serialize, Debug)]
@@ -294,8 +292,8 @@ fn extract_spp_type(code: &str) -> String {
 /// Map language texts from EUDAMED MultiLangText
 fn map_lang_texts(texts: &[(String, String)]) -> Vec<LangText> {
     texts.iter().map(|(lang, text)| LangText {
-        language: lang.clone(),
-        text: text.clone(),
+        language: lang.to_uppercase(),
+        text_value: text.clone(),
     }).collect()
 }
 
@@ -352,13 +350,14 @@ fn map_storage_handling(device: &ApiDeviceDetail) -> Vec<StorageHandlingConditio
                     let text = t.text.clone()?;
                     let lang = t.language.as_ref()
                         .and_then(|l| l.iso_code.clone())
-                        .unwrap_or_else(|| "en".to_string());
-                    Some(LangText { language: lang, text })
+                        .unwrap_or_else(|| "en".to_string())
+                        .to_uppercase();
+                    Some(LangText { language: lang, text_value: text })
                 }).collect())
                 .unwrap_or_default();
             Some(StorageHandlingConditionDto {
-                condition_type: suffix.to_string(),
-                description: descriptions,
+                storage_handling_condition_value: suffix.to_uppercase(),
+                comments: descriptions,
             })
         }).collect())
         .unwrap_or_default()
@@ -376,13 +375,14 @@ fn map_critical_warnings(device: &ApiDeviceDetail) -> Vec<CriticalWarningDto> {
                     let text = t.text.clone()?;
                     let lang = t.language.as_ref()
                         .and_then(|l| l.iso_code.clone())
-                        .unwrap_or_else(|| "en".to_string());
-                    Some(LangText { language: lang, text })
+                        .unwrap_or_else(|| "en".to_string())
+                        .to_uppercase();
+                    Some(LangText { language: lang, text_value: text })
                 }).collect())
                 .unwrap_or_default();
             Some(CriticalWarningDto {
-                warning_type: suffix.to_string(),
-                description: descriptions,
+                warning_value: suffix.to_uppercase(),
+                comments: descriptions,
             })
         }).collect())
         .unwrap_or_default()
