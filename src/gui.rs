@@ -1689,7 +1689,7 @@ fn push_to_firstbase(
     // --- Generate HTML log from DB ---
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
-    let log_file = log_dir.join(format!("{}.log.html", chrono::Local::now().format("%M.%H_%d.%m.%Y")));
+    let log_file = log_dir.join(format!("{}.log.html", chrono::Local::now().format("%H.%M_%d.%m.%Y")));
     let html = generate_push_html(&conn, session_id, &raw_responses);
     let _ = std::fs::write(&log_file, &html);
     log(&format!("[Push] HTML log: {}", log_file.display()));
@@ -1967,7 +1967,7 @@ fn push_to_swissdamed(
     // --- Generate HTML log ---
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
-    let log_file = log_dir.join(format!("swissdamed_{}.log.html", chrono::Local::now().format("%M.%H_%d.%m.%Y")));
+    let log_file = log_dir.join(format!("swissdamed_{}.log.html", chrono::Local::now().format("%H.%M_%d.%m.%Y")));
     let html = generate_swissdamed_push_html(&conn, session_id, &raw_responses);
     let _ = std::fs::write(&log_file, &html);
     log(&format!("[Push] HTML log: {}", log_file.display()));
