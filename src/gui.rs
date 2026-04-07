@@ -768,7 +768,39 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 }
             }
             PushTarget::Swissdamed => {
-                done(false, "Repush not yet implemented for Swissdamed");
+                if settings.swissdamed_client_id.is_empty() || settings.swissdamed_client_secret.is_empty() {
+                    done(false, "Cannot push: Swissdamed Client ID or Client Secret not set");
+                    return;
+                }
+
+                let swissdamed_dir = download::app_data_dir().join("swissdamed_json");
+
+                // Count files already in swissdamed_json/
+                let already_present = std::fs::read_dir(&swissdamed_dir)
+                    .map(|e| e.filter_map(|e| e.ok())
+                        .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
+                        .count())
+                    .unwrap_or(0);
+
+                if already_present == 0 {
+                    done(false, "No files in swissdamed_json/ to repush");
+                    return;
+                }
+                log(&format!("[Repush] {} files in swissdamed_json/", already_present));
+
+                log("[Repush] Pushing to Swissdamed M2M API...");
+                ctx.request_repaint();
+                match push_to_swissdamed(&settings, &log, None) {
+                    Ok((accepted, rejected)) => {
+                        done(true, &format!(
+                            "Repush complete. {} accepted, {} rejected.",
+                            accepted, rejected
+                        ));
+                    }
+                    Err(e) => {
+                        done(false, &format!("Repush failed: {}", e));
+                    }
+                }
             }
         }
         return;
@@ -1098,20 +1130,20 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 return;
             }
 
-            let _ = tx.send(WorkerMsg::Progress {
-                step: "Push".into(),
-                detail: "Pushing to Swissdamed M2M API...".into(),
-            });
+            log("[Push] Pushing to Swissdamed M2M API...");
             ctx.request_repaint();
-            log("Push functionality uses push_to_swissdamed.sh");
-            log(&format!(
-                "Run: SWISSDAMED_CLIENT_ID=... SWISSDAMED_CLIENT_SECRET=... ./push_to_swissdamed.sh"
-            ));
 
-            done(true, &format!(
-                "Pipeline complete. {} downloaded, {} converted. Run push_to_swissdamed.sh to publish.",
-                uuids.len(), converted
-            ));
+            match push_to_swissdamed(&settings, &log, Some(&uuids)) {
+                Ok((accepted, rejected)) => {
+                    done(true, &format!(
+                        "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.",
+                        uuids.len(), converted, accepted, rejected
+                    ));
+                }
+                Err(e) => {
+                    done(false, &format!("Swissdamed push failed: {}", e));
+                }
+            }
         }
     }
 }
@@ -1667,6 +1699,402 @@ fn push_to_firstbase(
 }
 
 /// Load the embedded app icon as an `egui::IconData`.
+/// Push pre-built Swissdamed JSON files to the Swissdamed M2M API.
+/// If `uuid_filter` is Some, only push files matching those UUIDs.
+/// If None, push all files in swissdamed_json/ (used by Repush).
+fn push_to_swissdamed(
+    settings: &Settings,
+    log: &dyn Fn(&str),
+    uuid_filter: Option<&[String]>,
+) -> anyhow::Result<(u32, u32)> {
+    let base_url = if settings.swissdamed_base_url.is_empty() {
+        "https://playground.swissdamed.ch".to_string()
+    } else {
+        settings.swissdamed_base_url.clone()
+    };
+    let swissdamed_dir = download::app_data_dir().join("swissdamed_json");
+    let processed_dir = swissdamed_dir.join("processed");
+    let _ = std::fs::create_dir_all(&processed_dir);
+
+    // Collect files (filtered by UUIDs if provided)
+    let uuid_set: Option<std::collections::HashSet<&str>> = uuid_filter.map(|uuids|
+        uuids.iter().map(|s| s.as_str()).collect()
+    );
+    let mut files: Vec<std::path::PathBuf> = Vec::new();
+    if swissdamed_dir.exists() {
+        for entry in std::fs::read_dir(&swissdamed_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().map(|e| e == "json").unwrap_or(false) {
+                if let Some(ref filter) = uuid_set {
+                    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
+                    if !filter.contains(stem.as_ref()) {
+                        continue;
+                    }
+                }
+                files.push(path);
+            }
+        }
+    }
+
+    log(&format!("Found {} swissdamed JSON files", files.len()));
+    if files.is_empty() {
+        return Ok((0, 0));
+    }
+
+    // Parse files: (path, uuid, endpoint, doc)
+    let basic_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR).join("basic");
+    let mut pushable: Vec<(std::path::PathBuf, String, String, serde_json::Value)> = Vec::new();
+    for f in &files {
+        if let Ok(content) = std::fs::read_to_string(f) {
+            if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
+                let uuid = f.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                // Determine endpoint from basic UDI cache
+                let endpoint = detect_swissdamed_endpoint(&uuid, &basic_dir);
+                pushable.push((f.clone(), uuid, endpoint, doc));
+            }
+        }
+    }
+    log(&format!("{} files pushable", pushable.len()));
+
+    // --- OAuth2 token ---
+    let http_agent = ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .timeout_global(Some(std::time::Duration::from_secs(30)))
+        .build()
+        .new_agent();
+
+    let get_token = || -> anyhow::Result<String> {
+        let token_url = "https://3a5c95df-c59f-418a-96fc-b8531bf24be8.ciamlogin.com/3a5c95df-c59f-418a-96fc-b8531bf24be8/oauth2/v2.0/token";
+        let scope = "8d64e26d-ea71-4ab8-90d6-2acd795eb668/.default";
+        let form_body = format!(
+            "grant_type=client_credentials&client_id={}&client_secret={}&scope={}",
+            settings.swissdamed_client_id, settings.swissdamed_client_secret, scope
+        );
+        let mut resp = http_agent.post(token_url)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .send(form_body.as_bytes())?;
+        let body: serde_json::Value = serde_json::from_str(&resp.body_mut().read_to_string()?)?;
+        body.get("access_token")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow::anyhow!("No access_token: {}", body))
+    };
+
+    log("[Push] Getting OAuth2 token...");
+    let mut token = get_token()?;
+    log(&format!("Token obtained ({} chars)", token.len()));
+
+    // --- Submit devices one by one ---
+    let mut accepted = 0u32;
+    let mut rejected = 0u32;
+    let mut error_details: Vec<(String, String, String, String)> = Vec::new(); // (uuid, endpoint, http_status, error_msg)
+    let mut accepted_uuids: Vec<(String, String)> = Vec::new(); // (uuid, endpoint)
+    let mut rejected_uuids: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut raw_responses: Vec<String> = Vec::new();
+
+    let total = pushable.len();
+    for (i, (path, uuid, endpoint, doc)) in pushable.iter().enumerate() {
+        let url = format!("{}{}", base_url, endpoint);
+        let payload = doc.to_string();
+
+        let mut resp_status = 0u16;
+        let mut resp_body = String::new();
+
+        for attempt in 1..=3 {
+            let mut resp = match http_agent.post(&url)
+                .header("Content-Type", "application/json")
+                .header("Authorization", &format!("Bearer {}", token))
+                .send(payload.as_bytes()) {
+                Ok(r) => r,
+                Err(e) => {
+                    resp_body = format!("Request error: {}", e);
+                    resp_status = 0;
+                    break;
+                }
+            };
+            resp_status = resp.status().as_u16();
+            resp_body = resp.body_mut().read_to_string().unwrap_or_default();
+
+            if resp_status == 401 && attempt == 1 {
+                log("  Token expired, refreshing...");
+                if let Ok(new_token) = get_token() {
+                    token = new_token;
+                    continue;
+                }
+            }
+            if resp_status == 429 {
+                log(&format!("  429 rate limited — waiting 60s (attempt {}/3)", attempt));
+                std::thread::sleep(std::time::Duration::from_secs(60));
+                continue;
+            }
+            break;
+        }
+
+        if resp_status == 202 {
+            accepted += 1;
+            accepted_uuids.push((uuid.clone(), endpoint.clone()));
+        } else {
+            rejected += 1;
+            rejected_uuids.insert(uuid.clone());
+            let err_msg = if resp_body.len() > 300 { resp_body[..300].to_string() } else { resp_body.clone() };
+            error_details.push((uuid.clone(), endpoint.clone(), resp_status.to_string(), err_msg));
+            if rejected <= 5 || resp_status == 500 {
+                raw_responses.push(format!("UUID: {}\nHTTP: {}\n{}", uuid, resp_status, resp_body));
+            }
+        }
+
+        if (i + 1) % 100 == 0 || i + 1 == total {
+            log(&format!("  {}/{} submitted ({} accepted, {} rejected)", i + 1, total, accepted, rejected));
+        }
+
+        // Throttle
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+
+    // --- Status poll for accepted devices ---
+    if !accepted_uuids.is_empty() {
+        log(&format!("[Push] Polling status for {} accepted devices...", accepted_uuids.len()));
+        std::thread::sleep(std::time::Duration::from_secs(10));
+
+        let ids: Vec<String> = accepted_uuids.iter().map(|(u, _)| format!("\"{}\"", u)).collect();
+        for chunk in ids.chunks(100) {
+            let poll_body = format!("[{}]", chunk.join(","));
+            if let Ok(mut resp) = http_agent.post(&format!("{}/v1/m2m/udi/data/udi-di-request-status", base_url))
+                .header("Content-Type", "application/json")
+                .header("Authorization", &format!("Bearer {}", token))
+                .send(poll_body.as_bytes()) {
+                let body = resp.body_mut().read_to_string().unwrap_or_default();
+                if let Ok(statuses) = serde_json::from_str::<serde_json::Value>(&body) {
+                    if let Some(arr) = statuses.as_array() {
+                        let success = arr.iter().filter(|s| s.get("status").and_then(|v| v.as_str()) == Some("SUCCESS")).count();
+                        let not_processed = arr.iter().filter(|s| s.get("status").and_then(|v| v.as_str()) == Some("NOT_PROCESSED")).count();
+                        let failed = arr.iter().filter(|s| {
+                            let st = s.get("status").and_then(|v| v.as_str()).unwrap_or("");
+                            st != "SUCCESS" && st != "NOT_PROCESSED"
+                        }).count();
+                        log(&format!("  Status: {} SUCCESS, {} NOT_PROCESSED, {} failed", success, not_processed, failed));
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Store in DB ---
+    let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+    let conn = match rusqlite::Connection::open(&db_path) {
+        Ok(c) => c,
+        Err(e) => {
+            log(&format!("[Push] DB error: {}", e));
+            return Ok((accepted, rejected));
+        }
+    };
+    let _ = conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS swissdamed_push_session (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_ts TEXT NOT NULL,
+            version TEXT NOT NULL,
+            base_url TEXT NOT NULL,
+            total_pushable INTEGER NOT NULL DEFAULT 0,
+            total_accepted INTEGER NOT NULL DEFAULT 0,
+            total_rejected INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS swissdamed_push_error (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            uuid TEXT NOT NULL DEFAULT '',
+            endpoint TEXT NOT NULL DEFAULT '',
+            http_status TEXT NOT NULL DEFAULT '',
+            error_description TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (session_id) REFERENCES swissdamed_push_session(id)
+        );
+        CREATE TABLE IF NOT EXISTS swissdamed_push_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT NOT NULL, correlation_id TEXT, pushed_at TEXT NOT NULL,
+            endpoint TEXT NOT NULL, status TEXT NOT NULL,
+            error_code TEXT, error_msg TEXT
+        );
+    ");
+
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let _ = conn.execute(
+        "INSERT INTO swissdamed_push_session (session_ts, version, base_url, total_pushable, total_accepted, total_rejected) VALUES (?1,?2,?3,?4,?5,?6)",
+        rusqlite::params![now, env!("CARGO_PKG_VERSION"), base_url, pushable.len(), 0, 0],
+    );
+    let session_id = conn.last_insert_rowid();
+
+    // Insert errors
+    for (uuid, endpoint, http_status, err_msg) in &error_details {
+        let _ = conn.execute(
+            "INSERT INTO swissdamed_push_error (session_id, uuid, endpoint, http_status, error_description) VALUES (?1,?2,?3,?4,?5)",
+            rusqlite::params![session_id, uuid, endpoint, http_status, err_msg],
+        );
+    }
+
+    // Insert per-item log
+    for (_, uuid, endpoint, _) in &pushable {
+        let status = if rejected_uuids.contains(uuid) { "REJECTED" } else { "ACCEPTED" };
+        let _ = conn.execute(
+            "INSERT INTO swissdamed_push_log (uuid, correlation_id, pushed_at, endpoint, status) VALUES (?1,?2,?3,?4,?5)",
+            rusqlite::params![uuid, uuid, now, endpoint, status],
+        );
+    }
+
+    // Move accepted to processed/
+    let mut moved = 0;
+    let mut kept = 0;
+    for (path, uuid, _, _) in &pushable {
+        if rejected_uuids.contains(uuid) {
+            kept += 1;
+            continue;
+        }
+        if let Some(name) = path.file_name() {
+            let dest = processed_dir.join(name);
+            if std::fs::rename(path, &dest).is_ok() {
+                moved += 1;
+            }
+        }
+    }
+
+    // Update session counts
+    let _ = conn.execute(
+        "UPDATE swissdamed_push_session SET total_accepted=?1, total_rejected=?2 WHERE id=?3",
+        rusqlite::params![moved, kept, session_id],
+    );
+
+    log(&format!("[Push] Moved {} accepted to processed/, {} rejected kept for retry", moved, kept));
+
+    // --- Generate HTML log ---
+    let log_dir = download::app_data_dir().join("log");
+    let _ = std::fs::create_dir_all(&log_dir);
+    let log_file = log_dir.join(format!("swissdamed_{}.log.html", chrono::Local::now().format("%M.%H_%d.%m.%Y")));
+    let html = generate_swissdamed_push_html(&conn, session_id, &raw_responses);
+    let _ = std::fs::write(&log_file, &html);
+    log(&format!("[Push] HTML log: {}", log_file.display()));
+
+    Ok((moved as u32, kept as u32))
+}
+
+/// Detect the Swissdamed M2M API endpoint for a device from its basic UDI-DI file.
+fn detect_swissdamed_endpoint(uuid: &str, basic_dir: &std::path::Path) -> String {
+    let basic_path = basic_dir.join(format!("{}.json", uuid));
+    if let Ok(basic_json) = std::fs::read_to_string(&basic_path) {
+        if let Ok(basic_udi) = serde_json::from_str::<crate::api_detail::BasicUdiDiData>(&basic_json) {
+            return crate::swissdamed::legislation_endpoint(&basic_udi).to_string();
+        }
+    }
+    "/v1/m2m/udi/data/mdr".to_string()
+}
+
+/// Generate HTML push log for Swissdamed from DB.
+fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> String {
+    let (version, timestamp, base_url, total_pushable, total_accepted, total_rejected) = conn
+        .query_row(
+            "SELECT version, session_ts, base_url, total_pushable, total_accepted, total_rejected FROM swissdamed_push_session WHERE id=?1",
+            rusqlite::params![session_id],
+            |row| Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(4)?,
+                row.get::<_, i64>(5)?,
+            )),
+        )
+        .unwrap_or_default();
+
+    let mut html = format!(
+        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Swissdamed Push Log</title>\
+        <style>body{{font-family:monospace;margin:20px}}h1{{font-size:18px}}\
+        table{{border-collapse:collapse;width:100%;margin:10px 0}}\
+        th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}}\
+        th{{background:#f0f0f0}}.ok{{color:green}}.err{{color:red}}\
+        .summary{{background:#f8f8f8;padding:10px;margin:10px 0}}\
+        pre{{background:#f4f4f4;padding:10px;overflow-x:auto;max-height:600px;font-size:12px}}\
+        </style></head><body>\
+        <h1>Swissdamed Push Log (v{version})</h1>\
+        <div class='summary'>\
+        <b>Version:</b> {version}<br>\
+        <b>Timestamp:</b> {timestamp}<br>\
+        <b>Base URL:</b> {base_url}<br>\
+        <b>Accepted:</b> <span class='ok'>{accepted}</span> | \
+        <b>Rejected:</b> <span class='err'>{rejected}</span><br>\
+        <b>Total pushable:</b> {pushable}\
+        </div>",
+        version = version, timestamp = timestamp, base_url = base_url,
+        accepted = total_accepted, rejected = total_rejected, pushable = total_pushable,
+    );
+
+    // Error summary by HTTP status
+    {
+        let mut stmt = conn.prepare(
+            "SELECT http_status, COUNT(*) as total, COUNT(DISTINCT uuid) as devices \
+             FROM swissdamed_push_error WHERE session_id=?1 GROUP BY http_status ORDER BY total DESC"
+        ).unwrap();
+        let rows: Vec<(String, i64, i64)> = stmt.query_map(rusqlite::params![session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        }).unwrap().filter_map(|r| r.ok()).collect();
+
+        if !rows.is_empty() {
+            html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>HTTP Status</th><th>Errors</th><th>Devices</th></tr>");
+            for (status, count, devices) in &rows {
+                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", status, count, devices));
+            }
+            html.push_str("</table>");
+        }
+    }
+
+    // Rejected devices
+    {
+        let mut stmt = conn.prepare(
+            "SELECT uuid, endpoint, http_status, error_description FROM swissdamed_push_error WHERE session_id=?1 LIMIT 500"
+        ).unwrap();
+        let rows: Vec<(String, String, String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        }).unwrap().filter_map(|r| r.ok()).collect();
+
+        if !rows.is_empty() {
+            html.push_str(&format!("<h2 class='err'>Rejected Devices ({})</h2><table><tr><th>#</th><th>UUID</th><th>Endpoint</th><th>HTTP</th><th>Error</th></tr>", rows.len()));
+            for (i, (uuid, ep, status, err)) in rows.iter().enumerate() {
+                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1, uuid, ep, status,
+                    err.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
+            }
+            html.push_str("</table>");
+        }
+    }
+
+    // Accepted list
+    {
+        let mut stmt = conn.prepare(
+            "SELECT uuid, endpoint FROM swissdamed_push_log WHERE pushed_at=(SELECT session_ts FROM swissdamed_push_session WHERE id=?1) AND status='ACCEPTED' ORDER BY uuid LIMIT 500"
+        ).unwrap();
+        let rows: Vec<(String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        }).unwrap().filter_map(|r| r.ok()).collect();
+
+        if !rows.is_empty() {
+            html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>UUID</th><th>Endpoint</th></tr>", rows.len()));
+            for (i, (uuid, ep)) in rows.iter().enumerate() {
+                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", i + 1, uuid, ep));
+            }
+            html.push_str("</table>");
+        }
+    }
+
+    // Raw responses
+    if !raw_responses.is_empty() {
+        html.push_str("<h2>Raw API Responses</h2>");
+        for (i, raw) in raw_responses.iter().enumerate() {
+            html.push_str(&format!("<h3>Response {}</h3><pre>{}</pre>", i + 1,
+                raw.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
+        }
+    }
+
+    html.push_str("</body></html>");
+    html
+}
+
 fn load_icon() -> Option<egui::IconData> {
     let png_bytes = include_bytes!("../assets/icon_256x256.png");
     let img = image::load_from_memory(png_bytes).ok()?.into_rgba8();

@@ -168,14 +168,15 @@ pub struct MdrBasicUdiDto {
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SppBasicUdiDto {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub device_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_name: Option<String>,
+    // Field order matters — Swissdamed validates against XSD element ordering
     pub identifier: DiCodeDto,
     pub risk_class: String,
     #[serde(rename = "type")]
     pub device_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_name: Option<String>,
     pub medicinal_purpose: Vec<LangText>,
     pub pr_actor_code: String,
 }
@@ -484,7 +485,15 @@ pub fn to_spp_dto(device: &ApiDeviceDetail, basic_udi: &BasicUdiDiData) -> SppDt
                 .and_then(|mc| mc.code.as_ref())
                 .map(|c| extract_spp_type(c))
                 .unwrap_or_else(|| "PROCEDURE_PACK".to_string()),
-            medicinal_purpose: map_lang_texts(&basic_udi.medical_purpose_texts()),
+            medicinal_purpose: {
+                let texts = map_lang_texts(&basic_udi.medical_purpose_texts());
+                if texts.is_empty() {
+                    // XSD requires at least one medicinalPurpose entry for SPP
+                    vec![LangText { language: "EN".to_string(), text_value: basic_udi.device_name.clone().unwrap_or_default() }]
+                } else {
+                    texts
+                }
+            },
             pr_actor_code: basic_udi.manufacturer.as_ref()
                 .and_then(|m| m.srn.clone())
                 .unwrap_or_default(),
