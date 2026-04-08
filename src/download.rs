@@ -99,7 +99,7 @@ impl Default for DownloadConfig {
 /// Summary of what was downloaded.
 pub struct DownloadResult {
     /// All UUIDs from the listing (with version numbers).
-    pub uuid_versions: Vec<(String, Option<u32>)>,
+    pub uuid_versions: Vec<(String, Option<u32>, Option<u32>)>,
     /// UUIDs that needed downloading (new or version-changed).
     pub need_download: Vec<String>,
     /// Number of unchanged UUIDs (skipped by version check).
@@ -113,7 +113,7 @@ pub struct DownloadResult {
 impl DownloadResult {
     /// All UUIDs from the listing.
     pub fn all_uuids(&self) -> Vec<String> {
-        self.uuid_versions.iter().map(|(u, _)| u.clone()).collect()
+        self.uuid_versions.iter().map(|(u, _, _)| u.clone()).collect()
     }
 }
 
@@ -305,6 +305,22 @@ pub fn run_download(
         log(&format!("Indexed {} detail file versions in udi_versions DB", version_count));
     }
 
+    // --- Step 8: Update budi_version from listing data ---
+    // The listing provides basicUdiDataVersionNumber which is not in the detail JSON.
+    // Store it in udi_versions so the next check can compare both versions.
+    {
+        let tx = conn.unchecked_transaction().unwrap();
+        for (uuid, _udi_ver, budi_ver) in &uuid_versions {
+            if let Some(bv) = budi_ver {
+                let _ = tx.execute(
+                    "UPDATE udi_versions SET budi_version=?1 WHERE uuid=?2",
+                    rusqlite::params![bv, uuid],
+                );
+            }
+        }
+        let _ = tx.commit();
+    }
+
     Ok(DownloadResult {
         uuid_versions,
         need_download,
@@ -448,11 +464,13 @@ fn ensure_listing_cache(conn: &rusqlite::Connection) {
             risk_class TEXT NOT NULL DEFAULT '',
             device_status TEXT NOT NULL DEFAULT '',
             version_number INTEGER,
+            budi_version_number INTEGER,
             listed_at TEXT NOT NULL DEFAULT ''
         );
     ");
-    // Migration: add manufacturer_name if missing
+    // Migrations for existing DBs
     let _ = conn.execute("ALTER TABLE listing_cache ADD COLUMN manufacturer_name TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE listing_cache ADD COLUMN budi_version_number INTEGER", []);
 }
 
 /// Download paginated listings for a single SRN. Returns entries found.
@@ -462,8 +480,8 @@ fn download_listing_for_srn(
     limit: Option<usize>,
     conn: &Mutex<rusqlite::Connection>,
     progress: &dyn DownloadProgress,
-) -> Vec<(String, Option<u32>)> {
-    let mut entries: Vec<(String, Option<u32>)> = Vec::new();
+) -> Vec<(String, Option<u32>, Option<u32>)> {
+    let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
     let mut page = 0;
     let mut srn_count = 0;
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
@@ -508,6 +526,8 @@ fn download_listing_for_srn(
                     if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
                         let version = item.get("versionNumber")
                             .and_then(|v| v.as_u64()).map(|v| v as u32);
+                        let budi_version = item.get("basicUdiDataVersionNumber")
+                            .and_then(|v| v.as_u64()).map(|v| v as u32);
                         let primary_di = item.get("primaryDi").and_then(|v| v.as_str()).unwrap_or("");
                         let trade_name = item.get("tradeName").and_then(|v| v.as_str()).unwrap_or("");
                         let risk_class = item.get("riskClass")
@@ -518,12 +538,12 @@ fn download_listing_for_srn(
                         let mfr_name = item.get("manufacturerName").and_then(|v| v.as_str()).unwrap_or("");
 
                         let _ = db.execute(
-                            "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, listed_at) \
-                             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-                            rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, now],
+                            "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at) \
+                             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                            rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, budi_version, now],
                         );
 
-                        entries.push((uuid.to_string(), version));
+                        entries.push((uuid.to_string(), version, budi_version));
                         srn_count += 1;
 
                         if let Some(lim) = limit {
@@ -572,7 +592,7 @@ fn download_listings(
     limit: Option<usize>,
     listing_threads: usize,
     progress: &dyn DownloadProgress,
-) -> anyhow::Result<Vec<(String, Option<u32>)>> {
+) -> anyhow::Result<Vec<(String, Option<u32>, Option<u32>)>> {
     // Open DB for listing cache
     let db_dir = app_data_dir().join("db");
     std::fs::create_dir_all(&db_dir)?;
@@ -590,7 +610,7 @@ fn download_listings(
     let total_srns = srns.len();
 
     // Parallel listing downloads
-    let all_entries: Vec<Vec<(String, Option<u32>)>> = rayon::ThreadPoolBuilder::new()
+    let all_entries: Vec<Vec<(String, Option<u32>, Option<u32>)>> = rayon::ThreadPoolBuilder::new()
         .num_threads(listing_threads)
         .build()
         .unwrap()
@@ -607,15 +627,14 @@ fn download_listings(
             }).collect()
         });
 
-    let mut flat: Vec<(String, Option<u32>)> = all_entries.into_iter().flatten().collect();
+    let mut flat: Vec<(String, Option<u32>, Option<u32>)> = all_entries.into_iter().flatten().collect();
 
-    // Deduplicate by UUID (keep highest version)
+    // Deduplicate by UUID (keep highest versions)
     flat.sort_by(|a, b| a.0.cmp(&b.0));
     flat.dedup_by(|a, b| {
         if a.0 == b.0 {
-            if a.1 > b.1 {
-                b.1 = a.1;
-            }
+            if a.1 > b.1 { b.1 = a.1; }
+            if a.2 > b.2 { b.2 = a.2; }
             true
         } else {
             false
@@ -625,23 +644,30 @@ fn download_listings(
     Ok(flat)
 }
 
-/// Pre-download version check: compare listing versionNumber against version DB.
+/// Pre-download version check: compare listing versionNumber and basicUdiDataVersionNumber against version DB.
 /// Returns (uuids_needing_download, count_unchanged).
 fn filter_unchanged(
-    uuid_versions: &[(String, Option<u32>)],
+    uuid_versions: &[(String, Option<u32>, Option<u32>)],
     conn: &rusqlite::Connection,
     _progress: &dyn DownloadProgress,
 ) -> (Vec<String>, usize) {
     let mut need_download = Vec::new();
     let mut unchanged = 0;
 
-    for (uuid, listing_version) in uuid_versions {
-        let db_version = crate::version_db::get_version(conn, uuid)
-            .ok()
-            .flatten()
-            .and_then(|r| r.udi_version);
-        if let Some(db_ver) = db_version {
-            if Some(db_ver) == *listing_version {
+    for (uuid, listing_version, budi_listing_version) in uuid_versions {
+        if let Ok(Some(db_rec)) = crate::version_db::get_version(conn, uuid) {
+            let udi_match = match (db_rec.udi_version, listing_version) {
+                (Some(db), Some(listing)) => db == *listing,
+                (None, None) => true,
+                _ => false,
+            };
+            let budi_match = match (db_rec.budi_version, budi_listing_version) {
+                (Some(db), Some(listing)) => db == *listing,
+                (None, None) => true,
+                (None, Some(_)) => false, // new BUDI data available
+                _ => false,
+            };
+            if udi_match && budi_match {
                 unchanged += 1;
                 continue;
             }

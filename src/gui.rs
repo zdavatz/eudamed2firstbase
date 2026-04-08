@@ -34,28 +34,28 @@ enum PushTarget {
 
 /// Persistent state saved between sessions.
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
-struct Settings {
-    srns: String,
-    limit: String,
+pub struct Settings {
+    pub srns: String,
+    pub limit: String,
     #[serde(default)]
-    push_target: PushTarget,
+    pub push_target: PushTarget,
     // GS1 firstbase credentials
     #[serde(default)]
-    firstbase_email: String,
+    pub firstbase_email: String,
     #[serde(default)]
-    firstbase_password: String,
+    pub firstbase_password: String,
     #[serde(default)]
-    publish_to_gln: String,
+    pub publish_to_gln: String,
     #[serde(default)]
-    provider_gln: String,
+    pub provider_gln: String,
     // Swissdamed credentials
     #[serde(default)]
-    swissdamed_client_id: String,
+    pub swissdamed_client_id: String,
     #[serde(default)]
-    swissdamed_client_secret: String,
+    pub swissdamed_client_secret: String,
     #[serde(default)]
-    swissdamed_base_url: String,
-    dry_run: bool,
+    pub swissdamed_base_url: String,
+    pub dry_run: bool,
 }
 
 impl Settings {
@@ -1149,7 +1149,7 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 }
 
 /// Push firstbase JSON files to GS1 Catalogue Item API
-fn push_to_firstbase(
+pub fn push_to_firstbase(
     settings: &Settings,
     log: &dyn Fn(&str),
 ) -> anyhow::Result<(u32, u32)> {

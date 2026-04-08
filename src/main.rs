@@ -50,6 +50,129 @@ fn main() -> Result<()> {
         .context("Failed to load config.toml")?;
 
     match args.get(1).map(|s| s.as_str()) {
+        Some("check") => {
+            // Check SRNs for updates, download changed, convert, and push to Firstbase
+            // Usage: cargo run check /tmp/srn_update [--threads N]
+            let file = args.get(2).unwrap_or_else(|| {
+                eprintln!("Usage: eudamed2firstbase check <srn_file> [--threads N]");
+                eprintln!("  Reads SRNs from file, checks for updates, downloads changed,");
+                eprintln!("  converts to firstbase JSON, and pushes to GS1 Firstbase API.");
+                std::process::exit(1);
+            });
+            let threads: Option<usize> = args.iter().position(|a| a == "--threads")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|s| s.parse().ok());
+
+            let srns: Vec<String> = std::fs::read_to_string(file)?
+                .lines()
+                .map(|l| l.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if srns.is_empty() {
+                eprintln!("No SRNs found in {}", file);
+                std::process::exit(1);
+            }
+            eprintln!("=== Check {} SRNs from {} ===", srns.len(), file);
+
+            // Step 1: Download (with version check)
+            let mut dl_config = download::DownloadConfig {
+                srns: srns.clone(),
+                limit: None,
+                ..Default::default()
+            };
+            if let Some(t) = threads {
+                dl_config.parallel_threads = t;
+                dl_config.listing_threads = t;
+            }
+            let progress = download::StderrProgress;
+            let result = download::run_download(&dl_config, &progress)?;
+
+            if result.need_download.is_empty() {
+                eprintln!("\nNo updates found. All {} devices unchanged.", result.uuid_versions.len());
+                return Ok(());
+            }
+            eprintln!("\n{} new/changed devices (of {} total)", result.need_download.len(), result.uuid_versions.len());
+
+            // Step 2: Convert (reuse existing firstbase pipeline)
+            eprintln!("\n=== Converting to firstbase JSON ===");
+            let data_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR);
+            let detail_dir = data_dir.join("detail");
+            let basic_dir = data_dir.join("basic");
+
+            let config_path = download::app_data_dir().join("config.toml");
+            let config_path = if config_path.exists() { config_path } else { std::path::PathBuf::from("config.toml") };
+            let fb_config = config::load_config(&config_path)?;
+
+            let basic_udi_cache = load_basic_udi_cache(&basic_dir);
+            eprintln!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+
+            let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+            let conn = version_db::open_db(&db_path)?;
+            let output_dir = download::app_data_dir().join("firstbase_json");
+            let _ = std::fs::create_dir_all(&output_dir);
+
+            let now_str = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+            let mut converted = 0;
+            for uuid in &result.need_download {
+                let detail_path = detail_dir.join(format!("{}.json", uuid));
+                if !detail_path.exists() { continue; }
+                let json_content = match std::fs::read_to_string(&detail_path) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+
+                let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content) {
+                    Ok(d) => d,
+                    Err(_) => continue,
+                };
+                let basic_udi = basic_udi_cache.get(uuid);
+
+                let doc = transform_detail::transform_detail_document(&device, &fb_config, basic_udi, uuid);
+                let out = serde_json::to_string_pretty(&doc).unwrap();
+                let out_path = output_dir.join(format!("{}.json", uuid));
+                let _ = std::fs::write(&out_path, &out);
+                converted += 1;
+
+                // Update version DB
+                let mut version_rec = version_db::extract_detail_versions(&json_content);
+                version_rec.last_synced = Some(now_str.clone());
+                let _ = version_db::upsert_version(&conn, &version_rec);
+            }
+            eprintln!("Converted {} devices to firstbase_json/", converted);
+
+            if converted == 0 {
+                eprintln!("Nothing to push.");
+                return Ok(());
+            }
+
+            // Step 3: Push to Firstbase API
+            eprintln!("\n=== Pushing to GS1 Firstbase API ===");
+            let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
+            let password = std::env::var("FIRSTBASE_PASSWORD").unwrap_or_default();
+            let publish_gln = std::env::var("FIRSTBASE_PUBLISH_GLN").unwrap_or_else(|_| "7612345000527".to_string());
+            if email.is_empty() || password.is_empty() {
+                eprintln!("Set FIRSTBASE_EMAIL and FIRSTBASE_PASSWORD to push. Skipping push.");
+                return Ok(());
+            }
+
+            let settings = gui::Settings {
+                firstbase_email: email,
+                firstbase_password: password,
+                publish_to_gln: publish_gln,
+                provider_gln: "7612345000480".to_string(),
+                ..Default::default()
+            };
+            let log_fn = |msg: &str| { eprintln!("{}", msg); };
+            match gui::push_to_firstbase(&settings, &log_fn) {
+                Ok((accepted, rejected)) => {
+                    eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
+                }
+                Err(e) => {
+                    eprintln!("\nPush failed: {}", e);
+                }
+            }
+            Ok(())
+        }
         Some("download") => {
             // Download from EUDAMED API (replaces download.sh)
             let (srns, limit, threads) = parse_download_args(&args[2..]);
