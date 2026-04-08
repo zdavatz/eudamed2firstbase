@@ -188,16 +188,27 @@ jobs:
               "eudamed2firstbase-${VERSION}-macos-appstore.pkg"
           fi
 
-          # Store the API key for xcrun (must base64-decode the secret)
+          # Store the API key for xcrun
           mkdir -p ~/.private_keys
           echo "$APPLE_API_KEY_P8" | base64 --decode > ~/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8
 
-          # Upload to App Store Connect
-          xcrun altool --upload-app \
-            --file "eudamed2firstbase-${VERSION}-macos-appstore.pkg" \
-            --type macos \
-            --apiKey "$APPLE_API_KEY_ID" \
-            --apiIssuer "$APPLE_API_ISSUER_ID" || echo "WARNING: App Store upload failed (app may not be created in App Store Connect yet)"
+          # Upload to App Store Connect via iTMSTransporter (replaces deprecated altool)
+          TRANSPORTER="/Applications/Transporter.app/Contents/itms/bin/iTMSTransporter"
+          if [ -x "$TRANSPORTER" ]; then
+            echo "Using iTMSTransporter"
+            "$TRANSPORTER" -m upload \
+              -f "eudamed2firstbase-${VERSION}-macos-appstore.pkg" \
+              -apiKey "$APPLE_API_KEY_ID" \
+              -apiIssuer "$APPLE_API_ISSUER_ID" || echo "WARNING: iTMSTransporter upload failed"
+          else
+            # Fallback to altool (still works in Xcode 16)
+            echo "iTMSTransporter not found, using altool"
+            xcrun altool --upload-app \
+              --file "eudamed2firstbase-${VERSION}-macos-appstore.pkg" \
+              --type macos \
+              --apiKey "$APPLE_API_KEY_ID" \
+              --apiIssuer "$APPLE_API_ISSUER_ID" || echo "WARNING: App Store upload failed"
+          fi
 
       - name: Upload App Store pkg artifact
         if: always()
