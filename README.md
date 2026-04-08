@@ -1,6 +1,6 @@
 # eudamed2firstbase
 
-Rust GUI + CLI tool that converts EUDAMED medical device data into GS1 firstbase and Swissdamed JSON format. Cross-platform GUI (macOS + Windows + Linux) for one-click download, convert, and push. Distributed via GitHub Releases (macOS DMG, Windows MSIX/ZIP, Linux AppImage/tar.gz) and Microsoft Store. Also supports CLI with five input modes: DTX PullResponse XML, EUDAMED public API listing, EUDAMED public API detail (with listing merge), EUDAMED JSON (individual device files), and XLSX export.
+Rust GUI + CLI tool that converts EUDAMED medical device data into GS1 firstbase and Swissdamed JSON format. Cross-platform GUI (macOS + Windows + Linux) for one-click download, convert, and push. Distributed via GitHub Releases (macOS DMG, Windows MSIX/ZIP, Linux AppImage/tar.gz), Microsoft Store (auto-publish with DE/EN listings + screenshots), and macOS App Store (sandbox-compatible, iTMSTransporter upload). Also supports CLI with six input modes: GUI (default), download, check, XML, NDJSON, EUDAMED JSON, and XLSX export.
 
 ## GUI (recommended)
 
@@ -65,7 +65,7 @@ git push origin v0.1.0
 - Microsoft Store: `MSSTORE_TENANT_ID`, `MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` + variable `MSSTORE_ENABLED=true`
 - App IDs: macOS App Store (Apple ID: 6761303902), Microsoft Store (9P889JD1XWS2, yweseeGmbH.Eudamed2Firstbase)
 
-**Note:** First Microsoft Store submission must be done manually via Partner Center (upload MSIX, fill screenshots/age ratings, submit for certification). Subsequent updates are automated via the CI pipeline.
+**Note:** First Microsoft Store submission must be done manually via Partner Center (upload MSIX, fill screenshots/age ratings, submit for certification). Subsequent updates are automated via the CI pipeline (bilingual DE/EN listing, screenshots from `screenshots/`, dynamic release notes). Patched winit removes `_CGSSetWindowBackgroundBlurRadius` private API for Apple App Store compliance.
 
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 
