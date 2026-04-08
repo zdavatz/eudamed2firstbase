@@ -83,6 +83,10 @@ cargo run count --file srns.txt                        # count from text file
 cargo run count --xlsx file.xlsx                       # count from XLSX col D, writes GTIN_Count column back
 cargo run count --xlsx file.xlsx 6                     # custom column number
 
+# Check SRNs for updates, download changed, convert, push to Firstbase
+cargo run check /tmp/srn_update                        # check SRNs from file (one per line)
+cargo run check /tmp/srn_update --threads 50           # with parallel threads
+
 # Send file as email attachment via Gmail API (service account)
 cargo run mailto /tmp/report.csv --to "a@gs1.ch, b@gs1.ch" --from sender@ywesee.com --subject "Report"
 cargo run mailto file.xlsx --to recipient@example.com --from sender@example.com --p12 /path/to/key.p12

@@ -26,6 +26,7 @@ cargo run xlsx <details.ndjson>                      # XLSX export: detail NDJSO
 cargo run count SRN1 SRN2                            # Count devices per SRN from EUDAMED API (parallel)
 cargo run count --file srns.txt                      # Count from text file (one SRN per line)
 cargo run count --xlsx file.xlsx [col]               # Count from XLSX (default col 4=D), writes GTIN_Count column back
+cargo run check srns.txt [--threads N]               # Check SRNs for updates, download + convert + push to Firstbase
 cargo run mailto file.csv --to a@b.ch --from x@y.ch  # Send file as email attachment via Gmail API
 cargo run scan [dir]                                 # Fast parallel GTIN scan of firstbase JSON (used by push_to_firstbase.sh)
 ./download.sh --10                                   # Download + convert 10 products from EUDAMED API
