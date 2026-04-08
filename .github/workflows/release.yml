@@ -453,19 +453,53 @@ jobs:
           }
           $submission.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies = $true
 
-          # Set store listing (required: at least one language)
+          # Set store listing — German as primary language
+          # Screenshots are included as images with PendingUpload status
+          $screenshotFiles = @(
+            "screenshot_1_main.png",
+            "screenshot_2_running.png",
+            "screenshot_3_done.png",
+            "screenshot_4_swissdamed.png",
+            "screenshot_5_firstbase_creds.png"
+          )
+          $images = @()
+          foreach ($ss in $screenshotFiles) {
+            $images += @{
+              fileName = $ss
+              fileStatus = "PendingUpload"
+              imageType = "Screenshot"
+            }
+          }
+
+          $releaseNotes = "$env:GITHUB_REF_NAME`: $(git log -1 --format=%s)"
+          $descriptionDe = "EUDAMED Medizinprodukte-Daten in GS1 firstbase und Swissdamed JSON konvertieren. Download aus der EU EUDAMED Datenbank, Konvertierung ins GS1 GDSN Format, und Push an firstbase oder Swissdamed M2M APIs. Open Source (GPL v3)."
+          $descriptionEn = "Convert EUDAMED medical device data to GS1 firstbase and Swissdamed JSON format. Download from the EU EUDAMED database, convert to GS1 GDSN format, and push to firstbase or Swissdamed APIs. Open Source (GPL v3)."
+
           $submission.listings = @{
+            "de-de" = @{
+              baseListing = @{
+                title = "Eudamed2Firstbase"
+                description = $descriptionDe
+                releaseNotes = $releaseNotes
+                keywords = @("EUDAMED", "Medizinprodukte", "GS1", "firstbase", "UDI", "Swissdamed")
+                copyrightAndTrademarkInfo = "Copyright 2026 ywesee GmbH"
+                licenseTerms = "GNU General Public License v3.0"
+                privacyPolicy = "https://github.com/zdavatz/eudamed2firstbase"
+                websiteUrl = "https://github.com/zdavatz/eudamed2firstbase"
+                images = $images
+              }
+            }
             "en-us" = @{
               baseListing = @{
                 title = "Eudamed2Firstbase"
-                description = "Convert EUDAMED medical device data to GS1 firstbase and Swissdamed JSON format. Download from the EU EUDAMED database, convert to GS1 GDSN format, and push to firstbase or Swissdamed APIs."
-                releaseNotes = "$env:GITHUB_REF_NAME`: $(git log -1 --format=%s)"
+                description = $descriptionEn
+                releaseNotes = $releaseNotes
                 keywords = @("EUDAMED", "medical device", "GS1", "firstbase", "UDI", "Swissdamed")
                 copyrightAndTrademarkInfo = "Copyright 2026 ywesee GmbH"
                 licenseTerms = "GNU General Public License v3.0"
                 privacyPolicy = "https://github.com/zdavatz/eudamed2firstbase"
                 websiteUrl = "https://github.com/zdavatz/eudamed2firstbase"
-                images = @()
+                images = $images
               }
             }
           }
@@ -497,10 +531,15 @@ jobs:
             -ContentType "application/json; charset=utf-8"
           Write-Host "Updated submission with package: $msixFileName"
 
-          # Upload MSIX as ZIP to the Azure Blob upload URL
-          # The ZIP must contain the MSIX file with the exact name specified above
+          # Upload MSIX + screenshots as ZIP to the Azure Blob upload URL
+          # The ZIP must contain the MSIX and screenshot files with exact names
           $zipPath = [System.IO.Path]::Combine($env:TEMP, "upload.zip")
-          Compress-Archive -Path $msix.FullName -DestinationPath $zipPath -Force
+          $zipItems = @($msix.FullName)
+          foreach ($ss in $screenshotFiles) {
+            $ssPath = Join-Path "screenshots" $ss
+            if (Test-Path $ssPath) { $zipItems += (Resolve-Path $ssPath).Path }
+          }
+          Compress-Archive -Path $zipItems -DestinationPath $zipPath -Force
           $zipBytes = [System.IO.File]::ReadAllBytes($zipPath)
           Invoke-RestMethod -Method Put -Uri $uploadUrl `
             -Headers @{"x-ms-blob-type" = "BlockBlob"} `
