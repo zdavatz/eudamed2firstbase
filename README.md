@@ -194,6 +194,7 @@ firstbase_validation.py    # Schema validation against GS1 Product API Swagger s
 push_to_firstbase.sh       # Push firstbase JSON to GS1 Catalogue Item API (Live+Publish for all devices)
 push_to_swissdamed.sh      # Push swissdamed JSON to Swissdamed M2M API (OAuth2 Azure CIAM, per-legislation endpoints)
 swissdamed_json/           # Swissdamed M2M JSON output (526K+ devices: MDR/MDD/SPP/IVDR/IVDD/AIMDD)
+winit-patched/             # Patched winit 0.30.13 (removed private macOS API for App Store compliance)
 log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with GTIN-mapped errors + raw API JSON)
 ```
 
