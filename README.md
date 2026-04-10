@@ -65,7 +65,7 @@ git push origin v0.1.0
 - Microsoft Store: `MSSTORE_TENANT_ID`, `MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` + variable `MSSTORE_ENABLED=true`
 - App IDs: macOS App Store (Apple ID: 6761303902), Microsoft Store (9P889JD1XWS2, yweseeGmbH.Eudamed2Firstbase)
 
-**Note:** First Microsoft Store submission must be done manually via Partner Center (upload MSIX, fill screenshots/age ratings, submit for certification). Subsequent updates are automated via the CI pipeline (bilingual DE/EN listing, screenshots from `screenshots/`, dynamic release notes). Patched winit removes `_CGSSetWindowBackgroundBlurRadius` private API for Apple App Store compliance.
+**Note:** First Microsoft Store submission must be done manually via Partner Center (upload MSIX, fill screenshots/age ratings, submit for certification). Subsequent updates are automated via the CI pipeline (bilingual DE/EN listing, screenshots from `screenshots/windows/`, dynamic release notes). Patched winit removes `_CGSSetWindowBackgroundBlurRadius` private API for Apple App Store compliance.
 
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 
@@ -530,7 +530,7 @@ Push 26.03.2026: 274 SRNs, 18,007 items → 7,009 ACCEPTED, 1,862 REJECTED. G541
 
 ### macOS App Store (2560×1600 Retina)
 
-Screenshots in `screenshots/`:
+Screenshots in `screenshots/macos/`:
 
 | Screenshot | Description |
 |---|---|
