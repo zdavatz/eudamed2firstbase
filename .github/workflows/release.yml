@@ -467,16 +467,17 @@ jobs:
           # Set store listing — German as primary language
           # Screenshots are included as images with PendingUpload status
           $screenshotFiles = @(
-            "screenshot_1_main.png",
-            "screenshot_2_running.png",
-            "screenshot_3_done.png",
-            "screenshot_4_swissdamed.png",
-            "screenshot_5_firstbase_creds.png"
+            "windows/screenshot_1_main.png",
+            "windows/screenshot_2_running.png",
+            "windows/screenshot_3_done.png",
+            "windows/screenshot_4_swissdamed.png",
+            "windows/screenshot_5_firstbase_creds.png"
           )
           $images = @()
           foreach ($ss in $screenshotFiles) {
+            $ssBaseName = [System.IO.Path]::GetFileName($ss)
             $images += @{
-              fileName = $ss
+              fileName = $ssBaseName
               fileStatus = "PendingUpload"
               imageType = "Screenshot"
             }
