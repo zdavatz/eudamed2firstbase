@@ -528,7 +528,9 @@ Push 26.03.2026: 274 SRNs, 18,007 items → 7,009 ACCEPTED, 1,862 REJECTED. G541
 
 ## Screenshots
 
-macOS App Store screenshots (2560×1600 Retina) in `screenshots/`:
+### macOS App Store (2560×1600 Retina)
+
+Screenshots in `screenshots/`:
 
 | Screenshot | Description |
 |---|---|
@@ -538,7 +540,21 @@ macOS App Store screenshots (2560×1600 Retina) in `screenshots/`:
 | `screenshot_4_swissdamed.png` | Swissdamed target with credentials and dry run |
 | `screenshot_5_firstbase_creds.png` | GS1 firstbase credentials expanded |
 
-Generated via `generate_screenshots.py` (requires Pillow in `.venv`).
+Generated via `generate_screenshots.py` (requires Pillow).
+
+### Windows Store (3840×2160 4K)
+
+Screenshots in `screenshots/windows/` — light theme, Windows 11 title bar:
+
+| Screenshot | Description |
+|---|---|
+| `screenshot_1_main.png` | Main window — empty state with SRN input |
+| `screenshot_2_running.png` | Download in progress with live log output |
+| `screenshot_3_done.png` | Completed pipeline with success summary |
+| `screenshot_4_swissdamed.png` | Swissdamed target with credentials and dry run |
+| `screenshot_5_firstbase_creds.png` | GS1 firstbase credentials expanded |
+
+Generated via `generate_screenshots_windows.py` (requires Pillow).
 
 ## Dependencies
 

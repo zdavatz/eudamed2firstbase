@@ -114,7 +114,7 @@ Bug reports for SANTE ticket submission. Tracked as GitHub Issues:
 
 ## Screenshots
 
-macOS App Store screenshots (2560×1600 Retina) generated via `generate_screenshots.py` into `screenshots/`. Requires `.venv` with Pillow. Icon at `assets/icon_256x256.png` (trimmed, no border padding).
+macOS App Store screenshots (2560×1600 Retina) generated via `generate_screenshots.py` into `screenshots/`. Windows Store screenshots (3840×2160 4K, light theme) generated via `generate_screenshots_windows.py` into `screenshots/windows/`. Both require Pillow. Icon at `assets/icon_256x256.png` (trimmed, no border padding).
 
 ## Reference Files (in maik/)
 
