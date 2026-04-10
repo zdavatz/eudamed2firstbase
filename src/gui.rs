@@ -2273,7 +2273,7 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
 /// Launch the GUI application.
 pub fn run_gui() -> eframe::Result {
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("eudamed2firstbase")
+        .with_title(&format!("eudamed2firstbase v{}", env!("CARGO_PKG_VERSION")))
         .with_inner_size([700.0, 600.0])
         .with_min_inner_size([500.0, 400.0]);
 
