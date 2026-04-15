@@ -153,8 +153,10 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
     }
 
     // Description from deviceName
-    let description_module = device.device_name.as_ref().map(|name| {
-        TradeItemDescriptionModule {
+    let description_module = device
+        .device_name
+        .as_ref()
+        .map(|name| TradeItemDescriptionModule {
             info: TradeItemDescriptionInformation {
                 descriptions: vec![LangValue {
                     language_code: "en".to_string(),
@@ -162,8 +164,7 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
                 }],
                 additional_descriptions: Vec::new(),
             },
-        }
-    });
+        });
 
     // Sterility
     let sterility = device.sterile.map(|s| {
@@ -173,7 +174,12 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
                 value: if s { "UNSPECIFIED" } else { "NOT_STERILISED" }.to_string(),
             }],
             prior_to_use: vec![CodeValue {
-                value: if sterilization { "UNSPECIFIED" } else { "NO_STERILISATION_REQUIRED" }.to_string(),
+                value: if sterilization {
+                    "UNSPECIFIED"
+                } else {
+                    "NO_STERILISATION_REQUIRED"
+                }
+                .to_string(),
             }],
         }
     });
@@ -204,7 +210,13 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         healthcare_item_module: None,
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
-                is_implantable: device.implantable.map(|b| if b { "TRUE".to_string() } else { "FALSE".to_string() }),
+                is_implantable: device.implantable.map(|b| {
+                    if b {
+                        "TRUE".to_string()
+                    } else {
+                        "FALSE".to_string()
+                    }
+                }),
                 is_exempt_from_implant_obligations: None,
                 device_count: None,
                 direct_marking: Vec::new(),
@@ -240,12 +252,14 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         sales_module: None,
         description_module,
         is_base_unit: true,
-        is_despatch_unit: true,  // BASE_UNIT_OR_EACH is highest level = despatch unit
+        is_despatch_unit: true, // BASE_UNIT_OR_EACH is highest level = despatch unit
         is_orderable_unit: true,
         unit_descriptor: CodeValue {
             value: "BASE_UNIT_OR_EACH".to_string(),
         },
-        trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
+        trade_channel_code: vec![CodeValue {
+            value: "UDI_REGISTRY".to_string(),
+        }],
         information_provider: InformationProvider {
             gln: config.provider.gln.clone(),
             party_name: config.provider.party_name.clone(),
@@ -267,7 +281,10 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         contact_information: contacts,
         synchronisation_dates: TradeItemSynchronisationDates {
             last_change: now_str.clone(),
-            effective: device.version_date.clone().unwrap_or_else(|| now_str.clone()),
+            effective: device
+                .version_date
+                .clone()
+                .unwrap_or_else(|| now_str.clone()),
             publication: now_str,
             discontinued: None,
         },

@@ -8,7 +8,10 @@ use crate::api_detail::{self, BasicUdiDiData};
 
 /// Convert a detail NDJSON file to XLSX, writing to xlsx/<stem>.xlsx
 /// Optional basic_udi_cache adds certificate columns from Basic UDI-DI data.
-pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, BasicUdiDiData>) -> Result<String> {
+pub fn ndjson_to_xlsx(
+    input_path: &Path,
+    basic_udi_cache: &HashMap<String, BasicUdiDiData>,
+) -> Result<String> {
     let output_dir = Path::new("xlsx");
     std::fs::create_dir_all(output_dir)?;
 
@@ -80,13 +83,19 @@ pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, Basic
 
                 // Trade name: first English text, fallback to first available
                 if let Some(ref tn) = detail.trade_name {
-                    let text = tn.texts.as_ref()
+                    let text = tn
+                        .texts
+                        .as_ref()
                         .and_then(|texts| {
-                            texts.iter()
-                                .find(|t| t.language.as_ref()
-                                    .and_then(|l| l.iso_code.as_deref())
-                                    .map(|c| c == "en")
-                                    .unwrap_or(false))
+                            texts
+                                .iter()
+                                .find(|t| {
+                                    t.language
+                                        .as_ref()
+                                        .and_then(|l| l.iso_code.as_deref())
+                                        .map(|c| c == "en")
+                                        .unwrap_or(false)
+                                })
                                 .or_else(|| texts.first())
                         })
                         .and_then(|t| t.text.as_deref())
@@ -99,7 +108,8 @@ pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, Basic
                 if let Some(ref status) = detail.device_status {
                     if let Some(ref st) = status.status_type {
                         let code = st.code.as_deref().unwrap_or("");
-                        let short = code.strip_prefix("refdata.device-model-status.")
+                        let short = code
+                            .strip_prefix("refdata.device-model-status.")
                             .unwrap_or(code);
                         worksheet.write_string(row, 5, short)?;
                     }
@@ -125,9 +135,9 @@ pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, Basic
                 // Markets: comma-joined ISO2 codes
                 if let Some(ref mil) = detail.market_info_link {
                     if let Some(ref markets) = mil.ms_where_available {
-                        let codes: Vec<&str> = markets.iter()
-                            .filter_map(|m| m.country.as_ref()
-                                .and_then(|c| c.iso2_code.as_deref()))
+                        let codes: Vec<&str> = markets
+                            .iter()
+                            .filter_map(|m| m.country.as_ref().and_then(|c| c.iso2_code.as_deref()))
                             .collect();
                         if !codes.is_empty() {
                             worksheet.write_string(row, 13, &codes.join(", "))?;
@@ -135,11 +145,18 @@ pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, Basic
                     }
                 }
 
-                worksheet.write_string(row, 14, detail.additional_information_url.as_deref().unwrap_or(""))?;
+                worksheet.write_string(
+                    row,
+                    14,
+                    detail.additional_information_url.as_deref().unwrap_or(""),
+                )?;
                 worksheet.write_string(row, 15, detail.version_date.as_deref().unwrap_or(""))?;
 
                 // Certificate columns from Basic UDI-DI cache
-                if let Some(basic) = uuid_str.strip_prefix("").and_then(|_| basic_udi_cache.get(uuid_str)) {
+                if let Some(basic) = uuid_str
+                    .strip_prefix("")
+                    .and_then(|_| basic_udi_cache.get(uuid_str))
+                {
                     if let Some(ref certs) = basic.device_certificate_info_list_for_display {
                         // Collect all certificates into multi-line strings
                         let mut types = Vec::new();
@@ -154,16 +171,26 @@ pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, Basic
                         let mut statuses = Vec::new();
 
                         for cert in certs {
-                            let type_code = cert.certificate_type.as_ref()
+                            let type_code = cert
+                                .certificate_type
+                                .as_ref()
                                 .and_then(|t| t.code.as_deref())
                                 .unwrap_or("");
                             // Shorten the refdata prefix
                             let short_type = type_code
                                 .strip_prefix("refdata.certificate-mdr-type.")
-                                .or_else(|| type_code.strip_prefix("refdata.certificate-ivdr-type."))
-                                .or_else(|| type_code.strip_prefix("refdata.legacy.mdd-certificate-type."))
-                                .or_else(|| type_code.strip_prefix("refdata.legacy.ivdd-certificate-type."))
-                                .or_else(|| type_code.strip_prefix("refdata.legacy.aimdd-certificate-type."))
+                                .or_else(|| {
+                                    type_code.strip_prefix("refdata.certificate-ivdr-type.")
+                                })
+                                .or_else(|| {
+                                    type_code.strip_prefix("refdata.legacy.mdd-certificate-type.")
+                                })
+                                .or_else(|| {
+                                    type_code.strip_prefix("refdata.legacy.ivdd-certificate-type.")
+                                })
+                                .or_else(|| {
+                                    type_code.strip_prefix("refdata.legacy.aimdd-certificate-type.")
+                                })
                                 .unwrap_or(type_code);
                             types.push(short_type.to_string());
                             numbers.push(cert.certificate_number.clone().unwrap_or_default());
@@ -175,9 +202,18 @@ pub fn ndjson_to_xlsx(input_path: &Path, basic_udi_cache: &HashMap<String, Basic
                             let nb = cert.notified_body.as_ref();
                             nb_names.push(nb.and_then(|n| n.name.clone()).unwrap_or_default());
                             nb_numbers.push(nb.and_then(|n| n.srn.clone()).unwrap_or_default());
-                            nb_provided.push(if cert.nb_provided_certificate == Some(true) { "NB" } else { "MFR" }.to_string());
+                            nb_provided.push(
+                                if cert.nb_provided_certificate == Some(true) {
+                                    "NB"
+                                } else {
+                                    "MFR"
+                                }
+                                .to_string(),
+                            );
 
-                            let status_code = cert.status.as_ref()
+                            let status_code = cert
+                                .status
+                                .as_ref()
                                 .and_then(|s| s.code.as_deref())
                                 .unwrap_or("");
                             let short_status = status_code

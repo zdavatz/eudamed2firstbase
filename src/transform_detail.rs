@@ -1,4 +1,6 @@
-use crate::api_detail::{ApiDeviceDetail, BasicUdiDiData, ContainedItemNode, Substance, CmrSubstance};
+use crate::api_detail::{
+    ApiDeviceDetail, BasicUdiDiData, CmrSubstance, ContainedItemNode, Substance,
+};
 use crate::config::Config;
 use crate::firstbase::*;
 use crate::mappings;
@@ -6,12 +8,18 @@ use chrono::Utc;
 
 /// Transform a full API device detail record into a firstbase TradeItem.
 /// Optional `basic_udi` provides real MDR mandatory fields from the Basic UDI-DI level.
-pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_udi: Option<&BasicUdiDiData>) -> TradeItem {
+pub fn transform_detail_device(
+    device: &ApiDeviceDetail,
+    config: &Config,
+    basic_udi: Option<&BasicUdiDiData>,
+) -> TradeItem {
     let now = Utc::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
     // Use version_date for effectiveDateTime; lastChangeDateTime uses current time (avoids SYS25 on re-uploads)
-    let effective_date = device.version_date.as_ref()
+    let effective_date = device
+        .version_date
+        .as_ref()
         .filter(|d| !d.is_empty())
         .cloned()
         .unwrap_or_else(|| now_str.clone());
@@ -23,7 +31,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     let status_code = mappings::device_status_to_gs1(&eudamed_status).to_string();
 
     // discontinuedDateTime: today+1 day when NO_LONGER_ON_THE_MARKET
-    let discontinued = if eudamed_status == "NO_LONGER_PLACED_ON_THE_MARKET" || eudamed_status == "NO_LONGER_ON_THE_MARKET" {
+    let discontinued = if eudamed_status == "NO_LONGER_PLACED_ON_THE_MARKET"
+        || eudamed_status == "NO_LONGER_ON_THE_MARKET"
+    {
         let tomorrow = now + chrono::Duration::days(1);
         Some(tomorrow.format("%Y-%m-%dT%H:%M:%S").to_string())
     } else {
@@ -35,17 +45,22 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // Fall back to risk class inference
     let reg_act = basic_udi
         .and_then(|b| b.regulatory_act())
-        .or_else(|| basic_udi
-            .and_then(|b| b.risk_class_code())
-            .map(|rc| mappings::regulation_from_risk_class_refdata(&rc).to_string()))
+        .or_else(|| {
+            basic_udi
+                .and_then(|b| b.risk_class_code())
+                .map(|rc| mappings::regulation_from_risk_class_refdata(&rc).to_string())
+        })
         .unwrap_or_else(|| "MDR".to_string());
     let is_legacy = matches!(reg_act.as_str(), "MDD" | "AIMDD" | "IVDD");
     let is_ivdr = reg_act == "IVDR" || reg_act == "IVDD";
 
     // 097.096: Since 2026-03-10, downgraded from error to warning — legacy devices publishable
     if is_legacy {
-        eprintln!("Info: {} is a legacy {} device (097.096 now warning only)",
-            device.uuid.as_deref().unwrap_or("unknown"), reg_act);
+        eprintln!(
+            "Info: {} is a legacy {} device (097.096 now warning only)",
+            device.uuid.as_deref().unwrap_or("unknown"),
+            reg_act
+        );
     }
 
     // --- Production identifiers ---
@@ -62,8 +77,13 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     };
 
     // 097.091: SOFTWARE_IDENTIFICATION requires specialDeviceTypeCode = SOFTWARE
-    let special_device_type = if raw_production_ids.iter().any(|id| id == "SOFTWARE_IDENTIFICATION") {
-        Some(CodeValue { value: "SOFTWARE".to_string() })
+    let special_device_type = if raw_production_ids
+        .iter()
+        .any(|id| id == "SOFTWARE_IDENTIFICATION")
+    {
+        Some(CodeValue {
+            value: "SOFTWARE".to_string(),
+        })
     } else {
         None
     };
@@ -76,9 +96,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
 
     // SPP detection: criterion="SPP" (FLD-UDID-261) → systemOrProcedurePackTypeCode
     // criterion="STANDARD" (FLD-UDID-12) → multiComponentDeviceTypeCode (normal device)
-    let is_system_or_pack = basic_udi
-        .map(|b| b.is_spp())
-        .unwrap_or(false);
+    let is_system_or_pack = basic_udi.map(|b| b.is_spp()).unwrap_or(false);
 
     // --- Contacts ---
     let mut contacts = build_contacts(device);
@@ -86,7 +104,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // SPP devices use EPP contact type, non-SPP use EMA
     // 097.009/097.026: EMA/EPP contact with SRN is mandatory
     let contact_type_code = if is_system_or_pack { "EPP" } else { "EMA" };
-    let has_contact = contacts.iter().any(|c| c.contact_type.value == contact_type_code);
+    let has_contact = contacts
+        .iter()
+        .any(|c| c.contact_type.value == contact_type_code);
     let mfr_srn_val = basic_udi
         .and_then(|b| b.manufacturer.as_ref())
         .and_then(|m| m.srn.clone())
@@ -96,7 +116,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
             .and_then(|b| b.manufacturer.as_ref())
             .and_then(|m| m.name.clone());
         contacts.push(TradeItemContactInformation {
-            contact_type: CodeValue { value: contact_type_code.to_string() },
+            contact_type: CodeValue {
+                value: contact_type_code.to_string(),
+            },
             party_identification: vec![AdditionalPartyIdentification {
                 type_code: "SRN".to_string(),
                 value: mfr_srn_val.clone(),
@@ -115,7 +137,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
             if let Some(ar) = basic_udi.and_then(|b| b.authorised_representative.as_ref()) {
                 if let Some(ref ar_srn) = ar.srn {
                     contacts.push(TradeItemContactInformation {
-                        contact_type: CodeValue { value: "EAR".to_string() },
+                        contact_type: CodeValue {
+                            value: "EAR".to_string(),
+                        },
                         party_identification: vec![AdditionalPartyIdentification {
                             type_code: "SRN".to_string(),
                             value: ar_srn.clone(),
@@ -159,10 +183,16 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // 097.006: MANUFACTURER_PART_NUMBER is mandatory. Use reference, fallback to primary DI code.
     // GDSN limits additionalTradeItemIdentificationValue to 80 characters.
     let truncate_id = |s: String| -> String {
-        if s.len() <= 80 { s } else { s.chars().take(80).collect() }
+        if s.len() <= 80 {
+            s
+        } else {
+            s.chars().take(80).collect()
+        }
     };
     let mut additional_identification = Vec::new();
-    let mfr_part = device.reference.as_ref()
+    let mfr_part = device
+        .reference
+        .as_ref()
         .filter(|r| r != &"-" && !r.is_empty())
         .cloned()
         .unwrap_or_else(|| device.primary_di_code());
@@ -191,7 +221,9 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // Use issuing agency to determine the correct type code.
     if let Some(ref secondary) = device.secondary_di {
         if let Some(ref code) = secondary.code {
-            let sec_type = secondary.issuing_agency.as_ref()
+            let sec_type = secondary
+                .issuing_agency
+                .as_ref()
                 .and_then(|a| a.code.as_ref())
                 .map(|c| mappings::issuing_agency_to_type_code(c))
                 .unwrap_or("GTIN_14");
@@ -203,7 +235,10 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     }
 
     // MODEL_NUMBER from Basic UDI-DI deviceModel (FLD-UDID-20)
-    if let Some(model) = basic_udi.and_then(|b| b.device_model.as_ref()).filter(|m| !m.is_empty()) {
+    if let Some(model) = basic_udi
+        .and_then(|b| b.device_model.as_ref())
+        .filter(|m| !m.is_empty())
+    {
         additional_identification.push(AdditionalTradeItemIdentification {
             type_code: "MODEL_NUMBER".to_string(),
             value: truncate_id(model.clone()),
@@ -231,23 +266,29 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // riskClass is mandatory in EUDAMED Basic UDI-DI — 0/100K records have null.
     // Fallback only triggers on BUDI cache miss (download.sh Step 3c ensures completeness).
     let risk_class_refdata = basic_udi.and_then(|b| b.risk_class_code());
-    let risk_class_gs1 = risk_class_refdata.as_ref()
+    let risk_class_gs1 = risk_class_refdata
+        .as_ref()
         .map(|rc| mappings::risk_class_refdata_to_gs1(rc).to_string())
         .unwrap_or_else(|| {
-            eprintln!("WARNING: No riskClass for {} — BUDI cache miss? Using EU_CLASS_I",
-                device.uuid.as_deref().unwrap_or("unknown"));
+            eprintln!(
+                "WARNING: No riskClass for {} — BUDI cache miss? Using EU_CLASS_I",
+                device.uuid.as_deref().unwrap_or("unknown")
+            );
             "EU_CLASS_I".to_string()
         });
     // 097.002: Legacy devices (MDD/AIMDD/IVDD) must use system 85, not 76
     let risk_class_system = if is_legacy {
         "85".to_string()
     } else {
-        risk_class_refdata.as_ref()
+        risk_class_refdata
+            .as_ref()
             .map(|rc| mappings::risk_class_system_code(rc).to_string())
             .unwrap_or_else(|| "76".to_string())
     };
     all_classifications.push(AdditionalClassification {
-        system_code: CodeValue { value: risk_class_system },
+        system_code: CodeValue {
+            value: risk_class_system,
+        },
         values: vec![AdditionalClassificationValue {
             code_value: risk_class_gs1.clone(),
         }],
@@ -271,7 +312,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     // --- Healthcare item module (clinical sizes, storage, warnings, latex, tissue) ---
     // 097.078: all description fields must use consistent language codes
     let primary_lang = trade_names.first().map(|(l, _)| l.as_str()).unwrap_or("en");
-    let healthcare_module = build_healthcare_module(device, basic_udi, is_ivdr, primary_lang, is_system_or_pack);
+    let healthcare_module =
+        build_healthcare_module(device, basic_udi, is_ivdr, primary_lang, is_system_or_pack);
 
     // --- Chemical regulation module (substances) ---
     // 097.095: Legacy devices must not have CMR_SUBSTANCE or ENDOCRINE_SUBSTANCE
@@ -329,7 +371,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     if reg_act == "MDR" && risk_class_gs1 == "EU_CLASS_III" {
         let has_required_cert = certification_module.as_ref().map_or(false, |cm| {
             cm.infos.iter().any(|ci| {
-                ci.standard == "MDR_TECHNICAL_DOCUMENTATION" || ci.standard == "MDR_TYPE_EXAMINATION"
+                ci.standard == "MDR_TECHNICAL_DOCUMENTATION"
+                    || ci.standard == "MDR_TYPE_EXAMINATION"
             })
         });
         if !has_required_cert {
@@ -339,15 +382,21 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
     }
 
     // 097.105: MDD + Class IIA/IIB/III requires MDD certificate
-    if reg_act == "MDD" && matches!(risk_class_gs1.as_str(), "EU_CLASS_IIA" | "EU_CLASS_IIB" | "EU_CLASS_III") {
+    if reg_act == "MDD"
+        && matches!(
+            risk_class_gs1.as_str(),
+            "EU_CLASS_IIA" | "EU_CLASS_IIB" | "EU_CLASS_III"
+        )
+    {
         let has_mdd_cert = certification_module.as_ref().map_or(false, |cm| {
-            cm.infos.iter().any(|ci| {
-                ci.standard.starts_with("MDD_")
-            })
+            cm.infos.iter().any(|ci| ci.standard.starts_with("MDD_"))
         });
         if !has_mdd_cert {
-            eprintln!("Warning: {} is MDD {} but has no MDD certificate (097.105)",
-                device.uuid.as_deref().unwrap_or("unknown"), risk_class_gs1);
+            eprintln!(
+                "Warning: {} is MDD {} but has no MDD certificate (097.105)",
+                device.uuid.as_deref().unwrap_or("unknown"),
+                risk_class_gs1
+            );
         }
     }
 
@@ -359,7 +408,11 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
 
     // --- Base quantity → device count ---
     // 097.095: Legacy devices must not have udidDeviceCount
-    let device_count = if is_legacy { None } else { device.base_quantity };
+    let device_count = if is_legacy {
+        None
+    } else {
+        device.base_quantity
+    };
 
     TradeItem {
         is_brand_bank_publication: false,
@@ -368,8 +421,12 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         healthcare_item_module: healthcare_module,
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
-                is_implantable: if is_system_or_pack { None } else {
-                    Some(bool_str(basic_udi.and_then(|b| b.implantable).unwrap_or(false)))
+                is_implantable: if is_system_or_pack {
+                    None
+                } else {
+                    Some(bool_str(
+                        basic_udi.and_then(|b| b.implantable).unwrap_or(false),
+                    ))
                 },
                 // 097.015: required when implantable=true and risk class=EU_CLASS_IIB
                 is_exempt_from_implant_obligations: {
@@ -386,20 +443,42 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                 },
                 device_count,
                 direct_marking,
-                measuring_function: if is_system_or_pack { None } else {
-                    Some(basic_udi.and_then(|b| b.measuring_function).unwrap_or(false))
+                measuring_function: if is_system_or_pack {
+                    None
+                } else {
+                    Some(
+                        basic_udi
+                            .and_then(|b| b.measuring_function)
+                            .unwrap_or(false),
+                    )
                 },
-                is_active: if is_system_or_pack { None } else {
+                is_active: if is_system_or_pack {
+                    None
+                } else {
                     Some(basic_udi.and_then(|b| b.active).unwrap_or(false))
                 },
-                administer_medicine: if is_system_or_pack { None } else {
-                    Some(basic_udi.and_then(|b| b.administering_medicine).unwrap_or(false))
+                administer_medicine: if is_system_or_pack {
+                    None
+                } else {
+                    Some(
+                        basic_udi
+                            .and_then(|b| b.administering_medicine)
+                            .unwrap_or(false),
+                    )
                 },
-                is_medicinal_product: if is_system_or_pack { None } else {
+                is_medicinal_product: if is_system_or_pack {
+                    None
+                } else {
                     Some(basic_udi.and_then(|b| b.medicinal_product).unwrap_or(false))
                 },
-                is_reprocessed: if is_system_or_pack { None } else { device.reprocessed },
-                is_reusable_surgical: if is_system_or_pack { None } else {
+                is_reprocessed: if is_system_or_pack {
+                    None
+                } else {
+                    device.reprocessed
+                },
+                is_reusable_surgical: if is_system_or_pack {
+                    None
+                } else {
                     Some(basic_udi.and_then(|b| b.reusable).unwrap_or(false))
                 },
                 production_identifier_types: production_ids,
@@ -433,7 +512,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                         .unwrap_or_default();
                     if purpose_texts.is_empty() {
                         // Fallback: use device name from BUDI
-                        let name = basic_udi.and_then(|b| b.device_name.as_ref())
+                        let name = basic_udi
+                            .and_then(|b| b.device_name.as_ref())
                             .filter(|n| !n.is_empty())
                             .cloned()
                             .unwrap_or_else(|| device.primary_di_code());
@@ -442,7 +522,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                             value: name,
                         }]
                     } else {
-                        purpose_texts.iter()
+                        purpose_texts
+                            .iter()
                             .map(|(lang, text)| LangValue {
                                 language_code: lang.clone(),
                                 value: text.clone(),
@@ -453,7 +534,11 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                     Vec::new()
                 },
                 // 097.047: isNewDevice mandatory for IVDR
-                is_new_device: if is_ivdr { Some(device.new_device.unwrap_or(false)) } else { device.new_device },
+                is_new_device: if is_ivdr {
+                    Some(device.new_device.unwrap_or(false))
+                } else {
+                    device.new_device
+                },
                 // 097.046: IVDR-specific boolean fields, default to false
                 is_reagent: if is_ivdr { Some(false) } else { None },
                 is_instrument: if is_ivdr { Some(false) } else { None },
@@ -461,9 +546,7 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                 is_near_patient_testing: if is_ivdr { Some(false) } else { None },
                 is_professional_testing: if is_ivdr { Some(false) } else { None },
                 is_companion_diagnostic: if is_ivdr { Some(false) } else { None },
-                eu_status: CodeValue {
-                    value: status_code,
-                },
+                eu_status: CodeValue { value: status_code },
                 reusability,
                 sterility,
             },
@@ -474,12 +557,14 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
         sales_module,
         description_module,
         is_base_unit: true,
-        is_despatch_unit: true,  // BASE_UNIT_OR_EACH is highest level = despatch unit
+        is_despatch_unit: true, // BASE_UNIT_OR_EACH is highest level = despatch unit
         is_orderable_unit: true,
         unit_descriptor: CodeValue {
             value: "BASE_UNIT_OR_EACH".to_string(),
         },
-        trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
+        trade_channel_code: vec![CodeValue {
+            value: "UDI_REGISTRY".to_string(),
+        }],
         information_provider: InformationProvider {
             gln: config.provider.gln.clone(),
             party_name: config.provider.party_name.clone(),
@@ -518,7 +603,8 @@ pub fn transform_detail_device(device: &ApiDeviceDetail, config: &Config, basic_
                 descriptions: {
                     // 097.025: GlobalModelDescription uses deviceName (FLD-UDID-22) from Basic UDI-DI
                     // languageCode 'en' is required
-                    let device_name = basic_udi.and_then(|b| b.device_name.as_ref())
+                    let device_name = basic_udi
+                        .and_then(|b| b.device_name.as_ref())
                         .filter(|n| !n.is_empty())
                         .cloned()
                         .unwrap_or_else(|| device.primary_di_code());
@@ -598,10 +684,34 @@ fn build_reusability(device: &ApiDeviceDetail) -> Option<ReusabilityInformation>
 /// as non-EU for EAR (authorised representative) purposes (097.054).
 fn is_eu_srn(srn: &str) -> bool {
     let prefix = srn.split('-').next().unwrap_or("");
-    matches!(prefix,
-        "AT" | "BE" | "BG" | "HR" | "CY" | "CZ" | "DK" | "EE" | "FI" | "FR" |
-        "DE" | "GR" | "HU" | "IE" | "IT" | "LV" | "LT" | "LU" | "MT" | "NL" |
-        "PL" | "PT" | "RO" | "SK" | "SI" | "ES" | "SE"
+    matches!(
+        prefix,
+        "AT" | "BE"
+            | "BG"
+            | "HR"
+            | "CY"
+            | "CZ"
+            | "DK"
+            | "EE"
+            | "FI"
+            | "FR"
+            | "DE"
+            | "GR"
+            | "HU"
+            | "IE"
+            | "IT"
+            | "LV"
+            | "LT"
+            | "LU"
+            | "MT"
+            | "NL"
+            | "PL"
+            | "PT"
+            | "RO"
+            | "SK"
+            | "SI"
+            | "ES"
+            | "SE"
     )
 }
 
@@ -623,15 +733,23 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
 
             let mut addresses = Vec::new();
             if let Some((street, number, postal, city)) = actor.structured_address() {
-                let country_numeric = actor.country_iso2_code.as_ref()
+                let country_numeric = actor
+                    .country_iso2_code
+                    .as_ref()
                     .map(|c| mappings::country_alpha2_to_numeric(c).to_string())
                     .unwrap_or_default();
                 addresses.push(StructuredAddress {
                     city,
-                    country_code: CodeValue { value: country_numeric },
+                    country_code: CodeValue {
+                        value: country_numeric,
+                    },
                     postal_code: postal,
                     street,
-                    street_number: if number.is_empty() { None } else { Some(number) },
+                    street_number: if number.is_empty() {
+                        None
+                    } else {
+                        Some(number)
+                    },
                 });
             }
 
@@ -640,7 +758,9 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
                 if !phone.is_empty() {
                     channels.push(TargetMarketCommunicationChannel {
                         channels: vec![CommunicationChannel {
-                            channel_code: CodeValue { value: "TELEPHONE".to_string() },
+                            channel_code: CodeValue {
+                                value: "TELEPHONE".to_string(),
+                            },
                             value: phone.clone(),
                         }],
                     });
@@ -650,7 +770,9 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
                 if !email.is_empty() {
                     channels.push(TargetMarketCommunicationChannel {
                         channels: vec![CommunicationChannel {
-                            channel_code: CodeValue { value: "EMAIL".to_string() },
+                            channel_code: CodeValue {
+                                value: "EMAIL".to_string(),
+                            },
                             value: email.clone(),
                         }],
                     });
@@ -658,7 +780,9 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
             }
 
             contacts.push(TradeItemContactInformation {
-                contact_type: CodeValue { value: "EPD".to_string() },
+                contact_type: CodeValue {
+                    value: "EPD".to_string(),
+                },
                 party_identification: party_ids,
                 contact_name: actor.name.clone(),
                 addresses,
@@ -668,15 +792,22 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
             // Non-registered organisation
             let mut addresses = Vec::new();
             if let Some((street, number, postal, city)) = org.structured_address() {
-                let country_numeric = org.country_iso2()
+                let country_numeric = org
+                    .country_iso2()
                     .map(|c| mappings::country_alpha2_to_numeric(&c).to_string())
                     .unwrap_or_default();
                 addresses.push(StructuredAddress {
                     city,
-                    country_code: CodeValue { value: country_numeric },
+                    country_code: CodeValue {
+                        value: country_numeric,
+                    },
                     postal_code: postal,
                     street,
-                    street_number: if number.is_empty() { None } else { Some(number) },
+                    street_number: if number.is_empty() {
+                        None
+                    } else {
+                        Some(number)
+                    },
                 });
             }
 
@@ -685,7 +816,9 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
                 if !phone.is_empty() {
                     channels.push(TargetMarketCommunicationChannel {
                         channels: vec![CommunicationChannel {
-                            channel_code: CodeValue { value: "TELEPHONE".to_string() },
+                            channel_code: CodeValue {
+                                value: "TELEPHONE".to_string(),
+                            },
                             value: phone.clone(),
                         }],
                     });
@@ -695,7 +828,9 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
                 if !email.is_empty() {
                     channels.push(TargetMarketCommunicationChannel {
                         channels: vec![CommunicationChannel {
-                            channel_code: CodeValue { value: "EMAIL".to_string() },
+                            channel_code: CodeValue {
+                                value: "EMAIL".to_string(),
+                            },
                             value: email.clone(),
                         }],
                     });
@@ -703,7 +838,9 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
             }
 
             contacts.push(TradeItemContactInformation {
-                contact_type: CodeValue { value: "EPD".to_string() },
+                contact_type: CodeValue {
+                    value: "EPD".to_string(),
+                },
                 party_identification: Vec::new(),
                 contact_name: org.name.clone(),
                 addresses,
@@ -715,24 +852,45 @@ fn build_contacts(device: &ApiDeviceDetail) -> Vec<TradeItemContactInformation> 
     contacts
 }
 
-fn build_healthcare_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>, is_ivdr: bool, primary_lang: &str, is_system_or_pack: bool) -> Option<HealthcareItemInformationModule> {
+fn build_healthcare_module(
+    device: &ApiDeviceDetail,
+    basic_udi: Option<&BasicUdiDiData>,
+    is_ivdr: bool,
+    primary_lang: &str,
+    is_system_or_pack: bool,
+) -> Option<HealthcareItemInformationModule> {
     let clinical_sizes = build_clinical_sizes(device);
     let storage_handling = build_storage_handling(device, primary_lang);
     let clinical_warnings = build_clinical_warnings(device);
-    let contains_latex = Some(device.latex.map(|b| bool_str(b)).unwrap_or_else(|| "FALSE".to_string()));
+    let contains_latex = Some(
+        device
+            .latex
+            .map(|b| bool_str(b))
+            .unwrap_or_else(|| "FALSE".to_string()),
+    );
 
     Some(HealthcareItemInformationModule {
         info: HealthcareItemInformation {
             // 097.046: microbial substance mandatory for IVDR/IVDD
             contains_microbial_substance: if is_ivdr { Some(false) } else { None },
-            human_blood_derivative: if is_system_or_pack { None } else {
-                Some(bool_str(basic_udi.and_then(|b| b.human_product).unwrap_or(false)))
+            human_blood_derivative: if is_system_or_pack {
+                None
+            } else {
+                Some(bool_str(
+                    basic_udi.and_then(|b| b.human_product).unwrap_or(false),
+                ))
             },
             contains_latex,
-            human_tissue: if is_system_or_pack { None } else {
-                Some(bool_str(basic_udi.and_then(|b| b.human_tissues).unwrap_or(false)))
+            human_tissue: if is_system_or_pack {
+                None
+            } else {
+                Some(bool_str(
+                    basic_udi.and_then(|b| b.human_tissues).unwrap_or(false),
+                ))
             },
-            animal_tissue: if is_system_or_pack { None } else {
+            animal_tissue: if is_system_or_pack {
+                None
+            } else {
                 Some(basic_udi.and_then(|b| b.animal_tissues).unwrap_or(false))
             },
             storage_handling,
@@ -836,7 +994,10 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
         .collect()
 }
 
-fn build_storage_handling(device: &ApiDeviceDetail, primary_lang: &str) -> Vec<ClinicalStorageHandling> {
+fn build_storage_handling(
+    device: &ApiDeviceDetail,
+    primary_lang: &str,
+) -> Vec<ClinicalStorageHandling> {
     let conditions = match device.storage_handling_conditions.as_ref() {
         Some(c) if !c.is_empty() => c,
         _ => return Vec::new(),
@@ -852,9 +1013,19 @@ fn build_storage_handling(device: &ApiDeviceDetail, primary_lang: &str) -> Vec<C
             let mut descriptions = extract_descriptions(&shc.description);
             // 097.074 / BR-UDID-028: these SHC codes require a description
             // 097.078: fallback language must match primary language of other descriptions
-            let needs_description = matches!(gs1_code.as_str(),
-                "SHC06" | "SHC07" | "SHC08" | "SHC09" | "SHC10" |
-                "SHC13" | "SHC21" | "SHC22" | "SHC23" | "SHC25" | "SHC45"
+            let needs_description = matches!(
+                gs1_code.as_str(),
+                "SHC06"
+                    | "SHC07"
+                    | "SHC08"
+                    | "SHC09"
+                    | "SHC10"
+                    | "SHC13"
+                    | "SHC21"
+                    | "SHC22"
+                    | "SHC23"
+                    | "SHC25"
+                    | "SHC45"
             );
             if descriptions.is_empty() && needs_description {
                 descriptions.push(LangValue {
@@ -897,16 +1068,23 @@ fn build_clinical_warnings(device: &ApiDeviceDetail) -> Vec<ClinicalWarningOutpu
 }
 
 /// Build sales module with ORIGINAL_PLACED vs ADDITIONAL_MARKET_AVAILABILITY distinction.
-fn build_sales_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiData>) -> Option<SalesInformationModule> {
+fn build_sales_module(
+    device: &ApiDeviceDetail,
+    basic_udi: Option<&BasicUdiDiData>,
+) -> Option<SalesInformationModule> {
     // Determine which country is the "original placed" market
-    let original_iso2 = device.placed_on_the_market.as_ref()
+    let original_iso2 = device
+        .placed_on_the_market
+        .as_ref()
         .and_then(|c| c.iso2_code.as_ref())
         .map(|s| s.as_str());
 
     let mut original_countries = Vec::new();
     let mut additional_countries = Vec::new();
 
-    let markets = device.market_info_link.as_ref()
+    let markets = device
+        .market_info_link
+        .as_ref()
         .and_then(|m| m.ms_where_available.as_ref());
 
     if let Some(markets) = markets {
@@ -943,7 +1121,9 @@ fn build_sales_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiDat
             if mappings::is_valid_gdsn_market_country(iso2) {
                 let numeric = mappings::country_alpha2_to_numeric(iso2);
                 original_countries.push(SalesConditionCountry {
-                    country_code: CodeValue { value: numeric.to_string() },
+                    country_code: CodeValue {
+                        value: numeric.to_string(),
+                    },
                     start_datetime: String::new(),
                     end_datetime: None,
                 });
@@ -973,7 +1153,9 @@ fn build_sales_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiDat
             .unwrap_or_else(|| "DE".to_string());
         let numeric = mappings::country_alpha2_to_numeric(&fallback_iso2);
         original_countries.push(SalesConditionCountry {
-            country_code: CodeValue { value: numeric.to_string() },
+            country_code: CodeValue {
+                value: numeric.to_string(),
+            },
             start_datetime: String::new(),
             end_datetime: None,
         });
@@ -1025,7 +1207,9 @@ fn build_direct_marking(device: &ApiDeviceDetail) -> Vec<DirectPartMarking> {
         Some(c) if !c.is_empty() => c,
         _ => return Vec::new(),
     };
-    let agency = di.issuing_agency.as_ref()
+    let agency = di
+        .issuing_agency
+        .as_ref()
         .and_then(|a| a.code.as_ref())
         .map(|c| mappings::issuing_agency_to_type_code(c))
         .unwrap_or("GS1");
@@ -1054,7 +1238,9 @@ fn build_unit_of_use(device: &ApiDeviceDetail) -> Vec<TradeItemInformation> {
         Some(c) if !c.is_empty() => c,
         _ => return Vec::new(),
     };
-    let agency = uou.issuing_agency.as_ref()
+    let agency = uou
+        .issuing_agency
+        .as_ref()
         .and_then(|a| a.code.as_ref())
         .map(|c| mappings::issuing_agency_to_type_code(c))
         .unwrap_or("GS1");
@@ -1095,7 +1281,9 @@ fn build_referenced_trade_items(device: &ApiDeviceDetail) -> Vec<ReferencedTrade
         _ => "REPLACED_BY",
     };
     vec![ReferencedTradeItem {
-        type_code: CodeValue { value: type_code.to_string() },
+        type_code: CodeValue {
+            value: type_code.to_string(),
+        },
         gtin,
     }]
 }
@@ -1103,8 +1291,12 @@ fn build_referenced_trade_items(device: &ApiDeviceDetail) -> Vec<ReferencedTrade
 /// Build chemical regulation module from substances.
 /// Build certification module from Basic UDI-DI certificate list.
 /// Maps MDR/IVDR certificate types to GS1 CertificationStandard codes.
-fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<CertificationInformationModule> {
-    let certs = basic_udi?.device_certificate_info_list_for_display.as_ref()?;
+fn build_certification_module(
+    basic_udi: Option<&BasicUdiDiData>,
+) -> Option<CertificationInformationModule> {
+    let certs = basic_udi?
+        .device_certificate_info_list_for_display
+        .as_ref()?;
     let mut infos = Vec::new();
 
     for cert in certs {
@@ -1165,19 +1357,28 @@ fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<Cert
         let nb_number = nb.and_then(|n| n.srn.clone());
         infos.push(CertificationInformation {
             // 097.042: additionalCertificationOrganisationIdentifier with EU_NOTIFIED_BODY_NUMBER
-            additional_org_ids: nb_number.map(|num| vec![AdditionalPartyIdentification {
-                type_code: "EU_NOTIFIED_BODY_NUMBER".to_string(),
-                value: num,
-            }]).unwrap_or_default(),
+            additional_org_ids: nb_number
+                .map(|num| {
+                    vec![AdditionalPartyIdentification {
+                        type_code: "EU_NOTIFIED_BODY_NUMBER".to_string(),
+                        value: num,
+                    }]
+                })
+                .unwrap_or_default(),
             agency: nb.and_then(|n| n.name.clone()),
             organisation_identifier: None,
             standard: standard.to_string(),
             certifications: {
                 let mut cs = Vec::new();
                 // FLD-UDID-347/346: startingValidityDate, fallback to issueDate
-                let start = cert.starting_validity_date.clone()
+                let start = cert
+                    .starting_validity_date
+                    .clone()
                     .or_else(|| cert.issue_date.clone());
-                if cert.certificate_number.is_some() || cert.certificate_expiry.is_some() || start.is_some() {
+                if cert.certificate_number.is_some()
+                    || cert.certificate_expiry.is_some()
+                    || start.is_some()
+                {
                     cs.push(Certification {
                         // FLD-UDID-61/344 (097.105): CertificationValue = certificate number
                         value: cert.certificate_number.clone(),
@@ -1200,7 +1401,9 @@ fn build_certification_module(basic_udi: Option<&BasicUdiDiData>) -> Option<Cert
     }
 }
 
-fn build_chemical_regulation_module(device: &ApiDeviceDetail) -> Option<ChemicalRegulationInformationModule> {
+fn build_chemical_regulation_module(
+    device: &ApiDeviceDetail,
+) -> Option<ChemicalRegulationInformationModule> {
     let mut who_chemicals = Vec::new();
     let mut echa_chemicals = Vec::new();
 
@@ -1269,7 +1472,9 @@ fn build_substance_chemical(sub: &Substance, chemical_type: &str) -> RegulatedCh
     let inn = sub.inn_code.as_ref().filter(|s| !s.is_empty()).cloned();
 
     // CAS identifier
-    let cas_ref = sub.cas_number.as_ref()
+    let cas_ref = sub
+        .cas_number
+        .as_ref()
         .filter(|s| !s.is_empty())
         .map(|cas| ChemicalIdentifierRef {
             agency_name: "CAS".to_string(),
@@ -1277,7 +1482,9 @@ fn build_substance_chemical(sub: &Substance, chemical_type: &str) -> RegulatedCh
         });
 
     // EC identifier
-    let ec_ref = sub.ec_number.as_ref()
+    let ec_ref = sub
+        .ec_number
+        .as_ref()
         .filter(|s| !s.is_empty())
         .map(|ec| ChemicalIdentifierRef {
             agency_name: "EC".to_string(),
@@ -1293,7 +1500,8 @@ fn build_substance_chemical(sub: &Substance, chemical_type: &str) -> RegulatedCh
         || chemical_type == "CMR_SUBSTANCE"
         || (identifier_ref.is_none() && inn.is_none());
     let descriptions = if needs_description {
-        let desc = name_text.as_ref()
+        let desc = name_text
+            .as_ref()
             .map(|n| n.trim().to_string())
             .or_else(|| inn.clone())
             .unwrap_or_else(|| chemical_type.to_string());
@@ -1310,19 +1518,25 @@ fn build_substance_chemical(sub: &Substance, chemical_type: &str) -> RegulatedCh
         chemical_name: inn,
         descriptions,
         cmr_type: None,
-        chemical_type: CodeValue { value: chemical_type.to_string() },
+        chemical_type: CodeValue {
+            value: chemical_type.to_string(),
+        },
     }
 }
 
 /// Build a RegulatedChemical from a CmrSubstance.
 fn build_cmr_chemical(sub: &CmrSubstance) -> RegulatedChemical {
-    let name_text = sub.name.as_ref()
+    let name_text = sub
+        .name
+        .as_ref()
         .and_then(|t| t.texts.as_ref())
         .and_then(|texts| texts.first())
         .and_then(|lt| lt.text.clone());
 
     // CAS identifier
-    let cas_ref = sub.cas_number.as_ref()
+    let cas_ref = sub
+        .cas_number
+        .as_ref()
         .filter(|s| !s.is_empty())
         .map(|cas| ChemicalIdentifierRef {
             agency_name: "CAS".to_string(),
@@ -1330,7 +1544,9 @@ fn build_cmr_chemical(sub: &CmrSubstance) -> RegulatedChemical {
         });
 
     // EC identifier
-    let ec_ref = sub.ec_number.as_ref()
+    let ec_ref = sub
+        .ec_number
+        .as_ref()
         .filter(|s| !s.is_empty())
         .map(|ec| ChemicalIdentifierRef {
             agency_name: "EC".to_string(),
@@ -1340,13 +1556,18 @@ fn build_cmr_chemical(sub: &CmrSubstance) -> RegulatedChemical {
     let identifier_ref = cas_ref.or(ec_ref);
 
     // CMR type code from cmr_substance_type
-    let cmr_type = sub.cmr_substance_type.as_ref()
+    let cmr_type = sub
+        .cmr_substance_type
+        .as_ref()
         .and_then(|t| t.code.as_ref())
-        .map(|c| CodeValue { value: mappings::cmr_type_to_gs1(c) });
+        .map(|c| CodeValue {
+            value: mappings::cmr_type_to_gs1(c),
+        });
 
     // 097.081/097.080: CMR_SUBSTANCE always needs description with languageCode "en"
     let descriptions = {
-        let desc = name_text.as_ref()
+        let desc = name_text
+            .as_ref()
             .map(|n| n.trim().to_string())
             .unwrap_or_else(|| "CMR_SUBSTANCE".to_string());
         vec![LangValue {
@@ -1360,13 +1581,16 @@ fn build_cmr_chemical(sub: &CmrSubstance) -> RegulatedChemical {
         chemical_name: None,
         descriptions,
         cmr_type,
-        chemical_type: CodeValue { value: "CMR_SUBSTANCE".to_string() },
+        chemical_type: CodeValue {
+            value: "CMR_SUBSTANCE".to_string(),
+        },
     }
 }
 
 /// Extract the first text from a Substance's name field
 fn extract_substance_name(sub: &Substance) -> Option<String> {
-    sub.name.as_ref()
+    sub.name
+        .as_ref()
         .and_then(|t| t.texts.as_ref())
         .and_then(|texts| texts.first())
         .and_then(|lt| lt.text.clone())
@@ -1403,10 +1627,9 @@ fn extract_last_segment(code: &str) -> String {
 }
 
 /// Extract multilang descriptions from a MultiLangText
-fn extract_descriptions(
-    mlt: &Option<crate::api_detail::MultiLangText>,
-) -> Vec<LangValue> {
-    let raw: Vec<(String, String)> = mlt.as_ref()
+fn extract_descriptions(mlt: &Option<crate::api_detail::MultiLangText>) -> Vec<LangValue> {
+    let raw: Vec<(String, String)> = mlt
+        .as_ref()
         .and_then(|t| t.texts.as_ref())
         .map(|texts| {
             texts
@@ -1417,7 +1640,9 @@ fn extract_descriptions(
                         return None;
                     }
                     // language: null → default to "en" (same as allLanguagesApplicable)
-                    let lang = lt.language.as_ref()
+                    let lang = lt
+                        .language
+                        .as_ref()
                         .and_then(|l| l.iso_code.clone())
                         .unwrap_or_else(|| "en".to_string());
                     Some((lang, text))
@@ -1436,7 +1661,10 @@ fn extract_descriptions(
             .or_insert(text);
     }
     map.into_iter()
-        .map(|(lang, text)| LangValue { language_code: lang, value: text })
+        .map(|(lang, text)| LangValue {
+            language_code: lang,
+            value: text,
+        })
         .collect()
 }
 
@@ -1454,12 +1682,17 @@ fn flatten_package_levels(root: &ContainedItemNode) -> Vec<PackageLevel> {
 
     while !current_children.is_empty() {
         let node = &current_children[0]; // take first child at each level
-        let code = node.item_identifier.as_ref()
+        let code = node
+            .item_identifier
+            .as_ref()
             .and_then(|id| id.code.as_deref())
             .unwrap_or("")
             .to_string();
         let qty = node.number_of_items.unwrap_or(1);
-        levels.push(PackageLevel { code, quantity: qty });
+        levels.push(PackageLevel {
+            code,
+            quantity: qty,
+        });
         current_children = node.contained_items.as_deref().unwrap_or(&[]);
     }
 
@@ -1476,7 +1709,9 @@ pub fn transform_detail_document(
     let mut base_trade_item = transform_detail_device(device, config, basic_udi);
 
     // Check for packaging hierarchy
-    let levels = device.contained_item.as_ref()
+    let levels = device
+        .contained_item
+        .as_ref()
         .map(|ci| flatten_package_levels(ci))
         .unwrap_or_default();
 
@@ -1493,8 +1728,14 @@ pub fn transform_detail_document(
     base_trade_item.is_despatch_unit = false;
 
     // Extract EMA/EPP/EAR contacts for package DIs (SRN only, for CH-REP filtering)
-    let pkg_contacts: Vec<TradeItemContactInformation> = base_trade_item.contact_information.iter()
-        .filter(|c| c.contact_type.value == "EMA" || c.contact_type.value == "EPP" || c.contact_type.value == "EAR")
+    let pkg_contacts: Vec<TradeItemContactInformation> = base_trade_item
+        .contact_information
+        .iter()
+        .filter(|c| {
+            c.contact_type.value == "EMA"
+                || c.contact_type.value == "EPP"
+                || c.contact_type.value == "EAR"
+        })
         .cloned()
         .collect();
 
@@ -1564,7 +1805,9 @@ pub fn transform_detail_document(
             healthcare_item_module: None,
             medical_device_module: MedicalDeviceTradeItemModule {
                 info: MedicalDeviceInformation {
-                    eu_status: CodeValue { value: "ON_MARKET".to_string() },
+                    eu_status: CodeValue {
+                        value: "ON_MARKET".to_string(),
+                    },
                     ..Default::default()
                 },
             },
@@ -1586,8 +1829,12 @@ pub fn transform_detail_document(
             is_base_unit: false,
             is_despatch_unit: is_outermost,
             is_orderable_unit: true,
-            unit_descriptor: CodeValue { value: descriptor.to_string() },
-            trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
+            unit_descriptor: CodeValue {
+                value: descriptor.to_string(),
+            },
+            trade_channel_code: vec![CodeValue {
+                value: "UDI_REGISTRY".to_string(),
+            }],
             information_provider: InformationProvider {
                 gln: config.provider.gln.clone(),
                 party_name: config.provider.party_name.clone(),
@@ -1602,7 +1849,9 @@ pub fn transform_detail_document(
             },
             next_lower_level: Some(next_lower),
             target_market: TargetMarketObj {
-                country_code: CodeValue { value: config.target_market.country_code.clone() },
+                country_code: CodeValue {
+                    value: config.target_market.country_code.clone(),
+                },
             },
             contact_information: pkg_contacts.clone(),
             synchronisation_dates: TradeItemSynchronisationDates {

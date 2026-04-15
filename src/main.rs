@@ -9,15 +9,15 @@ mod eudamed;
 mod eudamed_json;
 mod firstbase;
 mod gui;
+mod mail;
 mod mappings;
+mod scan;
+mod swissdamed;
 mod transform;
 mod transform_api;
 mod transform_detail;
 mod transform_eudamed_json;
 mod version_db;
-mod mail;
-mod scan;
-mod swissdamed;
 mod xlsx_export;
 
 use anyhow::{Context, Result};
@@ -46,8 +46,7 @@ fn main() -> Result<()> {
     }
 
     let config_path = Path::new("config.toml");
-    let config = config::load_config(config_path)
-        .context("Failed to load config.toml")?;
+    let config = config::load_config(config_path).context("Failed to load config.toml")?;
 
     match args.get(1).map(|s| s.as_str()) {
         Some("check") => {
@@ -59,7 +58,9 @@ fn main() -> Result<()> {
                 eprintln!("  converts to firstbase JSON, and pushes to GS1 Firstbase API.");
                 std::process::exit(1);
             });
-            let threads: Option<usize> = args.iter().position(|a| a == "--threads")
+            let threads: Option<usize> = args
+                .iter()
+                .position(|a| a == "--threads")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|s| s.parse().ok());
 
@@ -88,10 +89,17 @@ fn main() -> Result<()> {
             let result = download::run_download(&dl_config, &progress)?;
 
             if result.need_download.is_empty() {
-                eprintln!("\nNo updates found. All {} devices unchanged.", result.uuid_versions.len());
+                eprintln!(
+                    "\nNo updates found. All {} devices unchanged.",
+                    result.uuid_versions.len()
+                );
                 return Ok(());
             }
-            eprintln!("\n{} new/changed devices (of {} total)", result.need_download.len(), result.uuid_versions.len());
+            eprintln!(
+                "\n{} new/changed devices (of {} total)",
+                result.need_download.len(),
+                result.uuid_versions.len()
+            );
 
             // Step 2: Convert (reuse existing firstbase pipeline)
             eprintln!("\n=== Converting to firstbase JSON ===");
@@ -100,13 +108,22 @@ fn main() -> Result<()> {
             let basic_dir = data_dir.join("basic");
 
             let config_path = download::app_data_dir().join("config.toml");
-            let config_path = if config_path.exists() { config_path } else { std::path::PathBuf::from("config.toml") };
+            let config_path = if config_path.exists() {
+                config_path
+            } else {
+                std::path::PathBuf::from("config.toml")
+            };
             let fb_config = config::load_config(&config_path)?;
 
             let basic_udi_cache = load_basic_udi_cache(&basic_dir);
-            eprintln!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+            eprintln!(
+                "Loaded {} Basic UDI-DI records from cache",
+                basic_udi_cache.len()
+            );
 
-            let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+            let db_path = download::app_data_dir()
+                .join("db")
+                .join("version_tracking.db");
             let conn = version_db::open_db(&db_path)?;
             let output_dir = download::app_data_dir().join("firstbase_json");
             let _ = std::fs::create_dir_all(&output_dir);
@@ -115,19 +132,24 @@ fn main() -> Result<()> {
             let mut converted = 0;
             for uuid in &result.need_download {
                 let detail_path = detail_dir.join(format!("{}.json", uuid));
-                if !detail_path.exists() { continue; }
+                if !detail_path.exists() {
+                    continue;
+                }
                 let json_content = match std::fs::read_to_string(&detail_path) {
                     Ok(s) => s,
                     Err(_) => continue,
                 };
 
-                let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content) {
+                let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content)
+                {
                     Ok(d) => d,
                     Err(_) => continue,
                 };
                 let basic_udi = basic_udi_cache.get(uuid);
 
-                let doc = transform_detail::transform_detail_document(&device, &fb_config, basic_udi, uuid);
+                let doc = transform_detail::transform_detail_document(
+                    &device, &fb_config, basic_udi, uuid,
+                );
                 let out = match serde_json::to_string_pretty(&doc) {
                     Ok(s) => s,
                     Err(e) => {
@@ -158,7 +180,9 @@ fn main() -> Result<()> {
             // Env var takes priority; fall back to publish_gln from config.toml.
             let publish_gln = match std::env::var("FIRSTBASE_PUBLISH_GLN") {
                 Ok(v) if !v.is_empty() => v,
-                _ if !fb_config.provider.publish_gln.is_empty() => fb_config.provider.publish_gln.clone(),
+                _ if !fb_config.provider.publish_gln.is_empty() => {
+                    fb_config.provider.publish_gln.clone()
+                }
                 _ => {
                     eprintln!("Set FIRSTBASE_PUBLISH_GLN (recipient GLN) or add publish_gln under [provider] in config.toml. Skipping push.");
                     return Ok(());
@@ -177,7 +201,9 @@ fn main() -> Result<()> {
                 provider_gln: fb_config.provider.gln.clone(),
                 ..Default::default()
             };
-            let log_fn = |msg: &str| { eprintln!("{}", msg); };
+            let log_fn = |msg: &str| {
+                eprintln!("{}", msg);
+            };
             match gui::push_to_firstbase(&settings, &log_fn) {
                 Ok((accepted, rejected)) => {
                     eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
@@ -192,10 +218,14 @@ fn main() -> Result<()> {
             // Download from EUDAMED API (replaces download.sh)
             let (srns, limit, threads) = parse_download_args(&args[2..]);
             if srns.is_empty() && limit.is_none() {
-                eprintln!("Usage: eudamed2firstbase download [--N] [--srn <SRN> ...] [--threads N]");
+                eprintln!(
+                    "Usage: eudamed2firstbase download [--N] [--srn <SRN> ...] [--threads N]"
+                );
                 eprintln!("  --N              Number of products per SRN (e.g. --10, --100)");
                 eprintln!("  --srn <SRN> ...  Filter by manufacturer/AR SRN(s)");
-                eprintln!("  --threads N      Parallel threads for listings (default 10) and downloads");
+                eprintln!(
+                    "  --threads N      Parallel threads for listings (default 10) and downloads"
+                );
                 std::process::exit(1);
             }
             let mut dl_config = download::DownloadConfig {
@@ -235,13 +265,22 @@ fn main() -> Result<()> {
         }
         Some("firstbase") | Some("eudamed2firstbase") | Some("eudamed_json") => {
             // Convert EUDAMED JSON → GS1 Firstbase JSON
-            let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json/detail");
+            let input_dir = args
+                .get(2)
+                .map(|s| s.as_str())
+                .unwrap_or("eudamed_json/detail");
             process_eudamed_json_dir(Path::new(input_dir), &config)
         }
         Some("swissdamed") => {
             // Convert EUDAMED JSON → Swissdamed JSON (almost 1:1 mapping)
-            let detail_dir = args.get(2).map(|s| s.as_str()).unwrap_or("eudamed_json/detail");
-            let basic_dir = args.get(3).map(|s| s.as_str()).unwrap_or("eudamed_json/basic");
+            let detail_dir = args
+                .get(2)
+                .map(|s| s.as_str())
+                .unwrap_or("eudamed_json/detail");
+            let basic_dir = args
+                .get(3)
+                .map(|s| s.as_str())
+                .unwrap_or("eudamed_json/basic");
             process_swissdamed(Path::new(detail_dir), Path::new(basic_dir))
         }
         Some("mailto") => {
@@ -257,11 +296,27 @@ fn main() -> Result<()> {
             let mut i = 2;
             while i < args.len() {
                 match args[i].as_str() {
-                    "--to" => { i += 1; to = args.get(i).cloned(); }
-                    "--subject" => { i += 1; subject = args.get(i).cloned(); }
-                    "--from" => { i += 1; from = args.get(i).cloned(); }
-                    "--p12" => { i += 1; if let Some(v) = args.get(i) { p12 = v.clone(); } }
-                    _ if file.is_none() => { file = Some(args[i].clone()); }
+                    "--to" => {
+                        i += 1;
+                        to = args.get(i).cloned();
+                    }
+                    "--subject" => {
+                        i += 1;
+                        subject = args.get(i).cloned();
+                    }
+                    "--from" => {
+                        i += 1;
+                        from = args.get(i).cloned();
+                    }
+                    "--p12" => {
+                        i += 1;
+                        if let Some(v) = args.get(i) {
+                            p12 = v.clone();
+                        }
+                    }
+                    _ if file.is_none() => {
+                        file = Some(args[i].clone());
+                    }
                     _ => {}
                 }
                 i += 1;
@@ -279,8 +334,13 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             });
             let subject = subject.unwrap_or_else(|| {
-                format!("eudamed2firstbase: {}", std::path::Path::new(&file).file_name()
-                    .and_then(|n| n.to_str()).unwrap_or(&file))
+                format!(
+                    "eudamed2firstbase: {}",
+                    std::path::Path::new(&file)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(&file)
+                )
             });
 
             if p12.is_empty() {
@@ -304,8 +364,13 @@ fn main() -> Result<()> {
                 &from,
                 &to,
                 &subject,
-                &format!("File attached: {}", std::path::Path::new(&file).file_name()
-                    .and_then(|n| n.to_str()).unwrap_or(&file)),
+                &format!(
+                    "File attached: {}",
+                    std::path::Path::new(&file)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(&file)
+                ),
                 &file,
             )?;
             Ok(())
@@ -375,15 +440,30 @@ fn main() -> Result<()> {
 
             // If --xlsx mode, write back to the file
             if args.get(2).map(|s| s.as_str()) == Some("--xlsx") {
-                let path = args.get(3).ok_or_else(|| anyhow::anyhow!("--xlsx requires a file path argument"))?;
+                let path = args
+                    .get(3)
+                    .ok_or_else(|| anyhow::anyhow!("--xlsx requires a file path argument"))?;
                 let col: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(4);
                 write_counts_xlsx(path, col, &result_map)?;
                 let total: i64 = result_map.values().filter(|&&v| v >= 0).sum();
-                eprintln!("Done. {} SRNs, {} total devices. Written to {}", result_map.len(), total, path);
+                eprintln!(
+                    "Done. {} SRNs, {} total devices. Written to {}",
+                    result_map.len(),
+                    total,
+                    path
+                );
             } else {
                 // Print TSV to stdout
                 for (srn, count) in &result_map {
-                    println!("{}\t{}", srn, if *count >= 0 { count.to_string() } else { "ERROR".to_string() });
+                    println!(
+                        "{}\t{}",
+                        srn,
+                        if *count >= 0 {
+                            count.to_string()
+                        } else {
+                            "ERROR".to_string()
+                        }
+                    );
                 }
                 let total: i64 = result_map.values().filter(|&&v| v >= 0).sum();
                 eprintln!("Done. {} SRNs, {} total devices.", result_map.len(), total);
@@ -397,11 +477,16 @@ fn main() -> Result<()> {
         }
         Some("xlsx") => {
             // Convert detail NDJSON to XLSX
-            let input_file = args.get(2).map(|s| s.as_str())
+            let input_file = args
+                .get(2)
+                .map(|s| s.as_str())
                 .unwrap_or("ndjson/eudamed_10k_details.ndjson");
             let basic_udi_cache = load_basic_udi_cache(Path::new(BASIC_UDI_CACHE_DIR));
             if !basic_udi_cache.is_empty() {
-                println!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+                println!(
+                    "Loaded {} Basic UDI-DI records from cache",
+                    basic_udi_cache.len()
+                );
             }
             let result = xlsx_export::ndjson_to_xlsx(Path::new(input_file), &basic_udi_cache)?;
             println!("  -> {}", result);
@@ -409,7 +494,9 @@ fn main() -> Result<()> {
         }
         Some("detail") => {
             // Process detail NDJSON, optionally merging with listing data
-            let detail_file = args.get(2).map(|s| s.as_str())
+            let detail_file = args
+                .get(2)
+                .map(|s| s.as_str())
                 .unwrap_or("ndjson/eudamed_10k_details.ndjson");
             let listing_file = args.get(3).map(|s| s.as_str());
             process_detail_ndjson(Path::new(detail_file), listing_file.map(Path::new), &config)
@@ -504,28 +591,42 @@ fn process_xml_dir(config: &config::Config) -> Result<()> {
             let file_name = match path.file_name() {
                 Some(n) => n,
                 None => {
-                    eprintln!("  Error: could not determine file name for {}", path.display());
+                    eprintln!(
+                        "  Error: could not determine file name for {}",
+                        path.display()
+                    );
                     std::process::exit(1);
                 }
             };
             let dest = processed_dir.join(file_name);
             if let Err(e) = std::fs::rename(path, &dest) {
-                eprintln!("  Warning: could not move {} to processed/: {}", path.display(), e);
+                eprintln!(
+                    "  Warning: could not move {} to processed/: {}",
+                    path.display(),
+                    e
+                );
             }
         }
-        println!("Moved {} file(s) to {}", processed_files.len(), processed_dir.display());
+        println!(
+            "Moved {} file(s) to {}",
+            processed_files.len(),
+            processed_dir.display()
+        );
     }
 
     println!("\nProcessed {} XML file(s)", processed);
     Ok(())
 }
 
-fn process_xml_file(input_path: &Path, output_dir: &Path, config: &config::Config) -> Result<String> {
-    let xml_content = std::fs::read_to_string(input_path)
-        .context("Failed to read XML file")?;
+fn process_xml_file(
+    input_path: &Path,
+    output_dir: &Path,
+    config: &config::Config,
+) -> Result<String> {
+    let xml_content = std::fs::read_to_string(input_path).context("Failed to read XML file")?;
 
-    let response = eudamed::parse_pull_response(&xml_content)
-        .context("Failed to parse EUDAMED XML")?;
+    let response =
+        eudamed::parse_pull_response(&xml_content).context("Failed to parse EUDAMED XML")?;
 
     let document = transform::transform(&response, config)
         .context("Failed to transform to firstbase format")?;
@@ -569,8 +670,7 @@ fn process_ndjson_file(input_path: &Path, config: &config::Config) -> Result<()>
     let output_dir = Path::new("firstbase_json");
     std::fs::create_dir_all(output_dir)?;
 
-    let file = std::fs::File::open(input_path)
-        .context("Failed to open NDJSON file")?;
+    let file = std::fs::File::open(input_path).context("Failed to open NDJSON file")?;
     let reader = std::io::BufReader::new(file);
 
     let mut trade_items = Vec::new();
@@ -654,13 +754,19 @@ fn process_detail_ndjson(
     };
 
     if !listing_index.is_empty() {
-        println!("  Loaded {} listing records for merging", listing_index.len());
+        println!(
+            "  Loaded {} listing records for merging",
+            listing_index.len()
+        );
     }
 
     // Load Basic UDI-DI cache
     let basic_udi_cache = load_basic_udi_cache(Path::new(BASIC_UDI_CACHE_DIR));
     if !basic_udi_cache.is_empty() {
-        println!("  Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+        println!(
+            "  Loaded {} Basic UDI-DI records from cache",
+            basic_udi_cache.len()
+        );
     }
 
     let file = std::fs::File::open(detail_path)
@@ -668,23 +774,31 @@ fn process_detail_ndjson(
     let reader = std::io::BufReader::new(file);
 
     // Read all lines first
-    let lines: Vec<(usize, String)> = reader.lines()
+    let lines: Vec<(usize, String)> = reader
+        .lines()
         .enumerate()
         .filter_map(|(i, line)| {
             let line = line.ok()?;
             let trimmed = line.trim().to_string();
-            if trimmed.is_empty() { None } else { Some((i + 1, trimmed)) }
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some((i + 1, trimmed))
+            }
         })
         .collect();
 
     // Process lines in parallel
-    let results: Vec<Result<firstbase::DraftItemDocument, (usize, String)>> = lines.par_iter()
+    let results: Vec<Result<firstbase::DraftItemDocument, (usize, String)>> = lines
+        .par_iter()
         .map(|(line_num, trimmed)| {
             match api_detail::parse_api_detail(trimmed) {
                 Ok(detail) => {
                     let uuid = detail.uuid.clone().unwrap_or_default();
                     let basic_udi = basic_udi_cache.get(&uuid);
-                    let mut document = transform_detail::transform_detail_document(&detail, config, basic_udi, &uuid);
+                    let mut document = transform_detail::transform_detail_document(
+                        &detail, config, basic_udi, &uuid,
+                    );
 
                     // Merge listing data (manufacturer, AR, risk class, basic UDI)
                     let gtin = &document.trade_item.gtin;
@@ -816,20 +930,17 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
             .iter()
             .any(|c| c.system_code.value == "76");
         if !has_risk_class {
-            trade_item
-                .classification
-                .additional_classifications
-                .insert(
-                    0,
-                    firstbase::AdditionalClassification {
-                        system_code: firstbase::CodeValue {
-                            value: "76".to_string(),
-                        },
-                        values: vec![firstbase::AdditionalClassificationValue {
-                            code_value: gs1_risk.to_string(),
-                        }],
+            trade_item.classification.additional_classifications.insert(
+                0,
+                firstbase::AdditionalClassification {
+                    system_code: firstbase::CodeValue {
+                        value: "76".to_string(),
                     },
-                );
+                    values: vec![firstbase::AdditionalClassificationValue {
+                        code_value: gs1_risk.to_string(),
+                    }],
+                },
+            );
         }
 
         // Update regulatory act based on risk class (MDR vs IVDR) — fixes 097.005
@@ -842,44 +953,50 @@ fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingDa
     }
 
     // Add manufacturer contact (if not already added by Basic UDI-DI)
-    let has_ema = trade_item.contact_information.iter().any(|c| c.contact_type.value == "EMA");
+    let has_ema = trade_item
+        .contact_information
+        .iter()
+        .any(|c| c.contact_type.value == "EMA");
     if !has_ema {
         if let Some(ref srn) = listing.manufacturer_srn {
             trade_item
                 .contact_information
                 .push(firstbase::TradeItemContactInformation {
-                contact_type: firstbase::CodeValue {
-                    value: "EMA".to_string(),
-                },
-                party_identification: vec![firstbase::AdditionalPartyIdentification {
-                    type_code: "SRN".to_string(),
-                    value: srn.clone(),
-                }],
-                contact_name: listing.manufacturer_name.clone(),
-                addresses: Vec::new(),
-                communication_channels: Vec::new(),
-            });
+                    contact_type: firstbase::CodeValue {
+                        value: "EMA".to_string(),
+                    },
+                    party_identification: vec![firstbase::AdditionalPartyIdentification {
+                        type_code: "SRN".to_string(),
+                        value: srn.clone(),
+                    }],
+                    contact_name: listing.manufacturer_name.clone(),
+                    addresses: Vec::new(),
+                    communication_channels: Vec::new(),
+                });
         }
     }
 
     // Add authorised representative contact (if not already added by Basic UDI-DI)
-    let has_ear = trade_item.contact_information.iter().any(|c| c.contact_type.value == "EAR");
+    let has_ear = trade_item
+        .contact_information
+        .iter()
+        .any(|c| c.contact_type.value == "EAR");
     if !has_ear {
         if let Some(ref srn) = listing.authorised_representative_srn {
             trade_item
                 .contact_information
                 .push(firstbase::TradeItemContactInformation {
-                contact_type: firstbase::CodeValue {
-                    value: "EAR".to_string(),
-                },
-                party_identification: vec![firstbase::AdditionalPartyIdentification {
-                    type_code: "SRN".to_string(),
-                    value: srn.clone(),
-                }],
-                contact_name: listing.authorised_representative_name.clone(),
-                addresses: Vec::new(),
-                communication_channels: Vec::new(),
-            });
+                    contact_type: firstbase::CodeValue {
+                        value: "EAR".to_string(),
+                    },
+                    party_identification: vec![firstbase::AdditionalPartyIdentification {
+                        type_code: "SRN".to_string(),
+                        value: srn.clone(),
+                    }],
+                    contact_name: listing.authorised_representative_name.clone(),
+                    addresses: Vec::new(),
+                    communication_channels: Vec::new(),
+                });
         }
     }
 }
@@ -894,16 +1011,22 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
 
     // Open version tracking database
     let db_path = Path::new(version_db::VERSION_DB_PATH);
-    let conn = version_db::open_db(db_path)
-        .context("Failed to open version tracking DB")?;
+    let conn = version_db::open_db(db_path).context("Failed to open version tracking DB")?;
     let existing_count = version_db::count_records(&conn)?;
-    println!("Version DB: {} existing records ({})", existing_count, db_path.display());
+    println!(
+        "Version DB: {} existing records ({})",
+        existing_count,
+        db_path.display()
+    );
 
     // Load Basic UDI-DI cache
     let cache_dir = Path::new(BASIC_UDI_CACHE_DIR);
     let mut basic_udi_cache = load_basic_udi_cache(cache_dir);
     if !basic_udi_cache.is_empty() {
-        println!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len());
+        println!(
+            "Loaded {} Basic UDI-DI records from cache",
+            basic_udi_cache.len()
+        );
     }
 
     let now_str = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
@@ -927,7 +1050,11 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
                 && !json_content.contains("\"primaryDi\":null")
                 && !json_content.contains("\"primaryDi\": null");
 
-            let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+            let stem = path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
 
             // --- Version tracking: extract versions and check for changes ---
             let mut version_rec = if is_udi_di {
@@ -984,7 +1111,8 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
             } else {
                 // Device level file (Basic UDI-DI)
                 eudamed_json::parse_eudamed_json(&json_content).map(|device| {
-                    let trade_item = transform_eudamed_json::transform_eudamed_device(&device, config);
+                    let trade_item =
+                        transform_eudamed_json::transform_eudamed_device(&device, config);
                     firstbase::FirstbaseDocument {
                         trade_item,
                         children: Vec::new(),
@@ -1052,12 +1180,18 @@ fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicU
         Ok(resp) => match resp.into_body().read_to_string() {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("  Warning: failed to read Basic UDI-DI response for {}: {}", uuid, e);
+                eprintln!(
+                    "  Warning: failed to read Basic UDI-DI response for {}: {}",
+                    uuid, e
+                );
                 return None;
             }
         },
         Err(e) => {
-            eprintln!("  Warning: failed to fetch Basic UDI-DI for {}: {}", uuid, e);
+            eprintln!(
+                "  Warning: failed to fetch Basic UDI-DI for {}: {}",
+                uuid, e
+            );
             return None;
         }
     };
@@ -1066,13 +1200,19 @@ fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicU
     let _ = std::fs::create_dir_all(cache_dir);
     let cache_path = cache_dir.join(format!("{}.json", uuid));
     if let Err(e) = std::fs::write(&cache_path, &body) {
-        eprintln!("  Warning: failed to cache Basic UDI-DI for {}: {}", uuid, e);
+        eprintln!(
+            "  Warning: failed to cache Basic UDI-DI for {}: {}",
+            uuid, e
+        );
     }
 
     match api_detail::parse_basic_udi_di(&body) {
         Ok(data) => Some(data),
         Err(e) => {
-            eprintln!("  Warning: failed to parse Basic UDI-DI for {}: {}", uuid, e);
+            eprintln!(
+                "  Warning: failed to parse Basic UDI-DI for {}: {}",
+                uuid, e
+            );
             None
         }
     }
@@ -1088,40 +1228,52 @@ fn process_swissdamed(detail_dir: &Path, basic_dir: &Path) -> Result<()> {
     // Collect detail files
     let entries: Vec<_> = std::fs::read_dir(detail_dir)?
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
+        .filter(|e| {
+            e.path()
+                .extension()
+                .map(|ext| ext == "json")
+                .unwrap_or(false)
+        })
         .collect();
 
-    println!("Processing {} detail files from {}", entries.len(), detail_dir.display());
+    println!(
+        "Processing {} detail files from {}",
+        entries.len(),
+        detail_dir.display()
+    );
 
-    let results: Vec<_> = entries.par_iter().filter_map(|entry| {
-        let path = entry.path();
-        let stem = path.file_stem()?.to_string_lossy().to_string();
-        let basic_path = basic_dir.join(format!("{}.json", stem));
+    let results: Vec<_> = entries
+        .par_iter()
+        .filter_map(|entry| {
+            let path = entry.path();
+            let stem = path.file_stem()?.to_string_lossy().to_string();
+            let basic_path = basic_dir.join(format!("{}.json", stem));
 
-        // Read detail JSON
-        let detail_json = std::fs::read_to_string(&path).ok()?;
-        let device: api_detail::ApiDeviceDetail = serde_json::from_str(&detail_json).ok()?;
+            // Read detail JSON
+            let detail_json = std::fs::read_to_string(&path).ok()?;
+            let device: api_detail::ApiDeviceDetail = serde_json::from_str(&detail_json).ok()?;
 
-        // Read basic JSON
-        let basic_json = std::fs::read_to_string(&basic_path).ok()?;
-        let basic_udi: api_detail::BasicUdiDiData = serde_json::from_str(&basic_json).ok()?;
+            // Read basic JSON
+            let basic_json = std::fs::read_to_string(&basic_path).ok()?;
+            let basic_udi: api_detail::BasicUdiDiData = serde_json::from_str(&basic_json).ok()?;
 
-        // Determine endpoint and build payload
-        let endpoint = swissdamed::legislation_endpoint(&basic_udi);
-        let is_spp = basic_udi.is_spp();
+            // Determine endpoint and build payload
+            let endpoint = swissdamed::legislation_endpoint(&basic_udi);
+            let is_spp = basic_udi.is_spp();
 
-        let payload = if is_spp {
-            serde_json::to_string_pretty(&swissdamed::to_spp_dto(&device, &basic_udi)).ok()?
-        } else {
-            serde_json::to_string_pretty(&swissdamed::to_mdr_dto(&device, &basic_udi)).ok()?
-        };
+            let payload = if is_spp {
+                serde_json::to_string_pretty(&swissdamed::to_spp_dto(&device, &basic_udi)).ok()?
+            } else {
+                serde_json::to_string_pretty(&swissdamed::to_mdr_dto(&device, &basic_udi)).ok()?
+            };
 
-        // Write output
-        let out_path = output_dir.join(format!("{}.json", stem));
-        std::fs::write(&out_path, &payload).ok()?;
+            // Write output
+            let out_path = output_dir.join(format!("{}.json", stem));
+            std::fs::write(&out_path, &payload).ok()?;
 
-        Some((stem, endpoint.to_string()))
-    }).collect();
+            Some((stem, endpoint.to_string()))
+        })
+        .collect();
 
     // Summary
     let mut endpoint_counts: HashMap<String, u32> = HashMap::new();
@@ -1139,14 +1291,18 @@ fn process_swissdamed(detail_dir: &Path, basic_dir: &Path) -> Result<()> {
 
 /// Read SRNs from an xlsx file column (1-based)
 fn count_srns_xlsx(path: &str, col: usize) -> Result<Vec<String>> {
-    use calamine::{Reader, open_workbook, Xlsx};
-    let mut workbook: Xlsx<_> = open_workbook(path)
-        .with_context(|| format!("Cannot open {}", path))?;
-    let sheet_name = workbook.sheet_names().first().cloned()
+    use calamine::{open_workbook, Reader, Xlsx};
+    let mut workbook: Xlsx<_> =
+        open_workbook(path).with_context(|| format!("Cannot open {}", path))?;
+    let sheet_name = workbook
+        .sheet_names()
+        .first()
+        .cloned()
         .ok_or_else(|| anyhow::anyhow!("No sheets in xlsx"))?;
     let range = workbook.worksheet_range(&sheet_name)?;
     let mut srns = Vec::new();
-    for row in range.rows().skip(1) { // skip header
+    for row in range.rows().skip(1) {
+        // skip header
         if let Some(cell) = row.get(col - 1) {
             let s = cell.to_string().trim().to_string();
             if !s.is_empty() && s.contains("-MF-") {
@@ -1159,7 +1315,7 @@ fn count_srns_xlsx(path: &str, col: usize) -> Result<Vec<String>> {
 
 /// Write GTIN counts back to xlsx file: reads original, adds count column
 fn write_counts_xlsx(path: &str, srn_col: usize, counts: &HashMap<String, i64>) -> Result<()> {
-    use calamine::{Reader, open_workbook, Xlsx};
+    use calamine::{open_workbook, Reader, Xlsx};
     use rust_xlsxwriter::Workbook;
 
     let mut workbook: Xlsx<_> = open_workbook(path)?;
@@ -1176,13 +1332,27 @@ fn write_counts_xlsx(path: &str, srn_col: usize, counts: &HashMap<String, i64>) 
     for (r, row) in range.rows().enumerate() {
         for (c, cell) in row.iter().enumerate() {
             match cell {
-                calamine::Data::String(s) => { ws.write_string(r as u32, c as u16, s)?; }
-                calamine::Data::Float(f) => { ws.write_number(r as u32, c as u16, *f)?; }
-                calamine::Data::Int(i) => { ws.write_number(r as u32, c as u16, *i as f64)?; }
-                calamine::Data::Bool(b) => { ws.write_boolean(r as u32, c as u16, *b)?; }
-                calamine::Data::DateTime(dt) => { ws.write_string(r as u32, c as u16, &dt.to_string())?; }
-                calamine::Data::DateTimeIso(s) => { ws.write_string(r as u32, c as u16, s)?; }
-                calamine::Data::DurationIso(s) => { ws.write_string(r as u32, c as u16, s)?; }
+                calamine::Data::String(s) => {
+                    ws.write_string(r as u32, c as u16, s)?;
+                }
+                calamine::Data::Float(f) => {
+                    ws.write_number(r as u32, c as u16, *f)?;
+                }
+                calamine::Data::Int(i) => {
+                    ws.write_number(r as u32, c as u16, *i as f64)?;
+                }
+                calamine::Data::Bool(b) => {
+                    ws.write_boolean(r as u32, c as u16, *b)?;
+                }
+                calamine::Data::DateTime(dt) => {
+                    ws.write_string(r as u32, c as u16, &dt.to_string())?;
+                }
+                calamine::Data::DateTimeIso(s) => {
+                    ws.write_string(r as u32, c as u16, s)?;
+                }
+                calamine::Data::DurationIso(s) => {
+                    ws.write_string(r as u32, c as u16, s)?;
+                }
                 calamine::Data::Error(_) | calamine::Data::Empty => {}
             }
         }
@@ -1190,7 +1360,10 @@ fn write_counts_xlsx(path: &str, srn_col: usize, counts: &HashMap<String, i64>) 
         if r == 0 {
             ws.write_string(r as u32, row.len() as u16, "GTIN_Count")?;
         } else {
-            let srn = row.get(srn_col - 1).map(|c| c.to_string().trim().to_string()).unwrap_or_default();
+            let srn = row
+                .get(srn_col - 1)
+                .map(|c| c.to_string().trim().to_string())
+                .unwrap_or_default();
             if let Some(&count) = counts.get(&srn) {
                 if count >= 0 {
                     ws.write_number(r as u32, row.len() as u16, count as f64)?;
@@ -1214,7 +1387,8 @@ fn load_basic_udi_cache(cache_dir: &Path) -> HashMap<String, api_detail::BasicUd
         Ok(e) => e.filter_map(|e| e.ok()).collect(),
         Err(_) => return HashMap::new(),
     };
-    entries.par_iter()
+    entries
+        .par_iter()
         .filter_map(|entry| {
             let path = entry.path();
             if path.extension().map(|e| e == "json").unwrap_or(false) {

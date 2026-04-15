@@ -7,7 +7,6 @@
 use anyhow::{Context, Result};
 use std::process::Command;
 
-
 /// Send an email with a file attachment via Gmail API.
 pub fn send_email_with_attachment(
     p12_path: &str,
@@ -141,8 +140,14 @@ fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
     // Try with -legacy flag first (OpenSSL 3.x), fall back without it (LibreSSL/older).
     let output = Command::new(&openssl)
         .args([
-            "pkcs12", "-in", p12_path, "-nocerts", "-nodes",
-            "-passin", "pass:notasecret", "-legacy",
+            "pkcs12",
+            "-in",
+            p12_path,
+            "-nocerts",
+            "-nodes",
+            "-passin",
+            "pass:notasecret",
+            "-legacy",
         ])
         .output();
 
@@ -150,8 +155,13 @@ fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
         Ok(o) if o.status.success() => o,
         _ => Command::new(&openssl)
             .args([
-                "pkcs12", "-in", p12_path, "-nocerts", "-nodes",
-                "-passin", "pass:notasecret",
+                "pkcs12",
+                "-in",
+                p12_path,
+                "-nocerts",
+                "-nodes",
+                "-passin",
+                "pass:notasecret",
             ])
             .output()
             .with_context(|| format!("Failed to run openssl ({})", openssl))?,
@@ -168,11 +178,7 @@ fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
 }
 
 /// Get Gmail API access token via JWT/service account.
-fn get_gmail_access_token(
-    pem_key: &str,
-    service_email: &str,
-    sub_email: &str,
-) -> Result<String> {
+fn get_gmail_access_token(pem_key: &str, service_email: &str, sub_email: &str) -> Result<String> {
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
     use serde::Serialize;
 
@@ -210,8 +216,7 @@ fn get_gmail_access_token(
 
     let form_body = format!(
         "grant_type={}&assertion={}",
-        "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer",
-        jwt
+        "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", jwt
     );
 
     let mut resp = agent

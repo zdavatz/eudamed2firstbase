@@ -100,28 +100,42 @@ impl App {
 
         // Env vars override saved credentials
         if let Ok(v) = std::env::var("FIRSTBASE_EMAIL") {
-            if !v.is_empty() { settings.firstbase_email = v; }
+            if !v.is_empty() {
+                settings.firstbase_email = v;
+            }
         }
         if let Ok(v) = std::env::var("FIRSTBASE_PASSWORD") {
-            if !v.is_empty() { settings.firstbase_password = v; }
+            if !v.is_empty() {
+                settings.firstbase_password = v;
+            }
         }
         if settings.provider_gln.is_empty() {
             // Fall back to the GLN defined in config.toml rather than a hardcoded value.
             let config_path = download::app_data_dir().join("config.toml");
-            let config_path = if config_path.exists() { config_path } else { std::path::PathBuf::from("config.toml") };
+            let config_path = if config_path.exists() {
+                config_path
+            } else {
+                std::path::PathBuf::from("config.toml")
+            };
             if let Ok(cfg) = crate::config::load_config(&config_path) {
                 settings.provider_gln = cfg.provider.gln;
             }
         }
         // Swissdamed env vars
         if let Ok(v) = std::env::var("SWISSDAMED_CLIENT_ID") {
-            if !v.is_empty() { settings.swissdamed_client_id = v; }
+            if !v.is_empty() {
+                settings.swissdamed_client_id = v;
+            }
         }
         if let Ok(v) = std::env::var("SWISSDAMED_CLIENT_SECRET") {
-            if !v.is_empty() { settings.swissdamed_client_secret = v; }
+            if !v.is_empty() {
+                settings.swissdamed_client_secret = v;
+            }
         }
         if let Ok(v) = std::env::var("SWISSDAMED_BASE_URL") {
-            if !v.is_empty() { settings.swissdamed_base_url = v; }
+            if !v.is_empty() {
+                settings.swissdamed_base_url = v;
+            }
         }
         if settings.swissdamed_base_url.is_empty() {
             settings.swissdamed_base_url = "https://playground.swissdamed.ch".to_string();
@@ -664,7 +678,12 @@ impl DownloadProgress for GuiProgress {
 }
 
 /// Run the full download → convert → push pipeline in a background thread.
-fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Context, pipeline_mode: u8) {
+fn run_pipeline(
+    settings: Settings,
+    tx: mpsc::Sender<WorkerMsg>,
+    ctx: egui::Context,
+    pipeline_mode: u8,
+) {
     // Redirect stderr to /dev/null to prevent eprintln! panics when GUI has no terminal
     #[cfg(unix)]
     {
@@ -674,7 +693,9 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             let fd = devnull.into_raw_fd();
             unsafe {
                 // dup2(fd, 2) redirects stderr to /dev/null
-                extern "C" { fn dup2(oldfd: i32, newfd: i32) -> i32; }
+                extern "C" {
+                    fn dup2(oldfd: i32, newfd: i32) -> i32;
+                }
                 dup2(fd, 2);
             }
         }
@@ -702,7 +723,10 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         match settings.push_target {
             PushTarget::Firstbase => {
                 if settings.firstbase_email.is_empty() || settings.firstbase_password.is_empty() {
-                    done(false, "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set");
+                    done(
+                        false,
+                        "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set",
+                    );
                     return;
                 }
                 if settings.publish_to_gln.is_empty() {
@@ -714,7 +738,9 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 let processed_dir = firstbase_dir.join("processed");
 
                 // Read rejected GTINs from the most recent push session in DB
-                let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+                let db_path = download::app_data_dir()
+                    .join("db")
+                    .join("version_tracking.db");
                 let conn = match rusqlite::Connection::open(&db_path) {
                     Ok(c) => c,
                     Err(e) => {
@@ -734,39 +760,52 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 let session_id = match latest_session {
                     Some(id) => id,
                     None => {
-                        done(false, "No push session with errors found in DB. Run a push first.");
+                        done(
+                            false,
+                            "No push session with errors found in DB. Run a push first.",
+                        );
                         return;
                     }
                 };
 
-                log(&format!("[Repush] Reading rejected GTINs from push session {}", session_id));
+                log(&format!(
+                    "[Repush] Reading rejected GTINs from push session {}",
+                    session_id
+                ));
 
                 // Get distinct rejected GTINs from push_error for that session
                 let mut stmt = match conn.prepare(
-                    "SELECT DISTINCT gtin FROM push_error WHERE session_id=?1 AND gtin != ''"
+                    "SELECT DISTINCT gtin FROM push_error WHERE session_id=?1 AND gtin != ''",
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        done(false, &format!("Failed to prepare rejected-GTIN query: {}", e));
+                        done(
+                            false,
+                            &format!("Failed to prepare rejected-GTIN query: {}", e),
+                        );
                         return;
                     }
                 };
-                let rejected_iter = match stmt.query_map(rusqlite::params![session_id], |row| row.get::<_, String>(0)) {
+                let rejected_iter = match stmt
+                    .query_map(rusqlite::params![session_id], |row| row.get::<_, String>(0))
+                {
                     Ok(it) => it,
                     Err(e) => {
                         done(false, &format!("Failed to query rejected GTINs: {}", e));
                         return;
                     }
                 };
-                let rejected_gtins: std::collections::HashSet<String> = rejected_iter
-                    .filter_map(|r| r.ok())
-                    .collect();
+                let rejected_gtins: std::collections::HashSet<String> =
+                    rejected_iter.filter_map(|r| r.ok()).collect();
 
                 if rejected_gtins.is_empty() {
                     done(false, "No rejected GTINs found in last push session");
                     return;
                 }
-                log(&format!("[Repush] Found {} rejected GTINs", rejected_gtins.len()));
+                log(&format!(
+                    "[Repush] Found {} rejected GTINs",
+                    rejected_gtins.len()
+                ));
 
                 // Scan processed/ for files matching rejected GTINs, move them back
                 let mut restored = 0;
@@ -775,9 +814,12 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                         let path = entry.path();
                         if path.extension().map(|e| e == "json").unwrap_or(false) {
                             if let Ok(content) = std::fs::read_to_string(&path) {
-                                if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
-                                    let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-                                        .and_then(|v| v.as_str()).unwrap_or("");
+                                if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content)
+                                {
+                                    let gtin = doc
+                                        .pointer("/DraftItem/TradeItem/Gtin")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("");
                                     if rejected_gtins.contains(gtin) {
                                         if let Some(name) = path.file_name() {
                                             let dest = firstbase_dir.join(name);
@@ -791,7 +833,10 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                         }
                     }
                 }
-                log(&format!("[Repush] Restored {} files from processed/ to firstbase_json/", restored));
+                log(&format!(
+                    "[Repush] Restored {} files from processed/ to firstbase_json/",
+                    restored
+                ));
 
                 // Also count how many rejected files are already in firstbase_json/
                 let mut already_present = 0;
@@ -800,9 +845,12 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                         let path = entry.path();
                         if path.extension().map(|e| e == "json").unwrap_or(false) {
                             if let Ok(content) = std::fs::read_to_string(&path) {
-                                if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
-                                    let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-                                        .and_then(|v| v.as_str()).unwrap_or("");
+                                if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content)
+                                {
+                                    let gtin = doc
+                                        .pointer("/DraftItem/TradeItem/Gtin")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("");
                                     if rejected_gtins.contains(gtin) {
                                         already_present += 1;
                                     }
@@ -814,19 +862,28 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 
                 let total_to_push = restored + already_present;
                 if total_to_push == 0 {
-                    done(false, "No rejected files found in processed/ or firstbase_json/");
+                    done(
+                        false,
+                        "No rejected files found in processed/ or firstbase_json/",
+                    );
                     return;
                 }
-                log(&format!("[Repush] {} files to repush ({} restored + {} already in firstbase_json/)", total_to_push, restored, already_present));
+                log(&format!(
+                    "[Repush] {} files to repush ({} restored + {} already in firstbase_json/)",
+                    total_to_push, restored, already_present
+                ));
 
                 log("[Repush] Pushing to GS1 firstbase Catalogue Item API...");
                 ctx.request_repaint();
                 match push_to_firstbase(&settings, &log) {
                     Ok((accepted, rejected)) => {
-                        done(true, &format!(
-                            "Repush complete. {} accepted, {} rejected.",
-                            accepted, rejected
-                        ));
+                        done(
+                            true,
+                            &format!(
+                                "Repush complete. {} accepted, {} rejected.",
+                                accepted, rejected
+                            ),
+                        );
                     }
                     Err(e) => {
                         done(false, &format!("Repush failed: {}", e));
@@ -834,8 +891,13 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 }
             }
             PushTarget::Swissdamed => {
-                if settings.swissdamed_client_id.is_empty() || settings.swissdamed_client_secret.is_empty() {
-                    done(false, "Cannot push: Swissdamed Client ID or Client Secret not set");
+                if settings.swissdamed_client_id.is_empty()
+                    || settings.swissdamed_client_secret.is_empty()
+                {
+                    done(
+                        false,
+                        "Cannot push: Swissdamed Client ID or Client Secret not set",
+                    );
                     return;
                 }
 
@@ -843,25 +905,38 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 
                 // Count files already in swissdamed_json/
                 let already_present = std::fs::read_dir(&swissdamed_dir)
-                    .map(|e| e.filter_map(|e| e.ok())
-                        .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
-                        .count())
+                    .map(|e| {
+                        e.filter_map(|e| e.ok())
+                            .filter(|e| {
+                                e.path()
+                                    .extension()
+                                    .map(|ext| ext == "json")
+                                    .unwrap_or(false)
+                            })
+                            .count()
+                    })
                     .unwrap_or(0);
 
                 if already_present == 0 {
                     done(false, "No files in swissdamed_json/ to repush");
                     return;
                 }
-                log(&format!("[Repush] {} files in swissdamed_json/", already_present));
+                log(&format!(
+                    "[Repush] {} files in swissdamed_json/",
+                    already_present
+                ));
 
                 log("[Repush] Pushing to Swissdamed M2M API...");
                 ctx.request_repaint();
                 match push_to_swissdamed(&settings, &log, None) {
                     Ok((accepted, rejected)) => {
-                        done(true, &format!(
-                            "Repush complete. {} accepted, {} rejected.",
-                            accepted, rejected
-                        ));
+                        done(
+                            true,
+                            &format!(
+                                "Repush complete. {} accepted, {} rejected.",
+                                accepted, rejected
+                            ),
+                        );
                     }
                     Err(e) => {
                         done(false, &format!("Repush failed: {}", e));
@@ -890,7 +965,9 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     log(&format!(
         "Starting pipeline for {} SRN(s){}",
         srns.len(),
-        limit.map(|l| format!(", limit {} per SRN", l)).unwrap_or_default()
+        limit
+            .map(|l| format!(", limit {} per SRN", l))
+            .unwrap_or_default()
     ));
 
     let data_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR);
@@ -910,10 +987,12 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 if path.extension().map(|e| e == "json").unwrap_or(false) {
                     if let Ok(content) = std::fs::read_to_string(&path) {
                         if let Ok(bd) = serde_json::from_str::<serde_json::Value>(&content) {
-                            let mfr_srn = bd.pointer("/manufacturer/srn")
+                            let mfr_srn = bd
+                                .pointer("/manufacturer/srn")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
-                            let ar_srn = bd.pointer("/authorisedRepresentative/srn")
+                            let ar_srn = bd
+                                .pointer("/authorisedRepresentative/srn")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
                             if srn_set.contains(mfr_srn) || srn_set.contains(ar_srn) {
@@ -926,9 +1005,16 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 }
             }
         }
-        log(&format!("Found {} devices matching {} SRNs", uuids.len(), srn_set.len()));
+        log(&format!(
+            "Found {} devices matching {} SRNs",
+            uuids.len(),
+            srn_set.len()
+        ));
         if uuids.is_empty() {
-            done(false, "No devices found for the given SRN(s). Run Download first.");
+            done(
+                false,
+                "No devices found for the given SRN(s). Run Download first.",
+            );
             return;
         }
     } else if pipeline_mode == 1 {
@@ -938,12 +1024,28 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             Ok(entries) => {
                 uuids = entries
                     .filter_map(|e| e.ok())
-                    .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
-                    .filter_map(|e| e.path().file_stem().map(|s| s.to_string_lossy().to_string()))
+                    .filter(|e| {
+                        e.path()
+                            .extension()
+                            .map(|ext| ext == "json")
+                            .unwrap_or(false)
+                    })
+                    .filter_map(|e| {
+                        e.path()
+                            .file_stem()
+                            .map(|s| s.to_string_lossy().to_string())
+                    })
                     .collect();
             }
             Err(e) => {
-                done(false, &format!("Failed to read detail directory {}: {}", detail_dir.display(), e));
+                done(
+                    false,
+                    &format!(
+                        "Failed to read detail directory {}: {}",
+                        detail_dir.display(),
+                        e
+                    ),
+                );
                 return;
             }
         }
@@ -978,9 +1080,14 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     // --- Step 2: Convert ---
 
     let basic_udi_cache = crate::load_basic_udi_cache(&basic_dir);
-    log(&format!("Loaded {} Basic UDI-DI records from cache", basic_udi_cache.len()));
+    log(&format!(
+        "Loaded {} Basic UDI-DI records from cache",
+        basic_udi_cache.len()
+    ));
 
-    let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+    let db_path = download::app_data_dir()
+        .join("db")
+        .join("version_tracking.db");
     let conn = match crate::version_db::open_db(&db_path) {
         Ok(c) => c,
         Err(e) => {
@@ -1004,7 +1111,11 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 
             let config_path = download::app_data_dir().join("config.toml");
             // Fall back to current dir if not in container
-            let config_path = if config_path.exists() { config_path } else { PathBuf::from("config.toml") };
+            let config_path = if config_path.exists() {
+                config_path
+            } else {
+                PathBuf::from("config.toml")
+            };
             let config = match crate::config::load_config(&config_path) {
                 Ok(c) => c,
                 Err(e) => {
@@ -1041,7 +1152,8 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 
                 if !changes.has_any_change() {
                     // If unchanged but firstbase JSON exists in processed/, copy it back for re-push
-                    let processed_path = output_dir.join("processed").join(format!("{}.json", uuid));
+                    let processed_path =
+                        output_dir.join("processed").join(format!("{}.json", uuid));
                     let output_path = output_dir.join(format!("{}.json", uuid));
                     if processed_path.exists() && !output_path.exists() {
                         let _ = std::fs::copy(&processed_path, &output_path);
@@ -1079,7 +1191,10 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 
             log(&format!(
                 "Converted: {} new/changed, {} skipped (unchanged), {} errors -> {}",
-                converted, skipped, convert_errors, output_dir.display()
+                converted,
+                skipped,
+                convert_errors,
+                output_dir.display()
             ));
         }
         PushTarget::Swissdamed => {
@@ -1108,26 +1223,32 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                     Err(_) => continue,
                 };
 
-                let device: crate::api_detail::ApiDeviceDetail = match serde_json::from_str(&detail_json) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        if convert_errors < 10 {
-                            log(&format!("  Convert error {}: {}", uuid, e));
+                let device: crate::api_detail::ApiDeviceDetail =
+                    match serde_json::from_str(&detail_json) {
+                        Ok(d) => d,
+                        Err(e) => {
+                            if convert_errors < 10 {
+                                log(&format!("  Convert error {}: {}", uuid, e));
+                            }
+                            convert_errors += 1;
+                            continue;
                         }
-                        convert_errors += 1;
-                        continue;
-                    }
-                };
-                let basic_udi: crate::api_detail::BasicUdiDiData = match serde_json::from_str(&basic_json) {
-                    Ok(b) => b,
-                    Err(_) => continue,
-                };
+                    };
+                let basic_udi: crate::api_detail::BasicUdiDiData =
+                    match serde_json::from_str(&basic_json) {
+                        Ok(b) => b,
+                        Err(_) => continue,
+                    };
 
                 let is_spp = basic_udi.is_spp();
                 let payload = if is_spp {
-                    serde_json::to_string_pretty(&crate::swissdamed::to_spp_dto(&device, &basic_udi))
+                    serde_json::to_string_pretty(&crate::swissdamed::to_spp_dto(
+                        &device, &basic_udi,
+                    ))
                 } else {
-                    serde_json::to_string_pretty(&crate::swissdamed::to_mdr_dto(&device, &basic_udi))
+                    serde_json::to_string_pretty(&crate::swissdamed::to_mdr_dto(
+                        &device, &basic_udi,
+                    ))
                 };
 
                 match payload {
@@ -1147,7 +1268,9 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 
             log(&format!(
                 "Converted: {} to Swissdamed JSON, {} errors -> {}",
-                converted, convert_errors, output_dir.display()
+                converted,
+                convert_errors,
+                output_dir.display()
             ));
         }
     }
@@ -1155,10 +1278,14 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     // --- Step 3: Push (if not dry run) ---
     if settings.dry_run {
         log("");
-        done(true, &format!(
-            "Dry run complete. {} devices downloaded, {} converted.",
-            uuids.len(), converted
-        ));
+        done(
+            true,
+            &format!(
+                "Dry run complete. {} devices downloaded, {} converted.",
+                uuids.len(),
+                converted
+            ),
+        );
         return;
     }
 
@@ -1166,7 +1293,10 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
         PushTarget::Firstbase => {
             if settings.firstbase_email.is_empty() || settings.firstbase_password.is_empty() {
                 log("");
-                done(false, "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set");
+                done(
+                    false,
+                    "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set",
+                );
                 return;
             }
             if settings.publish_to_gln.is_empty() {
@@ -1178,17 +1308,17 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             log("[Push] Pushing to GS1 firstbase Catalogue Item API...");
             ctx.request_repaint();
 
-            let push_result = push_to_firstbase(
-                &settings,
-                &log,
-            );
+            let push_result = push_to_firstbase(&settings, &log);
 
             match push_result {
                 Ok((accepted, rejected)) => {
-                    done(true, &format!(
+                    done(
+                        true,
+                        &format!(
                         "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.",
                         uuids.len(), converted, accepted, rejected
-                    ));
+                    ),
+                    );
                 }
                 Err(e) => {
                     done(false, &format!("Push failed: {}", e));
@@ -1196,9 +1326,14 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
             }
         }
         PushTarget::Swissdamed => {
-            if settings.swissdamed_client_id.is_empty() || settings.swissdamed_client_secret.is_empty() {
+            if settings.swissdamed_client_id.is_empty()
+                || settings.swissdamed_client_secret.is_empty()
+            {
                 log("");
-                done(false, "Cannot push: Swissdamed Client ID or Client Secret not set");
+                done(
+                    false,
+                    "Cannot push: Swissdamed Client ID or Client Secret not set",
+                );
                 return;
             }
 
@@ -1207,10 +1342,13 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 
             match push_to_swissdamed(&settings, &log, Some(&uuids)) {
                 Ok((accepted, rejected)) => {
-                    done(true, &format!(
+                    done(
+                        true,
+                        &format!(
                         "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.",
                         uuids.len(), converted, accepted, rejected
-                    ));
+                    ),
+                    );
                 }
                 Err(e) => {
                     done(false, &format!("Swissdamed push failed: {}", e));
@@ -1221,10 +1359,7 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
 }
 
 /// Push firstbase JSON files to GS1 Catalogue Item API
-pub fn push_to_firstbase(
-    settings: &Settings,
-    log: &dyn Fn(&str),
-) -> anyhow::Result<(u32, u32)> {
+pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Result<(u32, u32)> {
     let api_base = "https://test-webapi-firstbase.gs1.ch:5443";
     let firstbase_dir = download::app_data_dir().join("firstbase_json");
     let processed_dir = firstbase_dir.join("processed");
@@ -1255,11 +1390,13 @@ pub fn push_to_firstbase(
     for f in &files {
         if let Ok(content) = std::fs::read_to_string(f) {
             if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
-                let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
+                let gtin = doc
+                    .pointer("/DraftItem/TradeItem/Gtin")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
                 if !gtin.is_empty() && gtin.chars().all(|c| c.is_ascii_digit()) {
-                    let ident = doc.pointer("/DraftItem/Identifier")
+                    let ident = doc
+                        .pointer("/DraftItem/Identifier")
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
@@ -1279,9 +1416,13 @@ pub fn push_to_firstbase(
         let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
         let mut to_remove: Vec<usize> = Vec::new();
         for (i, (_, _, _, doc)) in pushable.iter().enumerate() {
-            let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-                .and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let has_gmn = doc.pointer("/DraftItem/TradeItem/GlobalModelInformation")
+            let gtin = doc
+                .pointer("/DraftItem/TradeItem/Gtin")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let has_gmn = doc
+                .pointer("/DraftItem/TradeItem/GlobalModelInformation")
                 .and_then(|v| v.as_array())
                 .and_then(|a| a.first())
                 .and_then(|g| g.get("GlobalModelNumber"))
@@ -1323,7 +1464,9 @@ pub fn push_to_firstbase(
         .build()
         .new_agent();
     let http_post = |url: &str, auth: &str, body: &str| -> anyhow::Result<String> {
-        let mut req = http_agent.post(url).header("Content-Type", "application/json");
+        let mut req = http_agent
+            .post(url)
+            .header("Content-Type", "application/json");
         if !auth.is_empty() {
             req = req.header("Authorization", &format!("bearer {}", auth));
         }
@@ -1345,7 +1488,11 @@ pub fn push_to_firstbase(
             "Gln": gln,
         });
         for attempt in 1..=3 {
-            match http_post(&format!("{}/Account/Token", api_base), "", &body.to_string()) {
+            match http_post(
+                &format!("{}/Account/Token", api_base),
+                "",
+                &body.to_string(),
+            ) {
                 Ok(token_raw) => {
                     let token = token_raw.trim_matches('"').to_string();
                     if token.len() > 20 {
@@ -1365,7 +1512,11 @@ pub fn push_to_firstbase(
     };
 
     log("[Push] Getting token...");
-    let mut token = get_token(&settings.firstbase_email, &settings.firstbase_password, &settings.provider_gln)?;
+    let mut token = get_token(
+        &settings.firstbase_email,
+        &settings.firstbase_password,
+        &settings.provider_gln,
+    )?;
     log(&format!("Token obtained ({} chars)", token.len()));
 
     let mut total_accepted: u32 = 0;
@@ -1385,24 +1536,34 @@ pub fn push_to_firstbase(
     for (bi, batch) in pushable.chunks(batch_size).enumerate() {
         let batch_start = bi * batch_size + 1;
         let batch_end = (batch_start + batch.len()).min(total);
-        log(&format!("[Push] CreateMany batch {}: items {}-{} of {}", bi + 1, batch_start, batch_end, total));
+        log(&format!(
+            "[Push] CreateMany batch {}: items {}-{} of {}",
+            bi + 1,
+            batch_start,
+            batch_end,
+            total
+        ));
 
         // Build payload — double-check GTIN filter to prevent batch rejection
-        let items: Vec<serde_json::Value> = batch.iter().filter_map(|(_, _, _, doc)| {
-            let draft = doc.get("DraftItem")?;
-            let gtin = draft.pointer("/TradeItem/Gtin")?.as_str()?;
-            if gtin.is_empty() || !gtin.chars().all(|c| c.is_ascii_digit()) {
-                return None;
-            }
-            let mut item = serde_json::json!({
-                "Identifier": draft.get("Identifier")?,
-                "TradeItem": draft.get("TradeItem")?,
-            });
-            if let Some(children) = draft.get("CatalogueItemChildItemLink") {
-                item.as_object_mut()?.insert("CatalogueItemChildItemLink".into(), children.clone());
-            }
-            Some(item)
-        }).collect();
+        let items: Vec<serde_json::Value> = batch
+            .iter()
+            .filter_map(|(_, _, _, doc)| {
+                let draft = doc.get("DraftItem")?;
+                let gtin = draft.pointer("/TradeItem/Gtin")?.as_str()?;
+                if gtin.is_empty() || !gtin.chars().all(|c| c.is_ascii_digit()) {
+                    return None;
+                }
+                let mut item = serde_json::json!({
+                    "Identifier": draft.get("Identifier")?,
+                    "TradeItem": draft.get("TradeItem")?,
+                });
+                if let Some(children) = draft.get("CatalogueItemChildItemLink") {
+                    item.as_object_mut()?
+                        .insert("CatalogueItemChildItemLink".into(), children.clone());
+                }
+                Some(item)
+            })
+            .collect();
 
         let payload = serde_json::json!({
             "DocumentCommand": "Add",
@@ -1419,7 +1580,8 @@ pub fn push_to_firstbase(
             ) {
                 Ok(resp_body) => {
                     if let Ok(body) = serde_json::from_str::<serde_json::Value>(&resp_body) {
-                        req_id = body.get("RequestIdentifier")
+                        req_id = body
+                            .get("RequestIdentifier")
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string();
@@ -1427,18 +1589,29 @@ pub fn push_to_firstbase(
                     break;
                 }
                 Err(e) if e.to_string().contains("429") => {
-                    log(&format!("  429 rate limited — waiting 60s (attempt {}/3)", attempt));
+                    log(&format!(
+                        "  429 rate limited — waiting 60s (attempt {}/3)",
+                        attempt
+                    ));
                     std::thread::sleep(std::time::Duration::from_secs(60));
                 }
                 Err(e) => {
                     let err_str = e.to_string();
-                    log(&format!("  CreateMany error: {}", &err_str[..err_str.len().min(500)]));
+                    log(&format!(
+                        "  CreateMany error: {}",
+                        &err_str[..err_str.len().min(500)]
+                    ));
                     // Try to parse error response body for details (after "http NNN: ")
                     if let Some(json_start) = err_str.find('{') {
-                        if let Ok(body) = serde_json::from_str::<serde_json::Value>(&err_str[json_start..]) {
-                            raw_responses.push(serde_json::to_string_pretty(&body).unwrap_or_default());
+                        if let Ok(body) =
+                            serde_json::from_str::<serde_json::Value>(&err_str[json_start..])
+                        {
+                            raw_responses
+                                .push(serde_json::to_string_pretty(&body).unwrap_or_default());
                             // Parse RequestIdentifier if present
-                            if let Some(rid) = body.get("RequestIdentifier").and_then(|v| v.as_str()) {
+                            if let Some(rid) =
+                                body.get("RequestIdentifier").and_then(|v| v.as_str())
+                            {
                                 req_id = rid.to_string();
                             }
                         }
@@ -1449,12 +1622,17 @@ pub fn push_to_firstbase(
         }
 
         if req_id.is_empty() {
-            log(&format!("  FAIL: no RequestIdentifier — marking all {} items as rejected", batch.len()));
+            log(&format!(
+                "  FAIL: no RequestIdentifier — marking all {} items as rejected",
+                batch.len()
+            ));
             total_rejected += batch.len() as u32;
             // Mark all GTINs in this batch as rejected
             for (_, _, _, doc) in batch {
-                let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-                    .and_then(|v| v.as_str()).unwrap_or("");
+                let gtin = doc
+                    .pointer("/DraftItem/TradeItem/Gtin")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 if !gtin.is_empty() {
                     rejected_gtins.insert(gtin.to_string());
                 }
@@ -1466,10 +1644,14 @@ pub fn push_to_firstbase(
 
         // Collect publish items + track successful files
         for (_, ident, _, doc) in batch {
-            let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-                .and_then(|v| v.as_str()).unwrap_or("");
-            let tm = doc.pointer("/DraftItem/TradeItem/TargetMarket/TargetMarketCountryCode/Value")
-                .and_then(|v| v.as_str()).unwrap_or("097");
+            let gtin = doc
+                .pointer("/DraftItem/TradeItem/Gtin")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let tm = doc
+                .pointer("/DraftItem/TradeItem/TargetMarket/TargetMarketCountryCode/Value")
+                .and_then(|v| v.as_str())
+                .unwrap_or("097");
             all_publish_items.push(serde_json::json!({
                 "Identifier": ident,
                 "DataSource": settings.provider_gln,
@@ -1486,44 +1668,99 @@ pub fn push_to_firstbase(
                 "RequestIdentifier": req_id,
                 "IncludeGs1Response": true,
             });
-            match http_post(&format!("{}/RequestStatus/Get", api_base), &token, &poll_body.to_string()) {
+            match http_post(
+                &format!("{}/RequestStatus/Get", api_base),
+                &token,
+                &poll_body.to_string(),
+            ) {
                 Ok(resp_body) => {
                     if let Ok(body) = serde_json::from_str::<serde_json::Value>(&resp_body) {
-                        let status = body.get("Status").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        let status = body
+                            .get("Status")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
                         if status == "Done" || status == "Failed" {
-                            raw_responses.push(serde_json::to_string_pretty(&body).unwrap_or_default());
+                            raw_responses
+                                .push(serde_json::to_string_pretty(&body).unwrap_or_default());
                             let gs1 = body.pointer("/Gs1ResponseMessage/GS1Response");
                             let mut batch_accepted = 0u32;
                             let mut batch_rejected = 0u32;
                             if let Some(responses) = gs1.and_then(|v| v.as_array()) {
                                 for r in responses {
                                     // Accepted
-                                    if let Some(tr) = r.get("TransactionResponse").and_then(|v| v.as_array()) {
+                                    if let Some(tr) =
+                                        r.get("TransactionResponse").and_then(|v| v.as_array())
+                                    {
                                         for t in tr {
                                             batch_accepted += 1;
-                                            if let Some(ident) = t.pointer("/TransactionIdentifier/Value").and_then(|v| v.as_str()) {
+                                            if let Some(ident) = t
+                                                .pointer("/TransactionIdentifier/Value")
+                                                .and_then(|v| v.as_str())
+                                            {
                                                 accepted_ids.push(ident.to_string());
                                             }
                                         }
                                     }
                                     // Errors from TransactionException
-                                    if let Some(te) = r.get("TransactionException").and_then(|v| v.as_array()) {
+                                    if let Some(te) =
+                                        r.get("TransactionException").and_then(|v| v.as_array())
+                                    {
                                         for exc in te {
-                                            let ident = exc.pointer("/TransactionIdentifier/Value").and_then(|v| v.as_str()).unwrap_or("");
-                                            for ce in exc.get("CommandException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
-                                                for de in ce.get("DocumentException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
-                                                    let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or(ident);
-                                                    for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
-                                                        let gtin = ae.get("Gtin").and_then(|v| v.as_str()).unwrap_or("");
-                                                        let attr_name = ae.get("AttributeName").and_then(|v| v.as_str()).unwrap_or("");
+                                            let ident = exc
+                                                .pointer("/TransactionIdentifier/Value")
+                                                .and_then(|v| v.as_str())
+                                                .unwrap_or("");
+                                            for ce in exc
+                                                .get("CommandException")
+                                                .and_then(|v| v.as_array())
+                                                .unwrap_or(&vec![])
+                                            {
+                                                for de in ce
+                                                    .get("DocumentException")
+                                                    .and_then(|v| v.as_array())
+                                                    .unwrap_or(&vec![])
+                                                {
+                                                    let doc_id = de
+                                                        .pointer("/DocumentIdentifier/Value")
+                                                        .and_then(|v| v.as_str())
+                                                        .unwrap_or(ident);
+                                                    for ae in de
+                                                        .get("AttributeException")
+                                                        .and_then(|v| v.as_array())
+                                                        .unwrap_or(&vec![])
+                                                    {
+                                                        let gtin = ae
+                                                            .get("Gtin")
+                                                            .and_then(|v| v.as_str())
+                                                            .unwrap_or("");
+                                                        let attr_name = ae
+                                                            .get("AttributeName")
+                                                            .and_then(|v| v.as_str())
+                                                            .unwrap_or("");
                                                         if !gtin.is_empty() {
                                                             rejected_gtins.insert(gtin.to_string());
                                                         }
-                                                        for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                        for err in ae
+                                                            .get("GS1Error")
+                                                            .and_then(|v| v.as_array())
+                                                            .unwrap_or(&vec![])
+                                                        {
                                                             batch_rejected += 1;
-                                                            let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
-                                                            let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
-                                                            error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), attr_name.to_string(), desc.chars().take(200).collect()));
+                                                            let code = err
+                                                                .get("ErrorCode")
+                                                                .and_then(|v| v.as_str())
+                                                                .unwrap_or("");
+                                                            let desc = err
+                                                                .get("ErrorDescription")
+                                                                .and_then(|v| v.as_str())
+                                                                .unwrap_or("");
+                                                            error_details.push((
+                                                                doc_id.to_string(),
+                                                                gtin.to_string(),
+                                                                code.to_string(),
+                                                                attr_name.to_string(),
+                                                                desc.chars().take(200).collect(),
+                                                            ));
                                                         }
                                                     }
                                                 }
@@ -1531,23 +1768,65 @@ pub fn push_to_firstbase(
                                         }
                                     }
                                     // Errors from GS1Exception
-                                    if let Some(ge) = r.get("GS1Exception").and_then(|v| v.as_array()) {
+                                    if let Some(ge) =
+                                        r.get("GS1Exception").and_then(|v| v.as_array())
+                                    {
                                         for exc in ge {
                                             if let Some(obj) = exc.as_object() {
-                                                for ce in obj.get("CommandException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
-                                                    for de in ce.get("DocumentException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
-                                                        let doc_id = de.pointer("/DocumentIdentifier/Value").and_then(|v| v.as_str()).unwrap_or("");
-                                                        for ae in de.get("AttributeException").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
-                                                            let gtin = ae.get("Gtin").and_then(|v| v.as_str()).unwrap_or("");
-                                                            let attr_name = ae.get("AttributeName").and_then(|v| v.as_str()).unwrap_or("");
+                                                for ce in obj
+                                                    .get("CommandException")
+                                                    .and_then(|v| v.as_array())
+                                                    .unwrap_or(&vec![])
+                                                {
+                                                    for de in ce
+                                                        .get("DocumentException")
+                                                        .and_then(|v| v.as_array())
+                                                        .unwrap_or(&vec![])
+                                                    {
+                                                        let doc_id = de
+                                                            .pointer("/DocumentIdentifier/Value")
+                                                            .and_then(|v| v.as_str())
+                                                            .unwrap_or("");
+                                                        for ae in de
+                                                            .get("AttributeException")
+                                                            .and_then(|v| v.as_array())
+                                                            .unwrap_or(&vec![])
+                                                        {
+                                                            let gtin = ae
+                                                                .get("Gtin")
+                                                                .and_then(|v| v.as_str())
+                                                                .unwrap_or("");
+                                                            let attr_name = ae
+                                                                .get("AttributeName")
+                                                                .and_then(|v| v.as_str())
+                                                                .unwrap_or("");
                                                             if !gtin.is_empty() {
-                                                                rejected_gtins.insert(gtin.to_string());
+                                                                rejected_gtins
+                                                                    .insert(gtin.to_string());
                                                             }
-                                                            for err in ae.get("GS1Error").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+                                                            for err in ae
+                                                                .get("GS1Error")
+                                                                .and_then(|v| v.as_array())
+                                                                .unwrap_or(&vec![])
+                                                            {
                                                                 batch_rejected += 1;
-                                                                let code = err.get("ErrorCode").and_then(|v| v.as_str()).unwrap_or("");
-                                                                let desc = err.get("ErrorDescription").and_then(|v| v.as_str()).unwrap_or("");
-                                                                error_details.push((doc_id.to_string(), gtin.to_string(), code.to_string(), attr_name.to_string(), desc.chars().take(200).collect()));
+                                                                let code = err
+                                                                    .get("ErrorCode")
+                                                                    .and_then(|v| v.as_str())
+                                                                    .unwrap_or("");
+                                                                let desc = err
+                                                                    .get("ErrorDescription")
+                                                                    .and_then(|v| v.as_str())
+                                                                    .unwrap_or("");
+                                                                error_details.push((
+                                                                    doc_id.to_string(),
+                                                                    gtin.to_string(),
+                                                                    code.to_string(),
+                                                                    attr_name.to_string(),
+                                                                    desc.chars()
+                                                                        .take(200)
+                                                                        .collect(),
+                                                                ));
                                                             }
                                                         }
                                                     }
@@ -1559,7 +1838,10 @@ pub fn push_to_firstbase(
                             }
                             total_accepted += batch_accepted;
                             total_rejected += batch_rejected;
-                            log(&format!("  Poll {}: {} ({} accepted, {} errors)", poll, status, batch_accepted, batch_rejected));
+                            log(&format!(
+                                "  Poll {}: {} ({} accepted, {} errors)",
+                                poll, status, batch_accepted, batch_rejected
+                            ));
                             break;
                         }
                         if poll % 4 == 0 {
@@ -1581,9 +1863,17 @@ pub fn push_to_firstbase(
     // --- AddMany: publish to recipient ---
     if !all_publish_items.is_empty() && !settings.publish_to_gln.is_empty() {
         log(&format!("[Push] Refreshing token before AddMany..."));
-        token = get_token(&settings.firstbase_email, &settings.firstbase_password, &settings.provider_gln)?;
+        token = get_token(
+            &settings.firstbase_email,
+            &settings.firstbase_password,
+            &settings.provider_gln,
+        )?;
 
-        log(&format!("[Push] Publishing {} items via AddMany to {}...", all_publish_items.len(), settings.publish_to_gln));
+        log(&format!(
+            "[Push] Publishing {} items via AddMany to {}...",
+            all_publish_items.len(),
+            settings.publish_to_gln
+        ));
 
         for (pi, pub_batch) in all_publish_items.chunks(batch_size).enumerate() {
             let payload = serde_json::json!({ "Items": pub_batch });
@@ -1597,7 +1887,9 @@ pub fn push_to_firstbase(
                     Ok(resp_body) => {
                         let pub_req_id = serde_json::from_str::<serde_json::Value>(&resp_body)
                             .ok()
-                            .and_then(|b| b.get("RequestIdentifier")?.as_str().map(|s| s.to_string()))
+                            .and_then(|b| {
+                                b.get("RequestIdentifier")?.as_str().map(|s| s.to_string())
+                            })
                             .unwrap_or_default();
                         if !pub_req_id.is_empty() {
                             log(&format!("  AddMany batch {}: {}", pi + 1, pub_req_id));
@@ -1613,8 +1905,13 @@ pub fn push_to_firstbase(
                                     &token,
                                     &poll_body.to_string(),
                                 ) {
-                                    if let Ok(body) = serde_json::from_str::<serde_json::Value>(&poll_resp) {
-                                        let status = body.get("Status").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                    if let Ok(body) =
+                                        serde_json::from_str::<serde_json::Value>(&poll_resp)
+                                    {
+                                        let status = body
+                                            .get("Status")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("unknown");
                                         if status == "Done" || status == "Failed" {
                                             log(&format!("  AddMany poll {}: {}", poll, status));
                                             break;
@@ -1626,7 +1923,10 @@ pub fn push_to_firstbase(
                         break;
                     }
                     Err(e) if e.to_string().contains("429") => {
-                        log(&format!("  AddMany 429 — waiting 60s (attempt {}/3)", attempt));
+                        log(&format!(
+                            "  AddMany 429 — waiting 60s (attempt {}/3)",
+                            attempt
+                        ));
                         std::thread::sleep(std::time::Duration::from_secs(60));
                     }
                     Err(e) => {
@@ -1640,7 +1940,9 @@ pub fn push_to_firstbase(
     }
 
     // --- Store everything in SQLite DB ---
-    let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+    let db_path = download::app_data_dir()
+        .join("db")
+        .join("version_tracking.db");
     let conn = match rusqlite::Connection::open(&db_path) {
         Ok(c) => c,
         Err(e) => {
@@ -1648,7 +1950,8 @@ pub fn push_to_firstbase(
             return Ok((0, 0));
         }
     };
-    let _ = conn.execute_batch("
+    let _ = conn.execute_batch(
+        "
         CREATE TABLE IF NOT EXISTS push_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL, gtin TEXT NOT NULL DEFAULT '',
             pushed_at TEXT NOT NULL, request_id TEXT, status TEXT NOT NULL,
@@ -1674,9 +1977,13 @@ pub fn push_to_firstbase(
             error_description TEXT NOT NULL DEFAULT '',
             FOREIGN KEY (session_id) REFERENCES push_session(id)
         );
-    ");
+    ",
+    );
     // Migration: add attribute_name column if missing (existing DBs)
-    let _ = conn.execute("ALTER TABLE push_error ADD COLUMN attribute_name TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute(
+        "ALTER TABLE push_error ADD COLUMN attribute_name TEXT NOT NULL DEFAULT ''",
+        [],
+    );
 
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
@@ -1688,11 +1995,16 @@ pub fn push_to_firstbase(
     let session_id = conn.last_insert_rowid();
 
     // Build GTIN → UUID lookup from pushable items
-    let gtin_to_uuid: std::collections::HashMap<String, String> = pushable.iter()
+    let gtin_to_uuid: std::collections::HashMap<String, String> = pushable
+        .iter()
         .filter_map(|(_, _, uuid, doc)| {
-            let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-                .and_then(|v| v.as_str())?.to_string();
-            if gtin.is_empty() { return None; }
+            let gtin = doc
+                .pointer("/DraftItem/TradeItem/Gtin")
+                .and_then(|v| v.as_str())?
+                .to_string();
+            if gtin.is_empty() {
+                return None;
+            }
             Some((gtin, uuid.clone()))
         })
         .collect();
@@ -1709,15 +2021,24 @@ pub fn push_to_firstbase(
     // Insert per-item push_log with ACCEPTED/REJECTED + error codes
     let mut logged = 0;
     for (_, _, uuid, doc) in &pushable {
-        let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-            .and_then(|v| v.as_str()).unwrap_or("");
-        let status = if rejected_gtins.contains(gtin) { "REJECTED" } else { "ACCEPTED" };
+        let gtin = doc
+            .pointer("/DraftItem/TradeItem/Gtin")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let status = if rejected_gtins.contains(gtin) {
+            "REJECTED"
+        } else {
+            "ACCEPTED"
+        };
         // Collect error codes for this GTIN
-        let error_codes: Vec<&str> = error_details.iter()
+        let error_codes: Vec<&str> = error_details
+            .iter()
             .filter(|(_, g, _, _, _)| g == gtin)
             .map(|(_, _, c, _, _)| c.as_str())
             .collect();
-        let error_code_str = if error_codes.is_empty() { String::new() } else {
+        let error_code_str = if error_codes.is_empty() {
+            String::new()
+        } else {
             let mut dedup: Vec<&str> = error_codes.clone();
             dedup.sort();
             dedup.dedup();
@@ -1729,14 +2050,19 @@ pub fn push_to_firstbase(
         );
         logged += 1;
     }
-    log(&format!("[Push] Logged {} items to push_log DB (session {})", logged, session_id));
+    log(&format!(
+        "[Push] Logged {} items to push_log DB (session {})",
+        logged, session_id
+    ));
 
     // Move only ACCEPTED files to processed/ — rejected files stay for retry
     let mut moved = 0;
     let mut kept = 0;
     for (path, _, _, doc) in &pushable {
-        let gtin = doc.pointer("/DraftItem/TradeItem/Gtin")
-            .and_then(|v| v.as_str()).unwrap_or("");
+        let gtin = doc
+            .pointer("/DraftItem/TradeItem/Gtin")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if rejected_gtins.contains(gtin) {
             kept += 1;
             continue;
@@ -1748,9 +2074,15 @@ pub fn push_to_firstbase(
             }
         }
     }
-    log(&format!("[Push] Moved {} accepted files to processed/, {} rejected files kept for retry", moved, kept));
-    log(&format!("[Push] API response: {} error entries from {} rejected devices",
-        total_rejected, rejected_gtins.len()));
+    log(&format!(
+        "[Push] Moved {} accepted files to processed/, {} rejected files kept for retry",
+        moved, kept
+    ));
+    log(&format!(
+        "[Push] API response: {} error entries from {} rejected devices",
+        total_rejected,
+        rejected_gtins.len()
+    ));
 
     // Update session with file-level counts
     let _ = conn.execute(
@@ -1761,7 +2093,10 @@ pub fn push_to_firstbase(
     // --- Generate HTML log from DB ---
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
-    let log_file = log_dir.join(format!("{}.log.html", chrono::Local::now().format("%H.%M_%d.%m.%Y")));
+    let log_file = log_dir.join(format!(
+        "{}.log.html",
+        chrono::Local::now().format("%H.%M_%d.%m.%Y")
+    ));
     let html = generate_push_html(&conn, session_id, &raw_responses)
         .map_err(|e| anyhow::anyhow!("Failed to generate push HTML log: {}", e))?;
     let _ = std::fs::write(&log_file, &html);
@@ -1790,9 +2125,8 @@ fn push_to_swissdamed(
     let _ = std::fs::create_dir_all(&processed_dir);
 
     // Collect files (filtered by UUIDs if provided)
-    let uuid_set: Option<std::collections::HashSet<&str>> = uuid_filter.map(|uuids|
-        uuids.iter().map(|s| s.as_str()).collect()
-    );
+    let uuid_set: Option<std::collections::HashSet<&str>> =
+        uuid_filter.map(|uuids| uuids.iter().map(|s| s.as_str()).collect());
     let mut files: Vec<std::path::PathBuf> = Vec::new();
     if swissdamed_dir.exists() {
         for entry in std::fs::read_dir(&swissdamed_dir)? {
@@ -1801,7 +2135,10 @@ fn push_to_swissdamed(
             if path.extension().map(|e| e == "json").unwrap_or(false) {
                 if let Some(ref filter) = uuid_set {
                     let Some(stem_os) = path.file_stem() else {
-                        log(&format!("[Push] Warning: skipping path with no file stem: {}", path.display()));
+                        log(&format!(
+                            "[Push] Warning: skipping path with no file stem: {}",
+                            path.display()
+                        ));
                         continue;
                     };
                     if !filter.contains(stem_os.to_string_lossy().as_ref()) {
@@ -1819,13 +2156,18 @@ fn push_to_swissdamed(
     }
 
     // Parse files: (path, uuid, endpoint, doc)
-    let basic_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR).join("basic");
+    let basic_dir = download::app_data_dir()
+        .join(download::DEFAULT_DATA_DIR)
+        .join("basic");
     let mut pushable: Vec<(std::path::PathBuf, String, String, serde_json::Value)> = Vec::new();
     for f in &files {
         if let Ok(content) = std::fs::read_to_string(f) {
             if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
                 let Some(stem_os) = f.file_stem() else {
-                    log(&format!("[Push] Warning: skipping path with no file stem: {}", f.display()));
+                    log(&format!(
+                        "[Push] Warning: skipping path with no file stem: {}",
+                        f.display()
+                    ));
                     continue;
                 };
                 let uuid = stem_os.to_string_lossy().to_string();
@@ -1851,7 +2193,8 @@ fn push_to_swissdamed(
             "grant_type=client_credentials&client_id={}&client_secret={}&scope={}",
             settings.swissdamed_client_id, settings.swissdamed_client_secret, scope
         );
-        let mut resp = http_agent.post(token_url)
+        let mut resp = http_agent
+            .post(token_url)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .send(form_body.as_bytes())?;
         let body: serde_json::Value = serde_json::from_str(&resp.body_mut().read_to_string()?)?;
@@ -1882,10 +2225,12 @@ fn push_to_swissdamed(
         let mut resp_body = String::new();
 
         for attempt in 1..=3 {
-            let mut resp = match http_agent.post(&url)
+            let mut resp = match http_agent
+                .post(&url)
                 .header("Content-Type", "application/json")
                 .header("Authorization", &format!("Bearer {}", token))
-                .send(payload.as_bytes()) {
+                .send(payload.as_bytes())
+            {
                 Ok(r) => r,
                 Err(e) => {
                     resp_body = format!("Request error: {}", e);
@@ -1904,7 +2249,10 @@ fn push_to_swissdamed(
                 }
             }
             if resp_status == 429 {
-                log(&format!("  429 rate limited — waiting 60s (attempt {}/3)", attempt));
+                log(&format!(
+                    "  429 rate limited — waiting 60s (attempt {}/3)",
+                    attempt
+                ));
                 std::thread::sleep(std::time::Duration::from_secs(60));
                 continue;
             }
@@ -1917,15 +2265,33 @@ fn push_to_swissdamed(
         } else {
             rejected += 1;
             rejected_uuids.insert(uuid.clone());
-            let err_msg = if resp_body.len() > 300 { resp_body[..300].to_string() } else { resp_body.clone() };
-            error_details.push((uuid.clone(), endpoint.clone(), resp_status.to_string(), err_msg));
+            let err_msg = if resp_body.len() > 300 {
+                resp_body[..300].to_string()
+            } else {
+                resp_body.clone()
+            };
+            error_details.push((
+                uuid.clone(),
+                endpoint.clone(),
+                resp_status.to_string(),
+                err_msg,
+            ));
             if rejected <= 5 || resp_status == 500 {
-                raw_responses.push(format!("UUID: {}\nHTTP: {}\n{}", uuid, resp_status, resp_body));
+                raw_responses.push(format!(
+                    "UUID: {}\nHTTP: {}\n{}",
+                    uuid, resp_status, resp_body
+                ));
             }
         }
 
         if (i + 1) % 100 == 0 || i + 1 == total {
-            log(&format!("  {}/{} submitted ({} accepted, {} rejected)", i + 1, total, accepted, rejected));
+            log(&format!(
+                "  {}/{} submitted ({} accepted, {} rejected)",
+                i + 1,
+                total,
+                accepted,
+                rejected
+            ));
         }
 
         // Throttle
@@ -1934,26 +2300,51 @@ fn push_to_swissdamed(
 
     // --- Status poll for accepted devices ---
     if !accepted_uuids.is_empty() {
-        log(&format!("[Push] Polling status for {} accepted devices...", accepted_uuids.len()));
+        log(&format!(
+            "[Push] Polling status for {} accepted devices...",
+            accepted_uuids.len()
+        ));
         std::thread::sleep(std::time::Duration::from_secs(10));
 
-        let ids: Vec<String> = accepted_uuids.iter().map(|(u, _)| format!("\"{}\"", u)).collect();
+        let ids: Vec<String> = accepted_uuids
+            .iter()
+            .map(|(u, _)| format!("\"{}\"", u))
+            .collect();
         for chunk in ids.chunks(100) {
             let poll_body = format!("[{}]", chunk.join(","));
-            if let Ok(mut resp) = http_agent.post(&format!("{}/v1/m2m/udi/data/udi-di-request-status", base_url))
+            if let Ok(mut resp) = http_agent
+                .post(&format!(
+                    "{}/v1/m2m/udi/data/udi-di-request-status",
+                    base_url
+                ))
                 .header("Content-Type", "application/json")
                 .header("Authorization", &format!("Bearer {}", token))
-                .send(poll_body.as_bytes()) {
+                .send(poll_body.as_bytes())
+            {
                 let body = resp.body_mut().read_to_string().unwrap_or_default();
                 if let Ok(statuses) = serde_json::from_str::<serde_json::Value>(&body) {
                     if let Some(arr) = statuses.as_array() {
-                        let success = arr.iter().filter(|s| s.get("status").and_then(|v| v.as_str()) == Some("SUCCESS")).count();
-                        let not_processed = arr.iter().filter(|s| s.get("status").and_then(|v| v.as_str()) == Some("NOT_PROCESSED")).count();
-                        let failed = arr.iter().filter(|s| {
-                            let st = s.get("status").and_then(|v| v.as_str()).unwrap_or("");
-                            st != "SUCCESS" && st != "NOT_PROCESSED"
-                        }).count();
-                        log(&format!("  Status: {} SUCCESS, {} NOT_PROCESSED, {} failed", success, not_processed, failed));
+                        let success = arr
+                            .iter()
+                            .filter(|s| s.get("status").and_then(|v| v.as_str()) == Some("SUCCESS"))
+                            .count();
+                        let not_processed = arr
+                            .iter()
+                            .filter(|s| {
+                                s.get("status").and_then(|v| v.as_str()) == Some("NOT_PROCESSED")
+                            })
+                            .count();
+                        let failed = arr
+                            .iter()
+                            .filter(|s| {
+                                let st = s.get("status").and_then(|v| v.as_str()).unwrap_or("");
+                                st != "SUCCESS" && st != "NOT_PROCESSED"
+                            })
+                            .count();
+                        log(&format!(
+                            "  Status: {} SUCCESS, {} NOT_PROCESSED, {} failed",
+                            success, not_processed, failed
+                        ));
                     }
                 }
             }
@@ -1961,7 +2352,9 @@ fn push_to_swissdamed(
     }
 
     // --- Store in DB ---
-    let db_path = download::app_data_dir().join("db").join("version_tracking.db");
+    let db_path = download::app_data_dir()
+        .join("db")
+        .join("version_tracking.db");
     let conn = match rusqlite::Connection::open(&db_path) {
         Ok(c) => c,
         Err(e) => {
@@ -1969,7 +2362,8 @@ fn push_to_swissdamed(
             return Ok((accepted, rejected));
         }
     };
-    let _ = conn.execute_batch("
+    let _ = conn.execute_batch(
+        "
         CREATE TABLE IF NOT EXISTS swissdamed_push_session (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_ts TEXT NOT NULL,
@@ -1994,7 +2388,8 @@ fn push_to_swissdamed(
             endpoint TEXT NOT NULL, status TEXT NOT NULL,
             error_code TEXT, error_msg TEXT
         );
-    ");
+    ",
+    );
 
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let _ = conn.execute(
@@ -2013,7 +2408,11 @@ fn push_to_swissdamed(
 
     // Insert per-item log
     for (_, uuid, endpoint, _) in &pushable {
-        let status = if rejected_uuids.contains(uuid) { "REJECTED" } else { "ACCEPTED" };
+        let status = if rejected_uuids.contains(uuid) {
+            "REJECTED"
+        } else {
+            "ACCEPTED"
+        };
         let _ = conn.execute(
             "INSERT INTO swissdamed_push_log (uuid, correlation_id, pushed_at, endpoint, status) VALUES (?1,?2,?3,?4,?5)",
             rusqlite::params![uuid, uuid, now, endpoint, status],
@@ -2042,12 +2441,18 @@ fn push_to_swissdamed(
         rusqlite::params![moved, kept, session_id],
     );
 
-    log(&format!("[Push] Moved {} accepted to processed/, {} rejected kept for retry", moved, kept));
+    log(&format!(
+        "[Push] Moved {} accepted to processed/, {} rejected kept for retry",
+        moved, kept
+    ));
 
     // --- Generate HTML log ---
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
-    let log_file = log_dir.join(format!("swissdamed_{}.log.html", chrono::Local::now().format("%H.%M_%d.%m.%Y")));
+    let log_file = log_dir.join(format!(
+        "swissdamed_{}.log.html",
+        chrono::Local::now().format("%H.%M_%d.%m.%Y")
+    ));
     let html = generate_swissdamed_push_html(&conn, session_id, &raw_responses)
         .map_err(|e| anyhow::anyhow!("Failed to generate Swissdamed push HTML log: {}", e))?;
     let _ = std::fs::write(&log_file, &html);
@@ -2060,7 +2465,9 @@ fn push_to_swissdamed(
 fn detect_swissdamed_endpoint(uuid: &str, basic_dir: &std::path::Path) -> String {
     let basic_path = basic_dir.join(format!("{}.json", uuid));
     if let Ok(basic_json) = std::fs::read_to_string(&basic_path) {
-        if let Ok(basic_udi) = serde_json::from_str::<crate::api_detail::BasicUdiDiData>(&basic_json) {
+        if let Ok(basic_udi) =
+            serde_json::from_str::<crate::api_detail::BasicUdiDiData>(&basic_json)
+        {
             return crate::swissdamed::legislation_endpoint(&basic_udi).to_string();
         }
     }
@@ -2068,7 +2475,11 @@ fn detect_swissdamed_endpoint(uuid: &str, basic_dir: &std::path::Path) -> String
 }
 
 /// Generate HTML push log for Swissdamed from DB.
-fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> rusqlite::Result<String> {
+fn generate_swissdamed_push_html(
+    conn: &rusqlite::Connection,
+    session_id: i64,
+    raw_responses: &[String],
+) -> rusqlite::Result<String> {
     let (version, timestamp, base_url, total_pushable, total_accepted, total_rejected) = conn
         .query_row(
             "SELECT version, session_ts, base_url, total_pushable, total_accepted, total_rejected FROM swissdamed_push_session WHERE id=?1",
@@ -2101,8 +2512,12 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
         <b>Rejected:</b> <span class='err'>{rejected}</span><br>\
         <b>Total pushable:</b> {pushable}\
         </div>",
-        version = version, timestamp = timestamp, base_url = base_url,
-        accepted = total_accepted, rejected = total_rejected, pushable = total_pushable,
+        version = version,
+        timestamp = timestamp,
+        base_url = base_url,
+        accepted = total_accepted,
+        rejected = total_rejected,
+        pushable = total_pushable,
     );
 
     // Error summary by HTTP status
@@ -2120,7 +2535,10 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
         if !rows.is_empty() {
             html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>HTTP Status</th><th>Errors</th><th>Devices</th></tr>");
             for (status, count, devices) in &rows {
-                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", status, count, devices));
+                html.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    status, count, devices
+                ));
             }
             html.push_str("</table>");
         }
@@ -2140,9 +2558,16 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='err'>Rejected Devices ({})</h2><table><tr><th>#</th><th>UUID</th><th>Endpoint</th><th>HTTP</th><th>Error</th></tr>", rows.len()));
             for (i, (uuid, ep, status, err)) in rows.iter().enumerate() {
-                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                    i + 1, uuid, ep, status,
-                    err.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
+                html.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1,
+                    uuid,
+                    ep,
+                    status,
+                    err.replace('&', "&amp;")
+                        .replace('<', "&lt;")
+                        .replace('>', "&gt;")
+                ));
             }
             html.push_str("</table>");
         }
@@ -2162,7 +2587,12 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>UUID</th><th>Endpoint</th></tr>", rows.len()));
             for (i, (uuid, ep)) in rows.iter().enumerate() {
-                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", i + 1, uuid, ep));
+                html.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1,
+                    uuid,
+                    ep
+                ));
             }
             html.push_str("</table>");
         }
@@ -2172,8 +2602,13 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
     if !raw_responses.is_empty() {
         html.push_str("<h2>Raw API Responses</h2>");
         for (i, raw) in raw_responses.iter().enumerate() {
-            html.push_str(&format!("<h3>Response {}</h3><pre>{}</pre>", i + 1,
-                raw.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
+            html.push_str(&format!(
+                "<h3>Response {}</h3><pre>{}</pre>",
+                i + 1,
+                raw.replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;")
+            ));
         }
     }
 
@@ -2193,7 +2628,11 @@ fn load_icon() -> Option<egui::IconData> {
 }
 
 /// Generate HTML push log from the database for a given session.
-fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> rusqlite::Result<String> {
+fn generate_push_html(
+    conn: &rusqlite::Connection,
+    session_id: i64,
+    raw_responses: &[String],
+) -> rusqlite::Result<String> {
     // Read session info
     let (version, timestamp, gln, total_pushable, skipped, accepted, rejected) = conn
         .query_row(
@@ -2241,7 +2680,7 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
     {
         let mut stmt = conn.prepare(
             "SELECT error_code, COUNT(*) as total, COUNT(DISTINCT gtin) as devices \
-             FROM push_error WHERE session_id=?1 GROUP BY error_code ORDER BY total DESC"
+             FROM push_error WHERE session_id=?1 GROUP BY error_code ORDER BY total DESC",
         )?;
         let rows: Vec<(String, i64, i64)> = stmt
             .query_map(rusqlite::params![session_id], |row| {
@@ -2252,7 +2691,10 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
         if !rows.is_empty() {
             html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>Error Code</th><th>Errors</th><th>Affected Devices</th></tr>");
             for (code, count, devices) in &rows {
-                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", code, count, devices));
+                html.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    code, count, devices
+                ));
             }
             html.push_str("</table>");
         }
@@ -2262,7 +2704,7 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
     {
         let mut stmt = conn.prepare(
             "SELECT COALESCE(NULLIF(uuid,''), '—') as uuid, gtin \
-             FROM push_error WHERE session_id=?1 GROUP BY gtin ORDER BY gtin"
+             FROM push_error WHERE session_id=?1 GROUP BY gtin ORDER BY gtin",
         )?;
         let devices: Vec<(String, String)> = stmt
             .query_map(rusqlite::params![session_id], |row| {
@@ -2282,12 +2724,21 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
                     .query_map(rusqlite::params![session_id, gtin], |row| {
                         let code: String = row.get(0)?;
                         let attrs: String = row.get(1)?;
-                        Ok(if attrs.is_empty() { code } else { format!("{} ({})", code, attrs) })
+                        Ok(if attrs.is_empty() {
+                            code
+                        } else {
+                            format!("{} ({})", code, attrs)
+                        })
                     })?
                     .collect::<rusqlite::Result<_>>()?;
 
-                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                    i + 1, uuid, gtin, code_details.join("; ")));
+                html.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1,
+                    uuid,
+                    gtin,
+                    code_details.join("; ")
+                ));
             }
             html.push_str("</table>");
         }
@@ -2300,23 +2751,40 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
         )?;
         let rows: Vec<(String, String, String, String, String)> = stmt
             .query_map(rusqlite::params![session_id], |row| {
-                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
             })?
             .collect::<rusqlite::Result<_>>()?;
 
         let total_errors: i64 = conn.query_row(
             "SELECT COUNT(*) FROM push_error WHERE session_id=?1",
-            rusqlite::params![session_id], |row| row.get(0),
+            rusqlite::params![session_id],
+            |row| row.get(0),
         )?;
 
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='err'>Error Details ({} total)</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th><th>Error Code</th><th>Attribute</th><th>Description</th></tr>", total_errors));
             for (i, (uuid, gtin, code, attr, desc)) in rows.iter().enumerate() {
-                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                    i + 1, uuid, gtin, code, attr, desc));
+                html.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1,
+                    uuid,
+                    gtin,
+                    code,
+                    attr,
+                    desc
+                ));
             }
             if total_errors > 500 {
-                html.push_str(&format!("<tr><td colspan='6'>... and {} more</td></tr>", total_errors - 500));
+                html.push_str(&format!(
+                    "<tr><td colspan='6'>... and {} more</td></tr>",
+                    total_errors - 500
+                ));
             }
             html.push_str("</table>");
         }
@@ -2336,7 +2804,12 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th></tr>", rows.len()));
             for (i, (uuid, gtin)) in rows.iter().enumerate() {
-                html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", i + 1, uuid, gtin));
+                html.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    i + 1,
+                    uuid,
+                    gtin
+                ));
             }
             html.push_str("</table>");
         }
@@ -2346,8 +2819,13 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
     if !raw_responses.is_empty() {
         html.push_str("<h2>Raw API Responses</h2>");
         for (i, raw) in raw_responses.iter().enumerate() {
-            html.push_str(&format!("<h3>Batch {}</h3><pre>{}</pre>", i + 1,
-                raw.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")));
+            html.push_str(&format!(
+                "<h3>Batch {}</h3><pre>{}</pre>",
+                i + 1,
+                raw.replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;")
+            ));
         }
     }
 
