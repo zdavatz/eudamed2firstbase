@@ -149,17 +149,26 @@ fn main() -> Result<()> {
             eprintln!("\n=== Pushing to GS1 Firstbase API ===");
             let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
             let password = std::env::var("FIRSTBASE_PASSWORD").unwrap_or_default();
-            let publish_gln = std::env::var("FIRSTBASE_PUBLISH_GLN").unwrap_or_else(|_| "7612345000527".to_string());
+            // Env var takes priority; fall back to publish_gln from config.toml.
+            let publish_gln = match std::env::var("FIRSTBASE_PUBLISH_GLN") {
+                Ok(v) if !v.is_empty() => v,
+                _ if !fb_config.provider.publish_gln.is_empty() => fb_config.provider.publish_gln.clone(),
+                _ => {
+                    eprintln!("Set FIRSTBASE_PUBLISH_GLN (recipient GLN) or add publish_gln under [provider] in config.toml. Skipping push.");
+                    return Ok(());
+                }
+            };
             if email.is_empty() || password.is_empty() {
                 eprintln!("Set FIRSTBASE_EMAIL and FIRSTBASE_PASSWORD to push. Skipping push.");
                 return Ok(());
             }
 
+            // provider_gln comes from config.toml, not a hardcoded default.
             let settings = gui::Settings {
                 firstbase_email: email,
                 firstbase_password: password,
                 publish_to_gln: publish_gln,
-                provider_gln: "7612345000480".to_string(),
+                provider_gln: fb_config.provider.gln.clone(),
                 ..Default::default()
             };
             let log_fn = |msg: &str| { eprintln!("{}", msg); };
@@ -230,13 +239,15 @@ fn main() -> Result<()> {
             process_swissdamed(Path::new(detail_dir), Path::new(basic_dir))
         }
         Some("mailto") => {
-            // Send file as email attachment via Gmail API
-            // Usage: cargo run mailto <file> --to <email> [--subject <subject>] [--from <email>] [--p12 <key>]
+            // Send file as email attachment via Gmail API.
+            // Credentials default to [gmail] in config.toml; --p12 overrides the key path.
+            // Usage: cargo run mailto <file> --to <email> [--from <email>] [--subject <text>] [--p12 <key>]
             let mut file = None;
             let mut to = None;
             let mut subject = None;
             let mut from: Option<String> = None;
-            let mut p12 = mail::DEFAULT_P12_KEY.to_string();
+            // Default p12 path from config; CLI --p12 flag overrides.
+            let mut p12 = config.gmail.p12_key.clone();
             let mut i = 2;
             while i < args.len() {
                 match args[i].as_str() {
@@ -250,7 +261,7 @@ fn main() -> Result<()> {
                 i += 1;
             }
             let file = file.unwrap_or_else(|| {
-                eprintln!("Usage: eudamed2firstbase mailto <file> --to <email> [--subject <text>] [--from <email>] [--p12 <key>]");
+                eprintln!("Usage: eudamed2firstbase mailto <file> --to <email> [--from <email>] [--subject <text>] [--p12 <key>]");
                 std::process::exit(1);
             });
             let to = to.unwrap_or_else(|| {
@@ -266,9 +277,24 @@ fn main() -> Result<()> {
                     .and_then(|n| n.to_str()).unwrap_or(&file))
             });
 
+            if p12.is_empty() {
+                anyhow::bail!(
+                    "Gmail p12 key path not configured. \
+                     Add `p12_key = \"/path/to/key.p12\"` under [gmail] in config.toml \
+                     (see config.sample.toml), or pass --p12 <path> on the command line."
+                );
+            }
+            let service_email = config.gmail.service_email.clone();
+            if service_email.is_empty() {
+                anyhow::bail!(
+                    "Gmail service account email not configured. \
+                     Add `service_email = \"name@project.iam.gserviceaccount.com\"` \
+                     under [gmail] in config.toml (see config.sample.toml)."
+                );
+            }
             mail::send_email_with_attachment(
                 &p12,
-                mail::DEFAULT_SERVICE_EMAIL,
+                &service_email,
                 &from,
                 &to,
                 &subject,

@@ -104,7 +104,12 @@ impl App {
             if !v.is_empty() { settings.firstbase_password = v; }
         }
         if settings.provider_gln.is_empty() {
-            settings.provider_gln = "7612345000480".to_string();
+            // Fall back to the GLN defined in config.toml rather than a hardcoded value.
+            let config_path = download::app_data_dir().join("config.toml");
+            let config_path = if config_path.exists() { config_path } else { std::path::PathBuf::from("config.toml") };
+            if let Ok(cfg) = config::load_config(&config_path) {
+                settings.provider_gln = cfg.provider.gln;
+            }
         }
         // Swissdamed env vars
         if let Ok(v) = std::env::var("SWISSDAMED_CLIENT_ID") {

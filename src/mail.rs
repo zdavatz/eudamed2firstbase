@@ -1,13 +1,12 @@
 //! Gmail API email sending with file attachments.
 //! Uses Google Service Account with domain-wide delegation.
+//!
+//! Credentials are read from `config.toml` (`[gmail]` section).
+//! See `config.sample.toml` for the expected format.
 
 use anyhow::{Context, Result};
 use std::process::Command;
 
-/// Default service account credentials (same as swissdamed2sqlite)
-pub const DEFAULT_P12_KEY: &str = "swissdamed2sqlite-9dd3bf6717d4.p12";
-pub const DEFAULT_SERVICE_EMAIL: &str =
-    "swissdamed2sqlite@swissdamed2sqlite.iam.gserviceaccount.com";
 
 /// Send an email with a file attachment via Gmail API.
 pub fn send_email_with_attachment(
