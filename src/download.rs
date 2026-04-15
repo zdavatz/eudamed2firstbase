@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
+use anyhow::Context;
 use rayon::prelude::*;
 
 pub const EUDAMED_BASE_URL: &str = "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData";
@@ -189,7 +190,7 @@ pub fn run_download(
         config.parallel_threads,
         config.max_retries,
         progress,
-    );
+    )?;
     log(&format!(
         "Details: {} downloaded, {} cached -> {}",
         detail_downloaded,
@@ -207,7 +208,7 @@ pub fn run_download(
         config.parallel_threads,
         config.max_retries,
         progress,
-    );
+    )?;
     log(&format!(
         "Basic UDI-DI: {} downloaded, {} cached -> {}",
         basic_downloaded,
@@ -265,7 +266,7 @@ pub fn run_download(
                 config.parallel_threads,
                 5, // more retries for completeness check
                 progress,
-            );
+            )?;
         }
         if !missing_basic_uuids.is_empty() {
             parallel_fetch(
@@ -277,7 +278,7 @@ pub fn run_download(
                 config.parallel_threads,
                 5,
                 progress,
-            );
+            )?;
         }
 
         let still_missing_d = need_download
@@ -301,7 +302,7 @@ pub fn run_download(
     // --- Step 7: Extract versions from downloaded detail files into udi_versions DB ---
     if !need_download.is_empty() {
         log(&format!("Indexing {} downloaded detail files into version DB...", need_download.len()));
-        let version_count = index_detail_versions(&detail_dir, &need_download, &conn, progress);
+        let version_count = index_detail_versions(&detail_dir, &need_download, &conn, progress)?;
         log(&format!("Indexed {} detail file versions in udi_versions DB", version_count));
     }
 
@@ -309,7 +310,9 @@ pub fn run_download(
     // The listing provides basicUdiDataVersionNumber which is not in the detail JSON.
     // Store it in udi_versions so the next check can compare both versions.
     {
-        let tx = conn.unchecked_transaction().unwrap();
+        let tx = conn
+            .unchecked_transaction()
+            .context("Failed to open budi_version update transaction")?;
         for (uuid, _udi_ver, budi_ver) in &uuid_versions {
             if let Some(bv) = budi_ver {
                 let _ = tx.execute(
@@ -318,7 +321,8 @@ pub fn run_download(
                 );
             }
         }
-        let _ = tx.commit();
+        tx.commit()
+            .context("Failed to commit budi_version update transaction")?;
     }
 
     Ok(DownloadResult {
@@ -339,9 +343,9 @@ fn index_detail_versions(
     uuids: &[String],
     conn: &rusqlite::Connection,
     progress: &dyn DownloadProgress,
-) -> usize {
+) -> anyhow::Result<usize> {
     if uuids.is_empty() {
-        return 0;
+        return Ok(0);
     }
 
     // Parallel: read + parse version records
@@ -360,13 +364,16 @@ fn index_detail_versions(
     let mut count = 0;
     let batch_size = 10000;
     for chunk in records.chunks(batch_size) {
-        let tx = conn.unchecked_transaction().unwrap();
+        let tx = conn
+            .unchecked_transaction()
+            .context("Failed to open version index transaction")?;
         for rec in chunk {
             if crate::version_db::upsert_version(&tx, rec).is_ok() {
                 count += 1;
             }
         }
-        let _ = tx.commit();
+        tx.commit()
+            .context("Failed to commit version index transaction")?;
         if records.len() > batch_size {
             progress.on_event(DownloadEvent::Log(format!(
                 "  Indexed {}/{} versions...", count, records.len()
@@ -374,7 +381,7 @@ fn index_detail_versions(
         }
     }
 
-    count
+    Ok(count)
 }
 
 /// Bulk-index all detail files in a directory into udi_versions DB.
@@ -383,7 +390,7 @@ pub fn index_all_detail_versions(
     detail_dir: &Path,
     conn: &rusqlite::Connection,
     progress: &dyn DownloadProgress,
-) -> usize {
+) -> anyhow::Result<usize> {
     let files: Vec<std::path::PathBuf> = std::fs::read_dir(detail_dir)
         .into_iter()
         .flatten()
@@ -393,7 +400,7 @@ pub fn index_all_detail_versions(
         .collect();
 
     if files.is_empty() {
-        return 0;
+        return Ok(0);
     }
 
     progress.on_event(DownloadEvent::Log(format!(
@@ -402,12 +409,15 @@ pub fn index_all_detail_versions(
 
     // Get existing hashes for fast skip
     let existing_hashes: std::collections::HashMap<String, String> = {
-        let mut stmt = conn.prepare(
-            "SELECT uuid, detail_hash FROM udi_versions WHERE detail_hash IS NOT NULL"
-        ).unwrap();
-        stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        }).unwrap().filter_map(|r| r.ok()).collect()
+        let mut stmt = conn
+            .prepare("SELECT uuid, detail_hash FROM udi_versions WHERE detail_hash IS NOT NULL")
+            .context("Failed to prepare existing-hashes query")?;
+        let iter = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .context("Failed to execute existing-hashes query")?;
+        iter.filter_map(|r| r.ok()).collect()
     };
     let existing_hashes = Arc::new(existing_hashes);
     let skipped = AtomicUsize::new(0);
@@ -437,19 +447,22 @@ pub fn index_all_detail_versions(
     let mut count = 0;
     let batch_size = 10000;
     for chunk in records.chunks(batch_size) {
-        let tx = conn.unchecked_transaction().unwrap();
+        let tx = conn
+            .unchecked_transaction()
+            .context("Failed to open version index transaction")?;
         for rec in chunk {
             if crate::version_db::upsert_version(&tx, rec).is_ok() {
                 count += 1;
             }
         }
-        let _ = tx.commit();
+        tx.commit()
+            .context("Failed to commit version index transaction")?;
         progress.on_event(DownloadEvent::Log(format!(
             "  Indexed {}/{} versions...", count, records.len()
         )));
     }
 
-    count
+    Ok(count)
 }
 
 /// Create the listing_cache table if it doesn't exist.
@@ -613,7 +626,7 @@ fn download_listings(
     let all_entries: Vec<Vec<(String, Option<u32>, Option<u32>)>> = rayon::ThreadPoolBuilder::new()
         .num_threads(listing_threads)
         .build()
-        .unwrap()
+        .context("Failed to build rayon thread pool for listing downloads")?
         .install(|| {
             srns.par_iter().map(|srn| {
                 let entries = download_listing_for_srn(&base_url_owned, srn, limit, &conn, progress);
@@ -689,7 +702,7 @@ fn parallel_fetch(
     threads: usize,
     max_retries: u32,
     progress: &dyn DownloadProgress,
-) -> (usize, usize) {
+) -> anyhow::Result<(usize, usize)> {
     // Filter to only UUIDs not already on disk
     let need: Vec<&String> = uuids
         .iter()
@@ -721,7 +734,7 @@ fn parallel_fetch(
     rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
         .build()
-        .unwrap()
+        .context("Failed to build rayon thread pool for parallel fetch")?
         .install(|| {
             need.par_iter().for_each(|uuid| {
                 let full_url = format!("{}/{}?languageIso2Code=en", base_url_owned, uuid);
@@ -764,5 +777,5 @@ fn parallel_fetch(
             });
         });
 
-    (downloaded.load(Ordering::Relaxed), cached)
+    Ok((downloaded.load(Ordering::Relaxed), cached))
 }

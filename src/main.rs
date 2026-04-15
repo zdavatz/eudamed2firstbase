@@ -128,7 +128,13 @@ fn main() -> Result<()> {
                 let basic_udi = basic_udi_cache.get(uuid);
 
                 let doc = transform_detail::transform_detail_document(&device, &fb_config, basic_udi, uuid);
-                let out = serde_json::to_string_pretty(&doc).unwrap();
+                let out = match serde_json::to_string_pretty(&doc) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        eprintln!("Failed to serialize firstbase doc for {}: {}", uuid, e);
+                        std::process::exit(1);
+                    }
+                };
                 let out_path = output_dir.join(format!("{}.json", uuid));
                 let _ = std::fs::write(&out_path, &out);
                 converted += 1;
@@ -369,7 +375,7 @@ fn main() -> Result<()> {
 
             // If --xlsx mode, write back to the file
             if args.get(2).map(|s| s.as_str()) == Some("--xlsx") {
-                let path = args.get(3).unwrap();
+                let path = args.get(3).ok_or_else(|| anyhow::anyhow!("--xlsx requires a file path argument"))?;
                 let col: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(4);
                 write_counts_xlsx(path, col, &result_map)?;
                 let total: i64 = result_map.values().filter(|&&v| v >= 0).sum();
@@ -453,7 +459,9 @@ fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>, Option<u
                 i += 1;
             }
         } else if args[i].starts_with("--") && args[i][2..].parse::<usize>().is_ok() {
-            limit = Some(args[i][2..].parse().unwrap());
+            if let Ok(n) = args[i][2..].parse::<usize>() {
+                limit = Some(n);
+            }
             i += 1;
         } else {
             i += 1;
@@ -493,7 +501,14 @@ fn process_xml_dir(config: &config::Config) -> Result<()> {
     if !processed_files.is_empty() {
         std::fs::create_dir_all(&processed_dir)?;
         for path in &processed_files {
-            let dest = processed_dir.join(path.file_name().unwrap());
+            let file_name = match path.file_name() {
+                Some(n) => n,
+                None => {
+                    eprintln!("  Error: could not determine file name for {}", path.display());
+                    std::process::exit(1);
+                }
+            };
+            let dest = processed_dir.join(file_name);
             if let Err(e) = std::fs::rename(path, &dest) {
                 eprintln!("  Warning: could not move {} to processed/: {}", path.display(), e);
             }
@@ -1148,7 +1163,11 @@ fn write_counts_xlsx(path: &str, srn_col: usize, counts: &HashMap<String, i64>) 
     use rust_xlsxwriter::Workbook;
 
     let mut workbook: Xlsx<_> = open_workbook(path)?;
-    let sheet_name = workbook.sheet_names().first().cloned().unwrap();
+    let sheet_name = workbook
+        .sheet_names()
+        .first()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("XLSX file has no sheets: {}", path))?;
     let range = workbook.worksheet_range(&sheet_name)?;
 
     let mut wb = Workbook::new();

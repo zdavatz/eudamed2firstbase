@@ -167,7 +167,7 @@ fn build_nested_document(
     }
 
     // Top-level trade item (outermost package)
-    let top_pkg = chain.first().unwrap();
+    let top_pkg = chain.first().context("Packaging chain is empty; cannot build top-level trade item")?;
     let top_next_lower = Some(NextLowerLevel {
         quantity_of_children: 1,
         total_quantity: top_pkg.quantity,

@@ -981,7 +981,11 @@ fn build_sales_module(device: &ApiDeviceDetail, basic_udi: Option<&BasicUdiDiDat
 
     // Ensure only one country in ORIGINAL_PLACED (097.020: only one allowed)
     while original_countries.len() > 1 {
-        additional_countries.push(original_countries.pop().unwrap());
+        if let Some(c) = original_countries.pop() {
+            additional_countries.push(c);
+        } else {
+            break;
+        }
     }
 
     let mut conditions = Vec::new();

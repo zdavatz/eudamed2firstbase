@@ -87,6 +87,8 @@ pub struct App {
     horizontal_split: bool,
     /// Pipeline mode: 0=full, 1=skip download (all files), 2=SRN filter only (no download)
     pipeline_mode: u8,
+    /// If Some, an error dialog is shown with this message.
+    error_dialog: Option<String>,
 }
 
 impl App {
@@ -107,7 +109,7 @@ impl App {
             // Fall back to the GLN defined in config.toml rather than a hardcoded value.
             let config_path = download::app_data_dir().join("config.toml");
             let config_path = if config_path.exists() { config_path } else { std::path::PathBuf::from("config.toml") };
-            if let Ok(cfg) = config::load_config(&config_path) {
+            if let Ok(cfg) = crate::config::load_config(&config_path) {
                 settings.provider_gln = cfg.provider.gln;
             }
         }
@@ -137,6 +139,7 @@ impl App {
             split_size: 300.0,
             horizontal_split: false,
             pipeline_mode: 0,
+            error_dialog: None,
         }
     }
 
@@ -210,6 +213,9 @@ impl eframe::App for App {
                             self.log_lines.push(format!("=== DONE === {}", summary));
                         } else {
                             self.log_lines.push(format!("=== FAILED === {}", summary));
+                            // Surface failure in a modal error dialog so the user
+                            // cannot miss it (they may not be watching the log).
+                            self.error_dialog = Some(summary.clone());
                         }
                         self.running = false;
                         self.save_log();
@@ -230,10 +236,18 @@ impl eframe::App for App {
             // Vertical = settings top, log bottom (stacked)
             let icon_texture = self.icon_texture.get_or_insert_with(|| {
                 let png_bytes = include_bytes!("../assets/icon_256x256.png");
-                let img = image::load_from_memory(png_bytes).unwrap().into_rgba8();
-                let size = [img.width() as usize, img.height() as usize];
-                let pixels = img.into_raw();
-                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+                let color_image = match image::load_from_memory(png_bytes) {
+                    Ok(img) => {
+                        let img = img.into_rgba8();
+                        let size = [img.width() as usize, img.height() as usize];
+                        let pixels = img.into_raw();
+                        egui::ColorImage::from_rgba_unmultiplied(size, &pixels)
+                    }
+                    Err(_) => {
+                        // Fallback to a 1x1 transparent pixel if the embedded icon fails to decode.
+                        egui::ColorImage::from_rgba_unmultiplied([1, 1], &[0u8, 0, 0, 0])
+                    }
+                };
                 ctx.load_texture("app-icon", color_image, egui::TextureOptions::LINEAR)
             });
             ui.horizontal(|ui| {
@@ -587,6 +601,42 @@ impl eframe::App for App {
             } // end vertical else
         });
 
+        // Error dialog (modal) — shown when the worker reports failure or a panic.
+        if let Some(msg) = self.error_dialog.clone() {
+            let mut close = false;
+            egui::Window::new("⚠  Error")
+                .collapsible(false)
+                .resizable(true)
+                .default_width(520.0)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .show(ctx, |ui| {
+                    ui.label("The pipeline did not complete successfully:");
+                    ui.add_space(6.0);
+                    egui::ScrollArea::vertical()
+                        .max_height(260.0)
+                        .show(ui, |ui| {
+                            ui.add(
+                                egui::TextEdit::multiline(&mut msg.as_str())
+                                    .font(egui::TextStyle::Monospace)
+                                    .desired_width(f32::INFINITY)
+                                    .desired_rows(8),
+                            );
+                        });
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("Copy to clipboard").clicked() {
+                            ctx.output_mut(|o| o.copied_text = msg.clone());
+                        }
+                        if ui.button("OK").clicked() {
+                            close = true;
+                        }
+                    });
+                });
+            if close {
+                self.error_dialog = None;
+            }
+        }
+
         // Auto-save settings when they change
         let current = serde_json::to_string(&self.settings).unwrap_or_default();
         if current != self.last_saved_settings {
@@ -692,12 +742,23 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
                 log(&format!("[Repush] Reading rejected GTINs from push session {}", session_id));
 
                 // Get distinct rejected GTINs from push_error for that session
-                let mut stmt = conn.prepare(
+                let mut stmt = match conn.prepare(
                     "SELECT DISTINCT gtin FROM push_error WHERE session_id=?1 AND gtin != ''"
-                ).unwrap();
-                let rejected_gtins: std::collections::HashSet<String> = stmt
-                    .query_map(rusqlite::params![session_id], |row| row.get::<_, String>(0))
-                    .unwrap()
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        done(false, &format!("Failed to prepare rejected-GTIN query: {}", e));
+                        return;
+                    }
+                };
+                let rejected_iter = match stmt.query_map(rusqlite::params![session_id], |row| row.get::<_, String>(0)) {
+                    Ok(it) => it,
+                    Err(e) => {
+                        done(false, &format!("Failed to query rejected GTINs: {}", e));
+                        return;
+                    }
+                };
+                let rejected_gtins: std::collections::HashSet<String> = rejected_iter
                     .filter_map(|r| r.ok())
                     .collect();
 
@@ -873,13 +934,19 @@ fn run_pipeline(settings: Settings, tx: mpsc::Sender<WorkerMsg>, ctx: egui::Cont
     } else if pipeline_mode == 1 {
         // Mode 1: skip download, use all existing detail files
         log("[Skip] Using existing downloaded files (no EUDAMED download)");
-        uuids = std::fs::read_dir(&detail_dir)
-            .map(|entries| entries
-                .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
-                .map(|e| e.path().file_stem().unwrap().to_string_lossy().to_string())
-                .collect())
-            .unwrap_or_default();
+        match std::fs::read_dir(&detail_dir) {
+            Ok(entries) => {
+                uuids = entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or(false))
+                    .filter_map(|e| e.path().file_stem().map(|s| s.to_string_lossy().to_string()))
+                    .collect();
+            }
+            Err(e) => {
+                done(false, &format!("Failed to read detail directory {}: {}", detail_dir.display(), e));
+                return;
+            }
+        }
         log(&format!("Found {} existing detail files", uuids.len()));
         if uuids.is_empty() {
             done(false, "No detail files found. Run Download first.");
@@ -1695,7 +1762,8 @@ pub fn push_to_firstbase(
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
     let log_file = log_dir.join(format!("{}.log.html", chrono::Local::now().format("%H.%M_%d.%m.%Y")));
-    let html = generate_push_html(&conn, session_id, &raw_responses);
+    let html = generate_push_html(&conn, session_id, &raw_responses)
+        .map_err(|e| anyhow::anyhow!("Failed to generate push HTML log: {}", e))?;
     let _ = std::fs::write(&log_file, &html);
     log(&format!("[Push] HTML log: {}", log_file.display()));
 
@@ -1732,8 +1800,11 @@ fn push_to_swissdamed(
             let path = entry.path();
             if path.extension().map(|e| e == "json").unwrap_or(false) {
                 if let Some(ref filter) = uuid_set {
-                    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-                    if !filter.contains(stem.as_ref()) {
+                    let Some(stem_os) = path.file_stem() else {
+                        log(&format!("[Push] Warning: skipping path with no file stem: {}", path.display()));
+                        continue;
+                    };
+                    if !filter.contains(stem_os.to_string_lossy().as_ref()) {
                         continue;
                     }
                 }
@@ -1753,7 +1824,11 @@ fn push_to_swissdamed(
     for f in &files {
         if let Ok(content) = std::fs::read_to_string(f) {
             if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
-                let uuid = f.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                let Some(stem_os) = f.file_stem() else {
+                    log(&format!("[Push] Warning: skipping path with no file stem: {}", f.display()));
+                    continue;
+                };
+                let uuid = stem_os.to_string_lossy().to_string();
                 // Determine endpoint from basic UDI cache
                 let endpoint = detect_swissdamed_endpoint(&uuid, &basic_dir);
                 pushable.push((f.clone(), uuid, endpoint, doc));
@@ -1973,7 +2048,8 @@ fn push_to_swissdamed(
     let log_dir = download::app_data_dir().join("log");
     let _ = std::fs::create_dir_all(&log_dir);
     let log_file = log_dir.join(format!("swissdamed_{}.log.html", chrono::Local::now().format("%H.%M_%d.%m.%Y")));
-    let html = generate_swissdamed_push_html(&conn, session_id, &raw_responses);
+    let html = generate_swissdamed_push_html(&conn, session_id, &raw_responses)
+        .map_err(|e| anyhow::anyhow!("Failed to generate Swissdamed push HTML log: {}", e))?;
     let _ = std::fs::write(&log_file, &html);
     log(&format!("[Push] HTML log: {}", log_file.display()));
 
@@ -1992,7 +2068,7 @@ fn detect_swissdamed_endpoint(uuid: &str, basic_dir: &std::path::Path) -> String
 }
 
 /// Generate HTML push log for Swissdamed from DB.
-fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> String {
+fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> rusqlite::Result<String> {
     let (version, timestamp, base_url, total_pushable, total_accepted, total_rejected) = conn
         .query_row(
             "SELECT version, session_ts, base_url, total_pushable, total_accepted, total_rejected FROM swissdamed_push_session WHERE id=?1",
@@ -2005,8 +2081,7 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
                 row.get::<_, i64>(4)?,
                 row.get::<_, i64>(5)?,
             )),
-        )
-        .unwrap_or_default();
+        )?;
 
     let mut html = format!(
         "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Swissdamed Push Log</title>\
@@ -2035,10 +2110,12 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
         let mut stmt = conn.prepare(
             "SELECT http_status, COUNT(*) as total, COUNT(DISTINCT uuid) as devices \
              FROM swissdamed_push_error WHERE session_id=?1 GROUP BY http_status ORDER BY total DESC"
-        ).unwrap();
-        let rows: Vec<(String, i64, i64)> = stmt.query_map(rusqlite::params![session_id], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-        }).unwrap().filter_map(|r| r.ok()).collect();
+        )?;
+        let rows: Vec<(String, i64, i64)> = stmt
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
 
         if !rows.is_empty() {
             html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>HTTP Status</th><th>Errors</th><th>Devices</th></tr>");
@@ -2053,10 +2130,12 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
     {
         let mut stmt = conn.prepare(
             "SELECT uuid, endpoint, http_status, error_description FROM swissdamed_push_error WHERE session_id=?1 LIMIT 500"
-        ).unwrap();
-        let rows: Vec<(String, String, String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
-        }).unwrap().filter_map(|r| r.ok()).collect();
+        )?;
+        let rows: Vec<(String, String, String, String)> = stmt
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
 
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='err'>Rejected Devices ({})</h2><table><tr><th>#</th><th>UUID</th><th>Endpoint</th><th>HTTP</th><th>Error</th></tr>", rows.len()));
@@ -2073,10 +2152,12 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
     {
         let mut stmt = conn.prepare(
             "SELECT uuid, endpoint FROM swissdamed_push_log WHERE pushed_at=(SELECT session_ts FROM swissdamed_push_session WHERE id=?1) AND status='ACCEPTED' ORDER BY uuid LIMIT 500"
-        ).unwrap();
-        let rows: Vec<(String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        }).unwrap().filter_map(|r| r.ok()).collect();
+        )?;
+        let rows: Vec<(String, String)> = stmt
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
 
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>UUID</th><th>Endpoint</th></tr>", rows.len()));
@@ -2097,7 +2178,7 @@ fn generate_swissdamed_push_html(conn: &rusqlite::Connection, session_id: i64, r
     }
 
     html.push_str("</body></html>");
-    html
+    Ok(html)
 }
 
 fn load_icon() -> Option<egui::IconData> {
@@ -2112,7 +2193,7 @@ fn load_icon() -> Option<egui::IconData> {
 }
 
 /// Generate HTML push log from the database for a given session.
-fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> String {
+fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_responses: &[String]) -> rusqlite::Result<String> {
     // Read session info
     let (version, timestamp, gln, total_pushable, skipped, accepted, rejected) = conn
         .query_row(
@@ -2127,8 +2208,7 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
                 row.get::<_, i64>(5)?,
                 row.get::<_, i64>(6)?,
             )),
-        )
-        .unwrap_or_default();
+        )?;
 
     let mut html = format!(
         "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log</title>\
@@ -2162,10 +2242,12 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
         let mut stmt = conn.prepare(
             "SELECT error_code, COUNT(*) as total, COUNT(DISTINCT gtin) as devices \
              FROM push_error WHERE session_id=?1 GROUP BY error_code ORDER BY total DESC"
-        ).unwrap();
-        let rows: Vec<(String, i64, i64)> = stmt.query_map(rusqlite::params![session_id], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-        }).unwrap().filter_map(|r| r.ok()).collect();
+        )?;
+        let rows: Vec<(String, i64, i64)> = stmt
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
 
         if !rows.is_empty() {
             html.push_str("<h2 class='err'>Error Summary</h2><table><tr><th>Error Code</th><th>Errors</th><th>Affected Devices</th></tr>");
@@ -2178,37 +2260,31 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
 
     // Rejected devices: grouped by GTIN/UUID with error codes and affected attributes
     {
-        // First get distinct GTINs
         let mut stmt = conn.prepare(
             "SELECT COALESCE(NULLIF(uuid,''), '—') as uuid, gtin \
              FROM push_error WHERE session_id=?1 GROUP BY gtin ORDER BY gtin"
-        ).unwrap();
-        let devices: Vec<(String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        }).unwrap().filter_map(|r| r.ok()).collect();
+        )?;
+        let devices: Vec<(String, String)> = stmt
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
 
         if !devices.is_empty() {
             html.push_str(&format!("<h2 class='err'>Rejected Devices ({})</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th><th>Errors</th></tr>", devices.len()));
 
-            // For each device, get error codes with their attribute names
-            let mut detail_stmt = conn.prepare(
-                "SELECT error_code, GROUP_CONCAT(DISTINCT attribute_name) \
-                 FROM push_error WHERE session_id=?1 AND gtin=?2 GROUP BY error_code ORDER BY error_code"
-            ).unwrap();
+            let detail_sql = "SELECT error_code, GROUP_CONCAT(DISTINCT attribute_name) \
+                              FROM push_error WHERE session_id=?1 AND gtin=?2 GROUP BY error_code ORDER BY error_code";
 
             for (i, (uuid, gtin)) in devices.iter().enumerate() {
-                let code_details: Vec<String> = detail_stmt.query_map(
-                    rusqlite::params![session_id, gtin],
-                    |row| {
+                let mut dstmt = conn.prepare(detail_sql)?;
+                let code_details: Vec<String> = dstmt
+                    .query_map(rusqlite::params![session_id, gtin], |row| {
                         let code: String = row.get(0)?;
                         let attrs: String = row.get(1)?;
-                        Ok(if attrs.is_empty() {
-                            code
-                        } else {
-                            format!("{} ({})", code, attrs)
-                        })
-                    },
-                ).unwrap().filter_map(|r| r.ok()).collect();
+                        Ok(if attrs.is_empty() { code } else { format!("{} ({})", code, attrs) })
+                    })?
+                    .collect::<rusqlite::Result<_>>()?;
 
                 html.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
                     i + 1, uuid, gtin, code_details.join("; ")));
@@ -2221,15 +2297,17 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
     {
         let mut stmt = conn.prepare(
             "SELECT uuid, gtin, error_code, attribute_name, error_description FROM push_error WHERE session_id=?1 LIMIT 500"
-        ).unwrap();
-        let rows: Vec<(String, String, String, String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
-        }).unwrap().filter_map(|r| r.ok()).collect();
+        )?;
+        let rows: Vec<(String, String, String, String, String)> = stmt
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
 
         let total_errors: i64 = conn.query_row(
             "SELECT COUNT(*) FROM push_error WHERE session_id=?1",
             rusqlite::params![session_id], |row| row.get(0),
-        ).unwrap_or(0);
+        )?;
 
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='err'>Error Details ({} total)</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th><th>Error Code</th><th>Attribute</th><th>Description</th></tr>", total_errors));
@@ -2248,10 +2326,12 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
     {
         let mut stmt = conn.prepare(
             "SELECT uuid, gtin FROM push_log WHERE pushed_at=(SELECT session_ts FROM push_session WHERE id=?1) AND status='ACCEPTED' ORDER BY gtin"
-        ).unwrap();
-        let rows: Vec<(String, String)> = stmt.query_map(rusqlite::params![session_id], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        }).unwrap().filter_map(|r| r.ok()).collect();
+        )?;
+        let rows: Vec<(String, String)> = stmt
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
 
         if !rows.is_empty() {
             html.push_str(&format!("<h2 class='ok'>Accepted ({})</h2><table><tr><th>#</th><th>UUID</th><th>GTIN</th></tr>", rows.len()));
@@ -2272,7 +2352,7 @@ fn generate_push_html(conn: &rusqlite::Connection, session_id: i64, raw_response
     }
 
     html.push_str("</body></html>");
-    html
+    Ok(html)
 }
 
 /// Launch the GUI application.
