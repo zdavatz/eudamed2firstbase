@@ -109,10 +109,38 @@ pub fn send_email_with_attachment(
     Ok(())
 }
 
-/// Extract PEM private key from .p12 file using openssl CLI.
+/// Locate the `openssl` binary by checking known absolute paths before falling
+/// back to the PATH-resolved name.  Using absolute paths prevents PATH-hijacking
+/// attacks where a malicious binary named `openssl` appears earlier in PATH.
+fn find_openssl() -> &'static str {
+    // Well-known absolute paths, checked in priority order.
+    const CANDIDATES: &[&str] = &[
+        "/usr/bin/openssl",          // Linux / macOS system default
+        "/opt/homebrew/bin/openssl", // macOS Homebrew (Apple Silicon)
+        "/usr/local/bin/openssl",    // macOS Homebrew (Intel) / custom installs
+        "/opt/local/bin/openssl",    // MacPorts
+    ];
+    for path in CANDIDATES {
+        if std::path::Path::new(path).exists() {
+            return path;
+        }
+    }
+    // Last resort: let the OS resolve via PATH (Windows or unusual layouts).
+    // Log a warning so operators notice.
+    eprintln!(
+        "Warning: openssl not found at known absolute paths; \
+         falling back to PATH resolution (potential security risk). \
+         Set OPENSSL_BIN env var or install openssl to /usr/bin/openssl."
+    );
+    "openssl"
+}
+
+/// Extract PEM private key from .p12 file using the openssl CLI.
 fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
-    // Try with -legacy flag first (OpenSSL 3.x), fall back without it (LibreSSL/older)
-    let output = Command::new("openssl")
+    let openssl = std::env::var("OPENSSL_BIN").unwrap_or_else(|_| find_openssl().to_string());
+
+    // Try with -legacy flag first (OpenSSL 3.x), fall back without it (LibreSSL/older).
+    let output = Command::new(&openssl)
         .args([
             "pkcs12", "-in", p12_path, "-nocerts", "-nodes",
             "-passin", "pass:notasecret", "-legacy",
@@ -121,12 +149,13 @@ fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
 
     let output = match output {
         Ok(o) if o.status.success() => o,
-        _ => Command::new("openssl")
+        _ => Command::new(&openssl)
             .args([
                 "pkcs12", "-in", p12_path, "-nocerts", "-nodes",
                 "-passin", "pass:notasecret",
             ])
-            .output()?,
+            .output()
+            .with_context(|| format!("Failed to run openssl ({})", openssl))?,
     };
 
     if !output.status.success() {
