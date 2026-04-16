@@ -277,10 +277,25 @@ impl OemActor {
     pub fn structured_address(&self) -> Option<(String, String, String, String)> {
         match self.geographical_address.as_ref()? {
             serde_json::Value::Object(obj) => {
-                let street = obj.get("streetName").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let number = obj.get("buildingNumber").and_then(|v| v.as_str()).map(|s| s.to_string());
-                let postal = obj.get("postalZone").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let city = obj.get("cityName").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let street = obj
+                    .get("streetName")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let number = obj
+                    .get("buildingNumber")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let postal = obj
+                    .get("postalZone")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let city = obj
+                    .get("cityName")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 Some((street, number.unwrap_or_default(), postal, city))
             }
             serde_json::Value::String(s) => {
@@ -306,10 +321,25 @@ impl OemOrganisation {
     pub fn structured_address(&self) -> Option<(String, String, String, String)> {
         match self.geographical_address.as_ref()? {
             serde_json::Value::Object(obj) => {
-                let street = obj.get("streetName").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let number = obj.get("buildingNumber").and_then(|v| v.as_str()).map(|s| s.to_string());
-                let postal = obj.get("postalZone").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let city = obj.get("cityName").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let street = obj
+                    .get("streetName")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let number = obj
+                    .get("buildingNumber")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let postal = obj
+                    .get("postalZone")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let city = obj
+                    .get("cityName")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 Some((street, number.unwrap_or_default(), postal, city))
             }
             serde_json::Value::String(s) => {
@@ -322,12 +352,11 @@ impl OemOrganisation {
     /// Extract country ISO2 code from nested address object.
     pub fn country_iso2(&self) -> Option<String> {
         match self.geographical_address.as_ref()? {
-            serde_json::Value::Object(obj) => {
-                obj.get("country")
-                    .and_then(|c| c.get("iso2Code"))
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-            }
+            serde_json::Value::Object(obj) => obj
+                .get("country")
+                .and_then(|c| c.get("iso2Code"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
             _ => None,
         }
     }
@@ -381,9 +410,7 @@ impl ApiDeviceDetail {
 
     /// True if primary DI is a GS1 identifier (GTIN/GMN)
     pub fn is_gs1_primary(&self) -> bool {
-        self.primary_di_agency()
-            .map(|a| a == "gs1")
-            .unwrap_or(true) // default to GS1 if no agency specified
+        self.primary_di_agency().map(|a| a == "gs1").unwrap_or(true) // default to GS1 if no agency specified
     }
 
     /// Get GTIN — only if primary DI is GS1, otherwise empty
@@ -430,7 +457,8 @@ impl ApiDeviceDetail {
 }
 
 fn extract_lang_texts(mlt: Option<&MultiLangText>) -> Vec<(String, String)> {
-    let raw: Vec<(String, String)> = mlt.and_then(|t| t.texts.as_ref())
+    let raw: Vec<(String, String)> = mlt
+        .and_then(|t| t.texts.as_ref())
         .map(|texts| {
             texts
                 .iter()
@@ -569,16 +597,19 @@ pub struct CertificateNotifiedBody {
 impl BasicUdiDiData {
     /// Extract multiComponent code suffix → GS1 code
     pub fn multi_component_code(&self) -> Option<String> {
-        self.multi_component.as_ref()?.code.as_ref().map(|c| {
-            crate::mappings::multi_component_to_gs1(c).to_string()
-        })
+        self.multi_component
+            .as_ref()?
+            .code
+            .as_ref()
+            .map(|c| crate::mappings::multi_component_to_gs1(c).to_string())
     }
 
     /// Check if device is SPP (System/Procedure Pack) based on criterion field
     /// criterion="SPP" → FLD-UDID-261 → systemOrProcedurePackTypeCode
     /// criterion="STANDARD" → FLD-UDID-12 → multiComponentDeviceTypeCode
     pub fn is_spp(&self) -> bool {
-        self.multi_component.as_ref()
+        self.multi_component
+            .as_ref()
             .and_then(|mc| mc.code.as_ref())
             .map(|c| {
                 let suffix = c.rsplit('.').next().unwrap_or(c);

@@ -10,3 +10,8 @@ eudamed_json/detail/
 eudamed_json/basic/
 swissdamed_json/
 firstbase_json/
+
+# config.toml contains secrets (Gmail credentials, GLN).
+# Use config.sample.toml as the template — never commit config.toml.
+config.toml
+*.p12

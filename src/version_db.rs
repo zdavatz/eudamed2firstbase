@@ -78,15 +78,33 @@ impl ChangeSet {
             return "NEW".to_string();
         }
         let mut parts = Vec::new();
-        if self.udi_changed { parts.push("UDI"); }
-        if self.budi_changed { parts.push("BUDI"); }
-        if self.mfr_changed { parts.push("MFR"); }
-        if self.ar_changed { parts.push("AR"); }
-        if self.cert_changed { parts.push("CERT"); }
-        if self.pkg_changed { parts.push("PKG"); }
-        if self.market_changed { parts.push("MARKET"); }
-        if self.status_changed { parts.push("STATUS"); }
-        if self.designer_changed { parts.push("DESIGNER"); }
+        if self.udi_changed {
+            parts.push("UDI");
+        }
+        if self.budi_changed {
+            parts.push("BUDI");
+        }
+        if self.mfr_changed {
+            parts.push("MFR");
+        }
+        if self.ar_changed {
+            parts.push("AR");
+        }
+        if self.cert_changed {
+            parts.push("CERT");
+        }
+        if self.pkg_changed {
+            parts.push("PKG");
+        }
+        if self.market_changed {
+            parts.push("MARKET");
+        }
+        if self.status_changed {
+            parts.push("STATUS");
+        }
+        if self.designer_changed {
+            parts.push("DESIGNER");
+        }
         if parts.is_empty() {
             "UNCHANGED".to_string()
         } else {
@@ -249,12 +267,27 @@ pub fn upsert_version(conn: &Connection, rec: &VersionRecord) -> Result<()> {
             designer_version=excluded.designer_version, designer_date=excluded.designer_date,
             last_synced=excluded.last_synced",
         params![
-            rec.uuid, rec.gtin, rec.detail_hash,
-            rec.udi_version, rec.udi_date, rec.budi_version, rec.budi_date,
-            rec.mfr_version, rec.mfr_date, rec.ar_version, rec.ar_date,
-            rec.cert_versions, rec.pkg_version, rec.pkg_date,
-            rec.market_version, rec.market_date, rec.device_status, rec.status_date,
-            rec.designer_version, rec.designer_date, rec.last_synced,
+            rec.uuid,
+            rec.gtin,
+            rec.detail_hash,
+            rec.udi_version,
+            rec.udi_date,
+            rec.budi_version,
+            rec.budi_date,
+            rec.mfr_version,
+            rec.mfr_date,
+            rec.ar_version,
+            rec.ar_date,
+            rec.cert_versions,
+            rec.pkg_version,
+            rec.pkg_date,
+            rec.market_version,
+            rec.market_date,
+            rec.device_status,
+            rec.status_date,
+            rec.designer_version,
+            rec.designer_date,
+            rec.last_synced,
         ],
     )?;
     Ok(())
@@ -262,10 +295,7 @@ pub fn upsert_version(conn: &Connection, rec: &VersionRecord) -> Result<()> {
 
 /// Compare a new version record against the stored one and return what changed.
 /// Fast path: if detail_hash matches, nothing changed.
-pub fn detect_changes(
-    conn: &Connection,
-    new_rec: &VersionRecord,
-) -> Result<ChangeSet> {
+pub fn detect_changes(conn: &Connection, new_rec: &VersionRecord) -> Result<ChangeSet> {
     let old = match get_version(conn, &new_rec.uuid)? {
         Some(old) => old,
         None => {
@@ -283,17 +313,13 @@ pub fn detect_changes(
 
     Ok(ChangeSet {
         is_new: false,
-        udi_changed: old.udi_version != new_rec.udi_version
-            || old.udi_date != new_rec.udi_date,
+        udi_changed: old.udi_version != new_rec.udi_version || old.udi_date != new_rec.udi_date,
         budi_changed: old.budi_version != new_rec.budi_version
             || old.budi_date != new_rec.budi_date,
-        mfr_changed: old.mfr_version != new_rec.mfr_version
-            || old.mfr_date != new_rec.mfr_date,
-        ar_changed: old.ar_version != new_rec.ar_version
-            || old.ar_date != new_rec.ar_date,
+        mfr_changed: old.mfr_version != new_rec.mfr_version || old.mfr_date != new_rec.mfr_date,
+        ar_changed: old.ar_version != new_rec.ar_version || old.ar_date != new_rec.ar_date,
         cert_changed: old.cert_versions != new_rec.cert_versions,
-        pkg_changed: old.pkg_version != new_rec.pkg_version
-            || old.pkg_date != new_rec.pkg_date,
+        pkg_changed: old.pkg_version != new_rec.pkg_version || old.pkg_date != new_rec.pkg_date,
         market_changed: old.market_version != new_rec.market_version
             || old.market_date != new_rec.market_date,
         status_changed: old.device_status != new_rec.device_status
@@ -316,14 +342,25 @@ pub fn extract_detail_versions(json_str: &str) -> VersionRecord {
     };
 
     // UDI-DI root
-    rec.udi_version = val.get("versionNumber").and_then(|v| v.as_u64()).map(|v| v as u32);
-    rec.udi_date = val.get("versionDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+    rec.udi_version = val
+        .get("versionNumber")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+    rec.udi_date = val
+        .get("versionDate")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     // UUID
-    rec.uuid = val.get("uuid").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    rec.uuid = val
+        .get("uuid")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
 
     // GTIN (from primaryDi.code)
-    rec.gtin = val.get("primaryDi")
+    rec.gtin = val
+        .get("primaryDi")
         .and_then(|di| di.get("code"))
         .and_then(|v| v.as_str())
         .unwrap_or("")
@@ -331,29 +368,51 @@ pub fn extract_detail_versions(json_str: &str) -> VersionRecord {
 
     // MarketInfo
     if let Some(mi) = val.get("marketInfoLink") {
-        rec.market_version = mi.get("versionNumber").and_then(|v| v.as_u64()).map(|v| v as u32);
-        rec.market_date = mi.get("versionDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+        rec.market_version = mi
+            .get("versionNumber")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+        rec.market_date = mi
+            .get("versionDate")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
 
     // Package (containedItem)
     if let Some(ci) = val.get("containedItem") {
-        rec.pkg_version = ci.get("versionNumber").and_then(|v| v.as_u64()).map(|v| v as u32);
-        rec.pkg_date = ci.get("versionDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+        rec.pkg_version = ci
+            .get("versionNumber")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+        rec.pkg_date = ci
+            .get("versionDate")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
 
     // Device status
     if let Some(ds) = val.get("deviceStatus") {
-        rec.device_status = ds.get("type")
+        rec.device_status = ds
+            .get("type")
             .and_then(|t| t.get("code"))
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
-        rec.status_date = ds.get("statusDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+        rec.status_date = ds
+            .get("statusDate")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
 
     // Product designer
     if let Some(pd) = val.get("productDesigner") {
-        rec.designer_version = pd.get("versionNumber").and_then(|v| v.as_u64()).map(|v| v as u32);
-        rec.designer_date = pd.get("versionDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+        rec.designer_version = pd
+            .get("versionNumber")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+        rec.designer_date = pd
+            .get("versionDate")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
 
     rec
@@ -368,23 +427,44 @@ pub fn merge_budi_versions(rec: &mut VersionRecord, budi_json: &str) {
     };
 
     // Basic UDI-DI root
-    rec.budi_version = val.get("versionNumber").and_then(|v| v.as_u64()).map(|v| v as u32);
-    rec.budi_date = val.get("versionDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+    rec.budi_version = val
+        .get("versionNumber")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+    rec.budi_date = val
+        .get("versionDate")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     // Manufacturer
     if let Some(mfr) = val.get("manufacturer") {
-        rec.mfr_version = mfr.get("versionNumber").and_then(|v| v.as_u64()).map(|v| v as u32);
-        rec.mfr_date = mfr.get("lastUpdateDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+        rec.mfr_version = mfr
+            .get("versionNumber")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+        rec.mfr_date = mfr
+            .get("lastUpdateDate")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
 
     // Authorised Representative
     if let Some(ar) = val.get("authorisedRepresentative") {
-        rec.ar_version = ar.get("versionNumber").and_then(|v| v.as_u64()).map(|v| v as u32);
-        rec.ar_date = ar.get("lastUpdateDate").and_then(|v| v.as_str()).map(|s| s.to_string());
+        rec.ar_version = ar
+            .get("versionNumber")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+        rec.ar_date = ar
+            .get("lastUpdateDate")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
 
     // Certificates — collect version numbers as JSON array
-    if let Some(certs) = val.get("deviceCertificateInfoListForDisplay").and_then(|v| v.as_array()) {
+    if let Some(certs) = val
+        .get("deviceCertificateInfoListForDisplay")
+        .and_then(|v| v.as_array())
+    {
         let versions: Vec<u64> = certs
             .iter()
             .filter_map(|c| c.get("versionNumber").and_then(|v| v.as_u64()))

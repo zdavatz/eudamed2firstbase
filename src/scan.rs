@@ -48,8 +48,13 @@ pub fn scan_dir(input_dir: &Path) -> anyhow::Result<()> {
     }
 
     // Print summary to stderr, data to stdout
-    eprintln!("Found {} JSON files in {}/ ({} live, {} skipped no GTIN)",
-        live + skipped, input_dir.display(), live, skipped);
+    eprintln!(
+        "Found {} JSON files in {}/ ({} live, {} skipped no GTIN)",
+        live + skipped,
+        input_dir.display(),
+        live,
+        skipped
+    );
 
     for line in &lines {
         println!("{}", line);
@@ -67,7 +72,8 @@ fn extract_gtin(content: &str) -> Option<String> {
     // Find ALL Gtin occurrences and pick the right one
     // The main TradeItem Gtin is at the top level — typically the last "Gtin"
     // before "CatalogueItemChildItemLink" or end of TradeItem.
-    let child_boundary = content.find("\"CatalogueItemChildItemLink\"")
+    let child_boundary = content
+        .find("\"CatalogueItemChildItemLink\"")
         .unwrap_or(content.len());
 
     let mut last_gtin = None;

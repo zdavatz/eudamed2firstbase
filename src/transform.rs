@@ -8,13 +8,23 @@ use std::collections::HashMap;
 
 pub fn transform(response: &PullResponse, config: &Config) -> Result<FirstbaseDocument> {
     let device = &response.device;
-    let basic_udi = device.mdr_basic_udi.as_ref().context("Missing MDRBasicUDI")?;
-    let udidi = device.mdr_udidi_data.as_ref().context("Missing MDRUDIDIData")?;
+    let basic_udi = device
+        .mdr_basic_udi
+        .as_ref()
+        .context("Missing MDRBasicUDI")?;
+    let udidi = device
+        .mdr_udidi_data
+        .as_ref()
+        .context("Missing MDRUDIDIData")?;
 
-    let base_unit_di = udidi.identifier.as_ref()
+    let base_unit_di = udidi
+        .identifier
+        .as_ref()
         .and_then(|id| id.di_code.as_deref())
         .context("Missing UDI-DI identifier")?;
-    let basic_udi_di = basic_udi.identifier.as_ref()
+    let basic_udi_di = basic_udi
+        .identifier
+        .as_ref()
         .and_then(|id| id.di_code.as_deref())
         .unwrap_or("");
 
@@ -56,7 +66,10 @@ struct PackageInfo {
     quantity: u32,
 }
 
-fn build_packaging_hierarchy(udidi: &MdrUdidiData, _base_unit_di: &str) -> Result<(String, Vec<PackageInfo>)> {
+fn build_packaging_hierarchy(
+    udidi: &MdrUdidiData,
+    _base_unit_di: &str,
+) -> Result<(String, Vec<PackageInfo>)> {
     if udidi.packages.is_empty() {
         return Ok((String::new(), vec![]));
     }
@@ -65,22 +78,31 @@ fn build_packaging_hierarchy(udidi: &MdrUdidiData, _base_unit_di: &str) -> Resul
     let mut child_dis: Vec<String> = Vec::new();
 
     for pkg in &udidi.packages {
-        let gtin = pkg.identifier.as_ref()
+        let gtin = pkg
+            .identifier
+            .as_ref()
             .and_then(|id| id.di_code.as_deref())
             .unwrap_or("")
             .to_string();
-        let child_di = pkg.child.as_ref()
+        let child_di = pkg
+            .child
+            .as_ref()
             .and_then(|id| id.di_code.as_deref())
             .unwrap_or("")
             .to_string();
         let qty = pkg.number_of_items.unwrap_or(1);
 
         child_dis.push(child_di.clone());
-        pkg_list.push(PackageInfo { gtin, child_di, quantity: qty });
+        pkg_list.push(PackageInfo {
+            gtin,
+            child_di,
+            quantity: qty,
+        });
     }
 
     // The outermost package is the one whose DI is never referenced as a child
-    let top_gtin = pkg_list.iter()
+    let top_gtin = pkg_list
+        .iter()
         .find(|p| !child_dis.contains(&p.gtin))
         .map(|p| p.gtin.clone())
         .unwrap_or_default();
@@ -98,9 +120,8 @@ fn build_nested_document(
     contacts: &[TradeItemContactInformation],
 ) -> Result<FirstbaseDocument> {
     // Map from parent DI → PackageInfo
-    let pkg_map: HashMap<&str, &PackageInfo> = hierarchy.iter()
-        .map(|p| (p.gtin.as_str(), p))
-        .collect();
+    let pkg_map: HashMap<&str, &PackageInfo> =
+        hierarchy.iter().map(|p| (p.gtin.as_str(), p)).collect();
 
     // Build from bottom up: find the chain from top to base
     let mut chain: Vec<&PackageInfo> = Vec::new();
@@ -167,7 +188,9 @@ fn build_nested_document(
     }
 
     // Top-level trade item (outermost package)
-    let top_pkg = chain.first().unwrap();
+    let top_pkg = chain
+        .first()
+        .context("Packaging chain is empty; cannot build top-level trade item")?;
     let top_next_lower = Some(NextLowerLevel {
         quantity_of_children: 1,
         total_quantity: top_pkg.quantity,
@@ -179,11 +202,7 @@ fn build_nested_document(
 
     // Top-level is always CASE; if only 1 level, also CASE
     // If only 1 package level and it's the innermost too, it's CASE (not PACK_OR_INNER_PACK)
-    let top_descriptor = if chain.len() == 1 {
-        "CASE"
-    } else {
-        "CASE"
-    };
+    let top_descriptor = if chain.len() == 1 { "CASE" } else { "CASE" };
     let top_trade_item = build_packaging_trade_item(
         top_gtin,
         top_next_lower.as_ref(),
@@ -211,7 +230,8 @@ fn build_packaging_trade_item(
     descriptor: &str,
 ) -> TradeItem {
     // Package DIs get EMA/EAR contacts (SRN only) so CH-REPs can filter by SRN
-    let pkg_contacts: Vec<TradeItemContactInformation> = contacts.iter()
+    let pkg_contacts: Vec<TradeItemContactInformation> = contacts
+        .iter()
         .filter(|c| c.contact_type.value == "EMA" || c.contact_type.value == "EAR")
         .cloned()
         .collect();
@@ -223,7 +243,9 @@ fn build_packaging_trade_item(
         healthcare_item_module: None,
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
-                eu_status: CodeValue { value: "ON_MARKET".to_string() },
+                eu_status: CodeValue {
+                    value: "ON_MARKET".to_string(),
+                },
                 ..Default::default()
             },
         },
@@ -235,8 +257,12 @@ fn build_packaging_trade_item(
         is_base_unit: false,
         is_despatch_unit: is_top_level,
         is_orderable_unit: true,
-        unit_descriptor: CodeValue { value: descriptor.to_string() },
-        trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
+        unit_descriptor: CodeValue {
+            value: descriptor.to_string(),
+        },
+        trade_channel_code: vec![CodeValue {
+            value: "UDI_REGISTRY".to_string(),
+        }],
         information_provider: InformationProvider {
             gln: config.provider.gln.clone(),
             party_name: config.provider.party_name.clone(),
@@ -252,13 +278,19 @@ fn build_packaging_trade_item(
         next_lower_level: next_lower.map(|nl| NextLowerLevel {
             quantity_of_children: nl.quantity_of_children,
             total_quantity: nl.total_quantity,
-            child_items: nl.child_items.iter().map(|c| ChildTradeItem {
-                quantity: c.quantity,
-                gtin: c.gtin.clone(),
-            }).collect(),
+            child_items: nl
+                .child_items
+                .iter()
+                .map(|c| ChildTradeItem {
+                    quantity: c.quantity,
+                    gtin: c.gtin.clone(),
+                })
+                .collect(),
         }),
         target_market: TargetMarketObj {
-            country_code: CodeValue { value: config.target_market.country_code.clone() },
+            country_code: CodeValue {
+                value: config.target_market.country_code.clone(),
+            },
         },
         contact_information: pkg_contacts,
         synchronisation_dates: {
@@ -281,11 +313,19 @@ fn build_packaging_trade_item(
     }
 }
 
-fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Config) -> Result<TradeItem> {
-    let base_di = udidi.identifier.as_ref()
+fn build_base_unit(
+    basic_udi: &MdrBasicUdi,
+    udidi: &MdrUdidiData,
+    config: &Config,
+) -> Result<TradeItem> {
+    let base_di = udidi
+        .identifier
+        .as_ref()
         .and_then(|id| id.di_code.as_deref())
         .unwrap_or("");
-    let basic_udi_di = basic_udi.identifier.as_ref()
+    let basic_udi_di = basic_udi
+        .identifier
+        .as_ref()
         .and_then(|id| id.di_code.as_deref())
         .unwrap_or("");
     let risk_class = basic_udi.risk_class.as_deref().unwrap_or("");
@@ -299,8 +339,12 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         codes.sort();
         for code in codes {
             classifications.push(AdditionalClassification {
-                system_code: CodeValue { value: "88".to_string() },
-                values: vec![AdditionalClassificationValue { code_value: code.to_string() }],
+                system_code: CodeValue {
+                    value: "88".to_string(),
+                },
+                values: vec![AdditionalClassificationValue {
+                    code_value: code.to_string(),
+                }],
             });
         }
     }
@@ -308,7 +352,9 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
     // Risk class (system 76)
     if !risk_class.is_empty() {
         classifications.push(AdditionalClassification {
-            system_code: CodeValue { value: "76".to_string() },
+            system_code: CodeValue {
+                value: "76".to_string(),
+            },
             values: vec![AdditionalClassificationValue {
                 code_value: mappings::risk_class_to_gs1(risk_class).to_string(),
             }],
@@ -321,7 +367,9 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
     // Manufacturer (EMA)
     if let Some(ref mf) = basic_udi.mf_actor_code {
         contacts.push(TradeItemContactInformation {
-            contact_type: CodeValue { value: "EMA".to_string() },
+            contact_type: CodeValue {
+                value: "EMA".to_string(),
+            },
             party_identification: vec![AdditionalPartyIdentification {
                 type_code: "SRN".to_string(),
                 value: mf.clone(),
@@ -335,7 +383,9 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
     // Authorised representative (EAR)
     if let Some(ref ar) = basic_udi.ar_actor_code {
         contacts.push(TradeItemContactInformation {
-            contact_type: CodeValue { value: "EAR".to_string() },
+            contact_type: CodeValue {
+                value: "EAR".to_string(),
+            },
             party_identification: vec![AdditionalPartyIdentification {
                 type_code: "SRN".to_string(),
                 value: ar.clone(),
@@ -350,7 +400,9 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
     if let Some(ref pd) = udidi.product_designer_actor {
         if let Some(ref org) = pd.organisation {
             let mut pd_contact = TradeItemContactInformation {
-                contact_type: CodeValue { value: "EPD".to_string() },
+                contact_type: CodeValue {
+                    value: "EPD".to_string(),
+                },
                 party_identification: vec![],
                 contact_name: org.org_name.clone(),
                 addresses: vec![],
@@ -358,12 +410,16 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
             };
 
             if let Some(ref addr) = org.address {
-                let country_numeric = addr.country.as_deref()
+                let country_numeric = addr
+                    .country
+                    .as_deref()
                     .map(mappings::country_alpha2_to_numeric)
                     .unwrap_or("");
                 pd_contact.addresses.push(StructuredAddress {
                     city: addr.city.clone().unwrap_or_default(),
-                    country_code: CodeValue { value: country_numeric.to_string() },
+                    country_code: CodeValue {
+                        value: country_numeric.to_string(),
+                    },
                     postal_code: addr.post_code.clone().unwrap_or_default(),
                     street: addr.street.clone().unwrap_or_default(),
                     street_number: addr.street_num.clone(),
@@ -374,20 +430,24 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
             let mut channels = Vec::new();
             if let Some(ref email) = org.email {
                 channels.push(CommunicationChannel {
-                    channel_code: CodeValue { value: "EMAIL".to_string() },
+                    channel_code: CodeValue {
+                        value: "EMAIL".to_string(),
+                    },
                     value: email.clone(),
                 });
             }
             if let Some(ref phone) = org.phone {
                 channels.push(CommunicationChannel {
-                    channel_code: CodeValue { value: "TELEPHONE".to_string() },
+                    channel_code: CodeValue {
+                        value: "TELEPHONE".to_string(),
+                    },
                     value: phone.clone(),
                 });
             }
             if !channels.is_empty() {
-                pd_contact.communication_channels.push(TargetMarketCommunicationChannel {
-                    channels,
-                });
+                pd_contact
+                    .communication_channels
+                    .push(TargetMarketCommunicationChannel { channels });
             }
 
             contacts.push(pd_contact);
@@ -395,27 +455,36 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
     }
 
     // Production identifier types - sorted
-    let mut production_ids: Vec<CodeValue> = udidi.production_identifier.as_deref()
-        .map(|s| s.split_whitespace()
-            .map(|id| CodeValue {
-                value: mappings::production_identifier_to_gs1(id).to_string(),
-            })
-            .collect())
+    let mut production_ids: Vec<CodeValue> = udidi
+        .production_identifier
+        .as_deref()
+        .map(|s| {
+            s.split_whitespace()
+                .map(|id| CodeValue {
+                    value: mappings::production_identifier_to_gs1(id).to_string(),
+                })
+                .collect()
+        })
         .unwrap_or_default();
-    production_ids.sort_by(|a, b| {
-        prod_id_sort_key(&a.value).cmp(&prod_id_sort_key(&b.value))
-    });
+    production_ids.sort_by(|a, b| prod_id_sort_key(&a.value).cmp(&prod_id_sort_key(&b.value)));
 
     // Annex XVI types (now Vec<String> directly)
-    let annex_xvi: Vec<CodeValue> = udidi.annex_xvi_types.iter()
+    let annex_xvi: Vec<CodeValue> = udidi
+        .annex_xvi_types
+        .iter()
         .map(|t| CodeValue { value: t.clone() })
         .collect();
 
     // Multi-component type
-    let multi_component = basic_udi.device_kind.as_ref().map(|t| CodeValue { value: t.clone() });
+    let multi_component = basic_udi
+        .device_kind
+        .as_ref()
+        .map(|t| CodeValue { value: t.clone() });
 
     // Status (now Option<String> directly)
-    let status = udidi.status.as_deref()
+    let status = udidi
+        .status
+        .as_deref()
         .map(mappings::device_status_to_gs1)
         .unwrap_or("ON_MARKET");
 
@@ -423,12 +492,16 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
     let reusability = udidi.number_of_reuses.map(|n| {
         if n == 0 {
             ReusabilityInformation {
-                reusability_type: CodeValue { value: "SINGLE_USE".to_string() },
+                reusability_type: CodeValue {
+                    value: "SINGLE_USE".to_string(),
+                },
                 max_cycles: None,
             }
         } else {
             ReusabilityInformation {
-                reusability_type: CodeValue { value: "LIMITED_REUSABLE".to_string() },
+                reusability_type: CodeValue {
+                    value: "LIMITED_REUSABLE".to_string(),
+                },
                 max_cycles: Some(n),
             }
         }
@@ -441,21 +514,34 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
 
         Some(SterilityInformation {
             manufacturer_sterilisation: vec![CodeValue {
-                value: if sterile { "UNSPECIFIED" } else { "NOT_STERILISED" }.to_string(),
+                value: if sterile {
+                    "UNSPECIFIED"
+                } else {
+                    "NOT_STERILISED"
+                }
+                .to_string(),
             }],
             prior_to_use: vec![CodeValue {
-                value: if sterilization { "UNSPECIFIED" } else { "NO_STERILISATION_REQUIRED" }.to_string(),
+                value: if sterilization {
+                    "UNSPECIFIED"
+                } else {
+                    "NO_STERILISATION_REQUIRED"
+                }
+                .to_string(),
             }],
         })
     };
 
     // Healthcare item information (booleans are now plain Option<bool>)
     let healthcare_module = {
-        let human_blood = basic_udi.human_product_check
+        let human_blood = basic_udi
+            .human_product_check
             .map(|b| if b { "TRUE" } else { "FALSE" }.to_string());
-        let latex = udidi.latex
+        let latex = udidi
+            .latex
             .map(|b| if b { "TRUE" } else { "FALSE" }.to_string());
-        let human_tissue = basic_udi.human_tissues_cells
+        let human_tissue = basic_udi
+            .human_tissues_cells
             .map(|b| if b { "TRUE" } else { "FALSE" }.to_string());
         let animal_tissue = basic_udi.animal_tissues_cells;
 
@@ -509,9 +595,19 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         ReferencedFileDetailInformationModule {
             headers: vec![ReferencedFileHeader {
                 media_source_gln: Some(config.provider.gln.clone()),
-                mime_type: if is_pdf { Some("application/pdf".to_string()) } else { None },
-                file_type: CodeValue { value: "IFU".to_string() },
-                format_name: if is_pdf { Some("Pdf".to_string()) } else { None },
+                mime_type: if is_pdf {
+                    Some("application/pdf".to_string())
+                } else {
+                    None
+                },
+                file_type: CodeValue {
+                    value: "IFU".to_string(),
+                },
+                format_name: if is_pdf {
+                    Some("Pdf".to_string())
+                } else {
+                    None
+                },
                 file_name: Some(filename.to_string()),
                 uri: url.clone(),
                 is_primary: "FALSE".to_string(),
@@ -531,9 +627,16 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
     let sales_module = transform_market_info(udidi);
 
     // Global model info
-    let model_desc = basic_udi.model_name.as_ref()
+    let model_desc = basic_udi
+        .model_name
+        .as_ref()
         .and_then(|m| m.name.as_ref())
-        .map(|n| vec![LangValue { language_code: "en".to_string(), value: n.clone() }])
+        .map(|n| {
+            vec![LangValue {
+                language_code: "en".to_string(),
+                value: n.clone(),
+            }]
+        })
         .unwrap_or_default();
 
     // Additional identifications
@@ -558,7 +661,8 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         healthcare_item_module: healthcare_module,
         medical_device_module: MedicalDeviceTradeItemModule {
             info: MedicalDeviceInformation {
-                is_implantable: basic_udi.implantable
+                is_implantable: basic_udi
+                    .implantable
                     .map(|b| if b { "TRUE" } else { "FALSE" }.to_string()),
                 is_exempt_from_implant_obligations: None,
                 device_count: udidi.base_quantity,
@@ -582,7 +686,9 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
                 is_near_patient_testing: None,
                 is_professional_testing: None,
                 is_companion_diagnostic: None,
-                eu_status: CodeValue { value: status.to_string() },
+                eu_status: CodeValue {
+                    value: status.to_string(),
+                },
                 reusability,
                 sterility,
             },
@@ -593,10 +699,14 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         sales_module,
         description_module,
         is_base_unit: true,
-        is_despatch_unit: false,  // set to true later if no packaging hierarchy
+        is_despatch_unit: false, // set to true later if no packaging hierarchy
         is_orderable_unit: true,
-        unit_descriptor: CodeValue { value: "BASE_UNIT_OR_EACH".to_string() },
-        trade_channel_code: vec![CodeValue { value: "UDI_REGISTRY".to_string() }],
+        unit_descriptor: CodeValue {
+            value: "BASE_UNIT_OR_EACH".to_string(),
+        },
+        trade_channel_code: vec![CodeValue {
+            value: "UDI_REGISTRY".to_string(),
+        }],
         information_provider: InformationProvider {
             gln: config.provider.gln.clone(),
             party_name: config.provider.party_name.clone(),
@@ -611,7 +721,9 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
         },
         next_lower_level: None,
         target_market: TargetMarketObj {
-            country_code: CodeValue { value: config.target_market.country_code.clone() },
+            country_code: CodeValue {
+                value: config.target_market.country_code.clone(),
+            },
         },
         contact_information: contacts,
         synchronisation_dates: {
@@ -635,33 +747,51 @@ fn build_base_unit(basic_udi: &MdrBasicUdi, udidi: &MdrUdidiData, config: &Confi
 }
 
 fn transform_lang_names(names: &Option<Vec<LanguageSpecificName>>) -> Vec<LangValue> {
-    let mut result: Vec<LangValue> = names.as_ref()
-        .map(|n| n.iter().filter_map(|name| {
-            let raw_lang = name.language.as_deref()?.to_lowercase();
-            let lang = if raw_lang == "any" { "en".to_string() } else { raw_lang };
-            let val = name.text_value.as_deref()?;
-            Some(LangValue {
-                language_code: lang,
-                value: val.to_string(),
-            })
-        }).collect())
+    let mut result: Vec<LangValue> = names
+        .as_ref()
+        .map(|n| {
+            n.iter()
+                .filter_map(|name| {
+                    let raw_lang = name.language.as_deref()?.to_lowercase();
+                    let lang = if raw_lang == "any" {
+                        "en".to_string()
+                    } else {
+                        raw_lang
+                    };
+                    let val = name.text_value.as_deref()?;
+                    Some(LangValue {
+                        language_code: lang,
+                        value: val.to_string(),
+                    })
+                })
+                .collect()
+        })
         .unwrap_or_default();
     result.sort_by(|a, b| lang_sort_key(&a.language_code).cmp(&lang_sort_key(&b.language_code)));
     result
 }
 
 fn transform_lang_names_vec(names: &[LanguageSpecificName]) -> Vec<LangValue> {
-    let mut result: Vec<LangValue> = names.iter().filter_map(|name| {
-        let val = name.text_value.as_deref()?;
-        let raw_lang = name.language.as_deref()
-            .map(|l| l.to_lowercase())
-            .unwrap_or_else(|| "en".to_string());
-        let lang = if raw_lang == "any" { "en".to_string() } else { raw_lang };
-        Some(LangValue {
-            language_code: lang,
-            value: val.to_string(),
+    let mut result: Vec<LangValue> = names
+        .iter()
+        .filter_map(|name| {
+            let val = name.text_value.as_deref()?;
+            let raw_lang = name
+                .language
+                .as_deref()
+                .map(|l| l.to_lowercase())
+                .unwrap_or_else(|| "en".to_string());
+            let lang = if raw_lang == "any" {
+                "en".to_string()
+            } else {
+                raw_lang
+            };
+            Some(LangValue {
+                language_code: lang,
+                value: val.to_string(),
+            })
         })
-    }).collect();
+        .collect();
     result.sort_by(|a, b| lang_sort_key(&a.language_code).cmp(&lang_sort_key(&b.language_code)));
     result
 }
@@ -678,86 +808,141 @@ fn lang_sort_key(lang: &str) -> u8 {
 }
 
 fn transform_storage_handling(udidi: &MdrUdidiData) -> Vec<ClinicalStorageHandling> {
-    udidi.storage_handling_conditions.iter().map(|cond| {
-        let code = cond.value.as_deref().unwrap_or("");
-        let gs1_code = mappings::storage_handling_to_gs1(code);
-        let descriptions = transform_lang_names_vec(&cond.comments);
+    udidi
+        .storage_handling_conditions
+        .iter()
+        .map(|cond| {
+            let code = cond.value.as_deref().unwrap_or("");
+            let gs1_code = mappings::storage_handling_to_gs1(code);
+            let descriptions = transform_lang_names_vec(&cond.comments);
 
-        ClinicalStorageHandling {
-            type_code: CodeValue { value: gs1_code },
-            descriptions,
-        }
-    }).collect()
+            ClinicalStorageHandling {
+                type_code: CodeValue { value: gs1_code },
+                descriptions,
+            }
+        })
+        .collect()
 }
 
 fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
-    udidi.clinical_sizes.iter().map(|size| {
-        let size_type_eu = size.clinical_size_type.as_deref().unwrap_or("");
-        let gs1_type = mappings::clinical_size_type_to_gs1(size_type_eu);
-        let xsi_type = size.size_type.as_deref().unwrap_or("");
+    udidi
+        .clinical_sizes
+        .iter()
+        .map(|size| {
+            let size_type_eu = size.clinical_size_type.as_deref().unwrap_or("");
+            let gs1_type = mappings::clinical_size_type_to_gs1(size_type_eu);
+            let xsi_type = size.size_type.as_deref().unwrap_or("");
 
-        let unit = size.value_unit.as_deref()
-            .map(mappings::measurement_unit_to_gs1)
-            .unwrap_or("");
+            let unit = size
+                .value_unit
+                .as_deref()
+                .map(mappings::measurement_unit_to_gs1)
+                .unwrap_or("");
 
-        match xsi_type {
-            "RangeClinicalSizeType" => {
-                let min_val: f64 = size.minimum.as_deref().and_then(|v| v.parse().ok()).unwrap_or(0.0);
-                let max_val: f64 = size.maximum.as_deref().and_then(|v| v.parse().ok()).unwrap_or(0.0);
-                ClinicalSizeOutput {
-                    descriptions: Vec::new(),
-                    type_code: CodeValue { value: gs1_type.to_string() },
-                    values: vec![MeasurementValue { unit_code: unit.to_string(), value: min_val }],
-                    maximums: vec![MeasurementValue { unit_code: unit.to_string(), value: max_val }],
-                    precision: CodeValue { value: "RANGE".to_string() },
-                    text: None,
+            match xsi_type {
+                "RangeClinicalSizeType" => {
+                    let min_val: f64 = size
+                        .minimum
+                        .as_deref()
+                        .and_then(|v| v.parse().ok())
+                        .unwrap_or(0.0);
+                    let max_val: f64 = size
+                        .maximum
+                        .as_deref()
+                        .and_then(|v| v.parse().ok())
+                        .unwrap_or(0.0);
+                    ClinicalSizeOutput {
+                        descriptions: Vec::new(),
+                        type_code: CodeValue {
+                            value: gs1_type.to_string(),
+                        },
+                        values: vec![MeasurementValue {
+                            unit_code: unit.to_string(),
+                            value: min_val,
+                        }],
+                        maximums: vec![MeasurementValue {
+                            unit_code: unit.to_string(),
+                            value: max_val,
+                        }],
+                        precision: CodeValue {
+                            value: "RANGE".to_string(),
+                        },
+                        text: None,
+                    }
+                }
+                "TextClinicalSizeType" => {
+                    let descriptions = if gs1_type == "DEVICE_SIZE_TEXT_SPECIFY" {
+                        let desc = size.text.as_deref().unwrap_or("Other");
+                        vec![LangValue {
+                            language_code: "en".to_string(),
+                            value: desc.to_string(),
+                        }]
+                    } else {
+                        Vec::new()
+                    };
+                    ClinicalSizeOutput {
+                        descriptions,
+                        type_code: CodeValue {
+                            value: gs1_type.to_string(),
+                        },
+                        values: vec![],
+                        maximums: vec![],
+                        precision: CodeValue {
+                            value: "TEXT".to_string(),
+                        },
+                        text: size.text.clone(),
+                    }
+                }
+                "ValueClinicalSizeType" | _ => {
+                    let val: f64 = size
+                        .value
+                        .as_deref()
+                        .and_then(|v| v.parse().ok())
+                        .unwrap_or(0.0);
+                    ClinicalSizeOutput {
+                        descriptions: Vec::new(),
+                        type_code: CodeValue {
+                            value: gs1_type.to_string(),
+                        },
+                        values: vec![MeasurementValue {
+                            unit_code: unit.to_string(),
+                            value: val,
+                        }],
+                        maximums: vec![],
+                        precision: CodeValue {
+                            value: "VALUE".to_string(),
+                        },
+                        text: None,
+                    }
                 }
             }
-            "TextClinicalSizeType" => {
-                let descriptions = if gs1_type == "DEVICE_SIZE_TEXT_SPECIFY" {
-                    let desc = size.text.as_deref().unwrap_or("Other");
-                    vec![LangValue { language_code: "en".to_string(), value: desc.to_string() }]
-                } else {
-                    Vec::new()
-                };
-                ClinicalSizeOutput {
-                    descriptions,
-                    type_code: CodeValue { value: gs1_type.to_string() },
-                    values: vec![],
-                    maximums: vec![],
-                    precision: CodeValue { value: "TEXT".to_string() },
-                    text: size.text.clone(),
-                }
-            }
-            "ValueClinicalSizeType" | _ => {
-                let val: f64 = size.value.as_deref().and_then(|v| v.parse().ok()).unwrap_or(0.0);
-                ClinicalSizeOutput {
-                    descriptions: Vec::new(),
-                    type_code: CodeValue { value: gs1_type.to_string() },
-                    values: vec![MeasurementValue { unit_code: unit.to_string(), value: val }],
-                    maximums: vec![],
-                    precision: CodeValue { value: "VALUE".to_string() },
-                    text: None,
-                }
-            }
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 fn transform_warnings(udidi: &MdrUdidiData) -> Vec<ClinicalWarningOutput> {
-    udidi.critical_warnings.iter().map(|w| {
-        let code = w.warning_value.as_deref().unwrap_or("");
-        let descriptions = transform_lang_names_vec(&w.comments);
+    udidi
+        .critical_warnings
+        .iter()
+        .map(|w| {
+            let code = w.warning_value.as_deref().unwrap_or("");
+            let descriptions = transform_lang_names_vec(&w.comments);
 
-        ClinicalWarningOutput {
-            agency_code: CodeValue { value: "EUDAMED".to_string() },
-            warning_code: code.to_string(),
-            descriptions,
-        }
-    }).collect()
+            ClinicalWarningOutput {
+                agency_code: CodeValue {
+                    value: "EUDAMED".to_string(),
+                },
+                warning_code: code.to_string(),
+                descriptions,
+            }
+        })
+        .collect()
 }
 
-fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<ChemicalRegulationInformationModule> {
+fn transform_substances(
+    udidi: &MdrUdidiData,
+    config: &Config,
+) -> Option<ChemicalRegulationInformationModule> {
     if udidi.substances.is_empty() {
         return None;
     }
@@ -769,12 +954,8 @@ fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<Chemica
         let sub_type = substance.sub_type.as_deref().unwrap_or("");
 
         let (agency, regulation_name, chemical_type_code, cmr_type) = match xsi_type {
-            "CMRSubstanceType" => {
-                ("ECHA", "ECICS", "CMR_SUBSTANCE", Some(sub_type.to_string()))
-            }
-            "EndocrineSubstanceType" => {
-                ("ECHA", "ECICS", "ENDOCRINE_SUBSTANCE", None)
-            }
+            "CMRSubstanceType" => ("ECHA", "ECICS", "CMR_SUBSTANCE", Some(sub_type.to_string())),
+            "EndocrineSubstanceType" => ("ECHA", "ECICS", "ENDOCRINE_SUBSTANCE", None),
             "MedicalHumanProductSubstanceType" => {
                 let gs1_type = mappings::substance_type_to_gs1(sub_type);
                 ("WHO", "INN", gs1_type, None)
@@ -788,7 +969,9 @@ fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<Chemica
 
         if xsi_type == "EndocrineSubstanceType" {
             // Endocrine: EC/CAS identifiers from config, combined into single entry
-            let name_text = substance.names.first()
+            let name_text = substance
+                .names
+                .first()
                 .and_then(|n| n.text_value.as_deref())
                 .unwrap_or("");
 
@@ -807,7 +990,9 @@ fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<Chemica
                         chemical_name: None,
                         descriptions: descriptions.clone(),
                         cmr_type: None,
-                        chemical_type: CodeValue { value: chemical_type_code.to_string() },
+                        chemical_type: CodeValue {
+                            value: chemical_type_code.to_string(),
+                        },
                     });
                 }
                 if let Some(ref cas) = ids.cas_number {
@@ -819,7 +1004,9 @@ fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<Chemica
                         chemical_name: None,
                         descriptions: descriptions.clone(),
                         cmr_type: None,
-                        chemical_type: CodeValue { value: chemical_type_code.to_string() },
+                        chemical_type: CodeValue {
+                            value: chemical_type_code.to_string(),
+                        },
                     });
                 }
             }
@@ -831,7 +1018,9 @@ fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<Chemica
                     chemical_name: None,
                     descriptions,
                     cmr_type: None,
-                    chemical_type: CodeValue { value: chemical_type_code.to_string() },
+                    chemical_type: CodeValue {
+                        value: chemical_type_code.to_string(),
+                    },
                 });
             }
 
@@ -854,7 +1043,9 @@ fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<Chemica
                         chemical_name: None,
                         descriptions,
                         cmr_type: cmr_type.map(|t| CodeValue { value: t }),
-                        chemical_type: CodeValue { value: chemical_type_code.to_string() },
+                        chemical_type: CodeValue {
+                            value: chemical_type_code.to_string(),
+                        },
                     }],
                 }],
             });
@@ -868,7 +1059,9 @@ fn transform_substances(udidi: &MdrUdidiData, config: &Config) -> Option<Chemica
                         chemical_name: substance.inn.clone(),
                         descriptions: vec![],
                         cmr_type: cmr_type.map(|t| CodeValue { value: t }),
-                        chemical_type: CodeValue { value: chemical_type_code.to_string() },
+                        chemical_type: CodeValue {
+                            value: chemical_type_code.to_string(),
+                        },
                     }],
                 }],
             });
@@ -894,7 +1087,8 @@ fn substance_sort_key(agency: &str, regulations: &[ChemicalRegulation]) -> (u8, 
         "ECHA" => 1,
         _ => 2,
     };
-    let type_key = regulations.first()
+    let type_key = regulations
+        .first()
         .and_then(|r| r.chemicals.first())
         .map(|c| match c.chemical_type.value.as_str() {
             "MEDICINAL_PRODUCT" => 0,
@@ -912,45 +1106,64 @@ fn transform_market_info(udidi: &MdrUdidiData) -> Option<SalesInformationModule>
         return None;
     }
 
-    let mut conditions: Vec<TargetMarketSalesCondition> = udidi.market_infos.iter()
+    let mut conditions: Vec<TargetMarketSalesCondition> = udidi
+        .market_infos
+        .iter()
         .filter(|mi| {
             // Skip GB/XI — not valid GDSN market countries post-Brexit (G541)
-            mi.country.as_deref().map_or(true, |c| mappings::is_valid_gdsn_market_country(c))
+            mi.country
+                .as_deref()
+                .map_or(true, |c| mappings::is_valid_gdsn_market_country(c))
         })
         .map(|mi| {
-        let is_original = mi.original_placed.unwrap_or(false);
-        let condition_code = if is_original {
-            "ORIGINAL_PLACED"
-        } else {
-            "ADDITIONAL_MARKET_AVAILABILITY"
-        };
+            let is_original = mi.original_placed.unwrap_or(false);
+            let condition_code = if is_original {
+                "ORIGINAL_PLACED"
+            } else {
+                "ADDITIONAL_MARKET_AVAILABILITY"
+            };
 
-        let country = mi.country.as_deref().unwrap_or("");
-        let numeric_country = mappings::country_alpha2_to_numeric(country);
+            let country = mi.country.as_deref().unwrap_or("");
+            let numeric_country = mappings::country_alpha2_to_numeric(country);
 
-        let start = mi.start_date.as_deref().unwrap_or("");
-        let end = mi.end_date.as_deref();
+            let start = mi.start_date.as_deref().unwrap_or("");
+            let end = mi.end_date.as_deref();
 
-        let start_dt = convert_date_to_datetime(start, false);
-        let end_dt = end.map(|d| convert_date_to_datetime(d, true));
+            let start_dt = convert_date_to_datetime(start, false);
+            let end_dt = end.map(|d| convert_date_to_datetime(d, true));
 
-        TargetMarketSalesCondition {
-            condition_code: CodeValue { value: condition_code.to_string() },
-            countries: vec![SalesConditionCountry {
-                country_code: CodeValue { value: numeric_country.to_string() },
-                end_datetime: end_dt,
-                start_datetime: start_dt,
-            }],
-        }
-    }).collect();
+            TargetMarketSalesCondition {
+                condition_code: CodeValue {
+                    value: condition_code.to_string(),
+                },
+                countries: vec![SalesConditionCountry {
+                    country_code: CodeValue {
+                        value: numeric_country.to_string(),
+                    },
+                    end_datetime: end_dt,
+                    start_datetime: start_dt,
+                }],
+            }
+        })
+        .collect();
 
     // Sort: ORIGINAL_PLACED first, then by country code
     conditions.sort_by(|a, b| {
         let a_orig = a.condition_code.value == "ORIGINAL_PLACED";
         let b_orig = b.condition_code.value == "ORIGINAL_PLACED";
         b_orig.cmp(&a_orig).then_with(|| {
-            let a_cc = a.countries.first().map(|c| &c.country_code.value).map(|s| s.as_str()).unwrap_or("");
-            let b_cc = b.countries.first().map(|c| &c.country_code.value).map(|s| s.as_str()).unwrap_or("");
+            let a_cc = a
+                .countries
+                .first()
+                .map(|c| &c.country_code.value)
+                .map(|s| s.as_str())
+                .unwrap_or("");
+            let b_cc = b
+                .countries
+                .first()
+                .map(|c| &c.country_code.value)
+                .map(|s| s.as_str())
+                .unwrap_or("");
             a_cc.cmp(b_cc)
         })
     });

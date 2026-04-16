@@ -1,0 +1,42 @@
+# config.sample.toml — copy to config.toml and fill in your values.
+# config.toml is gitignored so secrets never end up in the repository.
+
+# ---------------------------------------------------------------------------
+# GS1 provider identity
+# ---------------------------------------------------------------------------
+[provider]
+gln         = "7612345000480"                  # Your GS1 provider GLN
+party_name  = "EUDAMED Public Download Importing"
+publish_gln = "7612345000527"                  # Default recipient GLN for pushes (e.g. GS1 Switzerland UDI Data Dump)
+
+# ---------------------------------------------------------------------------
+# GDSN target market
+# ---------------------------------------------------------------------------
+[target_market]
+country_code = "097"   # 097 = Austria (pilot); 756 = Switzerland
+
+# ---------------------------------------------------------------------------
+# GPC classification codes (Medical Devices)
+# ---------------------------------------------------------------------------
+[gpc]
+segment_code  = "51000000"
+class_code    = "51150100"
+family_code   = "51150000"
+category_code = "10005844"
+category_name = "Medical Devices"
+
+# ---------------------------------------------------------------------------
+# Gmail service-account credentials (used by the `mailto` command only).
+# The .p12 file must NOT be committed to the repository.
+# ---------------------------------------------------------------------------
+[gmail]
+p12_key       = "/path/to/your-service-account.p12"
+service_email = "your-service-account@your-project.iam.gserviceaccount.com"
+
+# ---------------------------------------------------------------------------
+# Endocrine substance EC/CAS identifiers (looked up by substance name).
+# Add entries as needed; the keys must match EUDAMED substance names exactly.
+# ---------------------------------------------------------------------------
+[endocrine_substances.Estradiol]
+ec_number  = "200-023-8"
+cas_number = "50-28-2"

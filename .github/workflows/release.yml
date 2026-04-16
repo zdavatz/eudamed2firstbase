@@ -18,6 +18,10 @@ jobs:
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
+      - name: Setup config
+        run: |
+          cp config.sample.toml config.toml
+
       - name: Build universal binary
         run: |
           cargo build --release --target aarch64-apple-darwin
@@ -231,6 +235,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfuse2
 
+      - name: Setup config
+        run: |
+          cp config.sample.toml config.toml
+
       - name: Build
         run: cargo build --release
 
@@ -294,6 +302,11 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup config
+        shell: pwsh
+        run: |
+          Copy-Item config.sample.toml config.toml
 
       - name: Build
         run: cargo build --release

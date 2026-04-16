@@ -1,13 +1,11 @@
 //! Gmail API email sending with file attachments.
 //! Uses Google Service Account with domain-wide delegation.
+//!
+//! Credentials are read from `config.toml` (`[gmail]` section).
+//! See `config.sample.toml` for the expected format.
 
 use anyhow::{Context, Result};
 use std::process::Command;
-
-/// Default service account credentials (same as swissdamed2sqlite)
-pub const DEFAULT_P12_KEY: &str = "swissdamed2sqlite-9dd3bf6717d4.p12";
-pub const DEFAULT_SERVICE_EMAIL: &str =
-    "swissdamed2sqlite@swissdamed2sqlite.iam.gserviceaccount.com";
 
 /// Send an email with a file attachment via Gmail API.
 pub fn send_email_with_attachment(
@@ -109,24 +107,64 @@ pub fn send_email_with_attachment(
     Ok(())
 }
 
-/// Extract PEM private key from .p12 file using openssl CLI.
+/// Locate the `openssl` binary by checking known absolute paths before falling
+/// back to the PATH-resolved name.  Using absolute paths prevents PATH-hijacking
+/// attacks where a malicious binary named `openssl` appears earlier in PATH.
+fn find_openssl() -> &'static str {
+    // Well-known absolute paths, checked in priority order.
+    const CANDIDATES: &[&str] = &[
+        "/usr/bin/openssl",          // Linux / macOS system default
+        "/opt/homebrew/bin/openssl", // macOS Homebrew (Apple Silicon)
+        "/usr/local/bin/openssl",    // macOS Homebrew (Intel) / custom installs
+        "/opt/local/bin/openssl",    // MacPorts
+    ];
+    for path in CANDIDATES {
+        if std::path::Path::new(path).exists() {
+            return path;
+        }
+    }
+    // Last resort: let the OS resolve via PATH (Windows or unusual layouts).
+    // Log a warning so operators notice.
+    eprintln!(
+        "Warning: openssl not found at known absolute paths; \
+         falling back to PATH resolution (potential security risk). \
+         Set OPENSSL_BIN env var or install openssl to /usr/bin/openssl."
+    );
+    "openssl"
+}
+
+/// Extract PEM private key from .p12 file using the openssl CLI.
 fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
-    // Try with -legacy flag first (OpenSSL 3.x), fall back without it (LibreSSL/older)
-    let output = Command::new("openssl")
+    let openssl = std::env::var("OPENSSL_BIN").unwrap_or_else(|_| find_openssl().to_string());
+
+    // Try with -legacy flag first (OpenSSL 3.x), fall back without it (LibreSSL/older).
+    let output = Command::new(&openssl)
         .args([
-            "pkcs12", "-in", p12_path, "-nocerts", "-nodes",
-            "-passin", "pass:notasecret", "-legacy",
+            "pkcs12",
+            "-in",
+            p12_path,
+            "-nocerts",
+            "-nodes",
+            "-passin",
+            "pass:notasecret",
+            "-legacy",
         ])
         .output();
 
     let output = match output {
         Ok(o) if o.status.success() => o,
-        _ => Command::new("openssl")
+        _ => Command::new(&openssl)
             .args([
-                "pkcs12", "-in", p12_path, "-nocerts", "-nodes",
-                "-passin", "pass:notasecret",
+                "pkcs12",
+                "-in",
+                p12_path,
+                "-nocerts",
+                "-nodes",
+                "-passin",
+                "pass:notasecret",
             ])
-            .output()?,
+            .output()
+            .with_context(|| format!("Failed to run openssl ({})", openssl))?,
     };
 
     if !output.status.success() {
@@ -140,11 +178,7 @@ fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
 }
 
 /// Get Gmail API access token via JWT/service account.
-fn get_gmail_access_token(
-    pem_key: &str,
-    service_email: &str,
-    sub_email: &str,
-) -> Result<String> {
+fn get_gmail_access_token(pem_key: &str, service_email: &str, sub_email: &str) -> Result<String> {
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
     use serde::Serialize;
 
@@ -182,8 +216,7 @@ fn get_gmail_access_token(
 
     let form_body = format!(
         "grant_type={}&assertion={}",
-        "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer",
-        jwt
+        "urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", jwt
     );
 
     let mut resp = agent

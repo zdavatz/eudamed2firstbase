@@ -10,12 +10,34 @@ pub struct Config {
     pub gpc: Gpc,
     #[serde(default)]
     pub endocrine_substances: HashMap<String, EndocrineSubstanceIds>,
+    /// Gmail service-account settings for the `mailto` command.
+    /// Optional — only needed when sending emails.
+    #[serde(default)]
+    pub gmail: Gmail,
+}
+
+/// Gmail service-account credentials used by the `mailto` command.
+/// Store real values in `config.toml` (which is gitignored).
+/// See `config.sample.toml` for the expected format.
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct Gmail {
+    /// Path to the Google service account `.p12` key file.
+    #[serde(default)]
+    pub p12_key: String,
+    /// Service account email address
+    /// (e.g. `name@my-project.iam.gserviceaccount.com`).
+    #[serde(default)]
+    pub service_email: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Provider {
     pub gln: String,
     pub party_name: String,
+    /// Default recipient GLN for `cargo run check` pushes.
+    /// Can be overridden at runtime with the FIRSTBASE_PUBLISH_GLN env var.
+    #[serde(default)]
+    pub publish_gln: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -40,8 +62,9 @@ pub struct EndocrineSubstanceIds {
 
 const DEFAULT_CONFIG: &str = r#"
 [provider]
-gln = "7612345000480"
-party_name = "EUDAMED Public Download Importing"
+gln         = "7612345000480"
+party_name  = "EUDAMED Public Download Importing"
+publish_gln = "7612345000527"
 
 [target_market]
 country_code = "097"

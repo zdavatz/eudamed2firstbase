@@ -69,10 +69,35 @@ pub fn is_valid_gdsn_market_country(iso2: &str) -> bool {
 pub fn is_eu_eea_country(iso2: &str) -> bool {
     matches!(
         iso2,
-        "AT" | "BE" | "BG" | "CY" | "CZ" | "DE" | "DK" | "EE" | "ES" | "FI"
-            | "FR" | "GR" | "HR" | "HU" | "IE" | "IT" | "LT" | "LU" | "LV" | "MT"
-            | "NL" | "PL" | "PT" | "RO" | "SE" | "SI" | "SK"
-            | "IS" | "LI" | "NO"
+        "AT" | "BE"
+            | "BG"
+            | "CY"
+            | "CZ"
+            | "DE"
+            | "DK"
+            | "EE"
+            | "ES"
+            | "FI"
+            | "FR"
+            | "GR"
+            | "HR"
+            | "HU"
+            | "IE"
+            | "IT"
+            | "LT"
+            | "LU"
+            | "LV"
+            | "MT"
+            | "NL"
+            | "PL"
+            | "PT"
+            | "RO"
+            | "SE"
+            | "SI"
+            | "SK"
+            | "IS"
+            | "LI"
+            | "NO"
     )
 }
 
@@ -95,7 +120,9 @@ pub fn risk_class_to_gs1(code: &str) -> &str {
 pub fn device_status_to_gs1(code: &str) -> &str {
     match code {
         "ON_THE_MARKET" | "ON_MARKET" => "ON_MARKET",
-        "NO_LONGER_PLACED_ON_THE_MARKET" | "NO_LONGER_ON_THE_MARKET" => "NO_LONGER_PLACED_ON_MARKET",
+        "NO_LONGER_PLACED_ON_THE_MARKET" | "NO_LONGER_ON_THE_MARKET" => {
+            "NO_LONGER_PLACED_ON_MARKET"
+        }
         "NOT_INTENDED_FOR_EU_MARKET" => "NOT_INTENDED_FOR_EU_MARKET",
         other => other,
     }
@@ -169,7 +196,7 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
         "CST42" => "BASE_CURVE",
         "CST43" => "OPTICAL_ZONE_DIAMETER",
         "CST44" => "POWER_PROFILE",
-        "CST45" => "DEVICE_SIZE_TEXT_SPECIFY",  // COLOUR not in GS1 code list
+        "CST45" => "DEVICE_SIZE_TEXT_SPECIFY", // COLOUR not in GS1 code list
         "CST46" => "EDGE_LIFT",
         "CST47" => "PRISM",
         "CST48" => "CEL",
@@ -180,7 +207,7 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
         "CST53" => "TRUNCATION",
         "CST54" => "TRUNCATION_AXIS",
         "CST55" => "EDGE_RADIUS",
-        "CST56" => "WEIGHT",  // BODY_WEIGHT_KG not in GS1 code list, use WEIGHT
+        "CST56" => "WEIGHT", // BODY_WEIGHT_KG not in GS1 code list, use WEIGHT
         "CST57" => "BACK_CYLINDER_POWER",
         "CST58" => "BACK_CYLINDER_AXIS",
         "CST59" => "OPTICAL_ZONE_DIAMETER_BACK",
@@ -335,7 +362,7 @@ pub fn measurement_unit_to_gs1(code: &str) -> &str {
         "MU136" => "mg/dL",
         "MU169" => "Q30",
         "MU170" => "H79",
-        "MU999" => "",  // "Other" unit — no valid UN/CEFACT mapping, skip
+        "MU999" => "", // "Other" unit — no valid UN/CEFACT mapping, skip
         other => other,
     }
 }
@@ -386,7 +413,7 @@ pub fn multi_component_to_gs1(code: &str) -> &str {
     match suffix {
         "system" => "SYSTEM",
         "procedure-pack" => "PROCEDURE_PACK",
-        "spp-procedure-pack" => "PROCEDURE_PACK",  // SPP not in GS1 code list, use PROCEDURE_PACK
+        "spp-procedure-pack" => "PROCEDURE_PACK", // SPP not in GS1 code list, use PROCEDURE_PACK
         _ => "DEVICE",
     }
 }
@@ -422,8 +449,11 @@ pub fn risk_class_refdata_to_gs1(code: &str) -> &str {
 pub fn risk_class_system_code(code: &str) -> &str {
     let suffix = code.rsplit('.').next().unwrap_or(code);
     match suffix {
-        "aimdd" | "ivd-general" | "ivd-devices-self-testing"
-        | "ivd-annex-ii-list-a" | "ivd-annex-ii-list-b" => "85",
+        "aimdd"
+        | "ivd-general"
+        | "ivd-devices-self-testing"
+        | "ivd-annex-ii-list-a"
+        | "ivd-annex-ii-list-b" => "85",
         _ => "76",
     }
 }
@@ -433,8 +463,10 @@ pub fn regulation_from_risk_class_refdata(code: &str) -> &str {
     let suffix = code.rsplit('.').next().unwrap_or(code);
     match suffix {
         "class-a" | "class-b" | "class-c" | "class-d" => "IVDR",
-        "ivd-general" | "ivd-devices-self-testing"
-        | "ivd-annex-ii-list-a" | "ivd-annex-ii-list-b" => "IVDD",
+        "ivd-general"
+        | "ivd-devices-self-testing"
+        | "ivd-annex-ii-list-a"
+        | "ivd-annex-ii-list-b" => "IVDD",
         "aimdd" => "AIMDD",
         _ => "MDR",
     }

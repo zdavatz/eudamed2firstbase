@@ -133,15 +133,15 @@ pub struct Address {
 
 #[derive(Debug, Default)]
 pub struct Substance {
-    pub substance_type: Option<String>,  // from xsi:type: CMRSubstanceType, EndocrineSubstanceType, etc.
+    pub substance_type: Option<String>, // from xsi:type: CMRSubstanceType, EndocrineSubstanceType, etc.
     pub names: Vec<LanguageSpecificName>,
     pub inn: Option<String>,
-    pub sub_type: Option<String>,  // from <type> element
+    pub sub_type: Option<String>, // from <type> element
 }
 
 #[derive(Debug, Default)]
 pub struct ClinicalSize {
-    pub size_type: Option<String>,   // from xsi:type: RangeClinicalSizeType, etc.
+    pub size_type: Option<String>, // from xsi:type: RangeClinicalSizeType, etc.
     pub clinical_size_type: Option<String>,
     pub maximum: Option<String>,
     pub minimum: Option<String>,
@@ -157,7 +157,8 @@ fn local_name<'a>(node: &'a roxmltree::Node) -> &'a str {
 }
 
 fn child_text<'a>(parent: &'a roxmltree::Node, name: &str) -> Option<String> {
-    parent.children()
+    parent
+        .children()
         .find(|c| c.is_element() && local_name(c) == name)
         .and_then(|c| c.text().map(|t| t.to_string()))
 }
@@ -170,8 +171,13 @@ fn child_u32(parent: &roxmltree::Node, name: &str) -> Option<u32> {
     child_text(parent, name).and_then(|s| s.parse().ok())
 }
 
-fn child_element<'a, 'b>(parent: &'a roxmltree::Node<'a, 'b>, name: &str) -> Option<roxmltree::Node<'a, 'b>> {
-    parent.children().find(|c| c.is_element() && local_name(c) == name)
+fn child_element<'a, 'b>(
+    parent: &'a roxmltree::Node<'a, 'b>,
+    name: &str,
+) -> Option<roxmltree::Node<'a, 'b>> {
+    parent
+        .children()
+        .find(|c| c.is_element() && local_name(c) == name)
 }
 
 fn parse_di_identifier(node: &roxmltree::Node) -> DiIdentifier {
@@ -182,7 +188,8 @@ fn parse_di_identifier(node: &roxmltree::Node) -> DiIdentifier {
 }
 
 fn parse_lang_names(parent: &roxmltree::Node) -> Vec<LanguageSpecificName> {
-    parent.children()
+    parent
+        .children()
         .filter(|c| c.is_element() && local_name(c) == "name")
         .map(|n| LanguageSpecificName {
             language: child_text(&n, "language"),
@@ -194,14 +201,13 @@ fn parse_lang_names(parent: &roxmltree::Node) -> Vec<LanguageSpecificName> {
 fn xsi_type_local(node: &roxmltree::Node) -> Option<String> {
     // Get xsi:type attribute value and strip namespace prefix
     let xsi_ns = "http://www.w3.org/2001/XMLSchema-instance";
-    node.attribute((xsi_ns, "type"))
-        .map(|v| {
-            if let Some(pos) = v.find(':') {
-                v[pos+1..].to_string()
-            } else {
-                v.to_string()
-            }
-        })
+    node.attribute((xsi_ns, "type")).map(|v| {
+        if let Some(pos) = v.find(':') {
+            v[pos + 1..].to_string()
+        } else {
+            v.to_string()
+        }
+    })
 }
 
 fn parse_basic_udi(node: &roxmltree::Node) -> MdrBasicUdi {
@@ -234,14 +240,12 @@ fn parse_basic_udi(node: &roxmltree::Node) -> MdrBasicUdi {
 
 fn parse_udidi_data(node: &roxmltree::Node) -> MdrUdidiData {
     let identifier = child_element(node, "identifier").map(|n| parse_di_identifier(&n));
-    let status = child_element(node, "status")
-        .and_then(|s| child_text(&s, "code"));
-    let additional_description = child_element(node, "additionalDescription")
-        .map(|n| parse_lang_names(&n));
-    let basic_udi_identifier = child_element(node, "basicUDIIdentifier")
-        .map(|n| parse_di_identifier(&n));
-    let trade_names = child_element(node, "tradeNames")
-        .map(|n| parse_lang_names(&n));
+    let status = child_element(node, "status").and_then(|s| child_text(&s, "code"));
+    let additional_description =
+        child_element(node, "additionalDescription").map(|n| parse_lang_names(&n));
+    let basic_udi_identifier =
+        child_element(node, "basicUDIIdentifier").map(|n| parse_di_identifier(&n));
+    let trade_names = child_element(node, "tradeNames").map(|n| parse_lang_names(&n));
 
     // Storage handling conditions
     let storage = child_element(node, "storageHandlingConditions")
@@ -250,7 +254,9 @@ fn parse_udidi_data(node: &roxmltree::Node) -> MdrUdidiData {
                 .filter(|c| c.is_element() && local_name(c) == "condition")
                 .map(|cond| {
                     let comments_node = child_element(&cond, "comments");
-                    let comments = comments_node.map(|c| parse_lang_names(&c)).unwrap_or_default();
+                    let comments = comments_node
+                        .map(|c| parse_lang_names(&c))
+                        .unwrap_or_default();
                     StorageCondition {
                         comments,
                         value: child_text(&cond, "storageHandlingConditionValue"),
@@ -281,7 +287,9 @@ fn parse_udidi_data(node: &roxmltree::Node) -> MdrUdidiData {
                 .filter(|c| c.is_element() && local_name(c) == "warning")
                 .map(|w| {
                     let comments_node = child_element(&w, "comments");
-                    let comments = comments_node.map(|c| parse_lang_names(&c)).unwrap_or_default();
+                    let comments = comments_node
+                        .map(|c| parse_lang_names(&c))
+                        .unwrap_or_default();
                     Warning {
                         comments,
                         warning_value: child_text(&w, "warningValue"),
@@ -419,8 +427,7 @@ fn parse_udidi_data(node: &roxmltree::Node) -> MdrUdidiData {
 
 /// Parse EUDAMED PullResponse XML into typed structs
 pub fn parse_pull_response(xml_content: &str) -> Result<PullResponse> {
-    let doc = roxmltree::Document::parse(xml_content)
-        .context("Failed to parse XML")?;
+    let doc = roxmltree::Document::parse(xml_content).context("Failed to parse XML")?;
 
     let root = doc.root_element();
     let mut response = PullResponse::default();
@@ -429,12 +436,11 @@ pub fn parse_pull_response(xml_content: &str) -> Result<PullResponse> {
     response.creation_date_time = child_text(&root, "creationDateTime");
 
     // Find payload
-    let payload = child_element(&root, "payload")
-        .context("Missing <payload> element")?;
+    let payload = child_element(&root, "payload").context("Missing <payload> element")?;
 
     // Find Device
-    let device_node = child_element(&payload, "Device")
-        .context("Missing <Device> element in payload")?;
+    let device_node =
+        child_element(&payload, "Device").context("Missing <Device> element in payload")?;
 
     response.device.device_type = xsi_type_local(&device_node);
 

@@ -11,7 +11,10 @@ pub struct DraftItemDocument {
 pub struct FirstbaseDocument {
     #[serde(rename = "TradeItem")]
     pub trade_item: TradeItem,
-    #[serde(rename = "CatalogueItemChildItemLink", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "CatalogueItemChildItemLink",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub children: Vec<CatalogueItemChildItemLink>,
     #[serde(rename = "Identifier")]
     pub identifier: String,
@@ -31,7 +34,10 @@ pub struct CatalogueItem {
     pub identifier: String,
     #[serde(rename = "TradeItem")]
     pub trade_item: TradeItem,
-    #[serde(rename = "CatalogueItemChildItemLink", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "CatalogueItemChildItemLink",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub children: Vec<CatalogueItemChildItemLink>,
 }
 
@@ -41,21 +47,42 @@ pub struct TradeItem {
     pub is_brand_bank_publication: bool,
     #[serde(rename = "TargetSector")]
     pub target_sector: Vec<String>,
-    #[serde(rename = "ChemicalRegulationInformationModule", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "ChemicalRegulationInformationModule",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub chemical_regulation_module: Option<ChemicalRegulationInformationModule>,
-    #[serde(rename = "HealthcareItemInformationModule", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "HealthcareItemInformationModule",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub healthcare_item_module: Option<HealthcareItemInformationModule>,
     #[serde(rename = "MedicalDeviceTradeItemModule")]
     pub medical_device_module: MedicalDeviceTradeItemModule,
-    #[serde(rename = "CertificationInformationModule", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "CertificationInformationModule",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub certification_module: Option<CertificationInformationModule>,
-    #[serde(rename = "ReferencedFileDetailInformationModule", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "ReferencedFileDetailInformationModule",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub referenced_file_module: Option<ReferencedFileDetailInformationModule>,
-    #[serde(rename = "RegulatedTradeItemModule", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "RegulatedTradeItemModule",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub regulated_trade_item_module: Option<RegulatedTradeItemModule>,
-    #[serde(rename = "SalesInformationModule", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "SalesInformationModule",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub sales_module: Option<SalesInformationModule>,
-    #[serde(rename = "TradeItemDescriptionModule", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "TradeItemDescriptionModule",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub description_module: Option<TradeItemDescriptionModule>,
     #[serde(rename = "IsTradeItemABaseUnit")]
     pub is_base_unit: bool,
@@ -65,25 +92,40 @@ pub struct TradeItem {
     pub is_orderable_unit: bool,
     #[serde(rename = "TradeItemUnitDescriptorCode")]
     pub unit_descriptor: CodeValue,
-    #[serde(rename = "TradeItemTradeChannelCode", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "TradeItemTradeChannelCode",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub trade_channel_code: Vec<CodeValue>,
     #[serde(rename = "InformationProviderOfTradeItem")]
     pub information_provider: InformationProvider,
     #[serde(rename = "GdsnTradeItemClassification")]
     pub classification: GdsnClassification,
-    #[serde(rename = "NextLowerLevelTradeItemInformation", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "NextLowerLevelTradeItemInformation",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub next_lower_level: Option<NextLowerLevel>,
     #[serde(rename = "TargetMarket")]
     pub target_market: TargetMarketObj,
-    #[serde(rename = "TradeItemContactInformation", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "TradeItemContactInformation",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub contact_information: Vec<TradeItemContactInformation>,
     #[serde(rename = "TradeItemSynchronisationDates")]
     pub synchronisation_dates: TradeItemSynchronisationDates,
-    #[serde(rename = "GlobalModelInformation", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "GlobalModelInformation",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub global_model_info: Vec<GlobalModelInformation>,
     #[serde(rename = "Gtin")]
     pub gtin: String,
-    #[serde(rename = "AdditionalTradeItemIdentification", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "AdditionalTradeItemIdentification",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub additional_identification: Vec<AdditionalTradeItemIdentification>,
     #[serde(rename = "ReferencedTradeItem", skip_serializing_if = "Vec::is_empty")]
     pub referenced_trade_items: Vec<ReferencedTradeItem>,
@@ -117,7 +159,10 @@ pub struct GdsnClassification {
     pub category_code: String,
     #[serde(rename = "GpcCategoryName")]
     pub category_name: String,
-    #[serde(rename = "AdditionalTradeItemClassification", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "AdditionalTradeItemClassification",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub additional_classifications: Vec<AdditionalClassification>,
 }
 
@@ -167,7 +212,10 @@ pub struct TradeItemSynchronisationDates {
     pub effective: String,
     #[serde(rename = "PublicationDateTime")]
     pub publication: String,
-    #[serde(rename = "DiscontinuedDateTime", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "DiscontinuedDateTime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub discontinued: Option<String>,
 }
 
@@ -175,7 +223,10 @@ pub struct TradeItemSynchronisationDates {
 pub struct GlobalModelInformation {
     #[serde(rename = "GlobalModelNumber")]
     pub number: String,
-    #[serde(rename = "GlobalModelDescription", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "GlobalModelDescription",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub descriptions: Vec<LangValue>,
 }
 
@@ -204,37 +255,79 @@ pub struct MedicalDeviceTradeItemModule {
 
 #[derive(Serialize, Debug, Default)]
 pub struct MedicalDeviceInformation {
-    #[serde(rename = "IsTradeItemImplantable", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsTradeItemImplantable",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_implantable: Option<String>,
-    #[serde(rename = "IsDeviceExemptFromImplantObligations", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsDeviceExemptFromImplantObligations",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_exempt_from_implant_obligations: Option<bool>,
     #[serde(rename = "UdidDeviceCount", skip_serializing_if = "Option::is_none")]
     pub device_count: Option<u32>,
-    #[serde(rename = "DirectPartMarkingIdentifier", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "DirectPartMarkingIdentifier",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub direct_marking: Vec<DirectPartMarking>,
-    #[serde(rename = "HasDeviceMeasuringFunction", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "HasDeviceMeasuringFunction",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub measuring_function: Option<bool>,
     #[serde(rename = "IsActiveDevice", skip_serializing_if = "Option::is_none")]
     pub is_active: Option<bool>,
-    #[serde(rename = "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsDeviceIntendedToAdministerOrRemoveMedicinalProduct",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub administer_medicine: Option<bool>,
-    #[serde(rename = "IsDeviceMedicinalProduct", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsDeviceMedicinalProduct",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_medicinal_product: Option<bool>,
-    #[serde(rename = "IsReprocessedSingleUseDevice", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsReprocessedSingleUseDevice",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_reprocessed: Option<bool>,
-    #[serde(rename = "IsReusableSurgicalInstrument", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsReusableSurgicalInstrument",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_reusable_surgical: Option<bool>,
-    #[serde(rename = "UDIProductionIdentifierTypeCode", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "UDIProductionIdentifierTypeCode",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub production_identifier_types: Vec<CodeValue>,
-    #[serde(rename = "AnnexXVIIntendedPurposeTypeCode", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "AnnexXVIIntendedPurposeTypeCode",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub annex_xvi_types: Vec<CodeValue>,
-    #[serde(rename = "SpecialDeviceTypeCode", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "SpecialDeviceTypeCode",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub special_device_type: Option<CodeValue>,
-    #[serde(rename = "MultiComponentDeviceTypeCode", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "MultiComponentDeviceTypeCode",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub multi_component_type: Option<CodeValue>,
-    #[serde(rename = "SystemOrProcedurePackTypeCode", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "SystemOrProcedurePackTypeCode",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub system_or_procedure_pack_type: Option<CodeValue>,
-    #[serde(rename = "SystemOrProcedurePackMedicalPurposeDescription", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "SystemOrProcedurePackMedicalPurposeDescription",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub system_or_procedure_pack_purpose: Vec<LangValue>,
     #[serde(rename = "IsNewDevice", skip_serializing_if = "Option::is_none")]
     pub is_new_device: Option<bool>,
@@ -243,19 +336,37 @@ pub struct MedicalDeviceInformation {
     pub is_reagent: Option<bool>,
     #[serde(rename = "IsDeviceInstrument", skip_serializing_if = "Option::is_none")]
     pub is_instrument: Option<bool>,
-    #[serde(rename = "IsDevicePatientSelfTesting", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsDevicePatientSelfTesting",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_patient_self_testing: Option<bool>,
-    #[serde(rename = "IsDeviceNearPatientTesting", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsDeviceNearPatientTesting",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_near_patient_testing: Option<bool>,
-    #[serde(rename = "IsDeviceDesignedForProfessionalTesting", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsDeviceDesignedForProfessionalTesting",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_professional_testing: Option<bool>,
-    #[serde(rename = "IsDeviceCompanionDiagnostic", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "IsDeviceCompanionDiagnostic",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_companion_diagnostic: Option<bool>,
     #[serde(rename = "EUMedicalDeviceStatusCode")]
     pub eu_status: CodeValue,
-    #[serde(rename = "HealthcareTradeItemReusabilityInformation", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "HealthcareTradeItemReusabilityInformation",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub reusability: Option<ReusabilityInformation>,
-    #[serde(rename = "TradeItemSterilityInformation", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "TradeItemSterilityInformation",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub sterility: Option<SterilityInformation>,
 }
 
@@ -271,7 +382,10 @@ pub struct DirectPartMarking {
 pub struct ReusabilityInformation {
     #[serde(rename = "ManufacturerDeclaredReusabilityTypeCode")]
     pub reusability_type: CodeValue,
-    #[serde(rename = "MaximumCyclesReusable", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "MaximumCyclesReusable",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub max_cycles: Option<u32>,
 }
 
@@ -279,7 +393,10 @@ pub struct ReusabilityInformation {
 pub struct SterilityInformation {
     #[serde(rename = "InitialManufacturerSterilisationCode")]
     pub manufacturer_sterilisation: Vec<CodeValue>,
-    #[serde(rename = "InitialSterilisationPriorToUseCode", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "InitialSterilisationPriorToUseCode",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub prior_to_use: Vec<CodeValue>,
 }
 
@@ -292,17 +409,35 @@ pub struct HealthcareItemInformationModule {
 
 #[derive(Serialize, Debug)]
 pub struct HealthcareItemInformation {
-    #[serde(rename = "DoesTradeItemContainMicrobialSubstance", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "DoesTradeItemContainMicrobialSubstance",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub contains_microbial_substance: Option<bool>,
-    #[serde(rename = "DoesTradeItemContainHumanBloodDerivative", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "DoesTradeItemContainHumanBloodDerivative",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub human_blood_derivative: Option<String>,
-    #[serde(rename = "DoesTradeItemContainLatex", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "DoesTradeItemContainLatex",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub contains_latex: Option<String>,
-    #[serde(rename = "DoesTradeItemContainHumanTissue", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "DoesTradeItemContainHumanTissue",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub human_tissue: Option<String>,
-    #[serde(rename = "DoesTradeItemContainAnimalTissue", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "DoesTradeItemContainAnimalTissue",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub animal_tissue: Option<bool>,
-    #[serde(rename = "ClinicalStorageHandlingInformation", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "ClinicalStorageHandlingInformation",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub storage_handling: Vec<ClinicalStorageHandling>,
     #[serde(rename = "ClinicalSize", skip_serializing_if = "Vec::is_empty")]
     pub clinical_sizes: Vec<ClinicalSizeOutput>,
@@ -314,23 +449,35 @@ pub struct HealthcareItemInformation {
 pub struct ClinicalStorageHandling {
     #[serde(rename = "ClinicalStorageHandlingTypeCode")]
     pub type_code: CodeValue,
-    #[serde(rename = "ClinicalStorageHandlingDescription", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "ClinicalStorageHandlingDescription",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub descriptions: Vec<LangValue>,
 }
 
 #[derive(Serialize, Debug)]
 pub struct ClinicalSizeOutput {
-    #[serde(rename = "ClinicalSizeDescription", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "ClinicalSizeDescription",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub descriptions: Vec<LangValue>,
     #[serde(rename = "ClinicalSizeTypeCode")]
     pub type_code: CodeValue,
     #[serde(rename = "ClinicalSizeValue", skip_serializing_if = "Vec::is_empty")]
     pub values: Vec<MeasurementValue>,
-    #[serde(rename = "ClinicalSizeValueMaximum", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "ClinicalSizeValueMaximum",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub maximums: Vec<MeasurementValue>,
     #[serde(rename = "ClinicalSizeMeasurementPrecisionCode")]
     pub precision: CodeValue,
-    #[serde(rename = "ClinicalSizeValueText", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "ClinicalSizeValueText",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub text: Option<String>,
 }
 
@@ -348,7 +495,10 @@ pub struct ClinicalWarningOutput {
     pub agency_code: CodeValue,
     #[serde(rename = "ClinicalWarningCode")]
     pub warning_code: String,
-    #[serde(rename = "WarningsOrContraIndicationDescription", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "WarningsOrContraIndicationDescription",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub descriptions: Vec<LangValue>,
 }
 
@@ -377,13 +527,25 @@ pub struct ChemicalRegulation {
 
 #[derive(Serialize, Debug)]
 pub struct RegulatedChemical {
-    #[serde(rename = "RegulatedChemicalIdentifierCodeReference", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "RegulatedChemicalIdentifierCodeReference",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub identifier_ref: Option<ChemicalIdentifierRef>,
-    #[serde(rename = "RegulatedChemicalName", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "RegulatedChemicalName",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub chemical_name: Option<String>,
-    #[serde(rename = "RegulatedChemicalDescription", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "RegulatedChemicalDescription",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub descriptions: Vec<LangValue>,
-    #[serde(rename = "CarcinogenicMutagenicReprotoxicTypeCode", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "CarcinogenicMutagenicReprotoxicTypeCode",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub cmr_type: Option<CodeValue>,
     #[serde(rename = "RegulatedChemicalTypeCode")]
     pub chemical_type: CodeValue,
@@ -431,11 +593,20 @@ pub struct CertificationInformationModule {
 
 #[derive(Serialize, Debug)]
 pub struct CertificationInformation {
-    #[serde(rename = "AdditionalCertificationOrganisationIdentifier", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "AdditionalCertificationOrganisationIdentifier",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub additional_org_ids: Vec<AdditionalPartyIdentification>,
-    #[serde(rename = "CertificationAgency", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "CertificationAgency",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub agency: Option<String>,
-    #[serde(rename = "CertificationOrganisationIdentifier", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "CertificationOrganisationIdentifier",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub organisation_identifier: Option<String>,
     #[serde(rename = "CertificationStandard")]
     pub standard: String,
@@ -447,11 +618,20 @@ pub struct CertificationInformation {
 pub struct Certification {
     #[serde(rename = "CertificationValue", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-    #[serde(rename = "CertificationIdentification", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "CertificationIdentification",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub identification: Option<String>,
-    #[serde(rename = "CertificationEffectiveEndDateTime", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "CertificationEffectiveEndDateTime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub effective_end: Option<String>,
-    #[serde(rename = "CertificationEffectiveStartDateTime", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "CertificationEffectiveStartDateTime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub effective_start: Option<String>,
 }
 
@@ -495,9 +675,15 @@ pub struct TargetMarketSalesCondition {
 pub struct SalesConditionCountry {
     #[serde(rename = "CountryCode")]
     pub country_code: CodeValue,
-    #[serde(rename = "EndAvailabilityDateTime", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "EndAvailabilityDateTime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub end_datetime: Option<String>,
-    #[serde(rename = "StartAvailabilityDateTime", skip_serializing_if = "String::is_empty")]
+    #[serde(
+        rename = "StartAvailabilityDateTime",
+        skip_serializing_if = "String::is_empty"
+    )]
     pub start_datetime: String,
 }
 
@@ -510,7 +696,10 @@ pub struct TradeItemDescriptionModule {
 
 #[derive(Serialize, Debug)]
 pub struct TradeItemDescriptionInformation {
-    #[serde(rename = "AdditionalTradeItemDescription", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "AdditionalTradeItemDescription",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub additional_descriptions: Vec<LangValue>,
     #[serde(rename = "TradeItemDescription", skip_serializing_if = "Vec::is_empty")]
     pub descriptions: Vec<LangValue>,
@@ -521,13 +710,19 @@ pub struct TradeItemDescriptionInformation {
 pub struct TradeItemContactInformation {
     #[serde(rename = "ContactTypeCode")]
     pub contact_type: CodeValue,
-    #[serde(rename = "AdditionalPartyIdentification", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "AdditionalPartyIdentification",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub party_identification: Vec<AdditionalPartyIdentification>,
     #[serde(rename = "ContactName", skip_serializing_if = "Option::is_none")]
     pub contact_name: Option<String>,
     #[serde(rename = "StructuredAddress", skip_serializing_if = "Vec::is_empty")]
     pub addresses: Vec<StructuredAddress>,
-    #[serde(rename = "TargetMarketCommunicationChannel", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        rename = "TargetMarketCommunicationChannel",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub communication_channels: Vec<TargetMarketCommunicationChannel>,
 }
 
@@ -587,7 +782,10 @@ pub struct TradeItemInformation {
 pub struct TradeItemComponents {
     #[serde(rename = "TotalNumberOfComponents")]
     pub total_number_of_components: u32,
-    #[serde(rename = "NumberOfPiecesInSet", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "NumberOfPiecesInSet",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub number_of_pieces_in_set: Option<u32>,
     #[serde(rename = "ComponentInformation")]
     pub component_information: Vec<ComponentInformation>,

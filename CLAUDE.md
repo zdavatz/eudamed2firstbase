@@ -44,6 +44,10 @@ python3 firstbase_validation.py --dump-schema MedicalDeviceInformation  # inspec
 
 Validates against two GS1 Swagger schemas: Product API (recipient, 978 defs, `test-productapi-firstbase.gs1.ch`) and Catalogue Item API (sender, 1043 defs, `test-webapi-firstbase.gs1.ch:5443`). Checks field names, types, enums, and nested structures recursively including packaging hierarchy children. Caches stored in `.swagger_cache_product.json` and `.swagger_cache_catalogue.json`. Note: `IsBrandBankPublication` exists only in Product API, not in Catalogue Item API (sender).
 
+### Formatting
+
+Always run `cargo fmt` after working with the codebase.
+
 ## Architecture
 
 - **download.rs**: Shared download module used by both GUI and CLI. `DownloadProgress` trait enables different progress reporting (GUI → mpsc channel, CLI → stderr). `run_download()` orchestrates the full pipeline: parallel listing downloads (`listing_threads`, default 10, configurable via `--threads`), each page written to `listing_cache` SQLite table (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number), pre-download version check (compares listing `versionNumber` against `udi_version` in version DB — unchanged devices skip download entirely), parallel detail/basic download (`parallel_threads`, 3 retries, exponential backoff, per-10-file progress counters), completeness check with retry (5 retries), version indexing of downloaded detail files into `udi_versions` DB (parallel parse, batch transaction insert), download log to `eudamed_json/log/download.log`. `DownloadConfig` struct for SRNs, limit, listing_threads, parallel_threads. `DownloadResult` returns all UUIDs, counts, and which needed downloading. `index_all_detail_versions()` for bulk initial population of existing files. Note: EUDAMED API silently caps `pageSize` to 20 (ignores requested 300).

@@ -2,8 +2,8 @@
 //! Maps EUDAMED JSON (ApiDeviceDetail + BasicUdiDiData) → Swissdamed JSON.
 //! Almost 1:1 field mapping — no GDSN translation needed.
 
-use serde::Serialize;
 use crate::api_detail::{ApiDeviceDetail, BasicUdiDiData};
+use serde::Serialize;
 
 // --- Output DTOs matching Swissdamed OpenAPI spec ---
 
@@ -292,18 +292,21 @@ fn extract_spp_type(code: &str) -> String {
 
 /// Map language texts from EUDAMED MultiLangText
 fn map_lang_texts(texts: &[(String, String)]) -> Vec<LangText> {
-    texts.iter().map(|(lang, text)| LangText {
-        language: lang.to_uppercase(),
-        text_value: text.clone(),
-    }).collect()
+    texts
+        .iter()
+        .map(|(lang, text)| LangText {
+            language: lang.to_uppercase(),
+            text_value: text.clone(),
+        })
+        .collect()
 }
 
 /// Map nomenclature codes from EUDAMED CND codes
 fn extract_nomenclature_codes(device: &ApiDeviceDetail) -> Vec<String> {
-    device.cnd_nomenclatures.as_ref()
-        .map(|codes| codes.iter()
-            .filter_map(|c| c.code.clone())
-            .collect())
+    device
+        .cnd_nomenclatures
+        .as_ref()
+        .map(|codes| codes.iter().filter_map(|c| c.code.clone()).collect())
         .unwrap_or_default()
 }
 
@@ -329,10 +332,14 @@ fn map_identifier(device: &ApiDeviceDetail) -> DiCodeDto {
 fn map_secondary_identifier(device: &ApiDeviceDetail) -> Option<DiCodeDto> {
     let sec = device.secondary_di.as_ref()?;
     let code = sec.code.clone()?;
-    if code.is_empty() { return None; }
+    if code.is_empty() {
+        return None;
+    }
     Some(DiCodeDto {
         di_code: code,
-        issuing_entity_code: sec.issuing_agency.as_ref()
+        issuing_entity_code: sec
+            .issuing_agency
+            .as_ref()
             .and_then(|a| a.code.as_ref())
             .map(|c| extract_issuing_entity(c))
             .unwrap_or_else(|| "GS1".to_string()),
@@ -341,51 +348,89 @@ fn map_secondary_identifier(device: &ApiDeviceDetail) -> Option<DiCodeDto> {
 
 /// Map storage handling conditions
 fn map_storage_handling(device: &ApiDeviceDetail) -> Vec<StorageHandlingConditionDto> {
-    device.storage_handling_conditions.as_ref()
-        .map(|conditions| conditions.iter().filter_map(|shc| {
-            let type_code = shc.type_code.as_ref()?;
-            let suffix = type_code.rsplit('.').next().unwrap_or(type_code);
-            let descriptions = shc.description.as_ref()
-                .and_then(|d| d.texts.as_ref())
-                .map(|texts| texts.iter().filter_map(|t| {
-                    let text = t.text.clone()?;
-                    let lang = t.language.as_ref()
-                        .and_then(|l| l.iso_code.clone())
-                        .unwrap_or_else(|| "en".to_string())
-                        .to_uppercase();
-                    Some(LangText { language: lang, text_value: text })
-                }).collect())
-                .unwrap_or_default();
-            Some(StorageHandlingConditionDto {
-                storage_handling_condition_value: suffix.to_uppercase(),
-                comments: descriptions,
-            })
-        }).collect())
+    device
+        .storage_handling_conditions
+        .as_ref()
+        .map(|conditions| {
+            conditions
+                .iter()
+                .filter_map(|shc| {
+                    let type_code = shc.type_code.as_ref()?;
+                    let suffix = type_code.rsplit('.').next().unwrap_or(type_code);
+                    let descriptions = shc
+                        .description
+                        .as_ref()
+                        .and_then(|d| d.texts.as_ref())
+                        .map(|texts| {
+                            texts
+                                .iter()
+                                .filter_map(|t| {
+                                    let text = t.text.clone()?;
+                                    let lang = t
+                                        .language
+                                        .as_ref()
+                                        .and_then(|l| l.iso_code.clone())
+                                        .unwrap_or_else(|| "en".to_string())
+                                        .to_uppercase();
+                                    Some(LangText {
+                                        language: lang,
+                                        text_value: text,
+                                    })
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    Some(StorageHandlingConditionDto {
+                        storage_handling_condition_value: suffix.to_uppercase(),
+                        comments: descriptions,
+                    })
+                })
+                .collect()
+        })
         .unwrap_or_default()
 }
 
 /// Map critical warnings
 fn map_critical_warnings(device: &ApiDeviceDetail) -> Vec<CriticalWarningDto> {
-    device.critical_warnings.as_ref()
-        .map(|warnings| warnings.iter().filter_map(|w| {
-            let type_code = w.type_code.as_ref()?;
-            let suffix = type_code.rsplit('.').next().unwrap_or(type_code);
-            let descriptions = w.description.as_ref()
-                .and_then(|d| d.texts.as_ref())
-                .map(|texts| texts.iter().filter_map(|t| {
-                    let text = t.text.clone()?;
-                    let lang = t.language.as_ref()
-                        .and_then(|l| l.iso_code.clone())
-                        .unwrap_or_else(|| "en".to_string())
-                        .to_uppercase();
-                    Some(LangText { language: lang, text_value: text })
-                }).collect())
-                .unwrap_or_default();
-            Some(CriticalWarningDto {
-                warning_value: suffix.to_uppercase(),
-                comments: descriptions,
-            })
-        }).collect())
+    device
+        .critical_warnings
+        .as_ref()
+        .map(|warnings| {
+            warnings
+                .iter()
+                .filter_map(|w| {
+                    let type_code = w.type_code.as_ref()?;
+                    let suffix = type_code.rsplit('.').next().unwrap_or(type_code);
+                    let descriptions = w
+                        .description
+                        .as_ref()
+                        .and_then(|d| d.texts.as_ref())
+                        .map(|texts| {
+                            texts
+                                .iter()
+                                .filter_map(|t| {
+                                    let text = t.text.clone()?;
+                                    let lang = t
+                                        .language
+                                        .as_ref()
+                                        .and_then(|l| l.iso_code.clone())
+                                        .unwrap_or_else(|| "en".to_string())
+                                        .to_uppercase();
+                                    Some(LangText {
+                                        language: lang,
+                                        text_value: text,
+                                    })
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    Some(CriticalWarningDto {
+                        warning_value: suffix.to_uppercase(),
+                        comments: descriptions,
+                    })
+                })
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -401,7 +446,9 @@ pub fn to_mdr_dto(device: &ApiDeviceDetail, basic_udi: &BasicUdiDiData) -> MdrDt
             animal_tissues_cells: basic_udi.animal_tissues.unwrap_or(false),
             human_tissues_cells: basic_udi.human_tissues.unwrap_or(false),
             special_device_type: None,
-            device_type: basic_udi.multi_component.as_ref()
+            device_type: basic_udi
+                .multi_component
+                .as_ref()
                 .and_then(|mc| mc.code.as_ref())
                 .map(|c| extract_spp_type(c))
                 .unwrap_or_else(|| "DEVICE".to_string()),
@@ -413,20 +460,27 @@ pub fn to_mdr_dto(device: &ApiDeviceDetail, basic_udi: &BasicUdiDiData) -> MdrDt
             medicinal_product_check: basic_udi.medicinal_product.unwrap_or(false),
             reusable: basic_udi.reusable.unwrap_or(false),
             identifier: DiCodeDto {
-                di_code: basic_udi.basic_udi.as_ref()
+                di_code: basic_udi
+                    .basic_udi
+                    .as_ref()
                     .and_then(|b| b.code.clone())
                     .unwrap_or_default(),
-                issuing_entity_code: basic_udi.basic_udi.as_ref()
+                issuing_entity_code: basic_udi
+                    .basic_udi
+                    .as_ref()
                     .and_then(|b| b.issuing_agency.as_ref())
                     .and_then(|a| a.code.as_ref())
                     .map(|c| extract_issuing_entity(c))
                     .unwrap_or_else(|| "GS1".to_string()),
             },
-            risk_class: basic_udi.risk_class_code()
+            risk_class: basic_udi
+                .risk_class_code()
                 .map(|c| extract_risk_class(&c))
                 .unwrap_or_else(|| "CLASS_I".to_string()),
             class_iib_implantable_exceptions: None,
-            mf_actor_code: basic_udi.manufacturer.as_ref()
+            mf_actor_code: basic_udi
+                .manufacturer
+                .as_ref()
                 .and_then(|m| m.srn.clone())
                 .unwrap_or_default(),
         },
@@ -447,12 +501,12 @@ pub fn to_mdr_dto(device: &ApiDeviceDetail, basic_udi: &BasicUdiDiData) -> MdrDt
             base_quantity: device.base_quantity.unwrap_or(1),
             number_of_reuses: device.max_number_of_reuses.map(|n| n as i32).unwrap_or(-1),
             direct_marking_identifier: None, // TODO
-            unit_of_use_identifier: None, // TODO
+            unit_of_use_identifier: None,    // TODO
             latex: device.latex.unwrap_or(false),
             clinical_sizes: Vec::new(), // TODO: pass through raw JSON
             medical_human_product_substances: Vec::new(), // TODO
             reprocessed: device.reprocessed.unwrap_or(false),
-            cmr_substances: Vec::new(), // TODO
+            cmr_substances: Vec::new(),       // TODO
             endocrine_substances: Vec::new(), // TODO
             annex_xvi_applicable: device.annex_xvi_applicable,
         },
@@ -469,19 +523,26 @@ pub fn to_spp_dto(device: &ApiDeviceDetail, basic_udi: &BasicUdiDiData) -> SppDt
             device_name: basic_udi.device_name.clone(),
             model_name: basic_udi.device_model.clone(),
             identifier: DiCodeDto {
-                di_code: basic_udi.basic_udi.as_ref()
+                di_code: basic_udi
+                    .basic_udi
+                    .as_ref()
                     .and_then(|b| b.code.clone())
                     .unwrap_or_default(),
-                issuing_entity_code: basic_udi.basic_udi.as_ref()
+                issuing_entity_code: basic_udi
+                    .basic_udi
+                    .as_ref()
                     .and_then(|b| b.issuing_agency.as_ref())
                     .and_then(|a| a.code.as_ref())
                     .map(|c| extract_issuing_entity(c))
                     .unwrap_or_else(|| "GS1".to_string()),
             },
-            risk_class: basic_udi.risk_class_code()
+            risk_class: basic_udi
+                .risk_class_code()
                 .map(|c| extract_risk_class(&c))
                 .unwrap_or_else(|| "CLASS_I".to_string()),
-            device_type: basic_udi.multi_component.as_ref()
+            device_type: basic_udi
+                .multi_component
+                .as_ref()
                 .and_then(|mc| mc.code.as_ref())
                 .map(|c| extract_spp_type(c))
                 .unwrap_or_else(|| "PROCEDURE_PACK".to_string()),
@@ -489,12 +550,17 @@ pub fn to_spp_dto(device: &ApiDeviceDetail, basic_udi: &BasicUdiDiData) -> SppDt
                 let texts = map_lang_texts(&basic_udi.medical_purpose_texts());
                 if texts.is_empty() {
                     // XSD requires at least one medicinalPurpose entry for SPP
-                    vec![LangText { language: "EN".to_string(), text_value: basic_udi.device_name.clone().unwrap_or_default() }]
+                    vec![LangText {
+                        language: "EN".to_string(),
+                        text_value: basic_udi.device_name.clone().unwrap_or_default(),
+                    }]
                 } else {
                     texts
                 }
             },
-            pr_actor_code: basic_udi.manufacturer.as_ref()
+            pr_actor_code: basic_udi
+                .manufacturer
+                .as_ref()
                 .and_then(|m| m.srn.clone())
                 .unwrap_or_default(),
         },
@@ -518,7 +584,9 @@ pub fn to_spp_dto(device: &ApiDeviceDetail, basic_udi: &BasicUdiDiData) -> SppDt
 
 /// Determine which Swissdamed endpoint to use based on legislation
 pub fn legislation_endpoint(basic_udi: &BasicUdiDiData) -> &'static str {
-    let is_spp = basic_udi.multi_component.as_ref()
+    let is_spp = basic_udi
+        .multi_component
+        .as_ref()
         .and_then(|mc| mc.code.as_ref())
         .map(|c| {
             let suffix = c.rsplit('.').next().unwrap_or(c);
