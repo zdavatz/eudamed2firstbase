@@ -135,12 +135,13 @@ The `--srn` option uses server-side filtering via the API's `srn=` parameter, wh
 
 ## Configuration
 
-`config.toml` provides values not available in the EUDAMED XML:
+Copy `config.sample.toml` to `config.toml` and fill in your values. `config.toml` is gitignored so secrets never end up in the repository.
 
 ```toml
 [provider]
-gln = "7612345000480"
-party_name = "EUDAMED Public Download Importing"
+gln         = "7612345000480"
+party_name  = "EUDAMED Public Download Importing"
+publish_gln = "7612345000527"          # Default recipient GLN for pushes
 
 [target_market]
 country_code = "097"
@@ -152,10 +153,16 @@ family_code = "51150000"
 category_code = "10005844"
 category_name = "Medical Devices"
 
+[gmail]
+p12_key       = "/path/to/your-service-account.p12"
+service_email = "your-service-account@your-project.iam.gserviceaccount.com"
+
 [endocrine_substances.Estradiol]
 ec_number = "200-023-8"
 cas_number = "50-28-2"
 ```
+
+The `[gmail]` section is only needed for `cargo run mailto`. All other fields have embedded defaults that work without a `config.toml` file.
 
 ## Project Structure
 
