@@ -15,3 +15,6 @@ firstbase_json/
 # Use config.sample.toml as the template — never commit config.toml.
 config.toml
 *.p12
+
+# Local Claude Code resume helper
+resume
