@@ -95,6 +95,7 @@ cargo run mailto file.xlsx --to recipient@example.com --from sender@example.com 
 # Send file (PDF/HTML/image/…) via WhatsApp (Baileys)
 cargo run whatsapp --pair                                            # first run: scan QR in terminal
 cargo run whatsapp --list-groups                                     # list joined groups with JIDs
+cargo run whatsapp --list-contacts [filter]                          # list 1:1 contacts known to this session
 cargo run whatsapp log/15.30_17.04.2026.log.html --group 120363…@g.us --caption "Push log"
 ```
 
@@ -121,7 +122,24 @@ After pairing, the session persists in `whatsapp/auth/` (gitignored). Subsequent
 
 **Sending from the CLI:** `cargo run whatsapp <file> --group <jid> [--caption <text>]`. The script auto-detects MIME by extension (PDF, HTML, JSON, XLSX → `sendMessage({document})`; PNG/JPG → `sendMessage({image})`).
 
+**Finding contact JIDs:** groups are listed via `cargo run whatsapp --list-groups`. For 1:1 contacts, run `cargo run whatsapp --list-contacts [filter]` — Baileys only sees contacts the phone has actively pushed via `messaging-history.set` or that have messaged you during this session, so a contact you've only sent (and never received from) may show as `(unknown)`. Easiest workaround: open the chat on your phone, tap the contact name, copy the number, and format as `<digits-with-country-code>@s.whatsapp.net` (no `+`, no spaces).
+
 **Not in packaged builds:** the Node subprocess + Baileys can't be shipped in App Store / MS Store builds, so WhatsApp is a developer/server-side feature. The GitHub Release and local `cargo run` work normally.
+
+## Documentation
+
+| Document | Source | PDF |
+|---|---|---|
+| Update monitoring for Basic UDI-DI &amp; UDI-DI entries | [`docs/version-tracking.html`](docs/version-tracking.html) | [`docs/version-tracking.pdf`](docs/version-tracking.pdf) |
+
+Regenerate the PDF after editing the HTML:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless --disable-gpu --no-pdf-header-footer \
+  --print-to-pdf=docs/version-tracking.pdf \
+  file://$PWD/docs/version-tracking.html
+```
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run firstbase`.
 

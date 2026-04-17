@@ -49,6 +49,7 @@ pub fn send_email_with_attachment(
     };
 
     let boundary = "eudamed2firstbase_email_boundary";
+    let subject = encode_header(subject);
 
     let raw_email = format!(
         "From: {from}\r\n\
@@ -105,6 +106,17 @@ pub fn send_email_with_attachment(
     eprintln!("Email sent to {} (message id: {})", to_email, id);
 
     Ok(())
+}
+
+/// RFC 2047 MIME encoded-word for header values containing non-ASCII characters.
+/// Pure-ASCII strings pass through unchanged.
+fn encode_header(s: &str) -> String {
+    if s.is_ascii() {
+        return s.to_string();
+    }
+    use base64::Engine;
+    let engine = base64::engine::general_purpose::STANDARD;
+    format!("=?UTF-8?B?{}?=", engine.encode(s.as_bytes()))
 }
 
 /// Locate the `openssl` binary by checking known absolute paths before falling

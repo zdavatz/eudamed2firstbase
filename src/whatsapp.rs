@@ -197,3 +197,15 @@ where
 {
     run_node_streaming(&["list-groups.mjs"], on_event)
 }
+
+/// List 1:1 contacts (and chats) known to this session, optionally filtered.
+pub fn list_contacts_streaming<F>(filter: Option<&str>, on_event: F) -> Result<()>
+where
+    F: Fn(WhatsappEvent) + Send + Sync + 'static,
+{
+    let mut args: Vec<&str> = vec!["list-contacts.mjs"];
+    if let Some(f) = filter {
+        args.push(f);
+    }
+    run_node_streaming(&args, on_event)
+}

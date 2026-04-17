@@ -391,6 +391,14 @@ fn main() -> Result<()> {
                 })?;
                 return Ok(());
             }
+            if args.get(2).map(|s| s.as_str()) == Some("--list-contacts") {
+                let filter = args.get(3).map(|s| s.as_str());
+                whatsapp::list_contacts_streaming(filter, |ev| match ev {
+                    whatsapp::WhatsappEvent::Line(l) => println!("{}", l),
+                    whatsapp::WhatsappEvent::Qr(_) => {}
+                })?;
+                return Ok(());
+            }
 
             let mut file = None;
             let mut jid = None;

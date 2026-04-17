@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EUDAMED Update Monitoring — Basic UDI-DI &amp; UDI-DI</title>
+<style>
+  @page { size: A4; margin: 18mm 18mm 22mm 18mm;
+          @bottom-right { content: counter(page) " / " counter(pages); font-size: 9pt; color: #666; }
+          @bottom-left  { content: "© Zeno Davatz, ywesee GmbH — eudamed2firstbase Version Tracking"; font-size: 9pt; color: #666; }
+  }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+         font-size: 10.5pt; line-height: 1.45; color: #111; max-width: 180mm; }
+  h1 { font-size: 22pt; margin: 0 0 4pt; }
+  h2 { font-size: 14pt; margin-top: 18pt; padding-top: 6pt;
+       border-top: 2px solid #0050a0; color: #0050a0; }
+  h3 { font-size: 11.5pt; margin-top: 14pt; color: #0050a0; }
+  .lead { font-size: 11pt; color: #444; margin: 0 0 14pt; }
+  .meta { font-size: 9pt; color: #666; margin-bottom: 18pt; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0 12pt;
+          font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #d0d0d0; padding: 4pt 6pt; vertical-align: top; text-align: left; }
+  th { background: #f0f4fa; font-weight: 600; }
+  code, pre, .mono { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #f5f5f5; padding: 1pt 3pt; border-radius: 2pt; font-size: 9.5pt; }
+  pre { background: #f8f8f8; border: 1px solid #e0e0e0; padding: 8pt; border-radius: 3pt;
+        font-size: 8.5pt; line-height: 1.35; overflow-x: auto; page-break-inside: avoid; }
+  .pill { display: inline-block; padding: 1pt 6pt; border-radius: 8pt;
+          font-size: 8.5pt; font-weight: 600; }
+  .pill.detail { background: #e3f0ff; color: #0050a0; }
+  .pill.budi   { background: #ffe6cc; color: #8a4500; }
+  .pill.both   { background: #d6f0d6; color: #1e6b1e; }
+  ul.tight { margin: 4pt 0 8pt 18pt; }
+  ul.tight li { margin: 2pt 0; }
+  .callout { border-left: 3px solid #0050a0; background: #f5f9ff;
+             padding: 6pt 10pt; margin: 8pt 0; font-size: 10pt; }
+  .step { display: flex; gap: 8pt; margin: 6pt 0; }
+  .step .num { flex: 0 0 22pt; height: 22pt; background: #0050a0; color: white;
+               border-radius: 11pt; text-align: center; line-height: 22pt; font-weight: 600; }
+  .step .body { flex: 1; padding-top: 2pt; }
+  hr { border: 0; border-top: 1px solid #ddd; margin: 14pt 0; }
+  .signature { margin-top: 28pt; padding-top: 12pt; border-top: 1px solid #888;
+               font-size: 10pt; color: #333; }
+  .signature .name { font-weight: 600; font-size: 11pt; color: #0050a0; }
+  .signature .org  { color: #555; }
+</style>
+</head>
+<body>
+
+<h1>EUDAMED Update Monitoring</h1>
+<p class="lead">How <code>eudamed2firstbase</code> detects, tracks, and reacts to changes
+in EUDAMED Basic UDI-DI and UDI-DI records.</p>
+<p class="meta">Document version: 2026-04-17 &nbsp;·&nbsp; Tool version: see
+<code>Cargo.toml</code> / window title &nbsp;·&nbsp; Source of truth:
+<code>src/version_db.rs</code>, <code>src/download.rs</code></p>
+
+<h2>1. Why tracking matters</h2>
+<p>EUDAMED is a moving database: manufacturers update addresses, status changes from
+<code>ON_MARKET</code> to <code>NO_LONGER_ON_THE_MARKET</code>, Notified Bodies link new
+certificates, package hierarchies are extended. Re-downloading and re-pushing 100k+ devices
+on every run is wasteful and triggers GS1 re-publication errors (e.g. <code>SYS25</code>
+&ldquo;must be later than previous&rdquo;, <code>097.029/036</code> updateable-rule blocks).
+Instead, the tool keeps a per-device version journal and only acts on what has actually
+changed.</p>
+
+<h2>2. The two API records we track</h2>
+<table>
+  <tr><th>Record</th><th>EUDAMED endpoint</th><th>What it carries</th></tr>
+  <tr>
+    <td><span class="pill detail">UDI-DI (Detail)</span></td>
+    <td><code>GET /api/devices/udiDiData/{uuid}?languageIso2Code=en</code></td>
+    <td>Per-package device data: GTIN/primary DI, trade name, clinical sizes, market info,
+        substances, warnings, packaging hierarchy, device status, product designer, related
+        devices.</td>
+  </tr>
+  <tr>
+    <td><span class="pill budi">Basic UDI-DI (BUDI)</span></td>
+    <td><code>GET /api/devices/basicUdiData/udiDiData/{uuid}?languageIso2Code=en</code></td>
+    <td>Per-product-family record: MDR/IVDR mandatory booleans (active, implantable,
+        measuringFunction, multiComponent, tissue), risk class, regulatory act
+        (MDR/IVDR/MDD/AIMDD/IVDD), manufacturer + Authorised Representative SRN,
+        certificates (DeviceCertificateInfo and CertificateLink).</td>
+  </tr>
+  <tr>
+    <td><span class="pill both">Listing</span></td>
+    <td><code>GET /api/devices/udiDiData?page=N&amp;pageSize=300&amp;srn=&lt;SRN&gt;</code></td>
+    <td>Paginated index used as the discovery layer. Carries
+        <code>versionNumber</code> (UDI) and <code>basicUdiDataVersionNumber</code> (BUDI)
+        for every UUID — this is the cheap signal that drives the pre-download check.</td>
+  </tr>
+</table>
+
+<div class="callout">
+  Every section in both Detail and BUDI records carries its own
+  <code>versionNumber</code> and <code>versionDate</code> (or <code>lastUpdateDate</code>
+  for contacts). EUDAMED versions sections independently — a manufacturer address change
+  bumps <code>manufacturer.versionNumber</code> without touching <code>udiDi.versionNumber</code>.
+</div>
+
+<h2>3. What gets tracked, per UUID</h2>
+<p>One row in the SQLite table <code>udi_versions</code> per UDI-DI UUID. Nine independent
+sections plus a fast-path content hash:</p>
+<table>
+  <tr><th>Section</th><th>Source</th><th>Version field(s)</th><th>DB columns</th></tr>
+  <tr><td><b>UDI root</b></td><td>Detail JSON</td><td><code>versionNumber</code>, <code>versionDate</code></td><td><code>udi_version</code>, <code>udi_date</code></td></tr>
+  <tr><td><b>Basic UDI-DI</b></td><td>BUDI JSON</td><td><code>versionNumber</code>, <code>versionDate</code></td><td><code>budi_version</code>, <code>budi_date</code></td></tr>
+  <tr><td><b>Manufacturer</b></td><td>BUDI &rarr; <code>manufacturer</code></td><td><code>versionNumber</code>, <code>lastUpdateDate</code></td><td><code>mfr_version</code>, <code>mfr_date</code></td></tr>
+  <tr><td><b>Authorised Rep</b></td><td>BUDI &rarr; <code>authorisedRepresentative</code></td><td><code>versionNumber</code>, <code>lastUpdateDate</code></td><td><code>ar_version</code>, <code>ar_date</code></td></tr>
+  <tr><td><b>Certificates</b></td><td>BUDI &rarr; <code>deviceCertificateInfoListForDisplay[]</code></td><td><code>versionNumber</code> per cert</td><td><code>cert_versions</code> (JSON array)</td></tr>
+  <tr><td><b>Package</b></td><td>Detail &rarr; <code>containedItem</code></td><td><code>versionNumber</code>, <code>versionDate</code></td><td><code>pkg_version</code>, <code>pkg_date</code></td></tr>
+  <tr><td><b>Market info</b></td><td>Detail &rarr; <code>marketInfoLink</code></td><td><code>versionNumber</code>, <code>versionDate</code></td><td><code>market_version</code>, <code>market_date</code></td></tr>
+  <tr><td><b>Device status</b></td><td>Detail &rarr; <code>deviceStatus</code></td><td>status code, <code>statusDate</code></td><td><code>device_status</code>, <code>status_date</code></td></tr>
+  <tr><td><b>Product designer</b></td><td>Detail &rarr; <code>productDesigner</code></td><td><code>versionNumber</code>, <code>versionDate</code></td><td><code>designer_version</code>, <code>designer_date</code></td></tr>
+  <tr><td><b>Detail hash</b></td><td>Full Detail JSON body</td><td>SHA-256</td><td><code>detail_hash</code> (fast-path)</td></tr>
+  <tr><td><b>Last sync</b></td><td>Tool clock</td><td>ISO-8601 timestamp</td><td><code>last_synced</code></td></tr>
+</table>
+
+<h2>4. Storage layout</h2>
+<p>SQLite, WAL mode, located at <code>$APP_DATA/db/version_tracking.db</code>
+(<code>~/eudamed2firstbase/db/</code> on Linux/macOS,
+<code>%USERPROFILE%\eudamed2firstbase\db\</code> on Windows, the sandbox container under the
+App Store build). Three operational tables share the file:</p>
+<ul class="tight">
+  <li><code>udi_versions</code> — the per-UUID version journal described above.</li>
+  <li><code>listing_cache</code> — paginated SRN listing snapshot (UUID, SRN, manufacturer
+      name, primary DI, trade name, risk class, device status, <code>versionNumber</code>,
+      <code>basicUdiDataVersionNumber</code>, <code>listed_at</code>). Drives the cheap
+      pre-download check.</li>
+  <li><code>push_log</code> + <code>request_log</code> + <code>swissdamed_push_log</code>
+      — outbound push history (separate document).</li>
+</ul>
+
+<pre>CREATE TABLE udi_versions (
+    uuid              TEXT PRIMARY KEY,
+    gtin              TEXT NOT NULL DEFAULT '',
+    detail_hash       TEXT NOT NULL DEFAULT '',
+    udi_version       INTEGER, udi_date      TEXT,
+    budi_version      INTEGER, budi_date     TEXT,
+    mfr_version       INTEGER, mfr_date      TEXT,
+    ar_version        INTEGER, ar_date       TEXT,
+    cert_versions     TEXT,                              -- JSON array, e.g. "[1,2,1]"
+    pkg_version       INTEGER, pkg_date      TEXT,
+    market_version    INTEGER, market_date   TEXT,
+    device_status     TEXT,    status_date   TEXT,
+    designer_version  INTEGER, designer_date TEXT,
+    last_synced       TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX idx_gtin        ON udi_versions(gtin);
+CREATE INDEX idx_last_synced ON udi_versions(last_synced);</pre>
+
+<h2>5. The detection algorithm</h2>
+
+<div class="step"><div class="num">1</div><div class="body">
+  <b>Discovery (cheap).</b> For each manufacturer SRN, fetch the listing pages in parallel
+  (default 10 threads). Each page row gives us
+  <code>(uuid, versionNumber, basicUdiDataVersionNumber)</code>. Rows are upserted into
+  <code>listing_cache</code>.
+</div></div>
+
+<div class="step"><div class="num">2</div><div class="body">
+  <b>Pre-download filter (<code>filter_unchanged</code>).</b> For every listing row, look up
+  <code>udi_versions[uuid]</code>:
+  <ul class="tight">
+    <li>If both <code>db.udi_version == listing.versionNumber</code> <em>and</em>
+        <code>db.budi_version == listing.basicUdiDataVersionNumber</code>, mark
+        <span class="pill both">unchanged</span> &mdash; skip detail+BUDI fetch entirely.</li>
+    <li>Otherwise add the UUID to <code>need_download</code>.</li>
+  </ul>
+  Special case: if the DB has no BUDI version yet but the listing carries one, the device is
+  re-downloaded so we can capture the new BUDI data.
+</div></div>
+
+<div class="step"><div class="num">3</div><div class="body">
+  <b>Parallel detail + BUDI fetch.</b> For every UUID in <code>need_download</code>, fetch
+  <code>/{uuid}</code> &rarr; <code>eudamed_json/detail/&lt;uuid&gt;.json</code> and
+  <code>/basicUdiData/udiDiData/{uuid}</code> &rarr; <code>eudamed_json/basic/&lt;uuid&gt;.json</code>.
+  Three retries with exponential backoff; per-10-file progress counters; full log to
+  <code>eudamed_json/log/download.log</code>.
+</div></div>
+
+<div class="step"><div class="num">4</div><div class="body">
+  <b>Indexing (<code>index_detail_versions</code>).</b> Newly downloaded detail files are
+  parsed in parallel via Rayon, run through <code>extract_detail_versions()</code>, and
+  upserted into <code>udi_versions</code> in a single transaction. The same path runs for the
+  initial bulk import (<code>index_all_detail_versions</code>) and subsequent incremental
+  syncs.
+</div></div>
+
+<div class="step"><div class="num">5</div><div class="body">
+  <b>BUDI version backfill.</b> The <code>basicUdiDataVersionNumber</code> from the listing
+  is written back to <code>udi_versions.budi_version</code> in a transaction so the next run
+  can compare both UDI and BUDI versions without having to refetch BUDI files.
+</div></div>
+
+<div class="step"><div class="num">6</div><div class="body">
+  <b>Conversion / change detection (<code>detect_changes</code>).</b> When the conversion
+  pipeline runs (<code>cargo run firstbase</code> or the GUI&rsquo;s one-click flow), each
+  detail file is hashed:
+  <ul class="tight">
+    <li><b>Fast path:</b> if <code>SHA-256(file) == db.detail_hash</code>, return
+        <code>UNCHANGED</code> immediately &mdash; no JSON re-parse, no re-conversion.</li>
+    <li><b>Slow path:</b> compare each tracked version field independently and produce a
+        <code>ChangeSet</code>: <code>{ udi_changed, budi_changed, mfr_changed, ar_changed,
+        cert_changed, pkg_changed, market_changed, status_changed, designer_changed }</code>.</li>
+  </ul>
+  The summary string &mdash; e.g. <code>NEW</code>, <code>MFR+CERT</code>,
+  <code>STATUS+MARKET</code>, <code>UNCHANGED</code> &mdash; is emitted to the log so
+  operators can see at a glance what changed for each UUID.
+</div></div>
+
+<h2>6. Why two layers (hash + per-section)</h2>
+<table>
+  <tr><th>Layer</th><th>Cost</th><th>What it answers</th></tr>
+  <tr><td>SHA-256 of full Detail JSON</td><td>~µs per file</td><td>&ldquo;Is anything different at all?&rdquo;</td></tr>
+  <tr><td>Per-section version compare</td><td>~tens of µs</td><td>&ldquo;<em>Which</em> sections changed?&rdquo;</td></tr>
+  <tr><td>Listing version pre-check</td><td>One HTTP page per 300 UUIDs</td><td>&ldquo;Should we even fetch this UUID?&rdquo;</td></tr>
+</table>
+<p>The three layers compose: the listing check avoids HTTP entirely for unchanged devices, the
+hash short-circuits parse on hits, and the per-section compare narrows GS1 re-pushes to the
+attributes that actually moved.</p>
+
+<h2>7. The <code>check</code> command (operational entry point)</h2>
+<p>One command runs the full incremental loop &mdash; intended for cron / CI:</p>
+<pre>cargo run check srns.txt [--threads N]</pre>
+<ol class="tight">
+  <li>Read SRNs from the file (one per line, comments allowed).</li>
+  <li>Run discovery + pre-download filter (steps 1&ndash;2).</li>
+  <li>If <code>need_download</code> is empty: print &ldquo;All N devices unchanged&rdquo; and
+      exit 0 with no further work.</li>
+  <li>Otherwise: download (3), index (4), backfill (5), convert only the changed UUIDs (6),
+      and push to GS1 firstbase (Live/CreateMany &rarr; AddMany with polling).</li>
+</ol>
+
+<h2>8. Inspecting the journal</h2>
+<pre>sqlite3 ~/eudamed2firstbase/db/version_tracking.db
+> SELECT COUNT(*) FROM udi_versions;
+> SELECT uuid, gtin, udi_version, budi_version, device_status, last_synced
+  FROM udi_versions
+  ORDER BY last_synced DESC LIMIT 10;
+> SELECT device_status, COUNT(*) FROM udi_versions
+  GROUP BY device_status;
+> SELECT uuid, mfr_version, mfr_date FROM udi_versions
+  WHERE mfr_date > '2026-01-01';</pre>
+
+<h2>9. Failure modes &amp; their telemetry</h2>
+<table>
+  <tr><th>Failure</th><th>Symptom</th><th>How we recover</th></tr>
+  <tr><td>HTTP timeout / 5xx during detail fetch</td><td>UUID stays in
+      <code>need_download</code>, file missing on disk</td>
+      <td>Up to 3 retries with exponential backoff, then a 5-retry completeness sweep at the
+          end of the run; remaining gaps are logged.</td></tr>
+  <tr><td>EUDAMED returns malformed JSON</td><td>Parse fails in
+      <code>extract_detail_versions</code></td>
+      <td>Default-initialised <code>VersionRecord</code> kept; <code>detail_hash</code> still
+          stored, so file is re-tried next run if it changes.</td></tr>
+  <tr><td>BUDI cache miss</td><td><code>budi_version</code> NULL</td>
+      <td>Listing-driven backfill on next run; converter falls back to <code>false</code>
+          for MDR booleans (logged with reduced confidence).</td></tr>
+  <tr><td>Section version regresses (n-1)</td><td>Treated as a change</td>
+      <td>The compare uses <code>!=</code>, not <code>&lt;</code>, so EUDAMED rollbacks
+          re-trigger conversion and push.</td></tr>
+</table>
+
+<h2>10. End-to-end timeline</h2>
+<pre>
++------------------+    +------------------+    +-----------------+    +-----------+
+| Listing fetch    | -> | filter_unchanged | -> | parallel detail | -> | index +   |
+| (SRN, page=N)    |    | UDI? BUDI?       |    | + BUDI download |    | upsert    |
+| listing_cache    |    | DB lookup        |    | + log           |    | versions  |
++------------------+    +------------------+    +-----------------+    +-----------+
+                              |                                              |
+                              | unchanged                                    v
+                              v                                       +-------------+
+                        skip download                                 | detect_     |
+                                                                      | changes()   |
+                                                                      | per UUID    |
+                                                                      +-------------+
+                                                                            |
+                                                                            v
+                                                                      +-------------+
+                                                                      | convert &   |
+                                                                      | push only   |
+                                                                      | changed     |
+                                                                      +-------------+
+</pre>
+
+<h2>11. Files of interest</h2>
+<ul class="tight">
+  <li><code>src/version_db.rs</code> &mdash; schema, <code>VersionRecord</code>,
+      <code>ChangeSet</code>, <code>extract_detail_versions</code>,
+      <code>merge_budi_versions</code>, <code>detect_changes</code>.</li>
+  <li><code>src/download.rs</code> &mdash; <code>filter_unchanged</code>,
+      <code>index_detail_versions</code>, <code>index_all_detail_versions</code>,
+      <code>listing_cache</code> schema, BUDI backfill transaction.</li>
+  <li><code>src/main.rs</code> &mdash; <code>check</code> subcommand wiring.</li>
+  <li><code>db/version_tracking.db</code> &mdash; the live journal.</li>
+  <li><code>eudamed_json/log/download.log</code> &mdash; per-UUID download trace.</li>
+</ul>
+
+<div class="signature">
+  <div class="name">Zeno Davatz</div>
+  <div class="org">ywesee GmbH &nbsp;·&nbsp; <a href="https://ywesee.com">ywesee.com</a></div>
+</div>
+
+</body>
+</html>
