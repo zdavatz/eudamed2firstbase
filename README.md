@@ -307,6 +307,11 @@ python3 firstbase_validation.py --dump-schema SalesInformation
 
 You can upload generated JSON directly to the GS1 firstbase Catalogue Item API for server-side validation. This catches issues that the offline Swagger check misses (e.g. GTIN check digits, code list membership).
 
+**Environments:**
+
+- **Test**: `https://test-webapi-firstbase.gs1.ch:5443` — default, safe for validation
+- **Production**: `https://webapi-firstbase.gs1.ch` — real data. The GUI has an Environment radio (Test/Production) in the firstbase credentials panel; selecting Production shows a red warning. Production requires separate credentials and a production-valid `Publish To GLN`.
+
 #### 1. Get an Access Token
 
 The API uses token-based authentication via the GS1 Platform Auth SSO.

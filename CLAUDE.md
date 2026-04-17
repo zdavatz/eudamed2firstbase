@@ -136,10 +136,15 @@ Screenshots in `screenshots/macos/` (2560×1600 Retina, for Apple App Store) and
 - TradeItemUnitDescriptorCode: UDI-DI → BASE_UNIT_OR_EACH, Package DI → CASE or PACK_OR_INNER_PACK. No PALLET (not derivable from EUDAMED). IsTradeItemADespatchUnit=true for highest level, IsTradeItemAnOrderableUnit=true for all. Package DIs inherit EMA/EAR contacts (SRN only) from base unit so CH-REPs can filter by SRN.
 - ManufacturerDeclaredReusabilityTypeCode: SINGLE_USE (singleUse=true), LIMITED_REUSABLE (numberOfReuses>0 + max_cycles), REUSABLE (not singleUse, no numberOfReuses). REUSABLE_SAME_PATIENT not derivable from EUDAMED.
 
-## GS1 firstbase Catalogue Item API (Test)
+## GS1 firstbase Catalogue Item API
 
-- **Endpoint**: `https://test-webapi-firstbase.gs1.ch:5443`
-- **Swagger UI**: `https://test-webapi-firstbase.gs1.ch:5443/helpPages/catalogueItemApi/index`
+- **Endpoints**:
+  - Test: `https://test-webapi-firstbase.gs1.ch:5443`
+  - Production: `https://webapi-firstbase.gs1.ch`
+- **Swagger UI**:
+  - Test: `https://test-webapi-firstbase.gs1.ch:5443/helpPages/catalogueItemApi/index`
+  - Production: `https://webapi-firstbase.gs1.ch/helpPages/catalogueItemApi/index`
+- **GUI environment switch**: `FirstbaseEnv` enum (Test/Production) in `gui.rs`; radio buttons in the credentials panel. Defaults to Test. Production requires separate credentials and a production-valid `Publish To GLN`.
 - **Auth**: `POST /Account/Token` with `{"UserEmail":"...","Password":"...","Gln":"7612345000480"}` → JWT bearer token (~48h validity)
 - **Password reset**: Must use "Platform Auth (UAT) password reset for API" link from M2M Quick Guide PDF (page 10), NOT the Web-UI SSO reset link
 - **Create draft**: `POST /CatalogueItem/Draft/CreateOne` — body is the DraftItem JSON file directly

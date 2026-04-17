@@ -32,6 +32,24 @@ enum PushTarget {
     Swissdamed,
 }
 
+/// Environment for the GS1 firstbase Catalogue Item API.
+#[derive(Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum FirstbaseEnv {
+    #[default]
+    Test,
+    Production,
+}
+
+impl FirstbaseEnv {
+    /// Base URL for the Catalogue Item API.
+    pub fn api_base(&self) -> &'static str {
+        match self {
+            FirstbaseEnv::Test => "https://test-webapi-firstbase.gs1.ch:5443",
+            FirstbaseEnv::Production => "https://webapi-firstbase.gs1.ch",
+        }
+    }
+}
+
 /// Persistent state saved between sessions.
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Settings {
@@ -48,6 +66,8 @@ pub struct Settings {
     pub publish_to_gln: String,
     #[serde(default)]
     pub provider_gln: String,
+    #[serde(default)]
+    pub firstbase_env: FirstbaseEnv,
     // Swissdamed credentials
     #[serde(default)]
     pub swissdamed_client_id: String,
@@ -329,6 +349,14 @@ impl eframe::App for App {
                         match self.settings.push_target {
                             PushTarget::Firstbase => {
                                 ui.collapsing("GS1 firstbase Credentials", |ui| {
+                                    ui.horizontal(|ui| {
+                                        ui.label("Environment:");
+                                        ui.radio_value(&mut self.settings.firstbase_env, FirstbaseEnv::Test, "Test");
+                                        ui.radio_value(&mut self.settings.firstbase_env, FirstbaseEnv::Production, "Production");
+                                    });
+                                    if self.settings.firstbase_env == FirstbaseEnv::Production {
+                                        ui.colored_label(egui::Color32::from_rgb(200, 0, 0), "⚠ PRODUCTION — real data will be pushed!");
+                                    }
                                     ui.horizontal(|ui| { ui.label("Email:"); ui.add(egui::TextEdit::singleline(&mut self.settings.firstbase_email).desired_width(200.0)); });
                                     ui.horizontal(|ui| { ui.label("Password:"); ui.add(egui::TextEdit::singleline(&mut self.settings.firstbase_password).desired_width(200.0).password(true)); });
                                     ui.horizontal(|ui| { ui.label("Provider GLN:"); ui.add(egui::TextEdit::singleline(&mut self.settings.provider_gln).desired_width(150.0)); });
@@ -455,6 +483,17 @@ impl eframe::App for App {
                 PushTarget::Firstbase => {
                     ui.collapsing("GS1 firstbase Credentials", |ui| {
                         self.show_credentials = true;
+                        ui.horizontal(|ui| {
+                            ui.label("Environment:");
+                            ui.radio_value(&mut self.settings.firstbase_env, FirstbaseEnv::Test, "Test");
+                            ui.radio_value(&mut self.settings.firstbase_env, FirstbaseEnv::Production, "Production");
+                        });
+                        if self.settings.firstbase_env == FirstbaseEnv::Production {
+                            ui.colored_label(
+                                egui::Color32::from_rgb(200, 0, 0),
+                                "⚠ PRODUCTION — real data will be pushed!",
+                            );
+                        }
                         ui.horizontal(|ui| {
                             ui.label("Email:");
                             ui.add(
@@ -1360,7 +1399,12 @@ fn run_pipeline(
 
 /// Push firstbase JSON files to GS1 Catalogue Item API
 pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Result<(u32, u32)> {
-    let api_base = "https://test-webapi-firstbase.gs1.ch:5443";
+    let api_base = settings.firstbase_env.api_base();
+    let env_label = match settings.firstbase_env {
+        FirstbaseEnv::Test => "TEST",
+        FirstbaseEnv::Production => "PRODUCTION",
+    };
+    log(&format!("Firstbase environment: {} ({})", env_label, api_base));
     let firstbase_dir = download::app_data_dir().join("firstbase_json");
     let processed_dir = firstbase_dir.join("processed");
     let _ = std::fs::create_dir_all(&processed_dir);
