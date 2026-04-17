@@ -119,7 +119,7 @@ Requires **Node.js ≥ 22** (Baileys v7 segfaults on older versions). The Rust b
 
 After pairing, the session persists in `whatsapp/auth/` (gitignored). Subsequent sends are one-shot and non-interactive.
 
-**Sending from the GUI:** paste a JID into the field (`120363…@g.us` for groups, `4179…@s.whatsapp.net` for users) and click **Send latest push log** — the newest `log/*.log.html` is sent as a document. JID is persisted in `settings.json`.
+**Sending from the GUI:** enter a recipient in the **Phone / Group** field — either a plain phone number like `+41 79 236 45 44` (spaces, `+`, dashes, parens, dots all accepted — normalised on send) or a group JID like `120363…@g.us`. The GUI echoes the normalised value to the log so you can verify it. Click **Send latest Prod log** (red) or **Send latest Test log** (blue) to ship the newest HTML report as a document. The entered value is persisted in `settings.json`.
 
 **Sending from the CLI:** `cargo run whatsapp <file> --group <jid> [--caption <text>]`. The script auto-detects MIME by extension (PDF, HTML, JSON, XLSX → `sendMessage({document})`; PNG/JPG → `sendMessage({image})`).
 

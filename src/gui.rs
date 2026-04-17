@@ -342,12 +342,14 @@ impl App {
 
     /// Send a file via WhatsApp on a background thread, streaming output to the log.
     fn start_whatsapp_send(&mut self, ctx: egui::Context, file: PathBuf, caption: String) {
-        let jid = self.settings.whatsapp_jid.trim().to_string();
-        if jid.is_empty() {
-            self.log_lines
-                .push("WhatsApp: JID is empty — set it in the WhatsApp section.".to_string());
+        let raw = self.settings.whatsapp_jid.trim().to_string();
+        if raw.is_empty() {
+            self.log_lines.push(
+                "WhatsApp: recipient is empty — enter a phone number or group JID.".to_string(),
+            );
             return;
         }
+        let jid = crate::whatsapp::normalize_jid(&raw);
         if !file.exists() {
             self.log_lines
                 .push(format!("WhatsApp: file not found: {}", file.display()));
@@ -357,6 +359,10 @@ impl App {
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
         self.running = true;
+        if raw != jid {
+            self.log_lines
+                .push(format!("WhatsApp: \"{}\" → {}", raw, jid));
+        }
         self.log_lines.push(format!(
             "WhatsApp: sending {} to {}...",
             file.display(),
@@ -644,8 +650,8 @@ impl eframe::App for App {
                         ui.add_space(4.0);
                         ui.collapsing("WhatsApp", |ui| {
                             ui.horizontal(|ui| {
-                                ui.label("Group/User JID:");
-                                ui.add(egui::TextEdit::singleline(&mut self.settings.whatsapp_jid).desired_width(260.0).hint_text("120363…@g.us"));
+                                ui.label("Phone / Group:");
+                                ui.add(egui::TextEdit::singleline(&mut self.settings.whatsapp_jid).desired_width(260.0).hint_text("+41 79 236 45 44  or  120363…@g.us"));
                             });
                             ui.horizontal(|ui| {
                                 let can_run = !self.running;
@@ -858,11 +864,11 @@ impl eframe::App for App {
 
             ui.collapsing("WhatsApp", |ui| {
                 ui.horizontal(|ui| {
-                    ui.label("Group/User JID:");
+                    ui.label("Phone / Group:");
                     ui.add(
                         egui::TextEdit::singleline(&mut self.settings.whatsapp_jid)
                             .desired_width(320.0)
-                            .hint_text("120363…@g.us  or  4179…@s.whatsapp.net"),
+                            .hint_text("+41 79 236 45 44   or   120363…@g.us   (groups only)"),
                     );
                 });
                 ui.horizontal(|ui| {

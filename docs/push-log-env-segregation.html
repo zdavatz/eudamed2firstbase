@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Firstbase Push Log — Test / Production Segregation</title>
+<style>
+  @page { size: A4; margin: 18mm 18mm 22mm 18mm;
+          @bottom-right { content: counter(page) " / " counter(pages); font-size: 9pt; color: #666; }
+          @bottom-left  { content: "© Zeno Davatz, ywesee GmbH — eudamed2firstbase"; font-size: 9pt; color: #666; }
+  }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+         font-size: 10.5pt; line-height: 1.5; color: #111; max-width: 180mm; }
+  h1 { font-size: 22pt; margin: 0 0 4pt; }
+  h2 { font-size: 13pt; margin-top: 16pt; padding-top: 4pt;
+       border-top: 2px solid #0050a0; color: #0050a0; }
+  .lead { font-size: 11pt; color: #444; margin: 0 0 12pt; }
+  .meta { font-size: 9pt; color: #666; margin-bottom: 16pt; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt;
+          font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #d0d0d0; padding: 4pt 6pt; vertical-align: top; text-align: left; }
+  th { background: #f0f4fa; font-weight: 600; }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace;
+         background: #f5f5f5; padding: 1pt 3pt; border-radius: 2pt; font-size: 9.5pt; }
+  pre { font-family: "SF Mono", Menlo, Consolas, monospace;
+        background: #f8f8f8; border: 1px solid #e0e0e0; padding: 8pt; border-radius: 3pt;
+        font-size: 8.5pt; line-height: 1.35; page-break-inside: avoid; }
+  .banner-demo { margin: 10pt 0; border-radius: 4pt; overflow: hidden;
+                 box-shadow: 0 1px 2px rgba(0,0,0,0.15); page-break-inside: avoid; }
+  .banner-demo .b { padding: 10pt 14pt; color: white; font-weight: 700;
+                    font-size: 14pt; letter-spacing: 0.3pt; }
+  .banner-demo .b .sub { display: block; font-size: 9pt; font-weight: 400;
+                         opacity: 0.9; letter-spacing: 0; margin-top: 3pt; }
+  .prod { background: #b30000; }
+  .test { background: #0050a0; }
+  .signature { margin-top: 24pt; padding-top: 10pt; border-top: 1px solid #888;
+               font-size: 10pt; color: #333; }
+  .signature .name { font-weight: 600; font-size: 11pt; color: #0050a0; }
+  .signature .org  { color: #555; }
+</style>
+</head>
+<body>
+
+<h1>Firstbase Push Log &mdash; Test / Production Segregation</h1>
+<p class="lead">How <code>eudamed2firstbase</code> v1.0.39 guarantees that a Test push and a
+Production push can never be confused &mdash; neither in the database, the filesystem, the
+report, nor the operator UI.</p>
+<p class="meta">Document: 2026-04-17 &nbsp;·&nbsp; Tool version: 1.0.39 &nbsp;·&nbsp;
+Source of truth: <code>src/gui.rs</code> (push session recording + HTML report)</p>
+
+<h2>Why we added this</h2>
+<p>The GS1 Firstbase Catalogue Item API has two environments with <em>different</em> base URLs
+but can use the <em>same</em> Publish-To-GLN (e.g. <code>7612345000527</code>). Before v1.0.39
+the <code>push_log</code> table stored the GLN but not the environment, so a row for
+&ldquo;I pushed to Test&rdquo; was indistinguishable from &ldquo;I pushed to Production&rdquo;
+once the in-memory log was gone. That created a real risk of reading a Test result and acting
+as if it were Production data (or vice versa).</p>
+
+<h2>What changed in v1.0.39</h2>
+<p>Four independent layers now tag every push with its environment, so a mistake on one layer
+is caught by the others.</p>
+
+<h2>Layer 1 &mdash; Database columns</h2>
+<pre>ALTER TABLE push_log     ADD COLUMN firstbase_env TEXT NOT NULL DEFAULT '';
+ALTER TABLE push_session ADD COLUMN firstbase_env TEXT NOT NULL DEFAULT '';
+ALTER TABLE push_session ADD COLUMN api_base      TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_push_log_env     ON push_log(firstbase_env);
+CREATE INDEX idx_push_session_env ON push_session(firstbase_env);</pre>
+<ul>
+  <li><code>firstbase_env</code> = <code>'Test'</code> or <code>'Production'</code>
+      (legacy rows from before v1.0.39 remain empty and are surfaced as
+      &ldquo;UNKNOWN ENVIRONMENT&rdquo; &mdash; never silently recoloured).</li>
+  <li><code>api_base</code> stores the full URL used, so the exact endpoint can be audited
+      even if environment naming changes later.</li>
+  <li>Indexes keep <code>GROUP BY firstbase_env</code> queries fast across millions of rows.</li>
+</ul>
+
+<h2>Layer 2 &mdash; Filesystem</h2>
+<p>HTML reports are physically separated into two subdirectories, so Test and Production
+logs can never land in the same folder:</p>
+<pre>~/eudamed2firstbase/log/
+  ├── firstbase_prod/
+  │   └── 14.35_17.04.2026.log.html
+  └── firstbase_test/
+      └── 11.20_17.04.2026.log.html</pre>
+
+<h2>Layer 3 &mdash; Full-width banner in the HTML report</h2>
+<p>Every generated report carries a banner spanning the full page at the top. The colour is
+non-negotiable &mdash; you cannot miss which environment the log refers to, even in a quick
+glance or a WhatsApp preview.</p>
+<div class="banner-demo"><div class="b prod">🔒 PRODUCTION &mdash; LIVE DATA
+  <span class="sub">https://webapi-firstbase.gs1.ch</span></div></div>
+<div class="banner-demo"><div class="b test">🔒 TEST ENVIRONMENT
+  <span class="sub">https://test-webapi-firstbase.gs1.ch:5443</span></div></div>
+<p>The report&rsquo;s summary block also adds <b>Environment</b> and <b>API base</b> rows next
+to the existing Version / Timestamp / Publish GLN / Accepted / Rejected fields.</p>
+
+<h2>Layer 4 &mdash; GUI</h2>
+<p>The WhatsApp section of the GUI now shows <em>two</em> separately coloured buttons:</p>
+<table>
+  <tr><th>Button</th><th>Fill colour</th><th>Source directory</th></tr>
+  <tr><td>Send latest Prod log</td><td>red</td><td><code>log/firstbase_prod/</code></td></tr>
+  <tr><td>Send latest Test log</td><td>blue</td><td><code>log/firstbase_test/</code></td></tr>
+</table>
+<p>Each button only reads from its own subdirectory, so you cannot accidentally ship a Test
+log when you meant Production.</p>
+
+<h2>Inspection queries</h2>
+<pre>-- Environment summary across all sessions
+SELECT firstbase_env, api_base,
+       COUNT(*)                 AS sessions,
+       SUM(total_accepted)      AS accepted,
+       SUM(total_rejected)      AS rejected
+  FROM push_session
+ GROUP BY firstbase_env;
+
+-- Was a specific GTIN ever pushed to Production?
+SELECT firstbase_env, pushed_at, status, error_code
+  FROM push_log
+ WHERE gtin = '07612345780313'
+ ORDER BY pushed_at;
+
+-- Last 10 Production pushes
+SELECT uuid, gtin, pushed_at, status
+  FROM push_log
+ WHERE firstbase_env = 'Production'
+ ORDER BY pushed_at DESC
+ LIMIT 10;</pre>
+
+<h2>Backwards compatibility</h2>
+<p>Rows and files from before v1.0.39 remain in place, unmodified. The report renders a
+neutral grey banner &ldquo;UNKNOWN ENVIRONMENT (legacy log)&rdquo; for them, and the SQL
+queries treat them as <code>firstbase_env = ''</code>. They are not retro-fitted, because we
+cannot know after the fact which environment they targeted &mdash; but they stay visible and
+auditable.</p>
+
+<div class="signature">
+  <div class="name">Zeno Davatz</div>
+  <div class="org">ywesee GmbH &nbsp;·&nbsp; <a href="https://ywesee.com">ywesee.com</a></div>
+</div>
+
+</body>
+</html>

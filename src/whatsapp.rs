@@ -165,14 +165,39 @@ where
     Ok(())
 }
 
+/// Normalise a human-entered WhatsApp recipient into the canonical JID form.
+///
+/// Accepts:
+///   * Full JIDs (`…@g.us`, `…@s.whatsapp.net`, `…@c.us`) — passed through unchanged.
+///   * Pure numeric group IDs (`120363…`) — passed through; Node decides suffix by length.
+///   * Phone numbers with spaces / `+` / parens / dots (e.g. `+41 79 236 45 44`) —
+///     stripped to digits (and a single leading hyphen for legacy groups).
+pub fn normalize_jid(input: &str) -> String {
+    let trimmed = input.trim();
+    if trimmed.contains('@') {
+        return trimmed.to_string();
+    }
+    // Keep digits and a single '-' (legacy group IDs use `<digits>-<digits>`).
+    trimmed
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == '-')
+        .collect()
+}
+
 /// Send a file (image/PDF/HTML/…) to a WhatsApp JID, streaming events.
+/// The `jid` argument is normalised first so phone numbers like
+/// `+41 79 236 45 44` are accepted verbatim.
 pub fn send_streaming<F>(jid: &str, file: &str, caption: &str, on_event: F) -> Result<()>
 where
     F: Fn(WhatsappEvent) + Send + Sync + 'static,
 {
     let abs = std::fs::canonicalize(file).with_context(|| format!("File not found: {}", file))?;
     let abs_s = abs.to_string_lossy().into_owned();
-    run_node_streaming(&["send.mjs", jid, &abs_s, caption], on_event)
+    let normalized = normalize_jid(jid);
+    if normalized.is_empty() {
+        anyhow::bail!("WhatsApp recipient is empty after normalisation: {:?}", jid);
+    }
+    run_node_streaming(&["send.mjs", &normalized, &abs_s, caption], on_event)
 }
 
 /// Convenience wrapper: blocks, collects all lines, returns them on success.
