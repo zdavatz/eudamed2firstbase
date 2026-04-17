@@ -17,6 +17,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const AUTH_DIR = resolve(__dirname, "auth");
 const logger = pino({ level: "silent" });
 
+let done = false;
+
 async function main() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
@@ -38,7 +40,7 @@ async function main() {
   await new Promise((resolvePromise, reject) => {
     const timeout = setTimeout(() => {
       sock.end();
-      reject(new Error("Connection timeout (90s)"));
+      if (!done) reject(new Error("Connection timeout (90s)"));
     }, 90000);
 
     sock.ev.on("connection.update", async (update) => {
@@ -53,25 +55,33 @@ async function main() {
 
       if (connection === "open") {
         clearTimeout(timeout);
-
-        console.log("Connected. Fetching groups...\n");
-
-        const groups = await sock.groupFetchAllParticipating();
-        const sorted = Object.values(groups).sort((a, b) => a.subject.localeCompare(b.subject));
-
-        console.log(`Found ${sorted.length} groups:\n`);
-        for (const g of sorted) {
-          console.log(`  ${g.id}  ${g.subject}`);
+        try {
+          console.log("Connected. Fetching groups...\n");
+          const groups = await sock.groupFetchAllParticipating();
+          const sorted = Object.values(groups).sort((a, b) =>
+            a.subject.localeCompare(b.subject)
+          );
+          console.log(`Found ${sorted.length} groups:\n`);
+          for (const g of sorted) {
+            console.log(`  ${g.id}  ${g.subject}`);
+          }
+          done = true;
+          // Force exit — sock.end() triggers a close handler that races us.
+          setTimeout(() => process.exit(0), 500);
+          resolvePromise();
+        } catch (err) {
+          reject(err);
         }
-
-        await new Promise((r) => setTimeout(r, 1000));
-        sock.end();
-        resolvePromise();
       }
 
       if (connection === "close") {
         clearTimeout(timeout);
-        reject(new Error("Connection closed"));
+        // Don't reject if we already fetched the groups successfully.
+        if (done) {
+          resolvePromise();
+        } else {
+          reject(new Error("Connection closed before pairing completed"));
+        }
       }
     });
   });
@@ -80,6 +90,7 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((err) => {
+    if (done) process.exit(0);
     console.error("Error:", err.message);
     process.exit(1);
   });
