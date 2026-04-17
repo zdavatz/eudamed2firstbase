@@ -29,6 +29,7 @@ The GUI provides:
 - Auto-saved logs to `logs/`
 - All data stored in `~/eudamed2firstbase/` (Windows: `%USERPROFILE%\eudamed2firstbase\`)
 - WhatsApp integration (Baileys): pair this device via native in-GUI QR modal, send any push-log HTML as a document to a group/user JID, session persists across restarts
+- **Environment-segregated push logs** (since v1.0.39): every push is tagged Test or Production in the DB (`push_log.firstbase_env`, `push_session.firstbase_env`), HTML logs land under `log/firstbase_test/` or `log/firstbase_prod/` (never mixed), and each report has a full-width coloured banner — red for PRODUCTION, blue for TEST — showing the API base URL so the environment cannot be missed. Separate "Send latest Prod log" and "Send latest Test log" WhatsApp buttons.
 
 Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
 

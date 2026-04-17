@@ -209,23 +209,97 @@ impl App {
         }
     }
 
-    /// Find the most recent push-log HTML file.
+    /// Find the most recent push-log HTML file across the env subdirs.
+    /// Also falls back to loose files in the top-level log/ dir (legacy layout).
     fn latest_push_log() -> Option<PathBuf> {
-        let log_dir = download::app_data_dir().join("log");
-        let entries = std::fs::read_dir(&log_dir).ok()?;
+        let log_root = download::app_data_dir().join("log");
+        let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+        let mut scan = |dir: &PathBuf| {
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return;
+            };
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.extension().and_then(|e| e.to_str()) != Some("html") {
+                    continue;
+                }
+                let Ok(mtime) = entry.metadata().and_then(|m| m.modified()) else {
+                    continue;
+                };
+                match &best {
+                    Some((t, _)) if *t >= mtime => {}
+                    _ => best = Some((mtime, p)),
+                }
+            }
+        };
+        scan(&log_root.join("firstbase_prod"));
+        scan(&log_root.join("firstbase_test"));
+        scan(&log_root); // legacy un-subdir'd logs
+        best.map(|(_, p)| p)
+    }
+
+    /// Find the most recent push-log HTML for a specific firstbase environment.
+    fn latest_push_log_for(env: &FirstbaseEnv) -> Option<PathBuf> {
+        let subdir = match env {
+            FirstbaseEnv::Test => "firstbase_test",
+            FirstbaseEnv::Production => "firstbase_prod",
+        };
+        let dir = download::app_data_dir().join("log").join(subdir);
+        let entries = std::fs::read_dir(&dir).ok()?;
         let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
         for entry in entries.flatten() {
             let p = entry.path();
             if p.extension().and_then(|e| e.to_str()) != Some("html") {
                 continue;
             }
-            let mtime = entry.metadata().and_then(|m| m.modified()).ok()?;
+            let Ok(mtime) = entry.metadata().and_then(|m| m.modified()) else {
+                continue;
+            };
             match &best {
                 Some((t, _)) if *t >= mtime => {}
                 _ => best = Some((mtime, p)),
             }
         }
         best.map(|(_, p)| p)
+    }
+
+    /// Send the most recent push-log HTML for a given env via WhatsApp.
+    /// If `env` is None, sends the newest across both envs.
+    fn send_latest_log_via_whatsapp(
+        &mut self,
+        ctx: egui::Context,
+        env: Option<FirstbaseEnv>,
+    ) {
+        let path = match env.as_ref() {
+            Some(e) => Self::latest_push_log_for(e),
+            None => Self::latest_push_log(),
+        };
+        match path {
+            Some(p) => {
+                let env_tag = match env {
+                    Some(FirstbaseEnv::Production) => " [PROD]",
+                    Some(FirstbaseEnv::Test) => " [TEST]",
+                    None => "",
+                };
+                let caption = format!(
+                    "eudamed2firstbase push log{env_tag} — {}",
+                    p.file_name().and_then(|n| n.to_str()).unwrap_or(""),
+                );
+                self.start_whatsapp_send(ctx, p, caption);
+            }
+            None => {
+                let msg = match env {
+                    Some(FirstbaseEnv::Production) => {
+                        "WhatsApp: no log/firstbase_prod/*.log.html found."
+                    }
+                    Some(FirstbaseEnv::Test) => {
+                        "WhatsApp: no log/firstbase_test/*.log.html found."
+                    }
+                    None => "WhatsApp: no log/*.log.html found.",
+                };
+                self.log_lines.push(msg.to_string());
+            }
+        }
     }
 
     /// Pair a WhatsApp session from the GUI (no file to send — just surface the QR).
@@ -582,17 +656,17 @@ impl eframe::App for App {
                                     self.start_whatsapp_pair(ctx.clone());
                                 }
                                 let can_send = can_run && !self.settings.whatsapp_jid.trim().is_empty();
-                                if ui.add_enabled(can_send, egui::Button::new("Send latest push log"))
-                                    .on_hover_text("Send the most recent log/*.log.html file")
+                                if ui.add_enabled(can_send, egui::Button::new("Send latest Prod log").fill(egui::Color32::from_rgb(255, 230, 230)))
+                                    .on_hover_text("Send the most recent log/firstbase_prod/*.log.html")
                                     .clicked()
                                 {
-                                    if let Some(path) = Self::latest_push_log() {
-                                        let caption = format!("eudamed2firstbase push log — {}",
-                                            path.file_name().and_then(|n| n.to_str()).unwrap_or(""));
-                                        self.start_whatsapp_send(ctx.clone(), path, caption);
-                                    } else {
-                                        self.log_lines.push("WhatsApp: no log/*.log.html found.".to_string());
-                                    }
+                                    self.send_latest_log_via_whatsapp(ctx.clone(), Some(FirstbaseEnv::Production));
+                                }
+                                if ui.add_enabled(can_send, egui::Button::new("Send latest Test log").fill(egui::Color32::from_rgb(230, 240, 255)))
+                                    .on_hover_text("Send the most recent log/firstbase_test/*.log.html")
+                                    .clicked()
+                                {
+                                    self.send_latest_log_via_whatsapp(ctx.clone(), Some(FirstbaseEnv::Test));
                                 }
                             });
                         });
@@ -802,20 +876,33 @@ impl eframe::App for App {
                     }
                     let can_send = can_run && !self.settings.whatsapp_jid.trim().is_empty();
                     if ui
-                        .add_enabled(can_send, egui::Button::new("Send latest push log"))
-                        .on_hover_text("Send the most recent log/*.log.html file via WhatsApp (requires Node.js ≥ 22 and `npm install` in whatsapp/)")
+                        .add_enabled(
+                            can_send,
+                            egui::Button::new("Send latest Prod log")
+                                .fill(egui::Color32::from_rgb(255, 230, 230)),
+                        )
+                        .on_hover_text(
+                            "Send the most recent log/firstbase_prod/*.log.html via WhatsApp",
+                        )
                         .clicked()
                     {
-                        if let Some(path) = Self::latest_push_log() {
-                            let caption = format!(
-                                "eudamed2firstbase push log — {}",
-                                path.file_name().and_then(|n| n.to_str()).unwrap_or("")
-                            );
-                            self.start_whatsapp_send(ctx.clone(), path, caption);
-                        } else {
-                            self.log_lines
-                                .push("WhatsApp: no log/*.log.html found.".to_string());
-                        }
+                        self.send_latest_log_via_whatsapp(
+                            ctx.clone(),
+                            Some(FirstbaseEnv::Production),
+                        );
+                    }
+                    if ui
+                        .add_enabled(
+                            can_send,
+                            egui::Button::new("Send latest Test log")
+                                .fill(egui::Color32::from_rgb(230, 240, 255)),
+                        )
+                        .on_hover_text(
+                            "Send the most recent log/firstbase_test/*.log.html via WhatsApp",
+                        )
+                        .clicked()
+                    {
+                        self.send_latest_log_via_whatsapp(ctx.clone(), Some(FirstbaseEnv::Test));
                     }
                 });
             });
@@ -2300,7 +2387,8 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
         CREATE TABLE IF NOT EXISTS push_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL, gtin TEXT NOT NULL DEFAULT '',
             pushed_at TEXT NOT NULL, request_id TEXT, status TEXT NOT NULL,
-            error_code TEXT, error_msg TEXT, publish_gln TEXT
+            error_code TEXT, error_msg TEXT, publish_gln TEXT,
+            firstbase_env TEXT NOT NULL DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS push_session (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2310,7 +2398,9 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
             total_pushable INTEGER NOT NULL DEFAULT 0,
             skipped_no_gtin INTEGER NOT NULL DEFAULT 0,
             total_accepted INTEGER NOT NULL DEFAULT 0,
-            total_rejected INTEGER NOT NULL DEFAULT 0
+            total_rejected INTEGER NOT NULL DEFAULT 0,
+            firstbase_env TEXT NOT NULL DEFAULT '',
+            api_base TEXT NOT NULL DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS push_error (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2324,18 +2414,39 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
         );
     ",
     );
-    // Migration: add attribute_name column if missing (existing DBs)
+    // Migrations for existing DBs — column adds are idempotent failures if present.
     let _ = conn.execute(
         "ALTER TABLE push_error ADD COLUMN attribute_name TEXT NOT NULL DEFAULT ''",
         [],
     );
+    let _ = conn.execute(
+        "ALTER TABLE push_log ADD COLUMN firstbase_env TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE push_session ADD COLUMN firstbase_env TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE push_session ADD COLUMN api_base TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+    let _ = conn.execute_batch(
+        "CREATE INDEX IF NOT EXISTS idx_push_log_env     ON push_log(firstbase_env);
+         CREATE INDEX IF NOT EXISTS idx_push_session_env ON push_session(firstbase_env);",
+    );
 
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let env_label = match settings.firstbase_env {
+        FirstbaseEnv::Test => "Test",
+        FirstbaseEnv::Production => "Production",
+    };
+    let api_base_str = settings.firstbase_env.api_base();
 
     // Insert push session (accepted/rejected updated after file move)
     let _ = conn.execute(
-        "INSERT INTO push_session (session_ts, version, publish_gln, total_pushable, skipped_no_gtin, total_accepted, total_rejected) VALUES (?1,?2,?3,?4,?5,?6,?7)",
-        rusqlite::params![now, env!("CARGO_PKG_VERSION"), settings.publish_to_gln, pushable.len(), skipped_no_gtin, 0, 0],
+        "INSERT INTO push_session (session_ts, version, publish_gln, total_pushable, skipped_no_gtin, total_accepted, total_rejected, firstbase_env, api_base) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        rusqlite::params![now, env!("CARGO_PKG_VERSION"), settings.publish_to_gln, pushable.len(), skipped_no_gtin, 0, 0, env_label, api_base_str],
     );
     let session_id = conn.last_insert_rowid();
 
@@ -2390,8 +2501,8 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
             dedup.join(",")
         };
         let _ = conn.execute(
-            "INSERT INTO push_log (uuid,gtin,pushed_at,status,error_code,publish_gln) VALUES (?1,?2,?3,?4,?5,?6)",
-            rusqlite::params![uuid, gtin, now, status, error_code_str, settings.publish_to_gln],
+            "INSERT INTO push_log (uuid,gtin,pushed_at,status,error_code,publish_gln,firstbase_env) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            rusqlite::params![uuid, gtin, now, status, error_code_str, settings.publish_to_gln, env_label],
         );
         logged += 1;
     }
@@ -2436,7 +2547,14 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
     );
 
     // --- Generate HTML log from DB ---
-    let log_dir = download::app_data_dir().join("log");
+    // Logs are split per environment so Test and Production are never mixed:
+    //   log/firstbase_test/<ts>.log.html
+    //   log/firstbase_prod/<ts>.log.html
+    let env_subdir = match settings.firstbase_env {
+        FirstbaseEnv::Test => "firstbase_test",
+        FirstbaseEnv::Production => "firstbase_prod",
+    };
+    let log_dir = download::app_data_dir().join("log").join(env_subdir);
     let _ = std::fs::create_dir_all(&log_dir);
     let log_file = log_dir.join(format!(
         "{}.log.html",
@@ -2978,33 +3096,57 @@ fn generate_push_html(
     session_id: i64,
     raw_responses: &[String],
 ) -> rusqlite::Result<String> {
-    // Read session info
-    let (version, timestamp, gln, total_pushable, skipped, accepted, rejected) = conn
-        .query_row(
-            "SELECT version, session_ts, publish_gln, total_pushable, skipped_no_gtin, total_accepted, total_rejected FROM push_session WHERE id=?1",
+    // Read session info (env columns were added in v1.0.39 — default '' on older rows).
+    let (version, timestamp, gln, total_pushable, skipped, accepted, rejected, env, api_base) =
+        conn.query_row(
+            "SELECT version, session_ts, publish_gln, total_pushable, skipped_no_gtin, \
+                    total_accepted, total_rejected, \
+                    COALESCE(firstbase_env,''), COALESCE(api_base,'') \
+             FROM push_session WHERE id=?1",
             rusqlite::params![session_id],
-            |row| Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, i64>(3)?,
-                row.get::<_, i64>(4)?,
-                row.get::<_, i64>(5)?,
-                row.get::<_, i64>(6)?,
-            )),
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, i64>(6)?,
+                    row.get::<_, String>(7)?,
+                    row.get::<_, String>(8)?,
+                ))
+            },
         )?;
 
+    // Prominent env banner: bright red for Production, blue for Test, grey for legacy rows.
+    let (banner_bg, banner_fg, banner_text) = match env.as_str() {
+        "Production" => ("#b30000", "#ffffff", "PRODUCTION — LIVE DATA"),
+        "Test" => ("#0050a0", "#ffffff", "TEST ENVIRONMENT"),
+        _ => ("#666666", "#ffffff", "UNKNOWN ENVIRONMENT (legacy log)"),
+    };
+
     let mut html = format!(
-        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log</title>\
+        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log — {banner_text}</title>\
         <style>body{{font-family:monospace;margin:20px}}h1{{font-size:18px}}\
         table{{border-collapse:collapse;width:100%;margin:10px 0}}\
         th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}}\
         th{{background:#f0f0f0}}.ok{{color:green}}.err{{color:red}}\
         .summary{{background:#f8f8f8;padding:10px;margin:10px 0}}\
         pre{{background:#f4f4f4;padding:10px;overflow-x:auto;max-height:600px;font-size:12px}}\
+        .env-banner{{background:{banner_bg};color:{banner_fg};padding:14px 18px;\
+          margin:-20px -20px 16px -20px;font-size:20px;font-weight:700;\
+          letter-spacing:0.5px;text-align:center;border-bottom:4px solid rgba(0,0,0,0.25)}}\
+        .env-banner .apibase{{font-size:11px;font-weight:400;opacity:0.9;display:block;\
+          margin-top:4px;letter-spacing:0}}\
         </style></head><body>\
+        <div class='env-banner'>🔒 {banner_text}\
+          <span class='apibase'>{api_base}</span>\
+        </div>\
         <h1>GS1 Firstbase Push Log (v{version})</h1>\
         <div class='summary'>\
+        <b>Environment:</b> {env_display}<br>\
+        <b>API base:</b> <code>{api_base}</code><br>\
         <b>Version:</b> {version}<br>\
         <b>Timestamp:</b> {timestamp}<br>\
         <b>Publish GLN:</b> {gln}<br>\
@@ -3012,6 +3154,10 @@ fn generate_push_html(
         <b>Rejected:</b> <span class='err'>{rejected}</span><br>\
         <b>Total pushable:</b> {pushable} (skipped no GTIN: {skipped})\
         </div>",
+        banner_bg = banner_bg,
+        banner_fg = banner_fg,
+        banner_text = banner_text,
+        env_display = if env.is_empty() { "(unknown — legacy row)" } else { env.as_str() },
         version = version,
         timestamp = timestamp,
         gln = gln,
@@ -3019,6 +3165,7 @@ fn generate_push_html(
         rejected = rejected,
         pushable = total_pushable,
         skipped = skipped,
+        api_base = api_base,
     );
 
     // Error summary: aggregate by error_code with affected devices count
