@@ -18,6 +18,7 @@ mod transform_api;
 mod transform_detail;
 mod transform_eudamed_json;
 mod version_db;
+mod whatsapp;
 mod xlsx_export;
 
 use anyhow::{Context, Result};
@@ -373,6 +374,65 @@ fn main() -> Result<()> {
                 ),
                 &file,
             )?;
+            Ok(())
+        }
+        Some("whatsapp") => {
+            // Send a file (PDF, HTML, image, …) via WhatsApp using Baileys.
+            // Usage: cargo run whatsapp <file> --group <jid> [--caption <text>]
+            //        cargo run whatsapp --list-groups
+            if args.get(2).map(|s| s.as_str()) == Some("--list-groups")
+                || args.get(2).map(|s| s.as_str()) == Some("--pair")
+            {
+                whatsapp::list_groups_streaming(|ev| match ev {
+                    whatsapp::WhatsappEvent::Line(l) => println!("{}", l),
+                    whatsapp::WhatsappEvent::Qr(_) => {
+                        // QR is also printed as ASCII by qrcode-terminal — ignore sentinel.
+                    }
+                })?;
+                return Ok(());
+            }
+
+            let mut file = None;
+            let mut jid = None;
+            let mut caption: Option<String> = None;
+            let mut i = 2;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--group" | "--jid" | "--to" => {
+                        i += 1;
+                        jid = args.get(i).cloned();
+                    }
+                    "--caption" => {
+                        i += 1;
+                        caption = args.get(i).cloned();
+                    }
+                    _ if file.is_none() => {
+                        file = Some(args[i].clone());
+                    }
+                    _ => {}
+                }
+                i += 1;
+            }
+            let file = file.unwrap_or_else(|| {
+                eprintln!(
+                    "Usage: eudamed2firstbase whatsapp <file> --group <jid> [--caption <text>]"
+                );
+                eprintln!("       eudamed2firstbase whatsapp --list-groups");
+                std::process::exit(1);
+            });
+            let jid = jid.unwrap_or_else(|| {
+                eprintln!("--group <jid> is required (e.g. 120363401234567890@g.us)");
+                std::process::exit(1);
+            });
+            let caption = caption.unwrap_or_else(|| {
+                std::path::Path::new(&file)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(&file)
+                    .to_string()
+            });
+            let out = whatsapp::send(&jid, &file, &caption)?;
+            print!("{}", out);
             Ok(())
         }
         Some("count") => {

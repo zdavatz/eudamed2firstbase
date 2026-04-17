@@ -1,0 +1,10 @@
+{
+  "name": "eudamed2firstbase-whatsapp",
+  "version": "1.0.0",
+  "description": "WhatsApp sending for eudamed2firstbase via Baileys",
+  "type": "module",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

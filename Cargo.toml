@@ -1,6 +1,6 @@
 [package]
 name = "eudamed2firstbase"
-version = "1.0.37"
+version = "1.0.38"
 edition = "2021"
 
 [dependencies]
@@ -24,6 +24,7 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 open = "5"
 jsonwebtoken = "9"
 base64 = "0.22"
+qrcode = { version = "0.14", default-features = false }
 
 [patch.crates-io]
 winit = { path = "winit-patched" }

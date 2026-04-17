@@ -1137,7 +1137,7 @@ checksum = "dea2df4cf52843e0452895c455a1a2cfbb842a1e7329671acf418fdc53ed4c59"
 
 [[package]]
 name = "eudamed2firstbase"
-version = "1.0.37"
+version = "1.0.38"
 dependencies = [
  "anyhow",
  "base64",
@@ -1147,6 +1147,7 @@ dependencies = [
  "image",
  "jsonwebtoken",
  "open",
+ "qrcode",
  "quick-xml 0.37.5",
  "rayon",
  "regex",
@@ -2745,6 +2746,12 @@ name = "pxfm"
 version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5a041e753da8b807c9255f28de81879c78c876392ff2469cde94799b2896b9d"
+
+[[package]]
+name = "qrcode"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d68782463e408eb1e668cf6152704bd856c78c5b6417adaee3203d8f4c1fc9ec"
 
 [[package]]
 name = "quick-error"

@@ -20,8 +20,16 @@ fn logs_dir() -> PathBuf {
 /// Messages from the worker thread to the GUI.
 enum WorkerMsg {
     Log(String),
-    Progress { step: String, detail: String },
-    Done { ok: bool, summary: String },
+    Progress {
+        step: String,
+        detail: String,
+    },
+    Done {
+        ok: bool,
+        summary: String,
+    },
+    /// Raw Baileys QR string — GUI renders it as an image in a modal.
+    QrCode(String),
 }
 
 /// Target system for push.
@@ -76,6 +84,9 @@ pub struct Settings {
     #[serde(default)]
     pub swissdamed_base_url: String,
     pub dry_run: bool,
+    // WhatsApp: JID of the group/user to send logs to.
+    #[serde(default)]
+    pub whatsapp_jid: String,
 }
 
 impl Settings {
@@ -109,6 +120,10 @@ pub struct App {
     pipeline_mode: u8,
     /// If Some, an error dialog is shown with this message.
     error_dialog: Option<String>,
+    /// Live QR code from a WhatsApp pairing session (rendered as an egui texture).
+    qr_texture: Option<egui::TextureHandle>,
+    /// Raw QR data last received — kept so we can redraw without regenerating.
+    qr_data: Option<String>,
 }
 
 impl App {
@@ -174,6 +189,8 @@ impl App {
             horizontal_split: false,
             pipeline_mode: 0,
             error_dialog: None,
+            qr_texture: None,
+            qr_data: None,
         }
     }
 
@@ -190,6 +207,165 @@ impl App {
                 let _ = writeln!(f, "{}", line);
             }
         }
+    }
+
+    /// Find the most recent push-log HTML file.
+    fn latest_push_log() -> Option<PathBuf> {
+        let log_dir = download::app_data_dir().join("log");
+        let entries = std::fs::read_dir(&log_dir).ok()?;
+        let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.extension().and_then(|e| e.to_str()) != Some("html") {
+                continue;
+            }
+            let mtime = entry.metadata().and_then(|m| m.modified()).ok()?;
+            match &best {
+                Some((t, _)) if *t >= mtime => {}
+                _ => best = Some((mtime, p)),
+            }
+        }
+        best.map(|(_, p)| p)
+    }
+
+    /// Pair a WhatsApp session from the GUI (no file to send — just surface the QR).
+    /// Runs list-groups.mjs, which connects and then prints groups; the QR sentinel
+    /// arrives the same way. Used on first run to link a device.
+    fn start_whatsapp_pair(&mut self, ctx: egui::Context) {
+        let (tx, rx) = mpsc::channel();
+        self.rx = Some(rx);
+        self.running = true;
+        self.log_lines
+            .push("WhatsApp: starting pairing session…".to_string());
+
+        let ctx_cb = ctx.clone();
+        let tx_cb = tx.clone();
+        thread::spawn(move || {
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                crate::whatsapp::list_groups_streaming(move |ev| {
+                    let msg = match ev {
+                        crate::whatsapp::WhatsappEvent::Line(l) => {
+                            WorkerMsg::Log(format!("  {}", l))
+                        }
+                        crate::whatsapp::WhatsappEvent::Qr(data) => WorkerMsg::QrCode(data),
+                    };
+                    let _ = tx_cb.send(msg);
+                    ctx_cb.request_repaint();
+                })
+            }));
+            let summary = match result {
+                Ok(Ok(())) => (true, "WhatsApp: paired".to_string()),
+                Ok(Err(e)) => (false, format!("WhatsApp pairing failed: {}", e)),
+                Err(_) => (false, "WhatsApp pairing panicked".to_string()),
+            };
+            let _ = tx.send(WorkerMsg::Done {
+                ok: summary.0,
+                summary: summary.1,
+            });
+            ctx.request_repaint();
+        });
+    }
+
+    /// Send a file via WhatsApp on a background thread, streaming output to the log.
+    fn start_whatsapp_send(&mut self, ctx: egui::Context, file: PathBuf, caption: String) {
+        let jid = self.settings.whatsapp_jid.trim().to_string();
+        if jid.is_empty() {
+            self.log_lines
+                .push("WhatsApp: JID is empty — set it in the WhatsApp section.".to_string());
+            return;
+        }
+        if !file.exists() {
+            self.log_lines
+                .push(format!("WhatsApp: file not found: {}", file.display()));
+            return;
+        }
+
+        let (tx, rx) = mpsc::channel();
+        self.rx = Some(rx);
+        self.running = true;
+        self.log_lines.push(format!(
+            "WhatsApp: sending {} to {}...",
+            file.display(),
+            jid
+        ));
+
+        let ctx_cb = ctx.clone();
+        let tx_cb = tx.clone();
+        thread::spawn(move || {
+            let file_str = file.to_string_lossy().into_owned();
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                crate::whatsapp::send_streaming(&jid, &file_str, &caption, move |ev| {
+                    let msg = match ev {
+                        crate::whatsapp::WhatsappEvent::Line(l) => {
+                            WorkerMsg::Log(format!("  {}", l))
+                        }
+                        crate::whatsapp::WhatsappEvent::Qr(data) => WorkerMsg::QrCode(data),
+                    };
+                    let _ = tx_cb.send(msg);
+                    ctx_cb.request_repaint();
+                })
+            }));
+            match result {
+                Ok(Ok(())) => {
+                    let _ = tx.send(WorkerMsg::Done {
+                        ok: true,
+                        summary: format!("WhatsApp: sent {}", file.display()),
+                    });
+                }
+                Ok(Err(e)) => {
+                    let _ = tx.send(WorkerMsg::Done {
+                        ok: false,
+                        summary: format!("WhatsApp failed: {}", e),
+                    });
+                }
+                Err(_) => {
+                    let _ = tx.send(WorkerMsg::Done {
+                        ok: false,
+                        summary: "WhatsApp panicked".to_string(),
+                    });
+                }
+            }
+            ctx.request_repaint();
+        });
+    }
+
+    /// Build (or rebuild) the QR texture from raw Baileys data.
+    fn update_qr_texture(&mut self, ctx: &egui::Context, data: &str) {
+        use qrcode::{EcLevel, QrCode};
+        let Ok(code) = QrCode::with_error_correction_level(data.as_bytes(), EcLevel::M) else {
+            return;
+        };
+        // Render to a grayscale module grid, then expand with a quiet zone and
+        // scale to a reasonable texture size.
+        let modules = code.to_colors();
+        let width = code.width();
+        let quiet = 4_usize;
+        let scale = 8_usize;
+        let side = (width + quiet * 2) * scale;
+        let mut pixels = vec![255u8; side * side * 4];
+        for y in 0..width {
+            for x in 0..width {
+                let dark = matches!(modules[y * width + x], qrcode::Color::Dark);
+                if !dark {
+                    continue;
+                }
+                for dy in 0..scale {
+                    for dx in 0..scale {
+                        let px = (x + quiet) * scale + dx;
+                        let py = (y + quiet) * scale + dy;
+                        let i = (py * side + px) * 4;
+                        pixels[i] = 0;
+                        pixels[i + 1] = 0;
+                        pixels[i + 2] = 0;
+                        pixels[i + 3] = 255;
+                    }
+                }
+            }
+        }
+        let image = egui::ColorImage::from_rgba_unmultiplied([side, side], &pixels);
+        self.qr_texture =
+            Some(ctx.load_texture("whatsapp-qr", image, egui::TextureOptions::NEAREST));
+        self.qr_data = Some(data.to_string());
     }
 
     fn start_pipeline(&mut self, ctx: egui::Context) {
@@ -235,11 +411,26 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Drain messages from worker thread
         if let Some(ref rx) = self.rx {
+            let mut qr_to_render: Option<String> = None;
             while let Ok(msg) = rx.try_recv() {
                 match msg {
-                    WorkerMsg::Log(line) => self.log_lines.push(line),
+                    WorkerMsg::Log(line) => {
+                        // First non-QR log line after the QR arrives means pairing
+                        // succeeded — close the modal.
+                        if self.qr_texture.is_some() && line.trim_start().starts_with("  Connected")
+                        {
+                            self.qr_texture = None;
+                            self.qr_data = None;
+                        }
+                        self.log_lines.push(line);
+                    }
                     WorkerMsg::Progress { step, detail } => {
                         self.log_lines.push(format!("[{}] {}", step, detail));
+                    }
+                    WorkerMsg::QrCode(data) => {
+                        self.log_lines
+                            .push("WhatsApp: QR code received — scan to pair.".to_string());
+                        qr_to_render = Some(data);
                     }
                     WorkerMsg::Done { ok, summary } => {
                         self.log_lines.push(String::new());
@@ -252,10 +443,15 @@ impl eframe::App for App {
                             self.error_dialog = Some(summary.clone());
                         }
                         self.running = false;
+                        self.qr_texture = None;
+                        self.qr_data = None;
                         self.save_log();
                         self.settings.save();
                     }
                 }
+            }
+            if let Some(data) = qr_to_render {
+                self.update_qr_texture(ctx, &data);
             }
             // Keep repainting while running
             if self.running {
@@ -371,6 +567,35 @@ impl eframe::App for App {
                                 });
                             }
                         }
+                        ui.add_space(4.0);
+                        ui.collapsing("WhatsApp", |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Group/User JID:");
+                                ui.add(egui::TextEdit::singleline(&mut self.settings.whatsapp_jid).desired_width(260.0).hint_text("120363…@g.us"));
+                            });
+                            ui.horizontal(|ui| {
+                                let can_run = !self.running;
+                                if ui.add_enabled(can_run, egui::Button::new("Pair / Link Device"))
+                                    .on_hover_text("Show QR code to link this device to WhatsApp")
+                                    .clicked()
+                                {
+                                    self.start_whatsapp_pair(ctx.clone());
+                                }
+                                let can_send = can_run && !self.settings.whatsapp_jid.trim().is_empty();
+                                if ui.add_enabled(can_send, egui::Button::new("Send latest push log"))
+                                    .on_hover_text("Send the most recent log/*.log.html file")
+                                    .clicked()
+                                {
+                                    if let Some(path) = Self::latest_push_log() {
+                                        let caption = format!("eudamed2firstbase push log — {}",
+                                            path.file_name().and_then(|n| n.to_str()).unwrap_or(""));
+                                        self.start_whatsapp_send(ctx.clone(), path, caption);
+                                    } else {
+                                        self.log_lines.push("WhatsApp: no log/*.log.html found.".to_string());
+                                    }
+                                }
+                            });
+                        });
                         ui.add_space(4.0);
                         let can_start = !self.running && !self.settings.srns.trim().is_empty();
                         let target_name = match self.settings.push_target { PushTarget::Firstbase => "firstbase", PushTarget::Swissdamed => "Swissdamed" };
@@ -555,6 +780,46 @@ impl eframe::App for App {
                 }
             }
 
+            ui.add_space(4.0);
+
+            ui.collapsing("WhatsApp", |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Group/User JID:");
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.settings.whatsapp_jid)
+                            .desired_width(320.0)
+                            .hint_text("120363…@g.us  or  4179…@s.whatsapp.net"),
+                    );
+                });
+                ui.horizontal(|ui| {
+                    let can_run = !self.running;
+                    if ui
+                        .add_enabled(can_run, egui::Button::new("Pair / Link Device"))
+                        .on_hover_text("Show QR code to link this device to WhatsApp (first-run only; session persists in whatsapp/auth/)")
+                        .clicked()
+                    {
+                        self.start_whatsapp_pair(ctx.clone());
+                    }
+                    let can_send = can_run && !self.settings.whatsapp_jid.trim().is_empty();
+                    if ui
+                        .add_enabled(can_send, egui::Button::new("Send latest push log"))
+                        .on_hover_text("Send the most recent log/*.log.html file via WhatsApp (requires Node.js ≥ 22 and `npm install` in whatsapp/)")
+                        .clicked()
+                    {
+                        if let Some(path) = Self::latest_push_log() {
+                            let caption = format!(
+                                "eudamed2firstbase push log — {}",
+                                path.file_name().and_then(|n| n.to_str()).unwrap_or("")
+                            );
+                            self.start_whatsapp_send(ctx.clone(), path, caption);
+                        } else {
+                            self.log_lines
+                                .push("WhatsApp: no log/*.log.html found.".to_string());
+                        }
+                    }
+                });
+            });
+
             ui.add_space(8.0);
 
             // --- Action button ---
@@ -653,6 +918,39 @@ impl eframe::App for App {
                 });
             } // end vertical else
         });
+
+        // WhatsApp QR pairing modal.
+        if let Some(tex) = self.qr_texture.clone() {
+            let mut cancel = false;
+            egui::Window::new("📱  WhatsApp — Link a Device")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .show(ctx, |ui| {
+                    ui.label("Open WhatsApp on your phone:");
+                    ui.label("Settings  →  Linked Devices  →  Link a Device");
+                    ui.label("Then scan this QR code:");
+                    ui.add_space(6.0);
+                    let size = tex.size_vec2();
+                    let target = egui::vec2(280.0, 280.0);
+                    let scale = (target.x / size.x).min(target.y / size.y);
+                    ui.add(egui::Image::new(egui::load::SizedTexture::new(
+                        tex.id(),
+                        size * scale,
+                    )));
+                    ui.add_space(6.0);
+                    ui.label("Waiting for scan…");
+                    ui.add_space(4.0);
+                    if ui.button("Cancel").clicked() {
+                        cancel = true;
+                    }
+                });
+            if cancel {
+                self.qr_texture = None;
+                self.qr_data = None;
+                // Node will keep running until its timeout; user can re-click Send.
+            }
+        }
 
         // Error dialog (modal) — shown when the worker reports failure or a panic.
         if let Some(msg) = self.error_dialog.clone() {
@@ -1404,7 +1702,10 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
         FirstbaseEnv::Test => "TEST",
         FirstbaseEnv::Production => "PRODUCTION",
     };
-    log(&format!("Firstbase environment: {} ({})", env_label, api_base));
+    log(&format!(
+        "Firstbase environment: {} ({})",
+        env_label, api_base
+    ));
     let firstbase_dir = download::app_data_dir().join("firstbase_json");
     let processed_dir = firstbase_dir.join("processed");
     let _ = std::fs::create_dir_all(&processed_dir);

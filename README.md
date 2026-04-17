@@ -28,6 +28,7 @@ The GUI provides:
 - Persistent settings across restarts (`settings.json`)
 - Auto-saved logs to `logs/`
 - All data stored in `~/eudamed2firstbase/` (Windows: `%USERPROFILE%\eudamed2firstbase\`)
+- WhatsApp integration (Baileys): pair this device via native in-GUI QR modal, send any push-log HTML as a document to a group/user JID, session persists across restarts
 
 Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
 
@@ -90,7 +91,37 @@ cargo run check /tmp/srn_update --threads 50           # with parallel threads
 # Send file as email attachment via Gmail API (service account)
 cargo run mailto /tmp/report.csv --to "a@gs1.ch, b@gs1.ch" --from sender@ywesee.com --subject "Report"
 cargo run mailto file.xlsx --to recipient@example.com --from sender@example.com --p12 /path/to/key.p12
+
+# Send file (PDF/HTML/image/…) via WhatsApp (Baileys)
+cargo run whatsapp --pair                                            # first run: scan QR in terminal
+cargo run whatsapp --list-groups                                     # list joined groups with JIDs
+cargo run whatsapp log/15.30_17.04.2026.log.html --group 120363…@g.us --caption "Push log"
 ```
+
+## WhatsApp
+
+Push logs (and any other file — PDF, HTML, image, XLSX) can be sent to WhatsApp groups or users via [Baileys](https://github.com/WhiskeySockets/Baileys) (unofficial WhatsApp Web protocol).
+
+**Setup (once per machine):**
+
+```bash
+cd whatsapp && npm install
+```
+
+Requires **Node.js ≥ 22** (Baileys v7 segfaults on older versions). The Rust binary locates Node via Homebrew, `/usr/local/bin`, `~/.nvm/versions/node/*/bin`, or `C:\Program Files\nodejs\node.exe`.
+
+**First-run pairing — either route works:**
+
+- **GUI** (no terminal needed): launch the app, expand the **WhatsApp** section, click **Pair / Link Device**. A modal with a native QR code opens — scan it in WhatsApp → Settings → Linked Devices → Link a Device. The modal closes automatically once paired.
+- **CLI**: `cargo run whatsapp --pair` — QR is printed in the terminal.
+
+After pairing, the session persists in `whatsapp/auth/` (gitignored). Subsequent sends are one-shot and non-interactive.
+
+**Sending from the GUI:** paste a JID into the field (`120363…@g.us` for groups, `4179…@s.whatsapp.net` for users) and click **Send latest push log** — the newest `log/*.log.html` is sent as a document. JID is persisted in `settings.json`.
+
+**Sending from the CLI:** `cargo run whatsapp <file> --group <jid> [--caption <text>]`. The script auto-detects MIME by extension (PDF, HTML, JSON, XLSX → `sendMessage({document})`; PNG/JPG → `sendMessage({image})`).
+
+**Not in packaged builds:** the Node subprocess + Baileys can't be shipped in App Store / MS Store builds, so WhatsApp is a developer/server-side feature. The GitHub Release and local `cargo run` work normally.
 
 The download script handles the full pipeline: listing download (with optional SRN filtering), UUID extraction, parallel detail download to `eudamed_json/` as individual JSON files (with resume support), Basic UDI-DI download (for MDR mandatory fields), and firstbase JSON conversion via `cargo run firstbase`.
 
@@ -582,6 +613,8 @@ Generated via `generate_screenshots_windows.py` (requires Pillow).
 - `ureq` - lightweight HTTP client for on-demand Basic UDI-DI API fetches
 - `rusqlite` - SQLite database for version tracking (bundled)
 - `sha2` - SHA256 hashing for change detection
+- `qrcode` - QR code generation for in-GUI WhatsApp device pairing
+- `@whiskeysockets/baileys` (Node) - WhatsApp Web protocol client; runs as a subprocess in `whatsapp/`
 
 ## License
 
