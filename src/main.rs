@@ -538,6 +538,115 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Some("status") => {
+            // Live snapshot of EUDAMED ingest + Firstbase push state.
+            // Reads the version DB (WAL mode, safe alongside a running `check`).
+            let data_dir = download::app_data_dir();
+            let db_path = data_dir.join("db").join("version_tracking.db");
+            if !db_path.exists() {
+                eprintln!("No DB at {}. Nothing to report yet.", db_path.display());
+                return Ok(());
+            }
+            let conn = version_db::open_db(&db_path)?;
+
+            let q_one = |sql: &str| -> rusqlite::Result<i64> {
+                conn.query_row(sql, [], |r| r.get::<_, i64>(0))
+            };
+            let q_str = |sql: &str| -> rusqlite::Result<String> {
+                conn.query_row(sql, [], |r| r.get::<_, String>(0))
+            };
+
+            let listing_rows = q_one("SELECT COUNT(*) FROM listing_cache").unwrap_or(0);
+            let listing_srns =
+                q_one("SELECT COUNT(DISTINCT srn) FROM listing_cache").unwrap_or(0);
+            let listing_latest =
+                q_str("SELECT MAX(listed_at) FROM listing_cache").unwrap_or_default();
+
+            let udi_total = q_one("SELECT COUNT(*) FROM udi_versions").unwrap_or(0);
+            let udi_hour = q_one(
+                "SELECT COUNT(*) FROM udi_versions WHERE last_synced >= datetime('now','-1 hour')",
+            )
+            .unwrap_or(0);
+            let udi_day = q_one(
+                "SELECT COUNT(*) FROM udi_versions WHERE last_synced >= datetime('now','-1 day')",
+            )
+            .unwrap_or(0);
+            let udi_latest =
+                q_str("SELECT MAX(last_synced) FROM udi_versions").unwrap_or_default();
+
+            let detail_count = std::fs::read_dir(data_dir.join("eudamed_json/detail"))
+                .map(|it| it.count())
+                .unwrap_or(0);
+            let basic_count = std::fs::read_dir(data_dir.join("eudamed_json/basic"))
+                .map(|it| it.count())
+                .unwrap_or(0);
+            let fb_count = std::fs::read_dir(data_dir.join("firstbase_json"))
+                .map(|it| it.filter_map(|e| e.ok()).filter(|e| e.path().is_file()).count())
+                .unwrap_or(0);
+
+            let push_total = q_one("SELECT COUNT(*) FROM push_log").unwrap_or(0);
+            let push_accepted =
+                q_one("SELECT COUNT(*) FROM push_log WHERE status='ACCEPTED'").unwrap_or(0);
+            let push_rejected =
+                q_one("SELECT COUNT(*) FROM push_log WHERE status='REJECTED'").unwrap_or(0);
+            let has_env_col = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('push_session') WHERE name='firstbase_env'",
+                    [],
+                    |r| r.get::<_, i64>(0),
+                )
+                .unwrap_or(0)
+                > 0;
+            let session_sql = if has_env_col {
+                "SELECT id, session_ts, COALESCE(firstbase_env,''), total_accepted, total_rejected \
+                 FROM push_session ORDER BY id DESC LIMIT 1"
+            } else {
+                "SELECT id, session_ts, '' AS firstbase_env, total_accepted, total_rejected \
+                 FROM push_session ORDER BY id DESC LIMIT 1"
+            };
+            let last_session = conn
+                .query_row(session_sql, [], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, i64>(3)?,
+                        r.get::<_, i64>(4)?,
+                    ))
+                })
+                .ok();
+
+            println!("=== eudamed2firstbase status ===");
+            println!("Data dir: {}", data_dir.display());
+            println!();
+            println!("[EUDAMED ingest]");
+            println!(
+                "  listing_cache     {} rows across {} SRNs (latest {})",
+                listing_rows, listing_srns, listing_latest
+            );
+            println!("  detail files      {} on disk", detail_count);
+            println!("  basic  files      {} on disk", basic_count);
+            println!(
+                "  udi_versions      {} rows (last hour: {}, last 24h: {}, latest {})",
+                udi_total, udi_hour, udi_day, udi_latest
+            );
+            println!();
+            println!("[Firstbase]");
+            println!("  firstbase_json    {} files awaiting push", fb_count);
+            println!(
+                "  push_log          {} total ({} accepted, {} rejected)",
+                push_total, push_accepted, push_rejected
+            );
+            if let Some((id, at, env, acc, rej)) = last_session {
+                println!(
+                    "  last push session id={} env={} at {} -> {} accepted, {} rejected",
+                    id, env, at, acc, rej
+                );
+            } else {
+                println!("  last push session  (none yet)");
+            }
+            Ok(())
+        }
         Some("scan") => {
             // Fast parallel scan of firstbase JSON files — outputs "filepath\tGTIN" per line
             let input_dir = args.get(2).map(|s| s.as_str()).unwrap_or("firstbase_json");
