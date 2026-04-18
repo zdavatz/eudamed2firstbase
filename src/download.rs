@@ -529,6 +529,10 @@ fn download_listing_for_srn(
     let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
     let mut page = 0;
     let mut srn_count = 0;
+    let mut srn_new = 0usize;
+    let mut srn_udi_bumped = 0usize;
+    let mut srn_budi_bumped = 0usize;
+    let mut srn_unchanged = 0usize;
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
     loop {
@@ -566,7 +570,8 @@ fn download_listing_for_srn(
             let total_pages = json.get("totalPages").and_then(|t| t.as_u64()).unwrap_or(1);
             let total_elements = json.get("totalElements").and_then(|t| t.as_u64());
 
-            // Batch insert into DB
+            // Batch insert into DB + on-the-fly version classification
+            let page_start = entries.len();
             if let Ok(db) = conn.lock() {
                 for item in items {
                     if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
@@ -617,6 +622,38 @@ fn download_listing_for_srn(
                         }
                     }
                 }
+
+                // Per-page on-the-fly version classification against udi_versions.
+                // Same lock/connection, so no extra acquisition. Fast: one row lookup
+                // per UUID via a cached prepared statement.
+                if let Ok(mut stmt) = db.prepare_cached(
+                    "SELECT udi_version, budi_version FROM udi_versions WHERE uuid = ?1",
+                ) {
+                    for (uuid, listing_ver, listing_budi) in &entries[page_start..] {
+                        let row: rusqlite::Result<(Option<i64>, Option<i64>)> =
+                            stmt.query_row([uuid.as_str()], |r| Ok((r.get(0)?, r.get(1)?)));
+                        match row {
+                            Err(_) => srn_new += 1,
+                            Ok((db_udi, db_budi)) => {
+                                let udi_changed = matches!(
+                                    (db_udi, listing_ver),
+                                    (Some(a), Some(b)) if (*b as i64) > a
+                                );
+                                let budi_changed = matches!(
+                                    (db_budi, listing_budi),
+                                    (Some(a), Some(b)) if (*b as i64) > a
+                                );
+                                if udi_changed {
+                                    srn_udi_bumped += 1;
+                                } else if budi_changed {
+                                    srn_budi_bumped += 1;
+                                } else {
+                                    srn_unchanged += 1;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if page % 10 == 0 || page + 1 >= total_pages as usize {
@@ -649,8 +686,8 @@ fn download_listing_for_srn(
 
     if srn_count > 0 || page == 0 {
         progress.on_event(DownloadEvent::Log(format!(
-            "  SRN {}: {} devices",
-            srn, srn_count
+            "  SRN {}: {} devices  [{}↑ new, {}↑ udi, {}↑ budi, {} same]",
+            srn, srn_count, srn_new, srn_udi_bumped, srn_budi_bumped, srn_unchanged
         )));
     }
 
