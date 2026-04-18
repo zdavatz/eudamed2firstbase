@@ -90,8 +90,8 @@ impl Default for DownloadConfig {
             srns: Vec::new(),
             limit: None,
             data_dir: app_data_dir().join(DEFAULT_DATA_DIR),
-            parallel_threads: 10,
-            listing_threads: 10,
+            parallel_threads: 50,
+            listing_threads: 50,
             max_retries: 3,
         }
     }

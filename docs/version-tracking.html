@@ -152,7 +152,7 @@ CREATE INDEX idx_last_synced ON udi_versions(last_synced);</pre>
 
 <div class="step"><div class="num">1</div><div class="body">
   <b>Discovery (cheap).</b> For each manufacturer SRN, fetch the listing pages in parallel
-  (default 10 threads). Each page row gives us
+  (default 50 threads). Each page row gives us
   <code>(uuid, versionNumber, basicUdiDataVersionNumber)</code>. Rows are upserted into
   <code>listing_cache</code>.
 </div></div>
