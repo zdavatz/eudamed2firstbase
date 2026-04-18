@@ -20,7 +20,7 @@ The GUI provides:
 - Dry run mode (download & convert only, no push)
 - Resizable splitter between settings panel and log panel
 - One-click pipeline: Download → Convert → Push (full Firstbase API push in Rust: CreateMany + polling + AddMany, no shell script needed)
-- Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (50 parallel, 3 retries) → Download Basic UDI-DI (50 parallel, 3 retries) → Convert to target format → Push with token retry, 429 backoff, and RequestStatus polling
+- Pre-download version check (compares listing `versionNumber` vs version DB, skips unchanged devices) → Download details (50 parallel, 3 retries) → Download Basic UDI-DI (50 parallel, 3 retries) → Convert to target format (rayon-parallel per-core) → Push with token retry, 429 backoff, and RequestStatus polling
 - Download log written to `eudamed_json/log/download.log` (same format as `download.sh`)
 - Live progress reporting: listing pages ("page 2/54 — 40 devices so far (of 1074 total)"), per-SRN version classification ("SRN DE-MF-...: 509 devices [12↑ new, 0↑ udi, 0↑ budi, 497 same]"), detail/basic download counters ("detail 10/1074 downloaded"), conversion summary
 - Live scrollable log output with file save paths
