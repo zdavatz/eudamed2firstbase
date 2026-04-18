@@ -152,7 +152,8 @@ fn main() -> Result<()> {
                 let doc = transform_detail::transform_detail_document(
                     &device, &fb_config, basic_udi, uuid,
                 );
-                let out = serde_json::to_string_pretty(&doc)
+                let draft_doc = firstbase::DraftItemDocument { draft_item: doc };
+                let out = serde_json::to_string_pretty(&draft_doc)
                     .expect("Failed to serialize firstbase doc");
                 let out_path = output_dir.join(format!("{}.json", uuid));
                 let _ = std::fs::write(&out_path, &out);
