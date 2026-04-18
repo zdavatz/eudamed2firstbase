@@ -551,6 +551,92 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Some("regenerate") => {
+            // Re-run transform_detail + DraftItemDocument wrap over every detail file
+            // in the app-data detail dir, writing to firstbase_json in parallel.
+            // Unlike `check`, this ignores version tracking — every file is rewritten.
+            let data_dir = download::app_data_dir();
+            let detail_dir = data_dir.join("eudamed_json/detail");
+            let basic_dir = data_dir.join("eudamed_json/basic");
+            let output_dir = data_dir.join("firstbase_json");
+            std::fs::create_dir_all(&output_dir)?;
+
+            let config_path = data_dir.join("config.toml");
+            let fb_config = if config_path.exists() {
+                config::load_config(&config_path)?
+            } else {
+                config
+            };
+
+            let basic_udi_cache = load_basic_udi_cache(&basic_dir);
+            eprintln!("Loaded {} Basic UDI-DI records", basic_udi_cache.len());
+
+            let detail_files: Vec<std::path::PathBuf> = std::fs::read_dir(&detail_dir)
+                .context("Failed to read detail dir")?
+                .filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| p.extension().map(|x| x == "json").unwrap_or(false))
+                .collect();
+            let total = detail_files.len();
+            eprintln!("Regenerating {} firstbase JSON files in parallel...", total);
+
+            let converted = std::sync::atomic::AtomicUsize::new(0);
+            let errors = std::sync::atomic::AtomicUsize::new(0);
+            let reported = std::sync::atomic::AtomicUsize::new(0);
+
+            detail_files.par_iter().for_each(|detail_path| {
+                let uuid = detail_path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or_default()
+                    .to_string();
+                let json_content = match std::fs::read_to_string(detail_path) {
+                    Ok(s) => s,
+                    Err(_) => {
+                        errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        return;
+                    }
+                };
+                let device: api_detail::ApiDeviceDetail =
+                    match serde_json::from_str(&json_content) {
+                        Ok(d) => d,
+                        Err(_) => {
+                            errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            return;
+                        }
+                    };
+                let basic_udi = basic_udi_cache.get(&uuid);
+                let doc = transform_detail::transform_detail_document(
+                    &device, &fb_config, basic_udi, &uuid,
+                );
+                let draft_doc = firstbase::DraftItemDocument { draft_item: doc };
+                let out = serde_json::to_string_pretty(&draft_doc)
+                    .expect("Failed to serialize firstbase doc");
+                let out_path = output_dir.join(format!("{}.json", uuid));
+                let _ = std::fs::write(&out_path, &out);
+
+                let done = converted.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                let prev = reported.load(std::sync::atomic::Ordering::Relaxed);
+                if done >= prev + 10000
+                    && reported
+                        .compare_exchange(
+                            prev,
+                            done,
+                            std::sync::atomic::Ordering::Relaxed,
+                            std::sync::atomic::Ordering::Relaxed,
+                        )
+                        .is_ok()
+                {
+                    eprintln!("  Regenerated {}/{}...", done, total);
+                }
+            });
+            eprintln!(
+                "Done: {} regenerated, {} errors.",
+                converted.load(std::sync::atomic::Ordering::Relaxed),
+                errors.load(std::sync::atomic::Ordering::Relaxed)
+            );
+            Ok(())
+        }
         Some("status") => {
             // Live snapshot of EUDAMED ingest + Firstbase push state.
             // Reads the version DB (WAL mode, safe alongside a running `check`).
