@@ -130,43 +130,55 @@ fn main() -> Result<()> {
             let _ = std::fs::create_dir_all(&output_dir);
 
             let now_str = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
-            let mut converted = 0;
-            for uuid in &result.need_download {
+            let total = result.need_download.len();
+            let converted = std::sync::atomic::AtomicUsize::new(0);
+            let reported = std::sync::atomic::AtomicUsize::new(0);
+            let conn = std::sync::Mutex::new(conn);
+            result.need_download.par_iter().for_each(|uuid| {
                 let detail_path = detail_dir.join(format!("{}.json", uuid));
                 if !detail_path.exists() {
-                    continue;
+                    return;
                 }
                 let json_content = match std::fs::read_to_string(&detail_path) {
                     Ok(s) => s,
-                    Err(_) => continue,
+                    Err(_) => return,
                 };
-
-                let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content)
-                {
-                    Ok(d) => d,
-                    Err(_) => continue,
-                };
+                let device: api_detail::ApiDeviceDetail =
+                    match serde_json::from_str(&json_content) {
+                        Ok(d) => d,
+                        Err(_) => return,
+                    };
                 let basic_udi = basic_udi_cache.get(uuid);
-
                 let doc = transform_detail::transform_detail_document(
                     &device, &fb_config, basic_udi, uuid,
                 );
-                let out = match serde_json::to_string_pretty(&doc) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        eprintln!("Failed to serialize firstbase doc for {}: {}", uuid, e);
-                        std::process::exit(1);
-                    }
-                };
+                let out = serde_json::to_string_pretty(&doc)
+                    .expect("Failed to serialize firstbase doc");
                 let out_path = output_dir.join(format!("{}.json", uuid));
                 let _ = std::fs::write(&out_path, &out);
-                converted += 1;
 
-                // Update version DB
                 let mut version_rec = version_db::extract_detail_versions(&json_content);
                 version_rec.last_synced = Some(now_str.clone());
-                let _ = version_db::upsert_version(&conn, &version_rec);
-            }
+                if let Ok(c) = conn.lock() {
+                    let _ = version_db::upsert_version(&c, &version_rec);
+                }
+
+                let done = converted.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                let prev = reported.load(std::sync::atomic::Ordering::Relaxed);
+                if done >= prev + 1000
+                    && reported
+                        .compare_exchange(
+                            prev,
+                            done,
+                            std::sync::atomic::Ordering::Relaxed,
+                            std::sync::atomic::Ordering::Relaxed,
+                        )
+                        .is_ok()
+                {
+                    eprintln!("  Converted {}/{}...", done, total);
+                }
+            });
+            let converted = converted.load(std::sync::atomic::Ordering::Relaxed);
             eprintln!("Converted {} devices to firstbase_json/", converted);
 
             if converted == 0 {
