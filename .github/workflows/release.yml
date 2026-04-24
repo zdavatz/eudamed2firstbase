@@ -578,3 +578,55 @@ jobs:
             -Headers $headers
           Write-Host "Submission committed: $subId"
           Write-Host "Commit status: $($commitResp.status)"
+
+          # --- Poll for post-commit status ---
+          # A 200 from /commit only means 'accepted for async processing'; Microsoft
+          # can still roll the submission back to Draft if the package or metadata
+          # fails validation. Poll /submissions/{id}/status until we leave the
+          # PendingCommit/CommitStarted window, then treat:
+          #   - CommitFailed / Canceled / *Failed -> fail the job + dump errors
+          #   - PreProcessing / Certification / Release / Published -> accepted
+          # Cap at 20 x 30s = 10 min.
+          $terminalFail = @('CommitFailed','Canceled','PublishFailed','PreProcessingFailed','CertificationFailed','ReleaseFailed')
+          $accepted    = @('PreProcessing','Certification','Release','Published','PendingPublication','Publishing')
+          $pollMax = 20
+          $pollSec = 30
+          $status = $commitResp.status
+          for ($i = 1; $i -le $pollMax; $i++) {
+            Start-Sleep -Seconds $pollSec
+            try {
+              $statusResp = Invoke-RestMethod -Method Get `
+                -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$appId/submissions/$subId/status" `
+                -Headers $headers
+            } catch {
+              Write-Host "Poll $i/$pollMax : status query failed ($($_.Exception.Message)); retrying"
+              continue
+            }
+            $status = $statusResp.status
+            Write-Host "Poll $i/$pollMax : status=$status"
+            if ($accepted -contains $status) {
+              Write-Host "✓ Submission accepted by Microsoft (status=$status). Final certification is still async in Partner Center."
+              break
+            }
+            if ($terminalFail -contains $status) {
+              Write-Host "##[error]Submission landed in terminal failure state: $status"
+              if ($statusResp.statusDetails) {
+                if ($statusResp.statusDetails.errors) {
+                  Write-Host "--- statusDetails.errors ---"
+                  $statusResp.statusDetails.errors | ConvertTo-Json -Depth 10 | Write-Host
+                }
+                if ($statusResp.statusDetails.warnings) {
+                  Write-Host "--- statusDetails.warnings ---"
+                  $statusResp.statusDetails.warnings | ConvertTo-Json -Depth 10 | Write-Host
+                }
+                if ($statusResp.statusDetails.certificationReports) {
+                  Write-Host "--- statusDetails.certificationReports ---"
+                  $statusResp.statusDetails.certificationReports | ConvertTo-Json -Depth 10 | Write-Host
+                }
+              }
+              exit 1
+            }
+          }
+          if ($status -eq 'CommitStarted' -or $status -eq 'PendingCommit') {
+            Write-Host "##[warning]Still in $status after $($pollMax * $pollSec)s — Microsoft's queue is slow. Check Partner Center manually."
+          }
