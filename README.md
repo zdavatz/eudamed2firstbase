@@ -71,6 +71,8 @@ git push origin v0.1.0
 
 **Note:** First Microsoft Store submission must be done manually via Partner Center (upload MSIX, fill screenshots/age ratings, submit for certification). Subsequent updates are automated via the CI pipeline (bilingual DE/EN listing, screenshots from `screenshots/windows/`, dynamic release notes). Patched winit removes `_CGSSetWindowBackgroundBlurRadius` private API for Apple App Store compliance.
 
+**Post-commit status polling (since v1.0.42):** `POST /commit` to the Partner Center API returns `CommitStarted` synchronously, but Microsoft can silently roll the submission back to Draft if the async package validation fails — producing a green CI run and a stale Store listing. The `publish-microsoft-store` job now polls `/submissions/{id}/status` every 30s (up to 10 min total) after commit. Transitions into `PreProcessing`, `Certification`, `Release`, `Published`, `PendingPublication`, or `Publishing` are treated as accepted (the package made it into Microsoft's certification queue); `CommitFailed`, `Canceled`, `PreProcessingFailed`, `CertificationFailed`, `PublishFailed`, or `ReleaseFailed` dump `statusDetails.errors`, `warnings`, and `certificationReports` to the job log and fail the CI. Diagnosed after v1.0.41 appeared green in CI but showed up in Partner Center as a Draft with the previously published 1.0.39 MSIX still attached.
+
 ## Quick Start: Download & Convert from EUDAMED API (CLI)
 
 ```bash
