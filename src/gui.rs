@@ -265,11 +265,7 @@ impl App {
 
     /// Send the most recent push-log HTML for a given env via WhatsApp.
     /// If `env` is None, sends the newest across both envs.
-    fn send_latest_log_via_whatsapp(
-        &mut self,
-        ctx: egui::Context,
-        env: Option<FirstbaseEnv>,
-    ) {
+    fn send_latest_log_via_whatsapp(&mut self, ctx: egui::Context, env: Option<FirstbaseEnv>) {
         let path = match env.as_ref() {
             Some(e) => Self::latest_push_log_for(e),
             None => Self::latest_push_log(),
@@ -292,9 +288,7 @@ impl App {
                     Some(FirstbaseEnv::Production) => {
                         "WhatsApp: no log/firstbase_prod/*.log.html found."
                     }
-                    Some(FirstbaseEnv::Test) => {
-                        "WhatsApp: no log/firstbase_test/*.log.html found."
-                    }
+                    Some(FirstbaseEnv::Test) => "WhatsApp: no log/firstbase_test/*.log.html found.",
                     None => "WhatsApp: no log/*.log.html found.",
                 };
                 self.log_lines.push(msg.to_string());
@@ -695,6 +689,12 @@ impl eframe::App for App {
                             self.pipeline_mode = 3;
                             self.start_pipeline(ctx.clone());
                         }
+                        let can_repush_srn = !self.running && !self.settings.srns.trim().is_empty();
+                        if ui.add_enabled(can_repush_srn, egui::Button::new("Repush SRN").min_size(egui::vec2(120.0, 28.0)))
+                            .on_hover_text("Restore files for the given SRN(s) from processed/ and push (bypasses unchanged-skip)").clicked() {
+                            self.pipeline_mode = 4;
+                            self.start_pipeline(ctx.clone());
+                        }
                     });
 
                 // Splitter
@@ -966,6 +966,16 @@ impl eframe::App for App {
                     self.pipeline_mode = 2;
                     self.start_pipeline(ctx.clone());
                 }
+
+                let can_repush_srn = !self.running && !self.settings.srns.trim().is_empty();
+                if ui
+                    .add_enabled(can_repush_srn, egui::Button::new("Repush SRN").min_size(egui::vec2(130.0, 32.0)))
+                    .on_hover_text("Restore files for the given SRN(s) from processed/ and push (bypasses unchanged-skip)")
+                    .clicked()
+                {
+                    self.pipeline_mode = 4;
+                    self.start_pipeline(ctx.clone());
+                }
             });
 
             });
@@ -1147,6 +1157,20 @@ fn run_pipeline(
         });
         ctx.request_repaint();
     };
+
+    let mode_name = match pipeline_mode {
+        0 => "full pipeline (download + convert + push)",
+        1 => "convert & push (all existing files)",
+        2 => "convert & push (SRN filter)",
+        3 => "repush failed (from last push session)",
+        4 => "repush SRN (restore from processed/ + push)",
+        _ => "unknown",
+    };
+    log(&format!(
+        "eudamed2firstbase v{} — mode: {}",
+        env!("CARGO_PKG_VERSION"),
+        mode_name
+    ));
 
     // Mode 3: Repush failed — read rejected GTINs from DB, move from processed/, push
     if pipeline_mode == 3 {
@@ -1390,6 +1414,154 @@ fn run_pipeline(
         return;
     }
 
+    // Mode 4: Repush SRN — look up UUIDs for the given SRN(s) in listing_cache,
+    // restore matching <uuid>.json from firstbase_json/processed/ back to
+    // firstbase_json/, then push. Bypasses the udi_versions unchanged-skip.
+    if pipeline_mode == 4 {
+        if !matches!(settings.push_target, PushTarget::Firstbase) {
+            done(false, "Repush SRN currently only supports GS1 Firstbase");
+            return;
+        }
+        if settings.firstbase_email.is_empty() || settings.firstbase_password.is_empty() {
+            done(
+                false,
+                "Cannot push: FIRSTBASE_EMAIL or FIRSTBASE_PASSWORD not set",
+            );
+            return;
+        }
+        if settings.publish_to_gln.is_empty() {
+            done(false, "Cannot push: Publish To GLN not set");
+            return;
+        }
+
+        log(&format!("[Repush SRN] SRNs: {}", srns.join(", ")));
+
+        let firstbase_dir = download::app_data_dir().join("firstbase_json");
+        let processed_dir = firstbase_dir.join("processed");
+        let db_path = download::app_data_dir()
+            .join("db")
+            .join("version_tracking.db");
+
+        let conn = match rusqlite::Connection::open(&db_path) {
+            Ok(c) => c,
+            Err(e) => {
+                done(false, &format!("DB error: {}", e));
+                return;
+            }
+        };
+
+        // Query listing_cache for UUIDs matching any of these SRNs
+        let placeholders = srns.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let sql = format!(
+            "SELECT uuid FROM listing_cache WHERE srn IN ({})",
+            placeholders
+        );
+        let mut stmt = match conn.prepare(&sql) {
+            Ok(s) => s,
+            Err(e) => {
+                done(
+                    false,
+                    &format!("Failed to prepare listing_cache query: {}", e),
+                );
+                return;
+            }
+        };
+        let params: Vec<&dyn rusqlite::ToSql> =
+            srns.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+        let uuid_iter = match stmt.query_map(&params[..], |row| row.get::<_, String>(0)) {
+            Ok(it) => it,
+            Err(e) => {
+                done(false, &format!("Failed to query listing_cache: {}", e));
+                return;
+            }
+        };
+        let uuids: std::collections::HashSet<String> = uuid_iter.filter_map(|r| r.ok()).collect();
+        if uuids.is_empty() {
+            done(
+                false,
+                "No UUIDs found in listing_cache for these SRNs. Run Download first.",
+            );
+            return;
+        }
+        log(&format!(
+            "[Repush SRN] Found {} UUIDs in listing_cache for {} SRN(s)",
+            uuids.len(),
+            srns.len()
+        ));
+
+        // Count how many matching UUIDs are already sitting in firstbase_json/ — BEFORE restoring
+        let mut already_present = 0;
+        if let Ok(entries) = std::fs::read_dir(&firstbase_dir) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.extension().map(|e| e == "json").unwrap_or(false) {
+                    if let Some(stem) = path.file_stem() {
+                        let stem_s = stem.to_string_lossy();
+                        if uuids.contains(stem_s.as_ref()) {
+                            already_present += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Restore matching <uuid>.json files from processed/ to firstbase_json/
+        let mut restored = 0;
+        if let Ok(entries) = std::fs::read_dir(&processed_dir) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.extension().map(|e| e == "json").unwrap_or(false) {
+                    if let Some(stem) = path.file_stem() {
+                        let stem_s = stem.to_string_lossy();
+                        if uuids.contains(stem_s.as_ref()) {
+                            if let Some(name) = path.file_name() {
+                                let dest = firstbase_dir.join(name);
+                                if std::fs::rename(&path, &dest).is_ok() {
+                                    restored += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        log(&format!(
+            "[Repush SRN] Restored {} files from processed/ to firstbase_json/",
+            restored
+        ));
+
+        let total = restored + already_present;
+        if total == 0 {
+            done(
+                false,
+                "No files matching these SRNs found in processed/ or firstbase_json/. Run Download & Convert first, or use regenerate.",
+            );
+            return;
+        }
+        log(&format!(
+            "[Repush SRN] {} files to push ({} restored + {} already in firstbase_json/)",
+            total, restored, already_present
+        ));
+
+        log("[Repush SRN] Pushing to GS1 firstbase Catalogue Item API...");
+        ctx.request_repaint();
+        match push_to_firstbase(&settings, &log) {
+            Ok((accepted, rejected)) => {
+                done(
+                    true,
+                    &format!(
+                        "Repush SRN complete. {} accepted, {} rejected.",
+                        accepted, rejected
+                    ),
+                );
+            }
+            Err(e) => {
+                done(false, &format!("Repush SRN failed: {}", e));
+            }
+        }
+        return;
+    }
+
     let limit: Option<usize> = settings.limit.trim().parse().ok();
 
     log(&format!(
@@ -1581,15 +1753,23 @@ fn run_pipeline(
                 };
 
                 if !changes.has_any_change() {
-                    // If unchanged but firstbase JSON exists in processed/, copy it back for re-push
                     let processed_path =
                         output_dir.join("processed").join(format!("{}.json", uuid));
                     let output_path = output_dir.join(format!("{}.json", uuid));
-                    if processed_path.exists() && !output_path.exists() {
-                        let _ = std::fs::copy(&processed_path, &output_path);
+                    if output_path.exists() {
+                        skipped += 1;
+                        continue;
                     }
-                    skipped += 1;
-                    continue;
+                    if processed_path.exists() {
+                        // Re-push path: restore from processed/ so the push step sees it.
+                        let _ = std::fs::copy(&processed_path, &output_path);
+                        skipped += 1;
+                        continue;
+                    }
+                    // Hash/versions match the DB but no output file exists anywhere.
+                    // This happens on first download (Step 7 of download.rs indexes
+                    // udi_versions *before* convert runs). Fall through to actual
+                    // conversion so the output is produced.
                 }
 
                 match crate::api_detail::parse_api_detail(&json_content) {
@@ -3132,7 +3312,8 @@ fn generate_push_html(
         _ => ("#666666", "#ffffff", "UNKNOWN ENVIRONMENT (legacy log)"),
     };
 
-    let mut html = format!(
+    let mut html =
+        format!(
         "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Push Log — {banner_text}</title>\
         <style>body{{font-family:monospace;margin:20px}}h1{{font-size:18px}}\
         table{{border-collapse:collapse;width:100%;margin:10px 0}}\

@@ -143,11 +143,11 @@ fn main() -> Result<()> {
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                let device: api_detail::ApiDeviceDetail =
-                    match serde_json::from_str(&json_content) {
-                        Ok(d) => d,
-                        Err(_) => return,
-                    };
+                let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content)
+                {
+                    Ok(d) => d,
+                    Err(_) => return,
+                };
                 let basic_udi = basic_udi_cache.get(uuid);
                 let doc = transform_detail::transform_detail_document(
                     &device, &fb_config, basic_udi, uuid,
@@ -597,14 +597,14 @@ fn main() -> Result<()> {
                         return;
                     }
                 };
-                let device: api_detail::ApiDeviceDetail =
-                    match serde_json::from_str(&json_content) {
-                        Ok(d) => d,
-                        Err(_) => {
-                            errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                            return;
-                        }
-                    };
+                let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content)
+                {
+                    Ok(d) => d,
+                    Err(_) => {
+                        errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        return;
+                    }
+                };
                 let basic_udi = basic_udi_cache.get(&uuid);
                 let doc = transform_detail::transform_detail_document(
                     &device, &fb_config, basic_udi, &uuid,
@@ -637,6 +637,170 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("repush-srn") => {
+            // Restore firstbase JSON files for the given SRN(s) from processed/
+            // back to firstbase_json/, then push via gui::push_to_firstbase.
+            // Bypasses the udi_versions unchanged-skip — lets you re-send a set
+            // of devices to Firstbase when the regular pipeline considers them
+            // already synced.
+            //
+            // Usage:
+            //   cargo run repush-srn DE-MF-000005190 [SRN2 ...]
+            //   cargo run repush-srn --file srns.txt
+            //
+            // Env: FIRSTBASE_EMAIL, FIRSTBASE_PASSWORD, FIRSTBASE_PUBLISH_GLN
+            //      (publish_gln falls back to config.toml's [provider].publish_gln)
+            eprintln!(
+                "eudamed2firstbase v{} — repush-srn",
+                env!("CARGO_PKG_VERSION")
+            );
+
+            let srns: Vec<String> = if let Some(pos) = args.iter().position(|a| a == "--file") {
+                let file = args
+                    .get(pos + 1)
+                    .ok_or_else(|| anyhow::anyhow!("--file requires a path argument"))?;
+                std::fs::read_to_string(file)?
+                    .lines()
+                    .map(|l| l.trim().to_string())
+                    .filter(|s| !s.is_empty() && !s.starts_with('#'))
+                    .collect()
+            } else {
+                args.iter()
+                    .skip(2)
+                    .filter(|a| !a.starts_with("--"))
+                    .cloned()
+                    .collect()
+            };
+
+            if srns.is_empty() {
+                eprintln!("Usage: eudamed2firstbase repush-srn <SRN1> [SRN2 ...]");
+                eprintln!("   or: eudamed2firstbase repush-srn --file <srns.txt>");
+                std::process::exit(1);
+            }
+            eprintln!("SRNs: {}", srns.join(", "));
+
+            let data_dir = download::app_data_dir();
+            let firstbase_dir = data_dir.join("firstbase_json");
+            let processed_dir = firstbase_dir.join("processed");
+            let db_path = data_dir.join("db").join("version_tracking.db");
+            if !db_path.exists() {
+                eprintln!("No DB at {}. Run Download first.", db_path.display());
+                std::process::exit(1);
+            }
+            std::fs::create_dir_all(&firstbase_dir)?;
+
+            let conn = version_db::open_db(&db_path)?;
+            let placeholders = srns.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let sql = format!(
+                "SELECT uuid FROM listing_cache WHERE srn IN ({})",
+                placeholders
+            );
+            let mut stmt = conn.prepare(&sql)?;
+            let params: Vec<&dyn rusqlite::ToSql> =
+                srns.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+            let uuids: std::collections::HashSet<String> = stmt
+                .query_map(&params[..], |row| row.get::<_, String>(0))?
+                .filter_map(|r| r.ok())
+                .collect();
+            drop(stmt);
+
+            if uuids.is_empty() {
+                eprintln!("No UUIDs in listing_cache for these SRNs. Run Download first.");
+                std::process::exit(1);
+            }
+            eprintln!(
+                "Found {} UUID(s) in listing_cache for {} SRN(s)",
+                uuids.len(),
+                srns.len()
+            );
+
+            // Count how many matching UUIDs are already in firstbase_json/ — BEFORE restoring
+            let mut already_present = 0usize;
+            if let Ok(entries) = std::fs::read_dir(&firstbase_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let path = entry.path();
+                    if path.extension().map(|e| e == "json").unwrap_or(false) {
+                        if let Some(stem) = path.file_stem() {
+                            let stem_s = stem.to_string_lossy();
+                            if uuids.contains(stem_s.as_ref()) {
+                                already_present += 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Restore matching files from processed/ to firstbase_json/
+            let mut restored = 0usize;
+            if let Ok(entries) = std::fs::read_dir(&processed_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let path = entry.path();
+                    if path.extension().map(|e| e == "json").unwrap_or(false) {
+                        if let Some(stem) = path.file_stem() {
+                            let stem_s = stem.to_string_lossy();
+                            if uuids.contains(stem_s.as_ref()) {
+                                if let Some(name) = path.file_name() {
+                                    let dest = firstbase_dir.join(name);
+                                    if std::fs::rename(&path, &dest).is_ok() {
+                                        restored += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let total = restored + already_present;
+            eprintln!(
+                "Restored {} from processed/, {} already in firstbase_json/ (total {} to push)",
+                restored, already_present, total
+            );
+            if total == 0 {
+                eprintln!(
+                    "No matching files found in processed/ or firstbase_json/. Run Download & Convert first, or try `regenerate`."
+                );
+                std::process::exit(1);
+            }
+
+            // --- Push via gui::push_to_firstbase (same path as the GUI + `check`) ---
+            let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
+            let password = std::env::var("FIRSTBASE_PASSWORD").unwrap_or_default();
+            let publish_gln = match std::env::var("FIRSTBASE_PUBLISH_GLN") {
+                Ok(v) if !v.is_empty() => v,
+                _ if !config.provider.publish_gln.is_empty() => config.provider.publish_gln.clone(),
+                _ => {
+                    eprintln!(
+                        "Set FIRSTBASE_PUBLISH_GLN or add publish_gln under [provider] in config.toml."
+                    );
+                    std::process::exit(1);
+                }
+            };
+            if email.is_empty() || password.is_empty() {
+                eprintln!("Set FIRSTBASE_EMAIL and FIRSTBASE_PASSWORD to push.");
+                std::process::exit(1);
+            }
+
+            let settings = gui::Settings {
+                firstbase_email: email,
+                firstbase_password: password,
+                publish_to_gln: publish_gln,
+                provider_gln: config.provider.gln.clone(),
+                ..Default::default()
+            };
+            let log_fn = |msg: &str| {
+                eprintln!("{}", msg);
+            };
+            match gui::push_to_firstbase(&settings, &log_fn) {
+                Ok((accepted, rejected)) => {
+                    eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
+                }
+                Err(e) => {
+                    eprintln!("\nPush failed: {}", e);
+                }
+            }
+            Ok(())
+        }
         Some("status") => {
             // Live snapshot of EUDAMED ingest + Firstbase push state.
             // Reads the version DB (WAL mode, safe alongside a running `check`).
@@ -656,8 +820,7 @@ fn main() -> Result<()> {
             };
 
             let listing_rows = q_one("SELECT COUNT(*) FROM listing_cache").unwrap_or(0);
-            let listing_srns =
-                q_one("SELECT COUNT(DISTINCT srn) FROM listing_cache").unwrap_or(0);
+            let listing_srns = q_one("SELECT COUNT(DISTINCT srn) FROM listing_cache").unwrap_or(0);
             let listing_latest =
                 q_str("SELECT MAX(listed_at) FROM listing_cache").unwrap_or_default();
 
@@ -670,8 +833,7 @@ fn main() -> Result<()> {
                 "SELECT COUNT(*) FROM udi_versions WHERE last_synced >= datetime('now','-1 day')",
             )
             .unwrap_or(0);
-            let udi_latest =
-                q_str("SELECT MAX(last_synced) FROM udi_versions").unwrap_or_default();
+            let udi_latest = q_str("SELECT MAX(last_synced) FROM udi_versions").unwrap_or_default();
 
             let detail_count = std::fs::read_dir(data_dir.join("eudamed_json/detail"))
                 .map(|it| it.count())
@@ -680,7 +842,11 @@ fn main() -> Result<()> {
                 .map(|it| it.count())
                 .unwrap_or(0);
             let fb_count = std::fs::read_dir(data_dir.join("firstbase_json"))
-                .map(|it| it.filter_map(|e| e.ok()).filter(|e| e.path().is_file()).count())
+                .map(|it| {
+                    it.filter_map(|e| e.ok())
+                        .filter(|e| e.path().is_file())
+                        .count()
+                })
                 .unwrap_or(0);
 
             let push_total = q_one("SELECT COUNT(*) FROM push_log").unwrap_or(0);
@@ -1356,10 +1522,16 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
             // Detect changes
             let changes = version_db::detect_changes(&conn, &version_rec)?;
             if !changes.has_any_change() {
-                // Unchanged — skip conversion, just move file
-                skipped += 1;
-                processed_files.push(path);
-                continue;
+                let out_path = output_dir.join(format!("{}.json", stem));
+                if out_path.exists() {
+                    // Output already on disk — real no-op skip.
+                    skipped += 1;
+                    processed_files.push(path);
+                    continue;
+                }
+                // Hash/versions match DB but no output file exists. Happens when
+                // `download` step indexed udi_versions *before* convert ran.
+                // Fall through to actual conversion so the output is produced.
             }
 
             let change_label = changes.summary();

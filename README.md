@@ -30,6 +30,8 @@ The GUI provides:
 - All data stored in `~/eudamed2firstbase/` (Windows: `%USERPROFILE%\eudamed2firstbase\`)
 - WhatsApp integration (Baileys): pair this device via native in-GUI QR modal, send any push-log HTML as a document to a group/user JID, session persists across restarts
 - **Environment-segregated push logs** (since v1.0.39): every push is tagged Test or Production in the DB (`push_log.firstbase_env`, `push_session.firstbase_env`), HTML logs land under `log/firstbase_test/` or `log/firstbase_prod/` (never mixed), and each report has a full-width coloured banner — red for PRODUCTION, blue for TEST — showing the API base URL so the environment cannot be missed. Separate "Send latest Prod log" and "Send latest Test log" WhatsApp buttons.
+- **"Repush SRN" button** (since v1.0.41): takes the SRN list from the SRN input, looks the UUIDs up in `listing_cache`, restores any matching `<uuid>.json` from `firstbase_json/processed/` back into `firstbase_json/`, then pushes. Bypasses the `udi_versions` unchanged-skip — the right tool when you want to re-send a specific manufacturer's devices to Firstbase. Mirrored as the CLI subcommand `cargo run repush-srn <SRN> [SRN2 …]`.
+- **Version line on every pipeline start** (since v1.0.41): the first log line of each run prints `eudamed2firstbase v<version> — mode: <name>` (GUI modes 0–4, CLI subcommand name) so remote users can confirm which binary is running.
 
 Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
 
@@ -94,6 +96,11 @@ cargo run status                                       # counts from listing_cac
 
 # Force re-convert every local detail file → firstbase_json (rayon parallel, ignores version tracking)
 cargo run regenerate                                   # all eudamed_json/detail/*.json → firstbase_json/
+
+# Repush devices for specific SRN(s): restore matching files from processed/ back to firstbase_json/, then push
+cargo run repush-srn DE-MF-000005190                   # by SRN argument(s)
+cargo run repush-srn DE-MF-000005190 CH-MF-000012345   # multiple SRNs
+cargo run repush-srn --file srns.txt                   # SRN list from file (one per line)
 
 # Send file as email attachment via Gmail API (service account)
 cargo run mailto /tmp/report.csv --to "a@gs1.ch, b@gs1.ch" --from sender@ywesee.com --subject "Report"
@@ -543,6 +550,8 @@ On each converter run:
 2. If hash differs, compares per-section version numbers to identify what changed
 3. Logs a change summary: `NEW`, `MFR+CERT`, `STATUS+MARKET`, etc.
 4. Updates the DB after successful conversion
+
+**Skip-safety fallback (since v1.0.41):** the download step indexes `udi_versions` *before* convert runs (so repeat runs of `download --srn X` can skip unchanged devices without re-converting). On the very first download of a new SRN that caused step 1 to say "unchanged" even though the converter had never actually produced output, leaving `firstbase_json/` empty and therefore nothing to push. The converter now verifies that either `firstbase_json/<uuid>.json` or `firstbase_json/processed/<uuid>.json` exists before trusting an "unchanged" verdict; if neither is present, it falls through to actual conversion so the output is produced. Fixes both the full GUI pipeline (`gui.rs`) and the `firstbase`/`eudamed_json` subcommand (`main.rs`).
 
 Tracked sections per UDI-DI (UUID):
 
