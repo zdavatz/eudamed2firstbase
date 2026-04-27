@@ -327,6 +327,8 @@ The 3 unmapped fields (Certificate Status, Decision Date, Starting Decision Appl
 
 For hospital customers receiving the EUDAMED data dump via GS1 firstbase, the CertificateLink data provides proof that the Notified Body has confirmed the device — essential for high-risk device procurement decisions.
 
+**Multi-certificate emission.** When EUDAMED holds multiple certificates of different `CertificationStandard` for the same device (typical MDR pattern: `MDR_QUALITY_MANAGEMENT_SYSTEM` + `MDR_TECHNICAL_DOCUMENTATION`), each is emitted as its own element in the `CertificationInformation` array — the GDSN schema requires this because `CertificationStandard` is a single-string field per object. End-to-end verified on 2026-04-27 by re-pushing all 306 devices for SRN `IT-MF-000029499` to GS1 firstbase TEST: 306 accepted, 0 rejected, both standards visible in Firstbase. Across our reference set, 344 of 788 devices carry ≥2 `CertificationInformation` entries.
+
 ## EUDAMED Public API
 
 The download script uses the EUDAMED public API at `https://ec.europa.eu/tools/eudamed/api/devices/udiDiData`:
