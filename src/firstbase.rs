@@ -696,6 +696,8 @@ pub struct TradeItemDescriptionModule {
 
 #[derive(Serialize, Debug)]
 pub struct TradeItemDescriptionInformation {
+    #[serde(rename = "DescriptionShort", skip_serializing_if = "Vec::is_empty")]
+    pub description_short: Vec<LangValue>,
     #[serde(
         rename = "AdditionalTradeItemDescription",
         skip_serializing_if = "Vec::is_empty"
@@ -703,6 +705,10 @@ pub struct TradeItemDescriptionInformation {
     pub additional_descriptions: Vec<LangValue>,
     #[serde(rename = "TradeItemDescription", skip_serializing_if = "Vec::is_empty")]
     pub descriptions: Vec<LangValue>,
+}
+
+pub fn truncate_short_description(s: &str) -> String {
+    s.chars().take(40).collect()
 }
 
 // --- Contact Information ---

@@ -158,6 +158,10 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
         .as_ref()
         .map(|name| TradeItemDescriptionModule {
             info: TradeItemDescriptionInformation {
+                description_short: vec![LangValue {
+                    language_code: "en".to_string(),
+                    value: crate::firstbase::truncate_short_description(name),
+                }],
                 descriptions: vec![LangValue {
                     language_code: "en".to_string(),
                     value: name.clone(),

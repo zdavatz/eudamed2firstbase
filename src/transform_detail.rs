@@ -159,6 +159,13 @@ pub fn transform_detail_device(
     let description_module = if !trade_names.is_empty() || !additional_descs.is_empty() {
         Some(TradeItemDescriptionModule {
             info: TradeItemDescriptionInformation {
+                description_short: trade_names
+                    .iter()
+                    .map(|(lang, text)| LangValue {
+                        language_code: lang.clone(),
+                        value: crate::firstbase::truncate_short_description(text),
+                    })
+                    .collect(),
                 descriptions: trade_names
                     .iter()
                     .map(|(lang, text)| LangValue {

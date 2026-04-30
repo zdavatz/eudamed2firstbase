@@ -577,8 +577,16 @@ fn build_base_unit(
         let additional = transform_lang_names(&udidi.additional_description);
 
         if !descriptions.is_empty() || !additional.is_empty() {
+            let description_short: Vec<_> = descriptions
+                .iter()
+                .map(|d| LangValue {
+                    language_code: d.language_code.clone(),
+                    value: crate::firstbase::truncate_short_description(&d.value),
+                })
+                .collect();
             Some(TradeItemDescriptionModule {
                 info: TradeItemDescriptionInformation {
+                    description_short,
                     additional_descriptions: additional,
                     descriptions,
                 },
