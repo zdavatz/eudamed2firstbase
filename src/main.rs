@@ -556,11 +556,6 @@ fn main() -> Result<()> {
             // in the app-data detail dir, writing to firstbase_json in parallel.
             // Unlike `check`, this ignores version tracking — every file is rewritten.
             let data_dir = download::app_data_dir();
-            let detail_dir = data_dir.join("eudamed_json/detail");
-            let basic_dir = data_dir.join("eudamed_json/basic");
-            let output_dir = data_dir.join("firstbase_json");
-            std::fs::create_dir_all(&output_dir)?;
-
             let config_path = data_dir.join("config.toml");
             let fb_config = if config_path.exists() {
                 config::load_config(&config_path)?
@@ -568,73 +563,9 @@ fn main() -> Result<()> {
                 config
             };
 
-            let basic_udi_cache = load_basic_udi_cache(&basic_dir);
-            eprintln!("Loaded {} Basic UDI-DI records", basic_udi_cache.len());
-
-            let detail_files: Vec<std::path::PathBuf> = std::fs::read_dir(&detail_dir)
-                .context("Failed to read detail dir")?
-                .filter_map(|e| e.ok())
-                .map(|e| e.path())
-                .filter(|p| p.extension().map(|x| x == "json").unwrap_or(false))
-                .collect();
-            let total = detail_files.len();
-            eprintln!("Regenerating {} firstbase JSON files in parallel...", total);
-
-            let converted = std::sync::atomic::AtomicUsize::new(0);
-            let errors = std::sync::atomic::AtomicUsize::new(0);
-            let reported = std::sync::atomic::AtomicUsize::new(0);
-
-            detail_files.par_iter().for_each(|detail_path| {
-                let uuid = detail_path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or_default()
-                    .to_string();
-                let json_content = match std::fs::read_to_string(detail_path) {
-                    Ok(s) => s,
-                    Err(_) => {
-                        errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        return;
-                    }
-                };
-                let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content)
-                {
-                    Ok(d) => d,
-                    Err(_) => {
-                        errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        return;
-                    }
-                };
-                let basic_udi = basic_udi_cache.get(&uuid);
-                let doc = transform_detail::transform_detail_document(
-                    &device, &fb_config, basic_udi, &uuid,
-                );
-                let draft_doc = firstbase::DraftItemDocument { draft_item: doc };
-                let out = serde_json::to_string_pretty(&draft_doc)
-                    .expect("Failed to serialize firstbase doc");
-                let out_path = output_dir.join(format!("{}.json", uuid));
-                let _ = std::fs::write(&out_path, &out);
-
-                let done = converted.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-                let prev = reported.load(std::sync::atomic::Ordering::Relaxed);
-                if done >= prev + 10000
-                    && reported
-                        .compare_exchange(
-                            prev,
-                            done,
-                            std::sync::atomic::Ordering::Relaxed,
-                            std::sync::atomic::Ordering::Relaxed,
-                        )
-                        .is_ok()
-                {
-                    eprintln!("  Regenerated {}/{}...", done, total);
-                }
-            });
-            eprintln!(
-                "Done: {} regenerated, {} errors.",
-                converted.load(std::sync::atomic::Ordering::Relaxed),
-                errors.load(std::sync::atomic::Ordering::Relaxed)
-            );
+            eprintln!("Regenerating all firstbase JSON files in parallel...");
+            let (converted, errors) = reconvert_uuids_from_detail(None, &data_dir, &fb_config);
+            eprintln!("Done: {} regenerated, {} errors.", converted, errors);
             Ok(())
         }
         Some("repush-srn") => {
@@ -647,6 +578,15 @@ fn main() -> Result<()> {
             // Usage:
             //   cargo run repush-srn DE-MF-000005190 [SRN2 ...]
             //   cargo run repush-srn --file srns.txt
+            //   cargo run repush-srn --reconvert DE-MF-000005190
+            //
+            // With --reconvert, the SRN's UUIDs are first re-converted from
+            // eudamed_json/detail/<uuid>.json (using the latest converter logic),
+            // bypassing udi_versions; the resulting fresh JSONs are written to
+            // firstbase_json/ and pushed. Use this after a converter change
+            // (e.g. v1.0.43 added DescriptionShort) when the EUDAMED detail
+            // JSON itself hasn't changed but you want the new GS1 fields live
+            // in Firstbase.
             //
             // Env: FIRSTBASE_EMAIL, FIRSTBASE_PASSWORD, FIRSTBASE_PUBLISH_GLN
             //      (publish_gln falls back to config.toml's [provider].publish_gln)
@@ -655,6 +595,7 @@ fn main() -> Result<()> {
                 env!("CARGO_PKG_VERSION")
             );
 
+            let reconvert = args.iter().any(|a| a == "--reconvert");
             let srns: Vec<String> = if let Some(pos) = args.iter().position(|a| a == "--file") {
                 let file = args
                     .get(pos + 1)
@@ -673,11 +614,15 @@ fn main() -> Result<()> {
             };
 
             if srns.is_empty() {
-                eprintln!("Usage: eudamed2firstbase repush-srn <SRN1> [SRN2 ...]");
-                eprintln!("   or: eudamed2firstbase repush-srn --file <srns.txt>");
+                eprintln!("Usage: eudamed2firstbase repush-srn [--reconvert] <SRN1> [SRN2 ...]");
+                eprintln!("   or: eudamed2firstbase repush-srn [--reconvert] --file <srns.txt>");
                 std::process::exit(1);
             }
-            eprintln!("SRNs: {}", srns.join(", "));
+            eprintln!(
+                "SRNs: {}{}",
+                srns.join(", "),
+                if reconvert { "  (--reconvert)" } else { "" }
+            );
 
             let data_dir = download::app_data_dir();
             let firstbase_dir = data_dir.join("firstbase_json");
@@ -714,6 +659,30 @@ fn main() -> Result<()> {
                 srns.len()
             );
 
+            // --- Reconvert (optional) ---
+            // With --reconvert, re-run transform_detail for the matching UUIDs
+            // before pushing. Writes fresh firstbase_json/<uuid>.json so the
+            // next push picks up the latest converter logic. Bypasses
+            // udi_versions cache by going straight from eudamed_json/detail/.
+            if reconvert {
+                let config_path = data_dir.join("config.toml");
+                let fb_config = if config_path.exists() {
+                    config::load_config(&config_path)?
+                } else {
+                    config.clone()
+                };
+                eprintln!(
+                    "Reconverting {} UUID(s) from eudamed_json/detail/...",
+                    uuids.len()
+                );
+                let (rc_converted, rc_errors) =
+                    reconvert_uuids_from_detail(Some(&uuids), &data_dir, &fb_config);
+                eprintln!(
+                    "Reconvert: {} written to firstbase_json/, {} errors",
+                    rc_converted, rc_errors
+                );
+            }
+
             // Count how many matching UUIDs are already in firstbase_json/ — BEFORE restoring
             let mut already_present = 0usize;
             if let Ok(entries) = std::fs::read_dir(&firstbase_dir) {
@@ -730,7 +699,10 @@ fn main() -> Result<()> {
                 }
             }
 
-            // Restore matching files from processed/ to firstbase_json/
+            // Restore matching files from processed/ to firstbase_json/.
+            // With --reconvert, only fall back to processed/ for UUIDs whose
+            // fresh reconvert didn't produce a firstbase_json/<uuid>.json
+            // (e.g. no detail file on disk for that UUID).
             let mut restored = 0usize;
             if let Ok(entries) = std::fs::read_dir(&processed_dir) {
                 for entry in entries.filter_map(|e| e.ok()) {
@@ -741,6 +713,9 @@ fn main() -> Result<()> {
                             if uuids.contains(stem_s.as_ref()) {
                                 if let Some(name) = path.file_name() {
                                     let dest = firstbase_dir.join(name);
+                                    if reconvert && dest.exists() {
+                                        continue;
+                                    }
                                     if std::fs::rename(&path, &dest).is_ok() {
                                         restored += 1;
                                     }
@@ -1824,6 +1799,94 @@ fn write_counts_xlsx(path: &str, srn_col: usize, counts: &HashMap<String, i64>) 
 
     wb.save(path)?;
     Ok(())
+}
+
+/// Re-run transform_detail + DraftItemDocument wrap over every detail file in
+/// `data_dir/eudamed_json/detail/`, writing to `data_dir/firstbase_json/`.
+///
+/// If `uuids_filter` is `Some`, only files whose stem matches one of the UUIDs
+/// are processed. If `None`, every detail file is regenerated (used by the
+/// `regenerate` subcommand).
+///
+/// Used by `regenerate` (no filter) and by `repush-srn --reconvert` /
+/// GUI Mode 5 (filter to one or more SRNs' UUIDs). Ignores `udi_versions`
+/// version tracking by design — the targeted files are unconditionally
+/// rewritten so the latest converter logic (e.g. new GS1 fields like
+/// `DescriptionShort` since v1.0.43) is applied even when the EUDAMED detail
+/// JSON itself hasn't changed.
+fn reconvert_uuids_from_detail(
+    uuids_filter: Option<&std::collections::HashSet<String>>,
+    data_dir: &Path,
+    fb_config: &config::Config,
+) -> (usize, usize) {
+    let detail_dir = data_dir.join("eudamed_json/detail");
+    let basic_dir = data_dir.join("eudamed_json/basic");
+    let output_dir = data_dir.join("firstbase_json");
+    let _ = std::fs::create_dir_all(&output_dir);
+
+    let basic_udi_cache = load_basic_udi_cache(&basic_dir);
+
+    let detail_files: Vec<std::path::PathBuf> = match std::fs::read_dir(&detail_dir) {
+        Ok(rd) => rd
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().map(|x| x == "json").unwrap_or(false))
+            .filter(
+                |p| match (uuids_filter, p.file_stem().and_then(|s| s.to_str())) {
+                    (Some(set), Some(uuid)) => set.contains(uuid),
+                    (None, _) => true,
+                    _ => false,
+                },
+            )
+            .collect(),
+        Err(_) => return (0, 0),
+    };
+
+    let converted = std::sync::atomic::AtomicUsize::new(0);
+    let errors = std::sync::atomic::AtomicUsize::new(0);
+
+    detail_files.par_iter().for_each(|detail_path| {
+        let uuid = detail_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+        let json_content = match std::fs::read_to_string(detail_path) {
+            Ok(s) => s,
+            Err(_) => {
+                errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                return;
+            }
+        };
+        let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content) {
+            Ok(d) => d,
+            Err(_) => {
+                errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                return;
+            }
+        };
+        let basic_udi = basic_udi_cache.get(&uuid);
+        let doc = transform_detail::transform_detail_document(&device, fb_config, basic_udi, &uuid);
+        let draft_doc = firstbase::DraftItemDocument { draft_item: doc };
+        let out = match serde_json::to_string_pretty(&draft_doc) {
+            Ok(s) => s,
+            Err(_) => {
+                errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                return;
+            }
+        };
+        let out_path = output_dir.join(format!("{}.json", uuid));
+        if std::fs::write(&out_path, &out).is_err() {
+            errors.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            return;
+        }
+        converted.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    });
+
+    (
+        converted.load(std::sync::atomic::Ordering::Relaxed),
+        errors.load(std::sync::atomic::Ordering::Relaxed),
+    )
 }
 
 /// Load Basic UDI-DI cache: maps UDI-DI UUID → BasicUdiDiData

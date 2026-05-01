@@ -31,6 +31,7 @@ The GUI provides:
 - WhatsApp integration (Baileys): pair this device via native in-GUI QR modal, send any push-log HTML as a document to a group/user JID, session persists across restarts
 - **Environment-segregated push logs** (since v1.0.39): every push is tagged Test or Production in the DB (`push_log.firstbase_env`, `push_session.firstbase_env`), HTML logs land under `log/firstbase_test/` or `log/firstbase_prod/` (never mixed), and each report has a full-width coloured banner — red for PRODUCTION, blue for TEST — showing the API base URL so the environment cannot be missed. Separate "Send latest Prod log" and "Send latest Test log" WhatsApp buttons.
 - **"Repush SRN" button** (since v1.0.41): takes the SRN list from the SRN input, looks the UUIDs up in `listing_cache`, restores any matching `<uuid>.json` from `firstbase_json/processed/` back into `firstbase_json/`, then pushes. Bypasses the `udi_versions` unchanged-skip — the right tool when you want to re-send a specific manufacturer's devices to Firstbase. Mirrored as the CLI subcommand `cargo run repush-srn <SRN> [SRN2 …]`.
+- **"Reconvert + Repush SRN" button** (since v1.0.44): same as Repush SRN, but first re-runs the converter for the SRN's UUIDs from `eudamed_json/detail/` and writes fresh `firstbase_json/<uuid>.json`. Use this whenever the converter has gained new GS1 fields (e.g. v1.0.43 added `DescriptionShort`) and you want them live in Firstbase without waiting for upstream EUDAMED data to change. CLI equivalent: `cargo run repush-srn --reconvert <SRN>`.
 - **Version line on every pipeline start** (since v1.0.41): the first log line of each run prints `eudamed2firstbase v<version> — mode: <name>` (GUI modes 0–4, CLI subcommand name) so remote users can confirm which binary is running.
 - **`DescriptionShort` mapped from EUDAMED Trade Name** (since v1.0.43): the Trade Name (FLD-UDID-176) is now emitted twice in the `TradeItemDescriptionInformation` block — once into `TradeItemDescription` (TC ID 3318, full text) and once into `DescriptionShort` (TC ID 3297, truncated to 40 characters with char-aware UTF-8 cut). `DescriptionShort` is the field Firstbase renders in the item-list overview, so devices are now identifiable in the Catalogue browser without opening each item. All four converter paths (XML, API listing, API detail, EUDAMED JSON) emit both fields with matching language codes.
 
@@ -101,9 +102,10 @@ cargo run status                                       # counts from listing_cac
 cargo run regenerate                                   # all eudamed_json/detail/*.json → firstbase_json/
 
 # Repush devices for specific SRN(s): restore matching files from processed/ back to firstbase_json/, then push
-cargo run repush-srn DE-MF-000005190                   # by SRN argument(s)
-cargo run repush-srn DE-MF-000005190 CH-MF-000012345   # multiple SRNs
-cargo run repush-srn --file srns.txt                   # SRN list from file (one per line)
+cargo run repush-srn DE-MF-000005190                       # by SRN argument(s)
+cargo run repush-srn DE-MF-000005190 CH-MF-000012345       # multiple SRNs
+cargo run repush-srn --file srns.txt                       # SRN list from file (one per line)
+cargo run repush-srn --reconvert DE-MF-000005190           # Reconvert + Repush: re-run transform_detail for the SRN's UUIDs (picks up new GS1 fields like DescriptionShort), then push
 
 # Send file as email attachment via Gmail API (service account)
 cargo run mailto /tmp/report.csv --to "a@gs1.ch, b@gs1.ch" --from sender@ywesee.com --subject "Report"

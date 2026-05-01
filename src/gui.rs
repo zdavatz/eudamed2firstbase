@@ -695,6 +695,11 @@ impl eframe::App for App {
                             self.pipeline_mode = 4;
                             self.start_pipeline(ctx.clone());
                         }
+                        if ui.add_enabled(can_repush_srn, egui::Button::new("Reconvert + Repush SRN").min_size(egui::vec2(180.0, 28.0)))
+                            .on_hover_text("Re-run the converter for the given SRN(s) (picks up new GS1 fields, e.g. DescriptionShort), then push").clicked() {
+                            self.pipeline_mode = 5;
+                            self.start_pipeline(ctx.clone());
+                        }
                     });
 
                 // Splitter
@@ -974,6 +979,14 @@ impl eframe::App for App {
                     .clicked()
                 {
                     self.pipeline_mode = 4;
+                    self.start_pipeline(ctx.clone());
+                }
+                if ui
+                    .add_enabled(can_repush_srn, egui::Button::new("Reconvert + Repush SRN").min_size(egui::vec2(190.0, 32.0)))
+                    .on_hover_text("Re-run the converter for the given SRN(s) (picks up new GS1 fields, e.g. DescriptionShort), then push")
+                    .clicked()
+                {
+                    self.pipeline_mode = 5;
                     self.start_pipeline(ctx.clone());
                 }
             });
@@ -1417,9 +1430,23 @@ fn run_pipeline(
     // Mode 4: Repush SRN — look up UUIDs for the given SRN(s) in listing_cache,
     // restore matching <uuid>.json from firstbase_json/processed/ back to
     // firstbase_json/, then push. Bypasses the udi_versions unchanged-skip.
-    if pipeline_mode == 4 {
+    //
+    // Mode 5: Reconvert + Repush SRN — same as Mode 4, but first re-runs the
+    // converter for the matching UUIDs from eudamed_json/detail/ and writes
+    // fresh firstbase_json/<uuid>.json. Use after a converter change (e.g.
+    // v1.0.43 added DescriptionShort) when the EUDAMED detail JSON itself
+    // hasn't changed but you want the new GS1 fields live in Firstbase.
+    if pipeline_mode == 4 || pipeline_mode == 5 {
+        let mode_label = if pipeline_mode == 5 {
+            "Reconvert + Repush SRN"
+        } else {
+            "Repush SRN"
+        };
         if !matches!(settings.push_target, PushTarget::Firstbase) {
-            done(false, "Repush SRN currently only supports GS1 Firstbase");
+            done(
+                false,
+                &format!("{} currently only supports GS1 Firstbase", mode_label),
+            );
             return;
         }
         if settings.firstbase_email.is_empty() || settings.firstbase_password.is_empty() {
@@ -1434,13 +1461,12 @@ fn run_pipeline(
             return;
         }
 
-        log(&format!("[Repush SRN] SRNs: {}", srns.join(", ")));
+        log(&format!("[{}] SRNs: {}", mode_label, srns.join(", ")));
 
-        let firstbase_dir = download::app_data_dir().join("firstbase_json");
+        let app_data = download::app_data_dir();
+        let firstbase_dir = app_data.join("firstbase_json");
         let processed_dir = firstbase_dir.join("processed");
-        let db_path = download::app_data_dir()
-            .join("db")
-            .join("version_tracking.db");
+        let db_path = app_data.join("db").join("version_tracking.db");
 
         let conn = match rusqlite::Connection::open(&db_path) {
             Ok(c) => c,
@@ -1484,10 +1510,37 @@ fn run_pipeline(
             return;
         }
         log(&format!(
-            "[Repush SRN] Found {} UUIDs in listing_cache for {} SRN(s)",
+            "[{}] Found {} UUIDs in listing_cache for {} SRN(s)",
+            mode_label,
             uuids.len(),
             srns.len()
         ));
+        drop(stmt);
+        drop(conn);
+
+        // Mode 5: reconvert from eudamed_json/detail/ before push.
+        if pipeline_mode == 5 {
+            let config_path = app_data.join("config.toml");
+            let fb_config = match crate::config::load_config(&config_path) {
+                Ok(c) => c,
+                Err(e) => {
+                    done(false, &format!("Failed to load config: {}", e));
+                    return;
+                }
+            };
+            log(&format!(
+                "[{}] Reconverting {} UUID(s) from eudamed_json/detail/...",
+                mode_label,
+                uuids.len()
+            ));
+            ctx.request_repaint();
+            let (rc_converted, rc_errors) =
+                crate::reconvert_uuids_from_detail(Some(&uuids), &app_data, &fb_config);
+            log(&format!(
+                "[{}] Reconvert: {} written to firstbase_json/, {} errors",
+                mode_label, rc_converted, rc_errors
+            ));
+        }
 
         // Count how many matching UUIDs are already sitting in firstbase_json/ — BEFORE restoring
         let mut already_present = 0;
@@ -1505,7 +1558,9 @@ fn run_pipeline(
             }
         }
 
-        // Restore matching <uuid>.json files from processed/ to firstbase_json/
+        // Restore matching <uuid>.json files from processed/ to firstbase_json/.
+        // In Mode 5, only fall back to processed/ when the reconvert step did
+        // not produce a fresh file for that UUID (e.g. no detail file on disk).
         let mut restored = 0;
         if let Ok(entries) = std::fs::read_dir(&processed_dir) {
             for entry in entries.filter_map(|e| e.ok()) {
@@ -1516,6 +1571,9 @@ fn run_pipeline(
                         if uuids.contains(stem_s.as_ref()) {
                             if let Some(name) = path.file_name() {
                                 let dest = firstbase_dir.join(name);
+                                if pipeline_mode == 5 && dest.exists() {
+                                    continue;
+                                }
                                 if std::fs::rename(&path, &dest).is_ok() {
                                     restored += 1;
                                 }
@@ -1526,8 +1584,8 @@ fn run_pipeline(
             }
         }
         log(&format!(
-            "[Repush SRN] Restored {} files from processed/ to firstbase_json/",
-            restored
+            "[{}] Restored {} files from processed/ to firstbase_json/",
+            mode_label, restored
         ));
 
         let total = restored + already_present;
@@ -1539,24 +1597,27 @@ fn run_pipeline(
             return;
         }
         log(&format!(
-            "[Repush SRN] {} files to push ({} restored + {} already in firstbase_json/)",
-            total, restored, already_present
+            "[{}] {} files to push ({} restored + {} already in firstbase_json/)",
+            mode_label, total, restored, already_present
         ));
 
-        log("[Repush SRN] Pushing to GS1 firstbase Catalogue Item API...");
+        log(&format!(
+            "[{}] Pushing to GS1 firstbase Catalogue Item API...",
+            mode_label
+        ));
         ctx.request_repaint();
         match push_to_firstbase(&settings, &log) {
             Ok((accepted, rejected)) => {
                 done(
                     true,
                     &format!(
-                        "Repush SRN complete. {} accepted, {} rejected.",
-                        accepted, rejected
+                        "{} complete. {} accepted, {} rejected.",
+                        mode_label, accepted, rejected
                     ),
                 );
             }
             Err(e) => {
-                done(false, &format!("Repush SRN failed: {}", e));
+                done(false, &format!("{} failed: {}", mode_label, e));
             }
         }
         return;
