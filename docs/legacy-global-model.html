@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Legacy globalModelDescription — Frage & Antwort</title>
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 18mm 22mm 18mm;
+    @bottom-center {
+      content: "eudamed2firstbase — " counter(page) " / " counter(pages);
+      font-family: -apple-system, sans-serif;
+      font-size: 9pt;
+      color: #888;
+    }
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    color: #1a1a1a;
+  }
+  header {
+    border-bottom: 2px solid #1a1a1a;
+    padding-bottom: 8mm;
+    margin-bottom: 8mm;
+  }
+  h1 {
+    font-size: 18pt;
+    margin: 0 0 2mm 0;
+    color: #0a0a0a;
+  }
+  .subtitle {
+    font-size: 10pt;
+    color: #555;
+    margin: 0;
+  }
+  .meta {
+    font-size: 9pt;
+    color: #888;
+    margin-top: 3mm;
+  }
+  h2 {
+    font-size: 13pt;
+    margin: 7mm 0 3mm 0;
+    color: #0a0a0a;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 1mm;
+  }
+  h3 {
+    font-size: 11pt;
+    margin: 5mm 0 2mm 0;
+    color: #222;
+  }
+  p { margin: 0 0 3mm 0; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 9.5pt;
+    background: #f4f4f4;
+    padding: 0.5mm 1.2mm;
+    border-radius: 2px;
+  }
+  pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 9pt;
+    line-height: 1.4;
+    background: #f7f7f7;
+    border: 1px solid #e2e2e2;
+    border-left: 3px solid #4a6fa5;
+    padding: 3mm 4mm;
+    margin: 3mm 0;
+    border-radius: 2px;
+    white-space: pre-wrap;
+    page-break-inside: avoid;
+  }
+  blockquote {
+    margin: 3mm 0;
+    padding: 3mm 5mm;
+    border-left: 3px solid #b58a00;
+    background: #fffbe6;
+    color: #4a3c00;
+  }
+  blockquote p:last-child { margin-bottom: 0; }
+  ul { margin: 2mm 0 4mm 6mm; padding: 0; }
+  li { margin-bottom: 1.5mm; }
+  .checklist { list-style: none; margin-left: 0; padding-left: 0; }
+  .checklist li {
+    padding-left: 7mm;
+    position: relative;
+  }
+  .checklist li::before {
+    content: "☐";
+    position: absolute;
+    left: 0;
+    font-size: 12pt;
+    color: #555;
+  }
+  .filepath {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 9.5pt;
+    color: #4a6fa5;
+  }
+  footer {
+    margin-top: 10mm;
+    padding-top: 4mm;
+    border-top: 1px solid #ddd;
+    font-size: 9pt;
+    color: #777;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Legacy MDD/AIMDD/IVDD: <code>globalModelDescription</code> &amp; FLD-UDID-22</h1>
+  <p class="subtitle">Frage von Maik &amp; Antwort von Zeno — Status quo + Umstellungsplan sobald GS1-Rule 097.116 auf MDR/IVDR-only verfeinert ist.</p>
+  <p class="meta">eudamed2firstbase v1.0.44 · 2026-05-01</p>
+</header>
+
+<h2>Frage von Maik</h2>
+
+<blockquote>
+<p>Mir fällt was auf: Wie hatten wir das Problem bei MDD/AIMDD/IVDD gelöst, wenn in EUDAMED das Attribut <strong>Model Name (FLD-UDID-22)</strong> nicht in <code>globalModelDescription</code> reingemappt bekommst, weil die <code>globalModelNumber</code> dann auch gefüllt sein muss, aber wir können diese wegen firstbase rule <strong>097.116 (Prüfziffervalidierung)</strong> nicht mit B-GTIN values mappen?</p>
+<p>Ich arbeite mit TC an einer Verfeinerung von 097.116 (nur bei MDR/IVDR), weil uns das auch an einer anderen Stelle auf die Füsse fällt. Dann könntest du zukünftig bei MDD/AIMDD/IVDD records <code>globalModelNumber</code> mit B-GTIN (sog. EUDAMED DI) schicken. Und dann müssen aber auch immer die Model Name (FLD-UDID-22) in <code>globalModelDescription</code> gemappt kommen.</p>
+</blockquote>
+
+<h2>Aktueller Status MDD/AIMDD/IVDD</h2>
+
+<p>In <span class="filepath">src/transform_detail.rs</span> (Zeile 600–624):</p>
+
+<pre>// 097.095: Legacy devices must not have globalModelNumber
+global_model_info: if is_legacy {
+    Vec::new()           // ← komplett leer, weder Number noch Description
+} else {
+    vec![GlobalModelInformation {
+        number:       &lt;Basic UDI-DI Code, fallback Primary DI&gt;,
+        descriptions: &lt;FLD-UDID-22 deviceName, fallback Primary DI, lang=en&gt;,
+    }]
+}</pre>
+
+<p>D.h. <strong>bei MDD/AIMDD/IVDD landet weder <code>globalModelNumber</code> noch <code>globalModelDescription</code> im Output</strong>. FLD-UDID-22 (Model Name) geht aktuell bei Legacy verloren.</p>
+
+<p>Als Ersatz emittieren wir bei Legacy ein <code>MODEL_NUMBER</code> in <code>additionalTradeItemIdentification</code> — gefüllt mit <code>deviceModel</code> (FLD-UDID-20), und falls leer mit dem Basic UDI-DI Code (= EUDAMED B-GTIN). Siehe <span class="filepath">src/transform_detail.rs:244-266</span>. Aber das ist nur Number, nicht Name.</p>
+
+<h2>Plan, sobald 097.116 auf MDR/IVDR-only verfeinert ist</h2>
+
+<p>Anpassung an einer einzigen Stelle — der <code>if is_legacy { Vec::new() }</code>-Zweig fällt weg, dann gilt bei Legacy derselbe Pfad wie heute bei MDR/IVDR:</p>
+
+<ul>
+  <li><code>globalModelNumber</code> ← Basic UDI-DI Code (EUDAMED DI / B-GTIN)</li>
+  <li><code>globalModelDescription</code> ← FLD-UDID-22 (<code>deviceName</code>) auf <code>en</code></li>
+</ul>
+
+<p>Alle vier Konverter-Pfade (<code>transform.rs</code>, <code>transform_api.rs</code>, <code>transform_detail.rs</code>, <code>transform_eudamed_json.rs</code>) greifen auf dieselbe Funktion zurück.</p>
+
+<h2>Offene Punkte</h2>
+
+<ul class="checklist">
+  <li>Termin für 097.116-Verfeinerung von TC abwarten</li>
+  <li>Entscheidung: Feature-Flag in <code>config.toml</code> (z.&nbsp;B. <code>legacy_global_model = true</code>) zur stufenweisen Aktivierung, oder Direktumstellung mit Release?</li>
+  <li>Bei Legacy-Devices ohne <code>deviceModel</code>/<code>basic_udi.code</code>: ist <code>MODEL_NUMBER</code> in <code>additionalTradeItemIdentification</code> dann noch nötig oder redundant zu <code>globalModelNumber</code>?</li>
+</ul>
+
+<footer>
+  ywesee GmbH · zdavatz@ywesee.com
+</footer>
+
+</body>
+</html>

@@ -150,6 +150,7 @@ After pairing, the session persists in `whatsapp/auth/` (gitignored). Subsequent
 | Document | Source | PDF |
 |---|---|---|
 | Update monitoring for Basic UDI-DI &amp; UDI-DI entries | [`docs/version-tracking.html`](docs/version-tracking.html) | [`docs/version-tracking.pdf`](docs/version-tracking.pdf) |
+| Legacy MDD/AIMDD/IVDD `globalModelDescription` &amp; FLD-UDID-22 — status quo + Umstellungsplan, sobald GS1-Rule 097.116 auf MDR/IVDR-only verfeinert ist | [`docs/legacy-global-model.html`](docs/legacy-global-model.html) | [`docs/legacy-global-model.pdf`](docs/legacy-global-model.pdf) |
 
 Regenerate the PDF after editing the HTML:
 
