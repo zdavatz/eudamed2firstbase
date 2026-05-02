@@ -1540,6 +1540,15 @@ fn run_pipeline(
                 "[{}] Reconvert: {} written to firstbase_json/, {} errors",
                 mode_label, rc_converted, rc_errors
             ));
+            let missing_detail = uuids.len().saturating_sub(rc_converted + rc_errors);
+            if missing_detail > 0 {
+                log(&format!(
+                    "[{}] WARNING: {} UUID(s) have no eudamed_json/detail/<uuid>.json — \
+                     will fall back to firstbase_json/processed/ (pre-converter-fix content). \
+                     Run 'Download' first if you want recent converter changes to apply.",
+                    mode_label, missing_detail
+                ));
+            }
         }
 
         // Count how many matching UUIDs are already sitting in firstbase_json/ — BEFORE restoring

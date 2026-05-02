@@ -604,17 +604,22 @@ impl BasicUdiDiData {
             .map(|c| crate::mappings::multi_component_to_gs1(c).to_string())
     }
 
-    /// Check if device is SPP (System/Procedure Pack) based on criterion field
-    /// criterion="SPP" → FLD-UDID-261 → systemOrProcedurePackTypeCode
-    /// criterion="STANDARD" → FLD-UDID-12 → multiComponentDeviceTypeCode
+    /// Check if device is a real System-or-Procedure-Pack (MDR Art. 22(1)/(3))
+    /// vs a normal MDR device that happens to have a multi-component shape
+    /// (MDR Art. 22(4) — "Procedure pack which is a device in itself", FLD-UDID-12).
+    ///
+    /// The discriminator is `multiComponent.criterion`, NOT the `code` suffix:
+    ///   - criterion="SPP"      → FLD-UDID-261 → systemOrProcedurePackTypeCode (real SPP)
+    ///   - criterion="STANDARD" → FLD-UDID-12  → multiComponentDeviceTypeCode  (MDR device)
+    ///
+    /// `code` carries the *value* (`SYSTEM` / `PROCEDURE_PACK`) — it appears
+    /// for both criterion variants, so matching on it conflates the two.
+    /// See GitHub issue #31.
     pub fn is_spp(&self) -> bool {
         self.multi_component
             .as_ref()
-            .and_then(|mc| mc.code.as_ref())
-            .map(|c| {
-                let suffix = c.rsplit('.').next().unwrap_or(c);
-                matches!(suffix, "system" | "procedure-pack" | "spp-procedure-pack")
-            })
+            .and_then(|mc| mc.criterion.as_ref())
+            .map(|c| c.eq_ignore_ascii_case("SPP"))
             .unwrap_or(false)
     }
 

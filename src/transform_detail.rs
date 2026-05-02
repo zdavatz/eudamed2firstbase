@@ -94,8 +94,11 @@ pub fn transform_detail_device(
     // --- Reusability ---
     let reusability = build_reusability(device);
 
-    // SPP detection: criterion="SPP" (FLD-UDID-261) → systemOrProcedurePackTypeCode
-    // criterion="STANDARD" (FLD-UDID-12) → multiComponentDeviceTypeCode (normal device)
+    // Real SPP (MDR Art. 22(1)/(3)) vs MDR device with multi-component shape
+    // (MDR Art. 22(4), "Procedure pack which is a device in itself"):
+    //   - criterion="SPP"      (FLD-UDID-261) → systemOrProcedurePackTypeCode
+    //   - criterion="STANDARD" (FLD-UDID-12)  → multiComponentDeviceTypeCode
+    // Discriminator is `multiComponent.criterion`, not `code` — see issue #31.
     let is_system_or_pack = basic_udi.map(|b| b.is_spp()).unwrap_or(false);
 
     // --- Contacts ---
