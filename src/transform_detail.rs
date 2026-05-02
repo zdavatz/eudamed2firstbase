@@ -101,16 +101,25 @@ pub fn transform_detail_device(
     // --- Contacts ---
     let mut contacts = build_contacts(device);
 
-    // SPP devices use EPP contact type, non-SPP use EMA
-    // 097.009/097.026: EMA/EPP contact with SRN is mandatory
-    let contact_type_code = if is_system_or_pack { "EPP" } else { "EMA" };
-    let has_contact = contacts
-        .iter()
-        .any(|c| c.contact_type.value == contact_type_code);
+    // 097.009/097.026: EMA/EPP contact with SRN is mandatory.
+    // ContactTypeCode is bound to the SRN role, NOT to the device's SPP criterion:
+    //   - SRN prefix `-PR-` (SPP Producer) → EPP
+    //   - SRN prefix `-MF-` (Manufacturer)  → EMA  (also for `-MF-` actors that
+    //     happen to register an SPP device — `multiComponent.criterion` describes
+    //     the device, not the actor's role)
+    // See GitHub issue #30.
     let mfr_srn_val = basic_udi
         .and_then(|b| b.manufacturer.as_ref())
         .and_then(|m| m.srn.clone())
         .unwrap_or_else(|| "XX-MF-000000000".to_string());
+    let contact_type_code = if mfr_srn_val.split('-').nth(1) == Some("PR") {
+        "EPP"
+    } else {
+        "EMA"
+    };
+    let has_contact = contacts
+        .iter()
+        .any(|c| c.contact_type.value == contact_type_code);
     if !has_contact {
         let mfr_name = basic_udi
             .and_then(|b| b.manufacturer.as_ref())
