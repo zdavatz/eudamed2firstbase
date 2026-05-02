@@ -673,29 +673,29 @@ impl eframe::App for App {
                         ui.add_space(4.0);
                         let can_start = !self.running && !self.settings.srns.trim().is_empty();
                         let target_name = match self.settings.push_target { PushTarget::Firstbase => "firstbase", PushTarget::Swissdamed => "Swissdamed" };
-                        let btn = if self.settings.dry_run { "Download & Convert".to_string() } else { format!("DL+Push {}", target_name) };
-                        if ui.add_enabled(can_start, egui::Button::new(&btn).min_size(egui::vec2(120.0, 28.0))).clicked() {
+                        let btn = if self.settings.dry_run { "0: Download & Convert".to_string() } else { format!("0: DL+Push {}", target_name) };
+                        if ui.add_enabled(can_start, egui::Button::new(&btn).min_size(egui::vec2(140.0, 28.0))).clicked() {
                             self.pipeline_mode = 0;
                             self.start_pipeline(ctx.clone());
                         }
-                        if ui.add_enabled(can_start, egui::Button::new("Convert & Push SRNs").min_size(egui::vec2(140.0, 28.0)))
+                        if ui.add_enabled(can_start, egui::Button::new("2: Convert & Push SRNs").min_size(egui::vec2(160.0, 28.0)))
                             .on_hover_text("No download — find SRN products, convert & push").clicked() {
                             self.pipeline_mode = 2;
                             self.start_pipeline(ctx.clone());
                         }
                         let can_repush = !self.running;
-                        if ui.add_enabled(can_repush, egui::Button::new("Repush failed").min_size(egui::vec2(120.0, 28.0)))
+                        if ui.add_enabled(can_repush, egui::Button::new("3: Repush failed").min_size(egui::vec2(140.0, 28.0)))
                             .on_hover_text("Push remaining files in firstbase_json/ (rejected from last push)").clicked() {
                             self.pipeline_mode = 3;
                             self.start_pipeline(ctx.clone());
                         }
                         let can_repush_srn = !self.running && !self.settings.srns.trim().is_empty();
-                        if ui.add_enabled(can_repush_srn, egui::Button::new("Repush SRN").min_size(egui::vec2(120.0, 28.0)))
+                        if ui.add_enabled(can_repush_srn, egui::Button::new("4: Repush SRN").min_size(egui::vec2(140.0, 28.0)))
                             .on_hover_text("Restore files for the given SRN(s) from processed/ and push (bypasses unchanged-skip)").clicked() {
                             self.pipeline_mode = 4;
                             self.start_pipeline(ctx.clone());
                         }
-                        if ui.add_enabled(can_repush_srn, egui::Button::new("Reconvert + Repush SRN").min_size(egui::vec2(180.0, 28.0)))
+                        if ui.add_enabled(can_repush_srn, egui::Button::new("5: Reconvert + Repush SRN").min_size(egui::vec2(200.0, 28.0)))
                             .on_hover_text("Re-run the converter for the given SRN(s) (picks up new GS1 fields, e.g. DescriptionShort), then push").clicked() {
                             self.pipeline_mode = 5;
                             self.start_pipeline(ctx.clone());
@@ -928,16 +928,16 @@ impl eframe::App for App {
             let button_text = if self.running {
                 "Running...".to_string()
             } else if self.settings.dry_run {
-                "Download & Convert".to_string()
+                "0: Download & Convert".to_string()
             } else {
-                format!("Download, Convert & Push to {}", target_name)
+                format!("0: Download, Convert & Push to {}", target_name)
             };
 
             let can_start = !self.running && !self.settings.srns.trim().is_empty();
 
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(can_start, egui::Button::new(&button_text).min_size(egui::vec2(200.0, 32.0)))
+                    .add_enabled(can_start, egui::Button::new(&button_text).min_size(egui::vec2(220.0, 32.0)))
                     .clicked()
                 {
                     self.pipeline_mode = 0;
@@ -945,12 +945,12 @@ impl eframe::App for App {
                 }
 
                 let convert_text = if self.settings.dry_run {
-                    "Convert only (all)".to_string()
+                    "1: Convert only (all)".to_string()
                 } else {
-                    format!("Convert & Push (all)")
+                    "1: Convert & Push (all)".to_string()
                 };
                 if ui
-                    .add_enabled(can_start, egui::Button::new(&convert_text).min_size(egui::vec2(150.0, 32.0)))
+                    .add_enabled(can_start, egui::Button::new(&convert_text).min_size(egui::vec2(170.0, 32.0)))
                     .on_hover_text("Skip download, convert+push all existing files")
                     .clicked()
                 {
@@ -959,12 +959,12 @@ impl eframe::App for App {
                 }
 
                 let srn_text = if self.settings.dry_run {
-                    "Convert SRNs only".to_string()
+                    "2: Convert SRNs only".to_string()
                 } else {
-                    format!("Convert & Push SRNs")
+                    "2: Convert & Push SRNs".to_string()
                 };
                 if ui
-                    .add_enabled(can_start, egui::Button::new(&srn_text).min_size(egui::vec2(150.0, 32.0)))
+                    .add_enabled(can_start, egui::Button::new(&srn_text).min_size(egui::vec2(170.0, 32.0)))
                     .on_hover_text("No download — find SRN products in existing files, convert & push")
                     .clicked()
                 {
@@ -974,7 +974,7 @@ impl eframe::App for App {
 
                 let can_repush_srn = !self.running && !self.settings.srns.trim().is_empty();
                 if ui
-                    .add_enabled(can_repush_srn, egui::Button::new("Repush SRN").min_size(egui::vec2(130.0, 32.0)))
+                    .add_enabled(can_repush_srn, egui::Button::new("4: Repush SRN").min_size(egui::vec2(150.0, 32.0)))
                     .on_hover_text("Restore files for the given SRN(s) from processed/ and push (bypasses unchanged-skip)")
                     .clicked()
                 {
@@ -982,7 +982,7 @@ impl eframe::App for App {
                     self.start_pipeline(ctx.clone());
                 }
                 if ui
-                    .add_enabled(can_repush_srn, egui::Button::new("Reconvert + Repush SRN").min_size(egui::vec2(190.0, 32.0)))
+                    .add_enabled(can_repush_srn, egui::Button::new("5: Reconvert + Repush SRN").min_size(egui::vec2(210.0, 32.0)))
                     .on_hover_text("Re-run the converter for the given SRN(s) (picks up new GS1 fields, e.g. DescriptionShort), then push")
                     .clicked()
                 {
