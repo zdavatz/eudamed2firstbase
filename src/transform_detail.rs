@@ -507,22 +507,30 @@ pub fn transform_detail_device(
                 production_identifier_types: production_ids,
                 annex_xvi_types: Vec::new(),
                 special_device_type,
-                // 097.050: SPP uses SystemOrProcedurePackTypeCode, NOT MultiComponentDeviceTypeCode
+                // 097.050: SPP devices use SystemOrProcedurePackTypeCode and MUST NOT
+                // emit MultiComponentDeviceTypeCode (and vice versa). The two GDSN code
+                // lists are disjoint at the value level:
+                //   - MultiComponentDeviceTypeCode:  DEVICE, PROCEDURE_PACK, SYSTEM, KIT
+                //   - SystemOrProcedurePackTypeCode: PROCEDURE_PACK, SYSTEM (only!)
+                // Issue #37: prior versions reused the same mapping for both branches,
+                // so an SPP device with an unmapped multiComponent.code would emit
+                // "DEVICE" to systemOrProcedurePackTypeCode → G541.
                 multi_component_type: if is_system_or_pack {
                     None
                 } else {
                     Some(CodeValue {
                         value: basic_udi
-                            .and_then(|b| b.multi_component_code())
+                            .and_then(|b| b.multi_component_raw_code())
+                            .map(|c| mappings::multi_component_to_gs1(&c).to_string())
                             .unwrap_or_else(|| "DEVICE".to_string()),
                     })
                 },
-                // SystemOrProcedurePackTypeCode + MedicalPurposeDescription: set for SPP devices
                 system_or_procedure_pack_type: if is_system_or_pack {
                     Some(CodeValue {
                         value: basic_udi
-                            .and_then(|b| b.multi_component_code())
-                            .unwrap_or_else(|| "DEVICE".to_string()),
+                            .and_then(|b| b.multi_component_raw_code())
+                            .map(|c| mappings::spp_type_to_gs1(&c).to_string())
+                            .unwrap_or_else(|| "PROCEDURE_PACK".to_string()),
                     })
                 } else {
                     None

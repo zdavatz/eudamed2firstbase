@@ -611,19 +611,11 @@ pub fn cmr_type_to_gs1(code: &str) -> String {
     format!("CMR_{}", suffix.to_uppercase())
 }
 
-/// Multi-component device type refdata code → GS1 code
-/// e.g. "refdata.multi-component.system" → "SYSTEM"
-///
-/// Per GS1 UDI Connector Profile Apr 2026 V1.1 (UDID_CodeLists tab), the two
-/// target attributes accept different value sets:
-///   - MultiComponentDeviceTypeCode:  DEVICE, PROCEDURE_PACK, SYSTEM, KIT
-///   - SystemOrProcedurePackTypeCode: PROCEDURE_PACK, SYSTEM (no DEVICE!)
-///
-/// The caller picks the attribute via `is_spp` (multiComponent.criterion=SPP).
-/// For SPP devices, this function MUST return only SYSTEM or PROCEDURE_PACK —
-/// otherwise GS1 rejects with G541 (invalid value for the code list).
-/// See issue #34: 49 devices with `multiComponent.code=refdata.multi-component.spp-system`
-/// were falling through to "DEVICE" via the wildcard arm.
+/// Multi-component refdata code → `MultiComponentDeviceTypeCode` (non-SPP path).
+/// Used when `multiComponent.criterion=STANDARD` (FLD-UDID-12, MDR Art. 22(4):
+/// "Procedure pack which is a device in itself"). The GDSN code list for
+/// `MultiComponentDeviceTypeCode` per GS1 UDI Connector Profile Apr 2026 V1.1
+/// is: DEVICE, PROCEDURE_PACK, SYSTEM, KIT. Issue #31 / #34.
 pub fn multi_component_to_gs1(code: &str) -> &str {
     let suffix = code.rsplit('.').next().unwrap_or(code);
     match suffix {
@@ -631,6 +623,32 @@ pub fn multi_component_to_gs1(code: &str) -> &str {
         "procedure-pack" | "spp-procedure-pack" => "PROCEDURE_PACK",
         "kit" => "KIT",
         _ => "DEVICE",
+    }
+}
+
+/// Multi-component refdata code → `SystemOrProcedurePackTypeCode` (SPP path).
+/// Used when `multiComponent.criterion=SPP` (FLD-UDID-261, MDR Art. 22(1)/(3)).
+/// The GDSN code list for `SystemOrProcedurePackTypeCode` per GS1 UDI Connector
+/// Profile Apr 2026 V1.1 is **only** PROCEDURE_PACK and SYSTEM — DEVICE and KIT
+/// are NOT valid in this attribute. Defaulting to DEVICE here used to trigger
+/// G541 even after issue #34 (the wildcard arm). Now we default to
+/// PROCEDURE_PACK (the conservative MDR Art. 22 fallback) and emit a warning,
+/// because every SPP device should resolve to SYSTEM or PROCEDURE_PACK.
+/// Issue #37.
+pub fn spp_type_to_gs1(code: &str) -> &str {
+    let suffix = code.rsplit('.').next().unwrap_or(code);
+    match suffix {
+        "system" | "spp-system" => "SYSTEM",
+        "procedure-pack" | "spp-procedure-pack" => "PROCEDURE_PACK",
+        other => {
+            eprintln!(
+                "Warning: unexpected SPP multiComponent code suffix '{}' \
+                 — defaulting to PROCEDURE_PACK (only SYSTEM/PROCEDURE_PACK \
+                 valid for systemOrProcedurePackTypeCode per GS1 code list)",
+                other
+            );
+            "PROCEDURE_PACK"
+        }
     }
 }
 

@@ -595,13 +595,23 @@ pub struct CertificateNotifiedBody {
 }
 
 impl BasicUdiDiData {
-    /// Extract multiComponent code suffix → GS1 code
+    /// Extract multiComponent code suffix → GS1 `MultiComponentDeviceTypeCode`.
+    /// Routes through `mappings::multi_component_to_gs1` (non-SPP code list).
+    /// For SPP devices use `multi_component_raw_code()` + `mappings::spp_type_to_gs1`
+    /// to ensure DEVICE/KIT (invalid in SPP context) cannot leak through. Issue #37.
     pub fn multi_component_code(&self) -> Option<String> {
         self.multi_component
             .as_ref()?
             .code
             .as_ref()
             .map(|c| crate::mappings::multi_component_to_gs1(c).to_string())
+    }
+
+    /// Raw EUDAMED multiComponent code (e.g. `refdata.multi-component.spp-system`).
+    /// Caller decides which GDSN code list to map into via `multi_component_to_gs1`
+    /// (MultiComponent path) or `spp_type_to_gs1` (SPP path).
+    pub fn multi_component_raw_code(&self) -> Option<String> {
+        self.multi_component.as_ref()?.code.clone()
     }
 
     /// Check if device is a real System-or-Procedure-Pack (MDR Art. 22(1)/(3))
