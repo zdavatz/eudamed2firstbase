@@ -155,6 +155,7 @@ After pairing, the session persists in `whatsapp/auth/` (gitignored). Subsequent
 |---|---|---|
 | Update monitoring for Basic UDI-DI &amp; UDI-DI entries | [`docs/version-tracking.html`](docs/version-tracking.html) | [`docs/version-tracking.pdf`](docs/version-tracking.pdf) |
 | Legacy MDD/AIMDD/IVDD `globalModelDescription` &amp; FLD-UDID-22 — status quo + Umstellungsplan, sobald GS1-Rule 097.116 auf MDR/IVDR-only verfeinert ist | [`docs/legacy-global-model.html`](docs/legacy-global-model.html) | [`docs/legacy-global-model.pdf`](docs/legacy-global-model.pdf) |
+| GUI-Modi 0–5 — Anleitung: was jeder Knopf tut, wann er der richtige ist, Stolperfallen + FAQ ([Issue #32](https://github.com/zdavatz/eudamed2firstbase/issues/32)) | [`docs/gui-modes.html`](docs/gui-modes.html) | [`docs/gui-modes.pdf`](docs/gui-modes.pdf) |
 
 Regenerate the PDF after editing the HTML:
 
