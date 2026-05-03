@@ -401,7 +401,7 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
         "CST42" => "BASE_CURVE",
         "CST43" => "OPTICAL_ZONE_DIAMETER",
         "CST44" => "POWER_PROFILE",
-        "CST45" => "DEVICE_SIZE_TEXT_SPECIFY", // COLOUR not in GS1 code list
+        "CST45" => "COLOUR", // BMS 3.1.35: COLOUR is now in GS1 clinicalSizeTypeCode (issue #39)
         "CST46" => "EDGE_LIFT",
         "CST47" => "PRISM",
         "CST48" => "CEL",
@@ -412,7 +412,7 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
         "CST53" => "TRUNCATION",
         "CST54" => "TRUNCATION_AXIS",
         "CST55" => "EDGE_RADIUS",
-        "CST56" => "WEIGHT", // BODY_WEIGHT_KG not in GS1 code list, use WEIGHT
+        "CST56" => "BODY_WEIGHT_KG", // BMS 3.1.35: BODY_WEIGHT_KG is now in GS1 clinicalSizeTypeCode (issue #39)
         "CST57" => "BACK_CYLINDER_POWER",
         "CST58" => "BACK_CYLINDER_AXIS",
         "CST59" => "OPTICAL_ZONE_DIAMETER_BACK",
