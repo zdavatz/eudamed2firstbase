@@ -971,19 +971,39 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
                 other => other,
             };
 
-            // Build measurement values
-            let unit_code = cs
+            // BMS 3.1.35: EUDAMED reuses metricOfMeasurement for characteristic
+            // descriptors (MU137..MU176, e.g. MINI/SMALL/ACTIVE/STRAIGHT). When
+            // the MU code is in that range, route it to ClinicalSizeCharacteristicsCode
+            // and skip the value+unit slot entirely (no numeric value present).
+            // Issue #39 / Maik 2026-05-03 22:00.
+            let raw_mu_code = cs
                 .metric_of_measurement
                 .as_ref()
                 .and_then(|m| m.code.as_ref())
-                .map(|c| {
-                    let mu_code = extract_mu_code(c);
-                    mappings::measurement_unit_to_gs1(&mu_code).to_string()
-                })
-                .unwrap_or_default();
+                .map(|c| extract_mu_code(c));
 
-            // Skip clinical sizes with unmappable measurement units (e.g. MU999 "Other")
-            if unit_code.is_empty() && cs.value.is_some() {
+            let characteristic_codes = match raw_mu_code
+                .as_deref()
+                .and_then(mappings::mu_code_to_characteristic_code)
+            {
+                Some(code) => vec![CodeValue {
+                    value: code.to_string(),
+                }],
+                None => Vec::new(),
+            };
+
+            let unit_code = if characteristic_codes.is_empty() {
+                raw_mu_code
+                    .as_deref()
+                    .map(|mu| mappings::measurement_unit_to_gs1(mu).to_string())
+                    .unwrap_or_default()
+            } else {
+                String::new()
+            };
+
+            // Skip clinical sizes with unmappable measurement units (e.g. MU999 "Other"),
+            // unless we have a characteristic code (in which case there's no value/unit anyway)
+            if unit_code.is_empty() && cs.value.is_some() && characteristic_codes.is_empty() {
                 return None;
             }
 
@@ -1020,19 +1040,8 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
                 Vec::new()
             };
 
-            // BMS 3.1.35: ClinicalSizeCharacteristicsCode populated when the
-            // text matches a known characteristic value (mini/small/large/active/
-            // passive/straight/angled/...). Issue #39.
-            let characteristic_codes = cs
-                .text
-                .as_deref()
-                .and_then(mappings::text_to_characteristic_code)
-                .map(|code| {
-                    vec![CodeValue {
-                        value: code.to_string(),
-                    }]
-                })
-                .unwrap_or_default();
+            // (characteristic_codes already computed above, alongside unit_code,
+            // because they're mutually exclusive — same EUDAMED slot)
 
             Some(ClinicalSizeOutput {
                 descriptions,

@@ -841,11 +841,22 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
             let gs1_type = mappings::clinical_size_type_to_gs1(size_type_eu);
             let xsi_type = size.size_type.as_deref().unwrap_or("");
 
-            let unit = size
-                .value_unit
-                .as_deref()
-                .map(mappings::measurement_unit_to_gs1)
-                .unwrap_or("");
+            // BMS 3.1.35: a value_unit in MU137..MU176 is a characteristic
+            // descriptor (MINI/SMALL/ACTIVE/STRAIGHT/...), not a real unit.
+            // Issue #39 / Maik 2026-05-03 22:00.
+            let raw_mu = size.value_unit.as_deref().unwrap_or("");
+            let characteristic_code = mappings::mu_code_to_characteristic_code(raw_mu);
+            let unit = if characteristic_code.is_some() {
+                ""
+            } else {
+                mappings::measurement_unit_to_gs1(raw_mu)
+            };
+            let characteristic_codes = match characteristic_code {
+                Some(code) => vec![CodeValue {
+                    value: code.to_string(),
+                }],
+                None => Vec::new(),
+            };
 
             match xsi_type {
                 "RangeClinicalSizeType" => {
@@ -876,7 +887,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                             value: "RANGE".to_string(),
                         },
                         text: None,
-                        characteristic_codes: Vec::new(),
+                        characteristic_codes: characteristic_codes.clone(),
                     }
                 }
                 "TextClinicalSizeType" => {
@@ -889,16 +900,6 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                     } else {
                         Vec::new()
                     };
-                    let characteristic_codes = size
-                        .text
-                        .as_deref()
-                        .and_then(crate::mappings::text_to_characteristic_code)
-                        .map(|c| {
-                            vec![CodeValue {
-                                value: c.to_string(),
-                            }]
-                        })
-                        .unwrap_or_default();
                     ClinicalSizeOutput {
                         descriptions,
                         type_code: CodeValue {
@@ -910,7 +911,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                             value: "TEXT".to_string(),
                         },
                         text: size.text.clone(),
-                        characteristic_codes,
+                        characteristic_codes: characteristic_codes.clone(),
                     }
                 }
                 "ValueClinicalSizeType" | _ => {
@@ -933,7 +934,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                             value: "VALUE".to_string(),
                         },
                         text: None,
-                        characteristic_codes: Vec::new(),
+                        characteristic_codes: characteristic_codes.clone(),
                     }
                 }
             }

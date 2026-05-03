@@ -428,65 +428,60 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
     }
 }
 
-/// EUDAMED clinicalSize.text → GS1 ClinicalSizeCharacteristicsCode (BMS 3.1.35).
+/// EUDAMED MU137..MU176 → GS1 ClinicalSizeCharacteristicsCode (BMS 3.1.35).
 ///
-/// 35 allowed values per GS1 UDI Connector Profile Apr 2026 V1.1:
-/// PASSIVE, ACTIVE, STRAIGHT, ANGLED, J-TIP, SOFT_STRAIGHT, STIFF_STRAIGHT,
-/// SOFT_ANGLED, STIFF_ANGLED, STIFF_J-TIP, MINI, SACRAL, MULTISHAPE, HEEL,
-/// CONTOUR, SQUARE, RECTANGULAR, BELT, CONVEX, STANDARD, CONVEX_LIGHT,
-/// CONCAVE, FLAT, EXTRA_SMALL, SMALL, MEDIUM, LARGE, EXTRA_LARGE, NEONATE,
-/// INFANT, CHILD, ADULT, LEFT, RIGHT, CURVED.
+/// EUDAMED reuses its `metricOfMeasurement` slot (UOM list) for characteristic
+/// descriptors: MU01..MU136 are real units (mm, kg, °C, ...), but MU137..MU176
+/// encode shape/orientation/size descriptors that GS1 separates into the
+/// `ClinicalSizeCharacteristicsCode` attribute. Mapping per GS1 UDI Connector
+/// Profile Apr 2026 V1.1 (UDID_CodeLists tab, ClinicalSizeCharacteristicsCode
+/// list — 35 entries; MU155, MU171, MU174 are gaps).
 ///
-/// EUDAMED encodes characteristic descriptors as free-text in `clinicalSize.text`
-/// when `precision="text"`. Map common variants (case-insensitive, allowing
-/// abbreviations like S/M/L/XS/XL) to the GS1 code list. Returns None when
-/// no characteristic match is found — caller keeps the text in
-/// ClinicalSizeValueText as fallback.
+/// When this returns Some, the caller emits the value as
+/// `ClinicalSizeCharacteristicsCode` and skips the numeric value+unit slot
+/// (the EUDAMED record has no numeric value in this case). When it returns
+/// None, the MU code is a regular unit — `measurement_unit_to_gs1` handles it.
 ///
-/// Issue #39 (BMS 3.1.35).
-pub fn text_to_characteristic_code(text: &str) -> Option<&'static str> {
-    let t = text.trim().to_ascii_lowercase();
-    Some(match t.as_str() {
-        // Size abbreviations + full forms
-        "xs" | "extra small" | "extra_small" | "extra-small" => "EXTRA_SMALL",
-        "s" | "small" => "SMALL",
-        "m" | "medium" => "MEDIUM",
-        "l" | "large" => "LARGE",
-        "xl" | "extra large" | "extra_large" | "extra-large" => "EXTRA_LARGE",
-        "mini" => "MINI",
-        // Patient age groups
-        "neonate" => "NEONATE",
-        "infant" => "INFANT",
-        "child" => "CHILD",
-        "adult" => "ADULT",
-        // Body side
-        "left" => "LEFT",
-        "right" => "RIGHT",
-        // Tip / orientation
-        "active" => "ACTIVE",
-        "passive" => "PASSIVE",
-        "straight" => "STRAIGHT",
-        "angled" => "ANGLED",
-        "curved" => "CURVED",
-        "j-tip" | "j tip" | "jtip" => "J-TIP",
-        "soft straight" | "soft_straight" => "SOFT_STRAIGHT",
-        "stiff straight" | "stiff_straight" => "STIFF_STRAIGHT",
-        "soft angled" | "soft_angled" => "SOFT_ANGLED",
-        "stiff angled" | "stiff_angled" => "STIFF_ANGLED",
-        "stiff j-tip" | "stiff_j-tip" | "stiff jtip" => "STIFF_J-TIP",
-        // Stoma / appliance shapes
-        "sacral" => "SACRAL",
-        "multishape" => "MULTISHAPE",
-        "heel" => "HEEL",
-        "contour" => "CONTOUR",
-        "square" => "SQUARE",
-        "rectangular" => "RECTANGULAR",
-        "belt" => "BELT",
-        "convex" => "CONVEX",
-        "convex light" | "convex_light" => "CONVEX_LIGHT",
-        "concave" => "CONCAVE",
-        "flat" => "FLAT",
-        "standard" => "STANDARD",
+/// Issue #39 (BMS 3.1.35); fix per Maik 2026-05-03 22:00 — initial v1.0.51
+/// implementation wrongly read free-text from `clinicalSize.text`, but the
+/// actual source is the MU code on `clinicalSize.metricOfMeasurement.code`.
+pub fn mu_code_to_characteristic_code(mu_code: &str) -> Option<&'static str> {
+    Some(match mu_code {
+        "MU137" => "PASSIVE",
+        "MU138" => "ACTIVE",
+        "MU139" => "STRAIGHT",
+        "MU140" => "ANGLED",
+        "MU141" => "J-TIP",
+        "MU142" => "SOFT_STRAIGHT",
+        "MU143" => "STIFF_STRAIGHT",
+        "MU144" => "SOFT_ANGLED",
+        "MU145" => "STIFF_ANGLED",
+        "MU146" => "STIFF_J-TIP",
+        "MU147" => "MINI",
+        "MU148" => "SACRAL",
+        "MU149" => "MULTISHAPE",
+        "MU150" => "HEEL",
+        "MU151" => "CONTOUR",
+        "MU152" => "SQUARE",
+        "MU153" => "RECTANGULAR",
+        "MU154" => "BELT",
+        "MU156" => "CONVEX",
+        "MU157" => "CONVEX_LIGHT",
+        "MU158" => "CONCAVE",
+        "MU159" => "FLAT",
+        "MU160" => "EXTRA_SMALL",
+        "MU161" => "SMALL",
+        "MU162" => "MEDIUM",
+        "MU163" => "LARGE",
+        "MU164" => "EXTRA_LARGE",
+        "MU165" => "NEONATE",
+        "MU166" => "INFANT",
+        "MU167" => "CHILD",
+        "MU168" => "ADULT",
+        "MU172" => "LEFT",
+        "MU173" => "RIGHT",
+        "MU175" => "CURVED",
+        "MU176" => "STANDARD",
         _ => return None,
     })
 }
@@ -775,31 +770,39 @@ mod tests {
 
     #[test]
     fn characteristic_code_size_abbrevs() {
-        assert_eq!(text_to_characteristic_code("S"), Some("SMALL"));
-        assert_eq!(text_to_characteristic_code("m"), Some("MEDIUM"));
-        assert_eq!(text_to_characteristic_code("L"), Some("LARGE"));
-        assert_eq!(text_to_characteristic_code("XS"), Some("EXTRA_SMALL"));
-        assert_eq!(text_to_characteristic_code("XL"), Some("EXTRA_LARGE"));
-        assert_eq!(text_to_characteristic_code("Mini"), Some("MINI"));
-        assert_eq!(text_to_characteristic_code("MINI"), Some("MINI"));
+        assert_eq!(mu_code_to_characteristic_code("MU160"), Some("EXTRA_SMALL"));
+        assert_eq!(mu_code_to_characteristic_code("MU161"), Some("SMALL"));
+        assert_eq!(mu_code_to_characteristic_code("MU162"), Some("MEDIUM"));
+        assert_eq!(mu_code_to_characteristic_code("MU163"), Some("LARGE"));
+        assert_eq!(mu_code_to_characteristic_code("MU164"), Some("EXTRA_LARGE"));
+        assert_eq!(mu_code_to_characteristic_code("MU147"), Some("MINI"));
     }
 
     #[test]
     fn characteristic_code_orientations() {
-        assert_eq!(text_to_characteristic_code("active"), Some("ACTIVE"));
-        assert_eq!(text_to_characteristic_code("Passive"), Some("PASSIVE"));
-        assert_eq!(text_to_characteristic_code("j-tip"), Some("J-TIP"));
+        assert_eq!(mu_code_to_characteristic_code("MU137"), Some("PASSIVE"));
+        assert_eq!(mu_code_to_characteristic_code("MU138"), Some("ACTIVE"));
+        assert_eq!(mu_code_to_characteristic_code("MU141"), Some("J-TIP"));
         assert_eq!(
-            text_to_characteristic_code("Stiff Straight"),
+            mu_code_to_characteristic_code("MU143"),
             Some("STIFF_STRAIGHT")
         );
-        assert_eq!(text_to_characteristic_code("left"), Some("LEFT"));
+        assert_eq!(mu_code_to_characteristic_code("MU172"), Some("LEFT"));
     }
 
     #[test]
-    fn characteristic_code_unknown_returns_none() {
-        assert_eq!(text_to_characteristic_code("17.5mm"), None);
-        assert_eq!(text_to_characteristic_code("foo bar"), None);
-        assert_eq!(text_to_characteristic_code(""), None);
+    fn characteristic_code_real_units_return_none() {
+        // MU01..MU136 are real measurement units, not characteristics
+        assert_eq!(mu_code_to_characteristic_code("MU01"), None); // %
+        assert_eq!(mu_code_to_characteristic_code("MU24"), None); // gram
+        assert_eq!(mu_code_to_characteristic_code("MU50"), None); // mm
+        assert_eq!(mu_code_to_characteristic_code("MU136"), None); // mg/dL
+                                                                   // Gaps in the characteristic block also return None
+        assert_eq!(mu_code_to_characteristic_code("MU155"), None);
+        assert_eq!(mu_code_to_characteristic_code("MU171"), None);
+        assert_eq!(mu_code_to_characteristic_code("MU174"), None);
+        // Bogus inputs
+        assert_eq!(mu_code_to_characteristic_code(""), None);
+        assert_eq!(mu_code_to_characteristic_code("foo"), None);
     }
 }
