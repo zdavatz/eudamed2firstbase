@@ -451,14 +451,23 @@ pub fn transform_detail_device(
                         basic_udi.and_then(|b| b.implantable).unwrap_or(false),
                     ))
                 },
-                // 097.015: required when implantable=true and risk class=EU_CLASS_IIB
+                // 097.015 / FLD-UDID-265: required when implantable=true and risk
+                // class=EU_CLASS_IIB. The value is the EUDAMED `sutures` boolean
+                // (MDR Art. 18(3) exempt categories: sutures, staples, dental
+                // fillings, dental braces, tooth crowns, screws, wedges, plates,
+                // wires, pins, clips and connectors). Issue #38: previously
+                // hardcoded to `false` regardless of EUDAMED's value, which
+                // wrongly classified ~173 NovaSpine cervical-plate devices
+                // (sutures=true) as non-exempt, triggering 097.041 (Class IIB
+                // implantable without certificate) — these devices are legally
+                // exempt and don't need a certificate per Art. 18(3).
                 is_exempt_from_implant_obligations: {
                     if is_system_or_pack {
                         None
                     } else {
                         let implantable = basic_udi.and_then(|b| b.implantable).unwrap_or(false);
                         if implantable && risk_class_gs1 == "EU_CLASS_IIB" {
-                            Some(false)
+                            Some(basic_udi.and_then(|b| b.sutures).unwrap_or(false))
                         } else {
                             None
                         }

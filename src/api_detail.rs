@@ -519,6 +519,12 @@ pub struct BasicUdiDiData {
     pub uuid: Option<String>,
     pub active: Option<bool>,
     pub implantable: Option<bool>,
+    /// FLD-UDID-265: "Is it Device a suture, staple, dental filling,
+    /// dental brace, tooth crown, screw, wedge, plate, wire, pin, clip
+    /// or connector?" — i.e. exempt from MDR Art. 18 implant-card
+    /// obligations. Conditionally mandatory in EUDAMED only for IIB
+    /// implantables. Maps to GDSN `isDeviceExemptFromImplantObligations`.
+    pub sutures: Option<bool>,
     pub measuring_function: Option<bool>,
     pub reusable: Option<bool>,
     pub medicinal_product: Option<bool>,
