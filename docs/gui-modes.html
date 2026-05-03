@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>eudamed2firstbase &mdash; GUI-Modi 0&ndash;5</title>
+<style>
+  @page { size: A4; margin: 18mm 18mm 22mm 18mm;
+          @bottom-right { content: counter(page) " / " counter(pages); font-size: 9pt; color: #666; }
+          @bottom-left  { content: "© Zeno Davatz, ywesee GmbH — eudamed2firstbase GUI-Modi"; font-size: 9pt; color: #666; }
+  }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+         font-size: 10.5pt; line-height: 1.45; color: #111; max-width: 180mm; }
+  h1 { font-size: 22pt; margin: 0 0 4pt; }
+  h2 { font-size: 14pt; margin-top: 18pt; padding-top: 6pt;
+       border-top: 2px solid #0050a0; color: #0050a0; }
+  h3 { font-size: 11.5pt; margin-top: 14pt; color: #0050a0; }
+  .lead { font-size: 11pt; color: #444; margin: 0 0 14pt; }
+  .meta { font-size: 9pt; color: #666; margin-bottom: 18pt; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0 12pt;
+          font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #d0d0d0; padding: 4pt 6pt; vertical-align: top; text-align: left; }
+  th { background: #f0f4fa; font-weight: 600; }
+  code, pre, .mono { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #f5f5f5; padding: 1pt 3pt; border-radius: 2pt; font-size: 9.5pt; }
+  pre { background: #f8f8f8; border: 1px solid #e0e0e0; padding: 8pt; border-radius: 3pt;
+        font-size: 8.5pt; line-height: 1.35; overflow-x: auto; page-break-inside: avoid; }
+  ul.tight { margin: 4pt 0 8pt 18pt; }
+  ul.tight li { margin: 2pt 0; }
+  .callout { border-left: 3px solid #0050a0; background: #f5f9ff;
+             padding: 6pt 10pt; margin: 8pt 0; font-size: 10pt; }
+  .warn    { border-left: 3px solid #c9560f; background: #fff7f0;
+             padding: 6pt 10pt; margin: 8pt 0; font-size: 10pt; }
+  .mode-card { border: 1px solid #d0d0d0; border-radius: 4pt; padding: 10pt 14pt;
+               margin: 10pt 0; page-break-inside: avoid; }
+  .mode-card h3 { margin-top: 0; color: #0050a0; }
+  .mode-num { display: inline-block; width: 24pt; height: 24pt; background: #0050a0;
+              color: white; border-radius: 12pt; text-align: center; line-height: 24pt;
+              font-weight: 600; font-size: 12pt; margin-right: 8pt; vertical-align: middle; }
+  .mode-card .label { font-size: 9pt; color: #666; text-transform: uppercase;
+                      letter-spacing: 0.5pt; margin-top: 8pt; margin-bottom: 2pt; }
+  .pill { display: inline-block; padding: 1pt 6pt; border-radius: 8pt;
+          font-size: 8.5pt; font-weight: 600; }
+  .pill.dl   { background: #ffe6cc; color: #8a4500; }
+  .pill.cv   { background: #e3f0ff; color: #0050a0; }
+  .pill.push { background: #d6f0d6; color: #1e6b1e; }
+  .pill.skip { background: #f0e0f0; color: #6b1e6b; }
+  hr { border: 0; border-top: 1px solid #ddd; margin: 14pt 0; }
+  .signature { margin-top: 28pt; padding-top: 12pt; border-top: 1px solid #888;
+               font-size: 10pt; color: #333; }
+  .signature .name { font-weight: 600; font-size: 11pt; color: #0050a0; }
+  .signature .org  { color: #555; }
+</style>
+</head>
+<body>
+
+<h1>eudamed2firstbase &mdash; GUI-Modi 0&ndash;5</h1>
+<p class="lead">Was jeder Knopf in der GUI tut, wann er der richtige ist und welche
+Stolperfallen er hat.</p>
+<p class="meta">Document version: 2026-05-03 &nbsp;·&nbsp; Tool version: v1.0.47+
+&nbsp;·&nbsp; Source of truth: <code>src/gui.rs</code>, <code>src/main.rs</code>,
+<code>src/download.rs</code></p>
+
+<h2>1. Übersicht</h2>
+<p>Die GUI hat sechs nummerierte Knöpfe (Mode 0&ndash;5). Jede Pipeline schreibt ihren Modus
+in die erste Logzeile (<code>eudamed2firstbase v&lt;version&gt; &mdash; mode: &lt;name&gt;</code>)
+und in die <code>version</code>-Spalte der <code>push_session</code>-Tabelle, damit man
+hinterher genau weiss, welcher Knopf was ausgelöst hat.</p>
+
+<table>
+  <tr><th>Mode</th><th>Knopfbeschriftung</th><th>Eingabe</th><th>Pipeline</th></tr>
+  <tr><td>0</td><td>DL+Push &lt;target&gt;</td><td>SRN-Liste</td>
+      <td>Download &rarr; Convert &rarr; Push</td></tr>
+  <tr><td>1</td><td>Convert &amp; Push (all)</td><td>&mdash;</td>
+      <td>Convert &rarr; Push (alles in <code>firstbase_json/</code>)</td></tr>
+  <tr><td>2</td><td>Convert &amp; Push SRNs</td><td>SRN-Liste</td>
+      <td>Convert &rarr; Push (gefiltert auf SRN-UUIDs)</td></tr>
+  <tr><td>3</td><td>Repush failed</td><td>&mdash;</td>
+      <td>Restore aus <code>processed/</code> &rarr; Push (nur abgewiesene UUIDs)</td></tr>
+  <tr><td>4</td><td>Repush SRN</td><td>SRN-Liste</td>
+      <td>Restore aus <code>processed/</code> &rarr; Push (SRN-UUIDs)</td></tr>
+  <tr><td>5</td><td>Reconvert + Repush SRN</td><td>SRN-Liste</td>
+      <td>Reconvert aus <code>eudamed_json/detail/</code> &rarr; Push (SRN-UUIDs)</td></tr>
+</table>
+
+<div class="callout">
+<strong>Erste Logzeile lesen.</strong> Jeder Pipeline-Lauf beginnt mit
+<code>eudamed2firstbase v&lt;version&gt; &mdash; mode: &lt;name&gt;</code>. Wenn
+&laquo;Test&raquo; oder &laquo;Production&raquo; nicht das ist, was du erwartet hast,
+sofort abbrechen.
+</div>
+
+<h2>2. Mode 0 &mdash; DL+Push</h2>
+
+<div class="mode-card">
+<h3><span class="mode-num">0</span>DL+Push &lt;target&gt;</h3>
+
+<div class="label">Ablauf</div>
+<ol>
+  <li><span class="pill dl">Download</span> &mdash; pro SRN: paginiertes Listing aus EUDAMED holen,
+      in <code>listing_cache</code> schreiben, sofort gegen <code>udi_versions</code> prüfen
+      (<em>new</em>, <em>udi-bumped</em>, <em>budi-bumped</em>, <em>same</em>). Nur Devices mit
+      Versions-Bump oder ohne lokalen Eintrag werden detailmässig nachgeladen.</li>
+  <li><span class="pill cv">Convert</span> &mdash; jedes Detail-JSON wird durch
+      <code>transform_detail</code> in Firstbase-JSON umgewandelt. SHA256-Hash-Skip:
+      unveränderte Devices werden &uuml;bersprungen, ausser weder
+      <code>firstbase_json/&lt;uuid&gt;.json</code> noch
+      <code>firstbase_json/processed/&lt;uuid&gt;.json</code> existiert (Disk-Fallback seit v1.0.41).</li>
+  <li><span class="pill push">Push</span> &mdash; <code>Live/CreateMany</code> in 100er-Batches,
+      Polling, dann <code>AddMany</code> auf den Recipient-GLN. Akzeptierte Files wandern nach
+      <code>firstbase_json/processed/</code>.</li>
+</ol>
+
+<div class="label">Wann verwenden</div>
+<ul class="tight">
+  <li>Erstbefüllung einer SRN-Liste.</li>
+  <li>Routine-Update wenn EUDAMED neue/aktualisierte Devices ankündigt.</li>
+  <li>Wenn du nicht weisst, was sich seit dem letzten Lauf geändert hat &mdash; Mode 0
+      macht das Richtige.</li>
+</ul>
+
+<div class="label">Wann <em>nicht</em> verwenden</div>
+<ul class="tight">
+  <li>Wenn du nur einen <strong>Konverter-Fix</strong> in Firstbase landen lassen willst (z.B.
+      v1.0.46 SPP-Fix). EUDAMED-Daten sind unverändert &rarr; Download skipped, Hash matcht
+      &rarr; Convert skipped. Nimm dafür Mode 5.</li>
+  <li>Wenn du nur abgewiesene Devices nochmal probieren willst &mdash; nimm Mode 3.</li>
+</ul>
+
+<div class="label">Frische Daten aus EUDAMED?</div>
+<p>Nur für Devices mit Versions-Bump im Listing oder ohne <code>udi_versions</code>-Eintrag.
+Devices, deren Listing-<code>versionNumber</code> identisch zum DB-Stand ist, werden
+<strong>nicht</strong> neu heruntergeladen.</p>
+</div>
+
+<h2>3. Mode 1 &mdash; Convert &amp; Push (all)</h2>
+
+<div class="mode-card">
+<h3><span class="mode-num">1</span>Convert &amp; Push (all)</h3>
+
+<div class="label">Ablauf</div>
+<ol>
+  <li><span class="pill skip">kein Download</span></li>
+  <li><span class="pill cv">Convert</span> &mdash; alle Detail-JSONs in
+      <code>eudamed_json/detail/</code> werden durch den Konverter geschickt (mit Hash-Skip).</li>
+  <li><span class="pill push">Push</span> &mdash; alles, was nach dem Convert in
+      <code>firstbase_json/</code> liegt, wird gepusht.</li>
+</ol>
+
+<div class="label">Wann verwenden</div>
+<ul class="tight">
+  <li>Du hast eine grössere Detail-JSON-Sammlung lokal und willst &laquo;den ganzen Bestand&raquo;
+      in Firstbase haben.</li>
+  <li>Nach einem Konverter-Fix, der den ganzen Bestand betreffen kann (vorsichtig &mdash; siehe unten).</li>
+</ul>
+
+<div class="label">Wichtige Einschränkung</div>
+<p>Der Hash-Skip greift hier voll. Wenn ein Device in <code>processed/</code> liegt und der
+SHA256 unverändert ist, wird es <strong>nicht</strong> neu konvertiert &mdash; selbst dann
+nicht, wenn ein Konverter-Fix neue Felder erzeugen würde. Für gezielte Re-Konvertierung
+einer SRN-Untermenge ist Mode 5 die richtige Wahl.</p>
+</div>
+
+<h2>4. Mode 2 &mdash; Convert &amp; Push SRNs</h2>
+
+<div class="mode-card">
+<h3><span class="mode-num">2</span>Convert &amp; Push SRNs</h3>
+
+<div class="label">Ablauf</div>
+<ol>
+  <li><span class="pill skip">kein Download</span></li>
+  <li><span class="pill cv">Convert</span> &mdash; nur Detail-JSONs, deren UUIDs in
+      <code>listing_cache</code> einer der gewählten SRNs zugeordnet sind.</li>
+  <li><span class="pill push">Push</span> &mdash; resultierende Files in <code>firstbase_json/</code>.</li>
+</ol>
+
+<div class="label">Wann verwenden</div>
+<ul class="tight">
+  <li>Wenn du <strong>einen Hersteller</strong> komplett neu aufbauen willst, ohne den ganzen
+      Bestand anzufassen.</li>
+  <li>Wenn der EUDAMED-Download von dieser SRN sicher schon mal gelaufen ist und die
+      Detail-JSONs lokal liegen.</li>
+</ul>
+
+<div class="label">Vorsicht</div>
+<p>Hash-Skip greift wie in Mode 1. Wenn du nach einem Konverter-Fix saubere Re-Konvertierung
+willst, nimm Mode 5.</p>
+</div>
+
+<h2>5. Mode 3 &mdash; Repush failed</h2>
+
+<div class="mode-card">
+<h3><span class="mode-num">3</span>Repush failed</h3>
+
+<div class="label">Ablauf</div>
+<ol>
+  <li>Liest abgewiesene UUIDs aus dem <code>push_log</code> (Status REJECTED).</li>
+  <li>Stellt zugehörige <code>&lt;uuid&gt;.json</code> aus
+      <code>firstbase_json/processed/</code> nach <code>firstbase_json/</code> wieder her.</li>
+  <li><span class="pill push">Push</span> nur dieser UUIDs.</li>
+</ol>
+
+<div class="label">Wann verwenden</div>
+<ul class="tight">
+  <li>Nach einem Push, der teilweise gescheitert ist (z.B. wegen 429-Throttling, transienter
+      Validierungsfehler nach GS1-Regeländerung).</li>
+  <li>Wenn du sehen willst, ob ein neuer Konverter-Build die alten Errors fixt &mdash; aber
+      <strong>Achtung</strong>: Mode 3 nimmt das alte <code>processed/</code>-File, nicht
+      die frisch konvertierte Version. Für letzteres: Mode 5.</li>
+</ul>
+
+<div class="label">Was nicht passiert</div>
+<ul class="tight">
+  <li>Kein Download.</li>
+  <li>Keine Re-Konvertierung &mdash; das exakt gleiche JSON wird nochmal hochgeladen.</li>
+</ul>
+</div>
+
+<h2>6. Mode 4 &mdash; Repush SRN</h2>
+
+<div class="mode-card">
+<h3><span class="mode-num">4</span>Repush SRN</h3>
+
+<div class="label">Ablauf</div>
+<ol>
+  <li>Liest aus <code>listing_cache</code> alle UUIDs zu den gewählten SRNs.</li>
+  <li>Stellt <code>&lt;uuid&gt;.json</code> aus <code>firstbase_json/processed/</code> nach
+      <code>firstbase_json/</code> wieder her.</li>
+  <li><span class="pill push">Push</span> nur dieser UUIDs &mdash; bypassed
+      <code>udi_versions</code> "unchanged"-Skip.</li>
+</ol>
+
+<div class="label">Wann verwenden</div>
+<ul class="tight">
+  <li>Wenn ein Hersteller in Firstbase &laquo;verloren&raquo; aussieht (z.B. weil ein
+      vorheriger Push abgebrochen ist) und du den exakten letzten konvertierten Stand
+      nochmal hochlädst.</li>
+</ul>
+
+<div class="label">Was nicht passiert</div>
+<ul class="tight">
+  <li>Kein Download, keine Re-Konvertierung. Du pushst, was beim letzten erfolgreichen
+      Konvertierungslauf entstanden ist.</li>
+</ul>
+</div>
+
+<h2>7. Mode 5 &mdash; Reconvert + Repush SRN</h2>
+
+<div class="mode-card">
+<h3><span class="mode-num">5</span>Reconvert + Repush SRN</h3>
+
+<div class="label">Ablauf</div>
+<ol>
+  <li>UUIDs aus <code>listing_cache</code> für die gewählten SRNs holen.</li>
+  <li><span class="pill cv">Reconvert</span> &mdash; <code>transform_detail</code> auf
+      <code>eudamed_json/detail/&lt;uuid&gt;.json</code> mit der <em>aktuellen</em>
+      Konverter-Logik. Schreibt frisches <code>firstbase_json/&lt;uuid&gt;.json</code>.</li>
+  <li><strong>Fallback nur für UUIDs ohne Detail-File</strong>: Restore aus
+      <code>firstbase_json/processed/</code>. Logzeile:
+      <code>WARNING: N UUID(s) have no eudamed_json/detail/&lt;uuid&gt;.json &mdash; will fall back to
+      firstbase_json/processed/</code> (seit v1.0.46).</li>
+  <li><span class="pill push">Push</span> der frischen Files.</li>
+</ol>
+
+<div class="label">Wann verwenden</div>
+<ul class="tight">
+  <li>Nach einem Konverter-Fix, der einen bekannten SRN-Bereich betrifft (z.B. v1.0.45
+      ContactType-Fix, v1.0.46 SPP-Fix, v1.0.43 DescriptionShort).</li>
+  <li>Wenn die EUDAMED-Daten sich nicht geändert haben, aber der neue Code andere/zusätzliche
+      Felder erzeugt.</li>
+</ul>
+
+<div class="warn">
+<strong>Stolperfalle.</strong> Wenn die Detail-JSONs lokal fehlen, fällt Mode 5 stillschweigend
+(naja, mit der Warning-Zeile) auf das alte <code>processed/</code>-Material zurück &mdash;
+also auf die Konverter-Version, die den Fix noch nicht enthielt. Wenn die Warning erscheint:
+erst Mode 0 für die SRNs laufen lassen, damit die Detail-JSONs lokal sind, dann Mode 5.
+</div>
+</div>
+
+<h2>8. Entscheidungshilfe &mdash; welcher Mode?</h2>
+
+<table>
+  <tr><th>Situation</th><th>Mode</th></tr>
+  <tr><td>Neuer SRN, noch nie gepusht</td><td>0</td></tr>
+  <tr><td>Routine: was ist seit gestern in EUDAMED neu?</td><td>0</td></tr>
+  <tr><td>Konverter-Fix, EUDAMED-Daten unverändert, SRN-Liste bekannt</td><td>5 (ggf. 0 voraus)</td></tr>
+  <tr><td>Letzter Push hatte Reject-Errors, GS1-Regel hat sich geändert</td><td>5 (mit neuem Build)<br>oder 3 (gleicher Stand)</td></tr>
+  <tr><td>Lokaler Bestand soll komplett raus</td><td>1 (Vorsicht: Hash-Skip)</td></tr>
+  <tr><td>Ein Hersteller ist in Firstbase verschwunden</td><td>4</td></tr>
+  <tr><td>Nur die abgelehnten UUIDs nochmal probieren</td><td>3</td></tr>
+</table>
+
+<h2>9. Was alle Modi gemeinsam haben</h2>
+
+<ul class="tight">
+  <li><strong>Push-Target</strong> wird im Push-Target-Selektor festgelegt
+      (Firstbase Test / Production oder Swissdamed). Das Banner im HTML-Logreport zeigt klar an,
+      welche Umgebung verwendet wurde &mdash; rot bei Production, blau bei Test.</li>
+  <li><strong>HTML-Push-Log</strong> wird nach <code>log/firstbase_test/</code> bzw.
+      <code>log/firstbase_prod/</code> geschrieben (seit v1.0.39 environment-getrennt).
+      Enthält Errorzusammenfassung, abgewiesene Devices mit Errorcodes &amp; Attributnamen,
+      akzeptierte Liste und die rohe API-Response.</li>
+  <li><strong>Pull-Push-DB</strong>: jeder Push-Lauf schreibt eine Zeile in
+      <code>push_session</code> mit Mode-Name, Environment und Counts. Per-UUID-Resultate
+      landen in <code>push_log</code>.</li>
+  <li><strong>Akzeptierte Files</strong> wandern nach <code>firstbase_json/processed/</code>;
+      abgewiesene bleiben in <code>firstbase_json/</code> liegen, damit Mode 3 sie wiederfindet.</li>
+  <li><strong>WhatsApp-Reporting</strong>: in der GUI gibt es zwei Knöpfe &mdash; rot
+      &laquo;Send latest Prod log&raquo; und blau &laquo;Send latest Test log&raquo; &mdash;
+      die jeweils das neueste HTML-Log aus dem entsprechenden Subdir senden.</li>
+</ul>
+
+<h2>10. Häufige Fragen</h2>
+
+<h3>Wenn ich Mode 0 (DL+Convert+Push) drücke, holt das alle Datensätze frisch aus EUDAMED?</h3>
+<p>Nein. Mode 0 holt das paginierte <em>Listing</em> für jede SRN (das ist günstig &mdash;
+ein API-Call pro 20 Devices), schreibt es in <code>listing_cache</code> und prüft dann pro UUID
+gegen <code>udi_versions</code>. Nur Devices mit Versions-Bump oder ohne lokalen Eintrag werden
+detailmässig nachgeladen. Wenn EUDAMED nichts bumped, wird auch nichts neu heruntergeladen.</p>
+
+<h3>Warum sehe ich nach einem Konverter-Fix die neuen Felder nicht in Firstbase?</h3>
+<p>Wahrscheinlich Hash-Skip oder <code>processed/</code>-Restore. Der Konverter prüft pro UUID
+einen SHA256-Hash der EUDAMED-Daten &mdash; wenn der unverändert ist, wird übersprungen.
+Mode 5 umgeht das, weil er <code>transform_detail</code> direkt aufruft, ohne den
+Change-Detector zu konsultieren.</p>
+
+<h3>Was, wenn Mode 5 die Warning &laquo;will fall back to firstbase_json/processed/&raquo; loggt?</h3>
+<p>Bedeutet: einige UUIDs der gewählten SRNs haben kein lokales Detail-JSON, daher kann der
+Konverter sie nicht neu erzeugen. Mode 5 verwendet dann das alte
+<code>processed/</code>-File &mdash; also die Konverter-Version vor dem Fix. Lösung:
+zuerst Mode 0 für diese SRNs (lädt das Detail-JSON), dann Mode 5.</p>
+
+<h3>Warum sind das 6 Knöpfe und nicht 5?</h3>
+<p>Modes sind 0-indexiert: 0, 1, 2, 3, 4, 5 &mdash; macht sechs. Die Nummer steht seit v1.0.47
+vorne in der Beschriftung, damit sich Knopf, Logzeile und <code>push_session.version</code>
+direkt korrelieren lassen.</p>
+
+<h3>Wie unterscheide ich im Log nachträglich, welcher Mode gelaufen ist?</h3>
+<p>Erste Logzeile jedes Pipeline-Laufs: <code>eudamed2firstbase v&lt;version&gt; &mdash; mode: &lt;name&gt;</code>.
+Zusätzlich steht der Mode-Name in der <code>push_session</code>-Tabelle der SQLite-DB.</p>
+
+<div class="signature">
+  <div class="name">Zeno Davatz</div>
+  <div class="org">ywesee GmbH &nbsp;·&nbsp; <a href="https://ywesee.com">ywesee.com</a></div>
+</div>
+
+</body>
+</html>
