@@ -876,6 +876,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                             value: "RANGE".to_string(),
                         },
                         text: None,
+                        characteristic_codes: Vec::new(),
                     }
                 }
                 "TextClinicalSizeType" => {
@@ -888,6 +889,16 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                     } else {
                         Vec::new()
                     };
+                    let characteristic_codes = size
+                        .text
+                        .as_deref()
+                        .and_then(crate::mappings::text_to_characteristic_code)
+                        .map(|c| {
+                            vec![CodeValue {
+                                value: c.to_string(),
+                            }]
+                        })
+                        .unwrap_or_default();
                     ClinicalSizeOutput {
                         descriptions,
                         type_code: CodeValue {
@@ -899,6 +910,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                             value: "TEXT".to_string(),
                         },
                         text: size.text.clone(),
+                        characteristic_codes,
                     }
                 }
                 "ValueClinicalSizeType" | _ => {
@@ -921,6 +933,7 @@ fn transform_clinical_sizes(udidi: &MdrUdidiData) -> Vec<ClinicalSizeOutput> {
                             value: "VALUE".to_string(),
                         },
                         text: None,
+                        characteristic_codes: Vec::new(),
                     }
                 }
             }

@@ -428,6 +428,69 @@ pub fn clinical_size_type_to_gs1(code: &str) -> &str {
     }
 }
 
+/// EUDAMED clinicalSize.text → GS1 ClinicalSizeCharacteristicsCode (BMS 3.1.35).
+///
+/// 35 allowed values per GS1 UDI Connector Profile Apr 2026 V1.1:
+/// PASSIVE, ACTIVE, STRAIGHT, ANGLED, J-TIP, SOFT_STRAIGHT, STIFF_STRAIGHT,
+/// SOFT_ANGLED, STIFF_ANGLED, STIFF_J-TIP, MINI, SACRAL, MULTISHAPE, HEEL,
+/// CONTOUR, SQUARE, RECTANGULAR, BELT, CONVEX, STANDARD, CONVEX_LIGHT,
+/// CONCAVE, FLAT, EXTRA_SMALL, SMALL, MEDIUM, LARGE, EXTRA_LARGE, NEONATE,
+/// INFANT, CHILD, ADULT, LEFT, RIGHT, CURVED.
+///
+/// EUDAMED encodes characteristic descriptors as free-text in `clinicalSize.text`
+/// when `precision="text"`. Map common variants (case-insensitive, allowing
+/// abbreviations like S/M/L/XS/XL) to the GS1 code list. Returns None when
+/// no characteristic match is found — caller keeps the text in
+/// ClinicalSizeValueText as fallback.
+///
+/// Issue #39 (BMS 3.1.35).
+pub fn text_to_characteristic_code(text: &str) -> Option<&'static str> {
+    let t = text.trim().to_ascii_lowercase();
+    Some(match t.as_str() {
+        // Size abbreviations + full forms
+        "xs" | "extra small" | "extra_small" | "extra-small" => "EXTRA_SMALL",
+        "s" | "small" => "SMALL",
+        "m" | "medium" => "MEDIUM",
+        "l" | "large" => "LARGE",
+        "xl" | "extra large" | "extra_large" | "extra-large" => "EXTRA_LARGE",
+        "mini" => "MINI",
+        // Patient age groups
+        "neonate" => "NEONATE",
+        "infant" => "INFANT",
+        "child" => "CHILD",
+        "adult" => "ADULT",
+        // Body side
+        "left" => "LEFT",
+        "right" => "RIGHT",
+        // Tip / orientation
+        "active" => "ACTIVE",
+        "passive" => "PASSIVE",
+        "straight" => "STRAIGHT",
+        "angled" => "ANGLED",
+        "curved" => "CURVED",
+        "j-tip" | "j tip" | "jtip" => "J-TIP",
+        "soft straight" | "soft_straight" => "SOFT_STRAIGHT",
+        "stiff straight" | "stiff_straight" => "STIFF_STRAIGHT",
+        "soft angled" | "soft_angled" => "SOFT_ANGLED",
+        "stiff angled" | "stiff_angled" => "STIFF_ANGLED",
+        "stiff j-tip" | "stiff_j-tip" | "stiff jtip" => "STIFF_J-TIP",
+        // Stoma / appliance shapes
+        "sacral" => "SACRAL",
+        "multishape" => "MULTISHAPE",
+        "heel" => "HEEL",
+        "contour" => "CONTOUR",
+        "square" => "SQUARE",
+        "rectangular" => "RECTANGULAR",
+        "belt" => "BELT",
+        "convex" => "CONVEX",
+        "convex light" | "convex_light" => "CONVEX_LIGHT",
+        "concave" => "CONCAVE",
+        "flat" => "FLAT",
+        "standard" => "STANDARD",
+        _ => return None,
+    })
+}
+
 /// Measurement unit: EUDAMED MU code → GS1 UN/CEFACT code
 pub fn measurement_unit_to_gs1(code: &str) -> &str {
     match code {
@@ -703,5 +766,40 @@ pub fn regulation_from_risk_class_refdata(code: &str) -> &str {
         | "ivd-annex-ii-list-b" => "IVDD",
         "aimdd" => "AIMDD",
         _ => "MDR",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn characteristic_code_size_abbrevs() {
+        assert_eq!(text_to_characteristic_code("S"), Some("SMALL"));
+        assert_eq!(text_to_characteristic_code("m"), Some("MEDIUM"));
+        assert_eq!(text_to_characteristic_code("L"), Some("LARGE"));
+        assert_eq!(text_to_characteristic_code("XS"), Some("EXTRA_SMALL"));
+        assert_eq!(text_to_characteristic_code("XL"), Some("EXTRA_LARGE"));
+        assert_eq!(text_to_characteristic_code("Mini"), Some("MINI"));
+        assert_eq!(text_to_characteristic_code("MINI"), Some("MINI"));
+    }
+
+    #[test]
+    fn characteristic_code_orientations() {
+        assert_eq!(text_to_characteristic_code("active"), Some("ACTIVE"));
+        assert_eq!(text_to_characteristic_code("Passive"), Some("PASSIVE"));
+        assert_eq!(text_to_characteristic_code("j-tip"), Some("J-TIP"));
+        assert_eq!(
+            text_to_characteristic_code("Stiff Straight"),
+            Some("STIFF_STRAIGHT")
+        );
+        assert_eq!(text_to_characteristic_code("left"), Some("LEFT"));
+    }
+
+    #[test]
+    fn characteristic_code_unknown_returns_none() {
+        assert_eq!(text_to_characteristic_code("17.5mm"), None);
+        assert_eq!(text_to_characteristic_code("foo bar"), None);
+        assert_eq!(text_to_characteristic_code(""), None);
     }
 }

@@ -1020,6 +1020,20 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
                 Vec::new()
             };
 
+            // BMS 3.1.35: ClinicalSizeCharacteristicsCode populated when the
+            // text matches a known characteristic value (mini/small/large/active/
+            // passive/straight/angled/...). Issue #39.
+            let characteristic_codes = cs
+                .text
+                .as_deref()
+                .and_then(mappings::text_to_characteristic_code)
+                .map(|code| {
+                    vec![CodeValue {
+                        value: code.to_string(),
+                    }]
+                })
+                .unwrap_or_default();
+
             Some(ClinicalSizeOutput {
                 descriptions,
                 type_code: CodeValue {
@@ -1031,6 +1045,7 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
                     value: precision_code.to_string(),
                 },
                 text: cs.text.clone(),
+                characteristic_codes,
             })
         })
         .collect()

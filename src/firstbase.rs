@@ -479,6 +479,15 @@ pub struct ClinicalSizeOutput {
         skip_serializing_if = "Option::is_none"
     )]
     pub text: Option<String>,
+    /// BMS 3.1.35: ClinicalSizeCharacteristicsCode (FLD-UDID-195 path).
+    /// Populated when EUDAMED `clinicalSize.text` matches a known
+    /// characteristic value (mini/small/medium/large/xs/xl/active/passive/
+    /// straight/angled/...). Issue #39.
+    #[serde(
+        rename = "ClinicalSizeCharacteristicsCode",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub characteristic_codes: Vec<CodeValue>,
 }
 
 #[derive(Serialize, Debug)]
