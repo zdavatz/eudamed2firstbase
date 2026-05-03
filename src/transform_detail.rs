@@ -53,6 +53,7 @@ pub fn transform_detail_device(
         .unwrap_or_else(|| "MDR".to_string());
     let is_legacy = matches!(reg_act.as_str(), "MDD" | "AIMDD" | "IVDD");
     let is_ivdr = reg_act == "IVDR" || reg_act == "IVDD";
+    let is_mdr = reg_act == "MDR";
 
     // 097.096: Since 2026-03-10, downgraded from error to warning — legacy devices publishable
     if is_legacy {
@@ -99,27 +100,30 @@ pub fn transform_detail_device(
     //   - criterion="SPP"      (FLD-UDID-261) → systemOrProcedurePackTypeCode
     //   - criterion="STANDARD" (FLD-UDID-12)  → multiComponentDeviceTypeCode
     // Discriminator is `multiComponent.criterion`, not `code` — see issue #31.
-    let is_system_or_pack = basic_udi.map(|b| b.is_spp()).unwrap_or(false);
+    //
+    // SPP is an MDR-only concept (no SPP under IVDR/legacy). 097.049 forbids
+    // systemOrProcedurePackTypeCode whenever ContactType=EMA (any legislation),
+    // so we gate is_system_or_pack on is_mdr — this keeps the three rules
+    // (097.016 / 097.049 / 097.056) consistent.
+    let is_system_or_pack = basic_udi.map(|b| b.is_spp()).unwrap_or(false) && is_mdr;
 
     // --- Contacts ---
     let mut contacts = build_contacts(device);
 
-    // 097.009/097.026: EMA/EPP contact with SRN is mandatory.
-    // ContactTypeCode is bound to the SRN role, NOT to the device's SPP criterion:
-    //   - SRN prefix `-PR-` (SPP Producer) → EPP
-    //   - SRN prefix `-MF-` (Manufacturer)  → EMA  (also for `-MF-` actors that
-    //     happen to register an SPP device — `multiComponent.criterion` describes
-    //     the device, not the actor's role)
-    // See GitHub issue #30.
+    // 097.016: SPP+MDR ⇒ ContactType MUST be EPP with SRN
+    // 097.049: ContactType=EMA ⇒ systemOrProcedurePackTypeCode MUST NOT be used
+    // 097.056: ContactType=EPP ⇒ regulatoryAct MUST be MDR + agency MUST be EU
+    //
+    // The three rules together mean ContactType is fully determined by whether
+    // the device is an SPP under MDR — not by the SRN prefix. An MF-actor that
+    // registered an SPP device in EUDAMED still gets EPP (with their MF-SRN);
+    // a PR-actor that registered a non-SPP device still gets EMA. See issue #30,
+    // #33, and Maik's clarification 2026-05-03.
     let mfr_srn_val = basic_udi
         .and_then(|b| b.manufacturer.as_ref())
         .and_then(|m| m.srn.clone())
         .unwrap_or_else(|| "XX-MF-000000000".to_string());
-    let contact_type_code = if mfr_srn_val.split('-').nth(1) == Some("PR") {
-        "EPP"
-    } else {
-        "EMA"
-    };
+    let contact_type_code = if is_system_or_pack { "EPP" } else { "EMA" };
     let has_contact = contacts
         .iter()
         .any(|c| c.contact_type.value == contact_type_code);
