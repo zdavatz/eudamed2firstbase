@@ -569,7 +569,9 @@ pub fn transform_detail_device(
                 is_near_patient_testing: if is_ivdr { Some(false) } else { None },
                 is_professional_testing: if is_ivdr { Some(false) } else { None },
                 is_companion_diagnostic: if is_ivdr { Some(false) } else { None },
-                eu_status: CodeValue { value: status_code },
+                eu_status: CodeValue {
+                    value: status_code.clone(),
+                },
                 reusability,
                 sterility,
             },
@@ -1731,6 +1733,19 @@ pub fn transform_detail_document(
 ) -> FirstbaseDocument {
     let mut base_trade_item = transform_detail_device(device, config, basic_udi);
 
+    // Capture base unit's eu_status + discontinuedDateTime so package levels
+    // inherit them. Hardcoding ON_MARKET on packages while the base unit is
+    // NO_LONGER_PLACED_ON_THE_MARKET triggers GS1 910.004 / 910.005 / 097.040
+    // (parent/child status mismatch + discontinued child without discontinued
+    // parent). See issue #36 / BR-UDID-073.
+    let base_status_code = base_trade_item
+        .medical_device_module
+        .info
+        .eu_status
+        .value
+        .clone();
+    let base_discontinued = base_trade_item.synchronisation_dates.discontinued.clone();
+
     // Check for packaging hierarchy
     let levels = device
         .contained_item
@@ -1826,10 +1841,14 @@ pub fn transform_detail_document(
             target_sector: vec!["UDI_REGISTRY".to_string()],
             chemical_regulation_module: None,
             healthcare_item_module: None,
+            // Package level inherits eu_status from the base unit. Hardcoding ON_MARKET
+            // here triggers GS1 910.004 / 910.005 / 097.040: a child cannot be
+            // discontinued without its parent being discontinued, and parent/child
+            // status must agree (BR-UDID-073, issue #36).
             medical_device_module: MedicalDeviceTradeItemModule {
                 info: MedicalDeviceInformation {
                     eu_status: CodeValue {
-                        value: "ON_MARKET".to_string(),
+                        value: base_status_code.clone(),
                     },
                     ..Default::default()
                 },
@@ -1881,7 +1900,9 @@ pub fn transform_detail_document(
                 last_change: now_str.clone(),
                 effective: now_str.clone(),
                 publication: now_str,
-                discontinued: None,
+                // Inherit discontinuedDateTime from the base unit so parent and
+                // child stay aligned (910.004/910.005, issue #36).
+                discontinued: base_discontinued.clone(),
             },
             global_model_info: vec![GlobalModelInformation {
                 number: basic_udi_code.to_string(),
