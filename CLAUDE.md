@@ -124,10 +124,11 @@ Always run `cargo fmt` after working with the codebase.
 - **#7 GDSN mandatory gaps**: Packaging hierarchy (PALLET not derivable) and issuingEntityCode (parsed but not mapped).
 - **#8 GTIN deduplication**: Same GTIN under MDR and MDD; GDSN allows only one. Push deduper prefers MDR (has `GlobalModelNumber`).
 - **#9 097.041 MDR Class IIB implantable without certificate**: 332x. EUDAMED data quality.
-- **#10 Updateable rules (097.029 / 097.036 / G485)**: Reopened 2026-05-04 — G485 actively blocks `discontinuedDateTime` re-pushes for NO_LONGER devices (the field becomes protected after first ACCEPTED). Long-term: `DocumentCommand: "CORRECT"` for already-ACCEPTED items. Short-term mitigation: skip NO_LONGER + already-ACCEPTED in repush.
+- **#10 Updateable rules (097.029 / 097.036 / G485)**: Reopened 2026-05-04 — G485 actively blocks `discontinuedDateTime` re-pushes for NO_LONGER devices (the field becomes protected after first ACCEPTED). Short-term mitigation shipped in v1.0.53: Mode 4/5 + `repush-srn` skip NO_LONGER + already-ACCEPTED in this env (`version_db::filter_skip_no_longer_accepted`). Long-term `DocumentCommand: "CORRECT"` work tracked in #40.
 - **#11 097.078 StorageHandling language**: Closed (fixed 2026-03-26).
 - **#12 097.054 Non-EU manufacturers missing AR SRN**: 150x. No fallback placeholder.
 - **#13 097.083 medicinalProduct=true without substance data**: 6x.
+- **#40 `DocumentCommand: "CORRECT"` support**: Push protected fields (097.029/097.036/G485) without rejection. Plan: classify per UUID via `push_log` ACCEPTED+env, split into to_add/to_correct lists, run two `CreateMany` rounds, AddMany joint at the end. Blocking question: full TradeItem payload vs diff payload (CORRECT semantics — needs GS1 confirmation before full implementation).
 
 ## Screenshots
 
