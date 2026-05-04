@@ -659,6 +659,25 @@ fn main() -> Result<()> {
                 srns.len()
             );
 
+            // Issue #10: skip NO_LONGER devices already ACCEPTED in TEST.
+            // CLI repush-srn uses gui::Settings::default() further down → Test env.
+            // (PROD pushes go through the GUI; CLI is dev/test only.)
+            let (uuids, skipped) =
+                version_db::filter_skip_no_longer_accepted(&conn, &uuids, "Test");
+            if skipped > 0 {
+                eprintln!(
+                    "Skipping {} NO_LONGER UUID(s) already ACCEPTED in Test (G485 mitigation, Issue #10)",
+                    skipped
+                );
+            }
+            if uuids.is_empty() {
+                eprintln!(
+                    "Nothing to push: all {} UUID(s) were skipped as NO_LONGER + already ACCEPTED",
+                    skipped
+                );
+                return Ok(());
+            }
+
             // --- Reconvert (optional) ---
             // With --reconvert, re-run transform_detail for the matching UUIDs
             // before pushing. Writes fresh firstbase_json/<uuid>.json so the

@@ -1516,6 +1516,33 @@ fn run_pipeline(
             srns.len()
         ));
         drop(stmt);
+
+        // Issue #10: skip NO_LONGER devices that are already ACCEPTED in this env.
+        // Re-pushing them hits G485 (discontinuedDateTime becomes a protected field
+        // after first ACCEPTED, only updatable via DocumentCommand: "CORRECT").
+        // Terminal lifecycle, no new content to deliver — skipping is correct.
+        let env_label_db = match settings.firstbase_env {
+            FirstbaseEnv::Test => "Test",
+            FirstbaseEnv::Production => "Production",
+        };
+        let (uuids, skipped) =
+            crate::version_db::filter_skip_no_longer_accepted(&conn, &uuids, env_label_db);
+        if skipped > 0 {
+            log(&format!(
+                "[{}] Skipping {} NO_LONGER UUID(s) already ACCEPTED in {} (G485 mitigation, Issue #10)",
+                mode_label, skipped, env_label_db
+            ));
+        }
+        if uuids.is_empty() {
+            done(
+                true,
+                &format!(
+                    "Nothing to push: all {} UUID(s) were skipped as NO_LONGER + already ACCEPTED",
+                    skipped
+                ),
+            );
+            return;
+        }
         drop(conn);
 
         // Mode 5: reconvert from eudamed_json/detail/ before push.

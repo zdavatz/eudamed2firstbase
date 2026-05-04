@@ -497,3 +497,60 @@ pub fn stats(conn: &Connection) -> Result<(u64, u64, u64)> {
     )?;
     Ok((total, with_gtin, with_budi))
 }
+
+/// Filter out UUIDs that are NO_LONGER_ON_THE_MARKET in `listing_cache` AND
+/// already have at least one ACCEPTED entry in `push_log` for the given env.
+/// Used by repush flows to suppress G485 noise — re-pushing a NO_LONGER device
+/// after first ACCEPTED hits G485 because `discontinuedDateTime` becomes a
+/// protected field (Issue #10).
+///
+/// Returns `(kept, skipped)` — kept is the input set minus skipped UUIDs.
+/// On legacy DBs without the `firstbase_env` column on `push_log`, the filter
+/// silently no-ops (returns the input set unchanged).
+pub fn filter_skip_no_longer_accepted(
+    conn: &Connection,
+    uuids: &std::collections::HashSet<String>,
+    env_label: &str,
+) -> (std::collections::HashSet<String>, usize) {
+    if uuids.is_empty() {
+        return (std::collections::HashSet::new(), 0);
+    }
+    let placeholders: String = std::iter::repeat("?")
+        .take(uuids.len())
+        .collect::<Vec<_>>()
+        .join(",");
+    let sql = format!(
+        "SELECT DISTINCT lc.uuid \
+         FROM listing_cache lc \
+         JOIN push_log pl ON pl.uuid = lc.uuid \
+         WHERE lc.uuid IN ({}) \
+           AND lc.device_status = 'refdata.device-model-status.no-longer-on-the-market' \
+           AND pl.status = 'ACCEPTED' \
+           AND pl.firstbase_env = ?",
+        placeholders
+    );
+    let env_string = env_label.to_string();
+    let uuid_vec: Vec<&String> = uuids.iter().collect();
+    let mut params: Vec<&dyn rusqlite::ToSql> = uuid_vec
+        .iter()
+        .map(|s| *s as &dyn rusqlite::ToSql)
+        .collect();
+    params.push(&env_string as &dyn rusqlite::ToSql);
+
+    let mut stmt = match conn.prepare(&sql) {
+        Ok(s) => s,
+        Err(_) => return (uuids.clone(), 0), // legacy DB w/o firstbase_env column
+    };
+    let to_skip: std::collections::HashSet<String> =
+        match stmt.query_map(&params[..], |r| r.get::<_, String>(0)) {
+            Ok(it) => it.filter_map(|r| r.ok()).collect(),
+            Err(_) => return (uuids.clone(), 0),
+        };
+    let kept: std::collections::HashSet<String> = uuids
+        .iter()
+        .filter(|u| !to_skip.contains(u.as_str()))
+        .cloned()
+        .collect();
+    let skipped = to_skip.len();
+    (kept, skipped)
+}
