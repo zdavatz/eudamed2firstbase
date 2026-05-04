@@ -613,13 +613,16 @@ Bug reports are tracked as [GitHub Issues](https://github.com/zdavatz/eudamed2fi
 | [#5](https://github.com/zdavatz/eudamed2firstbase/issues/5) | GS1 Rule | NOT_INTENDED_FOR_EU_MARKET rejected for non-EU market devices | 097.039 | Closed (warning since 25.03.2026) |
 | [#6](https://github.com/zdavatz/eudamed2firstbase/issues/6) | Mapping | 1:n Mapping Gaps: EUDAMED → GS1 fallback resolvers | — | Open (17 gaps documented) |
 | [#7](https://github.com/zdavatz/eudamed2firstbase/issues/7) | Mapping | GDSN mandatory gaps: packaging hierarchy & issuingEntityCode | — | Open (2 gaps, 6 implemented) |
-| [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | v1.0.28 | Fixed (dedup + MDD files moved to processed/) |
+| [#8](https://github.com/zdavatz/eudamed2firstbase/issues/8) | Data | GTIN deduplication: MDR/IVDR priority over MDD/AIMDD/IVDD | v1.0.28 | Closed (dedup v1.0.28, MDD files moved to processed/) |
 | [#9](https://github.com/zdavatz/eudamed2firstbase/issues/9) | Data Quality | MDR Class IIB implantable without certificate | 097.041 | Open (332x, EUDAMED) |
-| [#10](https://github.com/zdavatz/eudamed2firstbase/issues/10) | GS1 Rule | Updateable rules block field changes after first sync | 097.029, 097.036 | Open (GS1 disabling soon) |
+| [#10](https://github.com/zdavatz/eudamed2firstbase/issues/10) | GS1 Rule | Updateable rules block field changes after first sync | 097.029, 097.036, G485 | Open (v1.0.53 skips NO_LONGER+ACCEPTED; long-term: CORRECT, see [#40](https://github.com/zdavatz/eudamed2firstbase/issues/40)) |
 | [#11](https://github.com/zdavatz/eudamed2firstbase/issues/11) | Mapping | Language mismatch in StorageHandling fallback | 097.078 | Closed (fixed 26.03.2026) |
 | [#12](https://github.com/zdavatz/eudamed2firstbase/issues/12) | Data Quality | Non-EU manufacturers missing Authorised Representative SRN | 097.054 | Open (150x, EUDAMED) |
 | [#13](https://github.com/zdavatz/eudamed2firstbase/issues/13) | Data Quality | medicinalProduct=true without regulated substance data | 097.083 | Open (6x, EUDAMED) |
 | [#18](https://github.com/zdavatz/eudamed2firstbase/issues/18) | Mapping | Duplicate languageCode in tradeItemDescription | 097.078 | Fixed v1.0.28 (merge with " / ") |
+| [#35](https://github.com/zdavatz/eudamed2firstbase/issues/35) | Mapping | Country code table: complete 250-entry ISO 3166-1 (was 48) | G541 | Closed v1.0.49 |
+| [#36](https://github.com/zdavatz/eudamed2firstbase/issues/36) | Mapping | Package levels hardcode ON_MARKET + null discontinued | 910.004, 910.005, 097.040 | Closed v1.0.49 |
+| [#40](https://github.com/zdavatz/eudamed2firstbase/issues/40) | GS1 Rule | DocumentCommand: "CORRECT" support for protected fields | 097.029, 097.036, G485 | Open (blocked on GS1 confirmation: full TradeItem vs diff payload) |
 
 Push 26.03.2026: 274 SRNs, 18,007 items → 7,009 ACCEPTED, 1,862 REJECTED. G541 mapping fixes deployed (SPP_PROCEDURE_PACK, COLOUR, BODY_WEIGHT_KG, MU999). G361 empty address fix deployed. GTIN batch filter added.
 
