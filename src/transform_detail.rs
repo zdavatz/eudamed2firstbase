@@ -266,19 +266,6 @@ pub fn transform_detail_device(
             type_code: "MODEL_NUMBER".to_string(),
             value: truncate_id(model.clone()),
         });
-    } else if is_legacy {
-        // 097.025: Legacy devices (no globalModelInformation) need MODEL_NUMBER as fallback
-        let model_number = basic_udi
-            .and_then(|b| b.basic_udi.as_ref())
-            .and_then(|di| di.code.clone())
-            .filter(|c| !c.is_empty())
-            .unwrap_or_else(|| device.primary_di_code());
-        if !model_number.is_empty() {
-            additional_identification.push(AdditionalTradeItemIdentification {
-                type_code: "MODEL_NUMBER".to_string(),
-                value: truncate_id(model_number),
-            });
-        }
     }
 
     // --- EMDN/CND nomenclature → additional classification system 88 ---
@@ -632,31 +619,28 @@ pub fn transform_detail_device(
             publication: now_str,
             discontinued,
         },
-        // 097.095: Legacy devices must not have globalModelNumber
-        global_model_info: if is_legacy {
-            Vec::new()
-        } else {
-            vec![GlobalModelInformation {
-                number: basic_udi
-                    .and_then(|b| b.basic_udi.as_ref())
-                    .and_then(|di| di.code.clone())
-                    .filter(|c| !c.is_empty())
-                    .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
-                descriptions: {
-                    // 097.025: GlobalModelDescription uses deviceName (FLD-UDID-22) from Basic UDI-DI
-                    // languageCode 'en' is required
-                    let device_name = basic_udi
-                        .and_then(|b| b.device_name.as_ref())
-                        .filter(|n| !n.is_empty())
-                        .cloned()
-                        .unwrap_or_else(|| device.primary_di_code());
-                    vec![LangValue {
-                        language_code: "en".to_string(),
-                        value: device_name,
-                    }]
-                },
-            }]
-        },
+        // globalModelNumber ← Basic UDI-DI code (a.k.a. EUDAMED B-GTIN), incl. MDD/AIMDD/IVDD
+        // since GS1 097.116 was narrowed to MDR/IVDR-only (TC confirmation, v1.0.54).
+        global_model_info: vec![GlobalModelInformation {
+            number: basic_udi
+                .and_then(|b| b.basic_udi.as_ref())
+                .and_then(|di| di.code.clone())
+                .filter(|c| !c.is_empty())
+                .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
+            descriptions: {
+                // 097.025: GlobalModelDescription uses deviceName (FLD-UDID-22) from Basic UDI-DI
+                // languageCode 'en' is required
+                let device_name = basic_udi
+                    .and_then(|b| b.device_name.as_ref())
+                    .filter(|n| !n.is_empty())
+                    .cloned()
+                    .unwrap_or_else(|| device.primary_di_code());
+                vec![LangValue {
+                    language_code: "en".to_string(),
+                    value: device_name,
+                }]
+            },
+        }],
         gtin,
         additional_identification,
         referenced_trade_items,
