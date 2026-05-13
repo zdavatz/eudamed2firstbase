@@ -63,7 +63,7 @@ pub struct EndocrineSubstanceIds {
 const DEFAULT_CONFIG: &str = r#"
 [provider]
 gln         = "7612345000480"
-party_name  = "EUDAMED Public Download Importing"
+party_name  = "EUDAMED Public Importer"
 publish_gln = "7612345000527"
 
 [target_market]

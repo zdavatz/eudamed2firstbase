@@ -6,7 +6,7 @@
 # ---------------------------------------------------------------------------
 [provider]
 gln         = "7612345000480"                  # Your GS1 provider GLN
-party_name  = "EUDAMED Public Download Importing"
+party_name  = "EUDAMED Public Importer"
 publish_gln = "7612345000527"                  # Default recipient GLN for pushes (e.g. GS1 Switzerland UDI Data Dump)
 
 # ---------------------------------------------------------------------------
