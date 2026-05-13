@@ -627,19 +627,16 @@ pub fn transform_detail_device(
                 .and_then(|di| di.code.clone())
                 .filter(|c| !c.is_empty())
                 .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
-            descriptions: {
-                // 097.025: GlobalModelDescription uses deviceName (FLD-UDID-22) from Basic UDI-DI
-                // languageCode 'en' is required
-                let device_name = basic_udi
-                    .and_then(|b| b.device_name.as_ref())
-                    .filter(|n| !n.is_empty())
-                    .cloned()
-                    .unwrap_or_else(|| device.primary_di_code());
-                vec![LangValue {
-                    language_code: "en".to_string(),
-                    value: device_name,
-                }]
-            },
+            descriptions: basic_udi
+                .and_then(|b| b.device_name.as_ref())
+                .filter(|n| !n.is_empty())
+                .map(|n| {
+                    vec![LangValue {
+                        language_code: "en".to_string(),
+                        value: n.clone(),
+                    }]
+                })
+                .unwrap_or_default(),
         }],
         gtin,
         additional_identification,
