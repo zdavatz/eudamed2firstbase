@@ -174,7 +174,8 @@ pub fn run_download(
     let db_path = db_dir.join("version_tracking.db");
     let conn = crate::version_db::open_db(&db_path)?;
 
-    let (need_download, unchanged_skipped) = filter_unchanged(&uuid_versions, &conn, progress);
+    let (need_download, unchanged_skipped) =
+        filter_unchanged(&uuid_versions, &conn, &detail_dir, &basic_dir, progress);
 
     log(&format!(
         "Version check: {} new/changed, {} unchanged (skipping download)",
@@ -768,13 +769,28 @@ fn download_listings(
 
 /// Pre-download version check: compare listing versionNumber and basicUdiDataVersionNumber against version DB.
 /// Returns (uuids_needing_download, count_unchanged).
+///
+/// A device is only treated as "unchanged" (and skipped) when its versions match
+/// the DB *and* its cached `detail/<uuid>.json` and `basic/<uuid>.json` both exist
+/// non-empty on disk. If either file is missing the cache is incomplete: convert
+/// would fall back to bad defaults (globalModelNumber=GTIN, no
+/// MODEL_NUMBER/globalModelDescription/EAR -> GS1 097.116/097.025/097.054). In
+/// that case the device is re-downloaded and its stale version row is dropped so
+/// the convert step reconverts instead of fast-path-skipping onto stale output.
 fn filter_unchanged(
     uuid_versions: &[(String, Option<u32>, Option<u32>)],
     conn: &rusqlite::Connection,
+    detail_dir: &Path,
+    basic_dir: &Path,
     _progress: &dyn DownloadProgress,
 ) -> (Vec<String>, usize) {
     let mut need_download = Vec::new();
     let mut unchanged = 0;
+
+    let file_present = |dir: &Path, uuid: &str| -> bool {
+        let p = dir.join(format!("{}.json", uuid));
+        std::fs::metadata(&p).map(|m| m.len() > 0).unwrap_or(false)
+    };
 
     for (uuid, listing_version, budi_listing_version) in uuid_versions {
         if let Ok(Some(db_rec)) = crate::version_db::get_version(conn, uuid) {
@@ -790,8 +806,23 @@ fn filter_unchanged(
                 _ => false,
             };
             if udi_match && budi_match {
-                unchanged += 1;
-                continue;
+                if file_present(detail_dir, uuid) && file_present(basic_dir, uuid) {
+                    unchanged += 1;
+                    continue;
+                }
+                // Versions match but the cached files are missing — the local
+                // cache is incomplete. Invalidate the stale version row and drop
+                // any stale firstbase output built from the incomplete cache.
+                // Step 7 (index_detail_versions) re-creates the version row after
+                // re-download, so the row deletion alone would not force a rebuild
+                // (the convert fast-path matches the unchanged detail hash);
+                // removing the output file makes the convert step's
+                // output-missing fallback rebuild it from the complete data.
+                let _ = crate::version_db::delete_version(conn, uuid);
+                let stale_output = app_data_dir()
+                    .join("firstbase_json")
+                    .join(format!("{}.json", uuid));
+                let _ = std::fs::remove_file(&stale_output);
             }
         }
         need_download.push(uuid.clone());

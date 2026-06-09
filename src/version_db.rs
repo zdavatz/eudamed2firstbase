@@ -293,6 +293,19 @@ pub fn upsert_version(conn: &Connection, rec: &VersionRecord) -> Result<()> {
     Ok(())
 }
 
+/// Delete a device's version row so the next `detect_changes` treats it as new.
+///
+/// Used when the on-disk detail/basic cache files for an otherwise-unchanged
+/// device are missing: the prior `firstbase_json` output was produced without
+/// the Basic UDI-DI data (globalModelNumber falls back to the GTIN, no
+/// MODEL_NUMBER/globalModelDescription/EAR) and is rejected by GS1 with
+/// 097.116/097.025/097.054. Dropping the row forces a full re-download +
+/// reconversion instead of a stale-output fast-path skip.
+pub fn delete_version(conn: &Connection, uuid: &str) -> Result<()> {
+    conn.execute("DELETE FROM udi_versions WHERE uuid = ?1", [uuid])?;
+    Ok(())
+}
+
 /// Compare a new version record against the stored one and return what changed.
 /// Fast path: if detail_hash matches, nothing changed.
 pub fn detect_changes(conn: &Connection, new_rec: &VersionRecord) -> Result<ChangeSet> {

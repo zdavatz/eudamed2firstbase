@@ -1871,7 +1871,22 @@ fn run_pipeline(
 
                 match crate::api_detail::parse_api_detail(&json_content) {
                     Ok(detail) => {
-                        let basic_udi = basic_udi_cache.get(uuid);
+                        // Safety net: if the Basic UDI-DI is not cached locally,
+                        // fetch it on demand. Without it the converter falls back
+                        // to bad defaults (globalModelNumber=GTIN, no
+                        // MODEL_NUMBER/globalModelDescription/EAR) and GS1 rejects
+                        // the device with 097.116/097.025/097.054.
+                        let fetched_basic;
+                        let basic_udi = match basic_udi_cache.get(uuid) {
+                            Some(b) => Some(b),
+                            None => {
+                                fetched_basic = crate::fetch_basic_udi_di(uuid, &basic_dir);
+                                if fetched_basic.is_some() {
+                                    log(&format!("  Fetched missing Basic UDI-DI for {}", uuid));
+                                }
+                                fetched_basic.as_ref()
+                            }
+                        };
                         let document = crate::transform_detail::transform_detail_document(
                             &detail, &config, basic_udi, uuid,
                         );

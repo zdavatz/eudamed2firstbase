@@ -1884,7 +1884,18 @@ fn reconvert_uuids_from_detail(
                 return;
             }
         };
-        let basic_udi = basic_udi_cache.get(&uuid);
+        // Safety net: fetch the Basic UDI-DI on demand when it is not cached.
+        // Without it the converter emits bad defaults (globalModelNumber=GTIN,
+        // no MODEL_NUMBER/globalModelDescription/EAR) that GS1 rejects with
+        // 097.116/097.025/097.054.
+        let fetched_basic;
+        let basic_udi = match basic_udi_cache.get(&uuid) {
+            Some(b) => Some(b),
+            None => {
+                fetched_basic = fetch_basic_udi_di(&uuid, &basic_dir);
+                fetched_basic.as_ref()
+            }
+        };
         let doc = transform_detail::transform_detail_document(&device, fb_config, basic_udi, &uuid);
         let draft_doc = firstbase::DraftItemDocument { draft_item: doc };
         let out = match serde_json::to_string_pretty(&draft_doc) {
