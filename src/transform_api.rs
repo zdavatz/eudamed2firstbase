@@ -186,10 +186,8 @@ pub fn transform_api_device(device: &ApiDevice, config: &Config) -> TradeItem {
             publication: now_str,
             discontinued: None,
         },
-        global_model_info: vec![GlobalModelInformation {
-            number: basic_udi,
-            descriptions: Vec::new(),
-        }],
+        // Only a valid GS1 GMN may go into globalModelNumber (097.116).
+        global_model_info: GlobalModelInformation::build(&basic_udi, Vec::new()),
         gtin,
         additional_identification,
         referenced_trade_items: Vec::new(),

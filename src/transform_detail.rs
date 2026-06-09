@@ -619,15 +619,17 @@ pub fn transform_detail_device(
             publication: now_str,
             discontinued,
         },
-        // globalModelNumber ← Basic UDI-DI code (a.k.a. EUDAMED B-GTIN), incl. MDD/AIMDD/IVDD
-        // since GS1 097.116 was narrowed to MDR/IVDR-only (TC confirmation, v1.0.54).
-        global_model_info: vec![GlobalModelInformation {
-            number: basic_udi
+        // globalModelNumber ← Basic UDI-DI code, but ONLY when it is a valid GS1
+        // GMN (097.116). Legacy MDD/AIMDD/IVDD devices carry a `B-<GTIN>` Basic
+        // UDI-DI that is not a GMN; the old GTIN fallback was never a GMN either.
+        // 097.013 only *requires* globalModelNumber for MDR/IVDR, and 097.025 is
+        // still satisfied by globalModelDescription / MODEL_NUMBER.
+        global_model_info: {
+            let code = basic_udi
                 .and_then(|b| b.basic_udi.as_ref())
-                .and_then(|di| di.code.clone())
-                .filter(|c| !c.is_empty())
-                .unwrap_or_else(|| device.primary_di_code()), // fallback to primary DI
-            descriptions: basic_udi
+                .and_then(|di| di.code.as_deref())
+                .unwrap_or("");
+            let descriptions = basic_udi
                 .and_then(|b| b.device_name.as_ref())
                 .filter(|n| !n.is_empty())
                 .map(|n| {
@@ -636,8 +638,9 @@ pub fn transform_detail_device(
                         value: n.clone(),
                     }]
                 })
-                .unwrap_or_default(),
-        }],
+                .unwrap_or_default();
+            GlobalModelInformation::build(code, descriptions)
+        },
         gtin,
         additional_identification,
         referenced_trade_items,
@@ -1926,10 +1929,9 @@ pub fn transform_detail_document(
                 // child stay aligned (910.004/910.005, issue #36).
                 discontinued: base_discontinued.clone(),
             },
-            global_model_info: vec![GlobalModelInformation {
-                number: basic_udi_code.to_string(),
-                descriptions: vec![],
-            }],
+            // Only emit globalModelNumber when the Basic UDI-DI code is a valid
+            // GMN (097.116); legacy `B-<GTIN>` codes are dropped.
+            global_model_info: GlobalModelInformation::build(basic_udi_code, vec![]),
             gtin: level.code.clone(),
             additional_identification: vec![],
             referenced_trade_items: Vec::new(),

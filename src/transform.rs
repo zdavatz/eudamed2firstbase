@@ -302,10 +302,8 @@ fn build_packaging_trade_item(
                 discontinued: None,
             }
         },
-        global_model_info: vec![GlobalModelInformation {
-            number: basic_udi_di.to_string(),
-            descriptions: vec![],
-        }],
+        // Only a valid GS1 GMN may go into globalModelNumber (097.116).
+        global_model_info: GlobalModelInformation::build(basic_udi_di, vec![]),
         gtin: gtin.to_string(),
         additional_identification: vec![],
         referenced_trade_items: Vec::new(),
@@ -743,10 +741,8 @@ fn build_base_unit(
                 discontinued: None,
             }
         },
-        global_model_info: vec![GlobalModelInformation {
-            number: basic_udi_di.to_string(),
-            descriptions: model_desc,
-        }],
+        // Only a valid GS1 GMN may go into globalModelNumber (097.116).
+        global_model_info: GlobalModelInformation::build(basic_udi_di, model_desc),
         gtin: base_di.to_string(),
         additional_identification: additional_ids,
         referenced_trade_items: Vec::new(),

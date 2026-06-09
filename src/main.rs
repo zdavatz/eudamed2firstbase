@@ -1350,8 +1350,9 @@ fn load_listing_index(path: &Path) -> Result<HashMap<String, ListingData>> {
 }
 
 fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingData) {
-    // Set basic UDI as global model number
-    if !listing.basic_udi.is_empty() {
+    // Set basic UDI as global model number — only if it is a valid GS1 GMN
+    // (097.116); legacy `B-<GTIN>` codes must not be written here.
+    if mappings::is_valid_gmn(&listing.basic_udi) {
         if let Some(gmi) = trade_item.global_model_info.first_mut() {
             gmi.number = listing.basic_udi.clone();
         }

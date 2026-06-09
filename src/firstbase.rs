@@ -221,13 +221,37 @@ pub struct TradeItemSynchronisationDates {
 
 #[derive(Serialize, Debug)]
 pub struct GlobalModelInformation {
-    #[serde(rename = "GlobalModelNumber")]
+    #[serde(rename = "GlobalModelNumber", skip_serializing_if = "String::is_empty")]
     pub number: String,
     #[serde(
         rename = "GlobalModelDescription",
         skip_serializing_if = "Vec::is_empty"
     )]
     pub descriptions: Vec<LangValue>,
+}
+
+impl GlobalModelInformation {
+    /// Build the `GlobalModelInformation` list for a trade item.
+    ///
+    /// `globalModelNumber` is emitted only when `code` is a valid GS1 GMN
+    /// (GS1 097.116) — EUDAMED's legacy `B-<GTIN>` Basic UDI-DI is not a GMN and
+    /// a GTIN is never one. The whole element is dropped when there is neither a
+    /// valid GMN nor a description, so we never serialise an empty object.
+    pub fn build(code: &str, descriptions: Vec<LangValue>) -> Vec<GlobalModelInformation> {
+        let number = if crate::mappings::is_valid_gmn(code) {
+            code.to_string()
+        } else {
+            String::new()
+        };
+        if number.is_empty() && descriptions.is_empty() {
+            Vec::new()
+        } else {
+            vec![GlobalModelInformation {
+                number,
+                descriptions,
+            }]
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Clone)]

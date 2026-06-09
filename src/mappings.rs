@@ -306,6 +306,48 @@ pub fn is_eu_eea_country(iso2: &str) -> bool {
     )
 }
 
+/// Whether `code` is a valid GS1 Global Model Number (GMN) per GenSpecs 7.9.5
+/// (MOD-1021: CSET-82 payload weighted by descending primes, CSET-32 check pair).
+///
+/// Used to gate `globalModelNumber` emission so GS1 097.116 ("if globalModelNumber
+/// is used it must be a valid GMN") never fires. EUDAMED assigns legacy
+/// MDD/AIMDD/IVDD devices a Basic UDI-DI of the form `B-<GTIN>`, which is not a
+/// GMN; a plain GTIN is never a GMN either. Only a real GS1-issued Basic UDI-DI
+/// (the MDR/IVDR case) passes.
+pub fn is_valid_gmn(code: &str) -> bool {
+    const CSET82: &str =
+        "!\"%&'()*+,-./0123456789:;<=>?ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
+    const CSET32: &str = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    // Descending primes: rightmost payload character gets the smallest (2).
+    const PRIMES: [u32; 23] = [
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 79, 83, 89,
+    ];
+
+    let chars: Vec<char> = code.chars().collect();
+    // A GMN is 1..=23 payload characters + a 2-character check pair (≤ 25 total).
+    if chars.len() < 3 || chars.len() > 25 {
+        return false;
+    }
+    let (payload, check) = chars.split_at(chars.len() - 2);
+    if payload.len() > PRIMES.len() {
+        return false;
+    }
+    let cset82: Vec<char> = CSET82.chars().collect();
+    let cset32: Vec<char> = CSET32.chars().collect();
+
+    let n = payload.len();
+    let mut sum: u32 = 0;
+    for (i, ch) in payload.iter().enumerate() {
+        match cset82.iter().position(|c| c == ch) {
+            Some(v) => sum += v as u32 * PRIMES[n - 1 - i],
+            None => return false, // character outside the GMN alphabet
+        }
+    }
+    sum %= 1021;
+    let expected = [cset32[(sum / 32) as usize], cset32[(sum % 32) as usize]];
+    check == expected
+}
+
 /// Risk class: EUDAMED → GS1 (additionalTradeItemClassificationSystemCode = 76)
 pub fn risk_class_to_gs1(code: &str) -> &str {
     match code {

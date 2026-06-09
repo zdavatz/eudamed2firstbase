@@ -292,10 +292,8 @@ pub fn transform_eudamed_device(device: &EudamedDevice, config: &Config) -> Trad
             publication: now_str,
             discontinued: None,
         },
-        global_model_info: vec![GlobalModelInformation {
-            number: basic_udi,
-            descriptions: Vec::new(),
-        }],
+        // Only a valid GS1 GMN may go into globalModelNumber (097.116).
+        global_model_info: GlobalModelInformation::build(&basic_udi, Vec::new()),
         gtin: String::new(), // No GTIN in EUDAMED JSON device-level records
         additional_identification: Vec::new(),
         referenced_trade_items: Vec::new(),
