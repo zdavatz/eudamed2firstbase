@@ -235,22 +235,24 @@ impl GlobalModelInformation {
     ///
     /// `globalModelNumber` is emitted only when `code` is a valid GS1 GMN
     /// (GS1 097.116) — EUDAMED's legacy `B-<GTIN>` Basic UDI-DI is not a GMN and
-    /// a GTIN is never one. The whole element is dropped when there is neither a
-    /// valid GMN nor a description, so we never serialise an empty object.
+    /// a GTIN is never one.
+    ///
+    /// The GDSN XSD requires `globalModelNumber` inside `globalModelInformation`
+    /// — `globalModelDescription` may NOT stand on its own (a description-only
+    /// element triggers G361 "General XSD failure" + SCHEMA "invalid child
+    /// element 'globalModelDescription', expected 'globalModelNumber'", which
+    /// fails the entire CreateMany batch document). So without a valid GMN the
+    /// WHOLE element is dropped, including the description. 097.025 stays
+    /// satisfied via the `MODEL_NUMBER` AdditionalTradeItemIdentification.
+    /// (v1.0.59, fixes the v1.0.58 legacy-MDD push regression.)
     pub fn build(code: &str, descriptions: Vec<LangValue>) -> Vec<GlobalModelInformation> {
-        let number = if crate::mappings::is_valid_gmn(code) {
-            code.to_string()
-        } else {
-            String::new()
-        };
-        if number.is_empty() && descriptions.is_empty() {
-            Vec::new()
-        } else {
-            vec![GlobalModelInformation {
-                number,
-                descriptions,
-            }]
+        if !crate::mappings::is_valid_gmn(code) {
+            return Vec::new();
         }
+        vec![GlobalModelInformation {
+            number: code.to_string(),
+            descriptions,
+        }]
     }
 }
 

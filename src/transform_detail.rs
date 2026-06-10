@@ -257,14 +257,38 @@ pub fn transform_detail_device(
         }
     }
 
-    // MODEL_NUMBER from Basic UDI-DI deviceModel (FLD-UDID-20)
-    if let Some(model) = basic_udi
+    // MODEL_NUMBER from Basic UDI-DI deviceModel (FLD-UDID-20).
+    //
+    // 097.025 (UDI_REGISTRY) requires MODEL_NUMBER OR globalModelDescription[en].
+    // globalModelDescription can only be emitted inside globalModelInformation,
+    // which the GDSN XSD requires to carry a globalModelNumber — so for a legacy
+    // device whose Basic UDI-DI code is not a valid GMN there is NO place for the
+    // description and 097.025 must be met by MODEL_NUMBER. When such a device has
+    // no deviceModel we fall back to deviceName (FLD-UDID-22) as MODEL_NUMBER so
+    // the device still satisfies 097.025 (v1.0.59 — without this the v1.0.58
+    // element-drop would trade the G361 XSD failure for a 097.025 rejection).
+    let model_number = basic_udi
         .and_then(|b| b.device_model.as_ref())
         .filter(|m| !m.is_empty())
-    {
+        .cloned()
+        .or_else(|| {
+            let code = basic_udi
+                .and_then(|b| b.basic_udi.as_ref())
+                .and_then(|di| di.code.as_deref())
+                .unwrap_or("");
+            if mappings::is_valid_gmn(code) {
+                None // globalModelDescription will satisfy 097.025
+            } else {
+                basic_udi
+                    .and_then(|b| b.device_name.as_ref())
+                    .filter(|n| !n.is_empty())
+                    .cloned()
+            }
+        });
+    if let Some(model) = model_number {
         additional_identification.push(AdditionalTradeItemIdentification {
             type_code: "MODEL_NUMBER".to_string(),
-            value: truncate_id(model.clone()),
+            value: truncate_id(model),
         });
     }
 
