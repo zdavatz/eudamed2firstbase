@@ -1,3 +1,7 @@
 auth/
 node_modules/
 package-lock.json
+auth-sync/
+messages.ndjson
+qr-sync.png
+attachments/
