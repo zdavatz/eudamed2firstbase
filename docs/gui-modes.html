@@ -57,7 +57,7 @@
 <h1>eudamed2firstbase &mdash; GUI-Modi 0&ndash;5</h1>
 <p class="lead">Was jeder Knopf in der GUI tut, wann er der richtige ist und welche
 Stolperfallen er hat.</p>
-<p class="meta">Document version: 2026-05-03 &nbsp;·&nbsp; Tool version: v1.0.47+
+<p class="meta">Document version: 2026-06-10 &nbsp;·&nbsp; Tool version: v1.0.58+
 &nbsp;·&nbsp; Source of truth: <code>src/gui.rs</code>, <code>src/main.rs</code>,
 <code>src/download.rs</code></p>
 
@@ -259,6 +259,11 @@ willst, nimm Mode 5.</p>
       <code>firstbase_json/processed/</code>. Logzeile:
       <code>WARNING: N UUID(s) have no eudamed_json/detail/&lt;uuid&gt;.json &mdash; will fall back to
       firstbase_json/processed/</code> (seit v1.0.46).</li>
+  <li><strong>Basic-UDI-DI fetch-on-miss (seit v1.0.57)</strong>: Wenn die Basic UDI-DI eines
+      Devices nicht im lokalen Cache liegt, holt der Reconvert sie on-demand aus der EUDAMED-API
+      (<code>fetch_basic_udi_di</code>) &mdash; verhindert den stillen
+      <code>basic_udi=None</code>-Fallback (097.116/097.025/097.054), der beim Reconvert ohne
+      frischen Download sonst auftrat.</li>
   <li><span class="pill push">Push</span> der frischen Files.</li>
 </ol>
 
