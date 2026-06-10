@@ -2372,7 +2372,11 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
 
         log(&format!("  Submitted: {}", req_id));
 
-        // Collect publish items + track successful files
+        // Collect publish items for this batch. They are committed to the global
+        // publish list only after the CreateMany batch clears the document-level
+        // validation gate below — a batch that fails XSD validation created no
+        // Live items, so publishing them would be meaningless.
+        let mut batch_publish_items: Vec<serde_json::Value> = Vec::new();
         for (_, ident, _, doc) in batch {
             let gtin = doc
                 .pointer("/DraftItem/TradeItem/Gtin")
@@ -2382,7 +2386,7 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
                 .pointer("/DraftItem/TradeItem/TargetMarket/TargetMarketCountryCode/Value")
                 .and_then(|v| v.as_str())
                 .unwrap_or("097");
-            all_publish_items.push(serde_json::json!({
+            batch_publish_items.push(serde_json::json!({
                 "Identifier": ident,
                 "DataSource": settings.provider_gln,
                 "Gtin": gtin,
@@ -2390,6 +2394,11 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
                 "PublishToGln": [settings.publish_to_gln],
             }));
         }
+
+        // Document/XSD-level errors (e.g. G361 + SCHEMA) collected during polling.
+        // When non-empty, the whole CreateMany batch document was rejected and
+        // none of its items were created Live.
+        let mut batch_doc_errors: Vec<(String, String)> = Vec::new();
 
         // Poll until Done
         for poll in 1..=24 {
@@ -2503,6 +2512,31 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
                                     {
                                         for exc in ge {
                                             if let Some(obj) = exc.as_object() {
+                                                // Document-level errors sit as a
+                                                // direct GS1Error array on the
+                                                // GS1Exception (no CommandException /
+                                                // per-item GTIN). These fail the whole
+                                                // batch document — e.g. a G361 XSD
+                                                // failure from one invalid item.
+                                                for err in obj
+                                                    .get("GS1Error")
+                                                    .and_then(|v| v.as_array())
+                                                    .unwrap_or(&vec![])
+                                                {
+                                                    let code = err
+                                                        .get("ErrorCode")
+                                                        .and_then(|v| v.as_str())
+                                                        .unwrap_or("");
+                                                    let desc = err
+                                                        .get("ErrorDescription")
+                                                        .and_then(|v| v.as_str())
+                                                        .unwrap_or("");
+                                                    batch_rejected += 1;
+                                                    batch_doc_errors.push((
+                                                        code.to_string(),
+                                                        desc.chars().take(200).collect(),
+                                                    ));
+                                                }
                                                 for ce in obj
                                                     .get("CommandException")
                                                     .and_then(|v| v.as_array())
@@ -2582,6 +2616,50 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
                 Err(e) => {
                     log(&format!("  Poll error: {}", e));
                     break;
+                }
+            }
+        }
+
+        // A document/XSD-level failure (G361 + SCHEMA) fails the ENTIRE CreateMany
+        // batch document — none of its items were created Live. Mark them all
+        // rejected so they are kept in firstbase_json/ for retry and reported
+        // honestly, instead of being silently moved to processed/ as "accepted",
+        // and do not publish them via AddMany. (Fixes the masking where a failed
+        // CreateMany batch — e.g. the v1.0.58 legacy-MDD globalModelDescription
+        // schema error — still reported every item as accepted.)
+        if batch_doc_errors.is_empty() {
+            all_publish_items.extend(batch_publish_items);
+        } else {
+            let codes = {
+                let mut c: Vec<&str> = batch_doc_errors.iter().map(|(c, _)| c.as_str()).collect();
+                c.sort();
+                c.dedup();
+                c.join(",")
+            };
+            log(&format!(
+                "  Batch {} REJECTED at document level ({}) — marking all {} item(s) rejected, not publishing",
+                bi + 1,
+                codes,
+                batch.len()
+            ));
+            for (_, ident, _, doc) in batch {
+                let gtin = doc
+                    .pointer("/DraftItem/TradeItem/Gtin")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if !gtin.is_empty() {
+                    rejected_gtins.insert(gtin.to_string());
+                }
+                // Attribute each document-level error to every item in the batch so
+                // the per-device push_log error_code and push_error rows are populated.
+                for (code, desc) in &batch_doc_errors {
+                    error_details.push((
+                        ident.to_string(),
+                        gtin.to_string(),
+                        code.clone(),
+                        "(document-level)".to_string(),
+                        desc.clone(),
+                    ));
                 }
             }
         }
