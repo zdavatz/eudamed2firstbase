@@ -2080,6 +2080,45 @@ fn run_pipeline(
     }
 }
 
+/// Defensive pre-push normalization. The GDSN XSD requires `globalModelNumber`
+/// inside every `globalModelInformation` element — a description-only element
+/// fails the WHOLE CreateMany batch document with G361 ("General XSD failure")
+/// + SCHEMA ("invalid child element 'globalModelDescription', expected
+/// 'globalModelNumber'"). The v1.0.59 converter never emits such an element, but
+/// a STALE firstbase output written by a pre-v1.0.59 converter can still sit in
+/// `firstbase_json/`: the convert step hash-skips a device whose detail JSON is
+/// unchanged, so its old broken output is never rewritten, and the push reads
+/// every file on disk. One such file poisons its entire 100-item batch. Strip
+/// any `GlobalModelInformation` entry lacking a non-empty `GlobalModelNumber`
+/// here, at the push choke-point, regardless of which converter wrote the file.
+/// Returns true if the document was modified.
+fn sanitize_global_model_info(doc: &mut serde_json::Value) -> bool {
+    let Some(ti) = doc.pointer_mut("/DraftItem/TradeItem") else {
+        return false;
+    };
+    let Some(obj) = ti.as_object_mut() else {
+        return false;
+    };
+    let Some(arr) = obj
+        .get_mut("GlobalModelInformation")
+        .and_then(|v| v.as_array_mut())
+    else {
+        return false;
+    };
+    let before = arr.len();
+    arr.retain(|g| {
+        g.get("GlobalModelNumber")
+            .and_then(|v| v.as_str())
+            .map(|s| !s.is_empty())
+            .unwrap_or(false)
+    });
+    let changed = arr.len() != before;
+    if arr.is_empty() {
+        obj.remove("GlobalModelInformation");
+    }
+    changed
+}
+
 /// Push firstbase JSON files to GS1 Catalogue Item API
 pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Result<(u32, u32)> {
     let api_base = settings.firstbase_env.api_base();
@@ -2117,9 +2156,18 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
     // Filter: only numeric GTINs (skip HIBC/IFA to prevent batch rejection)
     let mut pushable: Vec<(std::path::PathBuf, String, String, serde_json::Value)> = Vec::new();
     let mut skipped_no_gtin = 0;
+    let mut sanitized = 0u32;
     for f in &files {
         if let Ok(content) = std::fs::read_to_string(f) {
-            if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Ok(mut doc) = serde_json::from_str::<serde_json::Value>(&content) {
+                // Repair stale description-only globalModelInformation (G361/SCHEMA)
+                // and rewrite the file so it stops failing future pushes.
+                if sanitize_global_model_info(&mut doc) {
+                    if let Ok(fixed) = serde_json::to_string_pretty(&doc) {
+                        let _ = std::fs::write(f, fixed);
+                    }
+                    sanitized += 1;
+                }
                 let gtin = doc
                     .pointer("/DraftItem/TradeItem/Gtin")
                     .and_then(|v| v.as_str())
@@ -2184,6 +2232,12 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
     let deduped = before_dedup - pushable.len();
 
     log(&format!("{} files with numeric GTIN (pushable), {} skipped (no GTIN), {} deduped (same GTIN, moved to processed/)", pushable.len(), skipped_no_gtin, deduped));
+    if sanitized > 0 {
+        log(&format!(
+            "Repaired {} stale file(s): dropped description-only globalModelInformation (G361/SCHEMA)",
+            sanitized
+        ));
+    }
     if pushable.is_empty() {
         return Ok((0, 0));
     }
