@@ -319,8 +319,13 @@ pub fn is_valid_gmn(code: &str) -> bool {
         "!\"%&'()*+,-./0123456789:;<=>?ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
     const CSET32: &str = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
     // Descending primes: rightmost payload character gets the smallest (2).
+    // This is the first 23 primes (2..83), matching GS1 gmn-helpers' weight
+    // table [83,79,73,71,…,3,2] — it includes 73 and stops at 83, NOT 89.
+    // (Bug fix: the old array dropped 73 and appended 89, so it failed GS1's
+    // own test vector `…2310c`→`2K` and wrongly rejected valid GMNs such as
+    // `04049154_PC_M2_H2_O2_BU`, whose check pair GS1's calculator confirms.)
     const PRIMES: [u32; 23] = [
-        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 79, 83, 89,
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83,
     ];
 
     let chars: Vec<char> = code.chars().collect();
@@ -809,6 +814,22 @@ pub fn regulation_from_risk_class_refdata(code: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gmn_validation_matches_gs1_reference() {
+        // GS1's own worked example (gmn-helpers / GenSpecs 7.9.5): check pair 2K.
+        assert!(is_valid_gmn("1987654Ad4X4bL5ttr2310c2K"));
+        // Real EUDAMED MDR Basic UDI-DIs (DE-MF-000017892) — GS1's own
+        // check-character calculator confirms these pairs; firstbase accepted
+        // them. Regression guard for the dropped-73/added-89 prime bug.
+        assert!(is_valid_gmn("04049154_PC_M2_H2_O2_BU"));
+        assert!(is_valid_gmn("04049154_AI_M1_H1_O1_X7"));
+        assert!(is_valid_gmn("04049154_PC_M2_H4_O3_CM"));
+        // Genuinely non-GMN forms must still be rejected.
+        assert!(!is_valid_gmn("04049154_PC_M2_H2_O2_EA")); // wrong check pair
+        assert!(!is_valid_gmn("B-04049154000074")); // legacy B-<GTIN>
+        assert!(!is_valid_gmn("04049154500321")); // plain GTIN
+    }
 
     #[test]
     fn characteristic_code_size_abbrevs() {
