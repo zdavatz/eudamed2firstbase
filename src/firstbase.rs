@@ -233,20 +233,24 @@ pub struct GlobalModelInformation {
 impl GlobalModelInformation {
     /// Build the `GlobalModelInformation` list for a trade item.
     ///
-    /// `globalModelNumber` is emitted only when `code` is a valid GS1 GMN
-    /// (GS1 097.116) — EUDAMED's legacy `B-<GTIN>` Basic UDI-DI is not a GMN and
-    /// a GTIN is never one.
+    /// `globalModelNumber` ← the Basic UDI-DI `code` **always** (1:1 from
+    /// EUDAMED): the real GMN for MDR/IVDR, the `B-<GTIN>` placeholder for legacy
+    /// MDD/AIMDD/IVDD. EUDAMED already validates GS1 identifiers at registration,
+    /// so we do not re-gate on a local GMN check (v1.0.64, Maik's mapping).
     ///
-    /// The GDSN XSD requires `globalModelNumber` inside `globalModelInformation`
+    /// The GDSN XSD requires `globalModelNumber` *inside* `globalModelInformation`
     /// — `globalModelDescription` may NOT stand on its own (a description-only
     /// element triggers G361 "General XSD failure" + SCHEMA "invalid child
-    /// element 'globalModelDescription', expected 'globalModelNumber'", which
-    /// fails the entire CreateMany batch document). So without a valid GMN the
-    /// WHOLE element is dropped, including the description. 097.025 stays
-    /// satisfied via the `MODEL_NUMBER` AdditionalTradeItemIdentification.
-    /// (v1.0.59, fixes the v1.0.58 legacy-MDD push regression.)
+    /// element 'globalModelDescription', expected 'globalModelNumber'"). So the
+    /// element is emitted only when `code` is present; an empty `code` (no Basic
+    /// UDI-DI / cache miss) drops the whole element, description included.
+    ///
+    /// OPEN QUESTION (to be settled by a live TEST push): GS1 097.116 says a
+    /// `globalModelNumber`, if used, must be a valid GMN — and `B-<GTIN>` is not.
+    /// If 097.116 rejects legacy here we must revisit; #42 documented it as an
+    /// error, but that may have been downgraded (cf. 097.096). See issue #42.
     pub fn build(code: &str, descriptions: Vec<LangValue>) -> Vec<GlobalModelInformation> {
-        if !crate::mappings::is_valid_gmn(code) {
+        if code.is_empty() {
             return Vec::new();
         }
         vec![GlobalModelInformation {

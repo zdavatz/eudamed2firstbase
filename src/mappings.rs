@@ -309,11 +309,13 @@ pub fn is_eu_eea_country(iso2: &str) -> bool {
 /// Whether `code` is a valid GS1 Global Model Number (GMN) per GenSpecs 7.9.5
 /// (MOD-1021: CSET-82 payload weighted by descending primes, CSET-32 check pair).
 ///
-/// Used to gate `globalModelNumber` emission so GS1 097.116 ("if globalModelNumber
-/// is used it must be a valid GMN") never fires. EUDAMED assigns legacy
-/// MDD/AIMDD/IVDD devices a Basic UDI-DI of the form `B-<GTIN>`, which is not a
-/// GMN; a plain GTIN is never a GMN either. Only a real GS1-issued Basic UDI-DI
-/// (the MDR/IVDR case) passes.
+/// Currently **unused**: v1.0.64 (Maik's mapping) emits `globalModelNumber` 1:1
+/// from the Basic UDI-DI without a local GMN gate, trusting EUDAMED's own
+/// validation. Retained (with its GS1-reference regression test) because if a
+/// live TEST push shows GS1 097.116 rejecting legacy `B-<GTIN>`, the gate must
+/// come back. The MOD-1021 table here is the corrected one (first 23 primes,
+/// includes 73, excludes 89 — the v1.0.63 fix). See firstbase::build / issue #42.
+#[allow(dead_code)]
 pub fn is_valid_gmn(code: &str) -> bool {
     const CSET82: &str =
         "!\"%&'()*+,-./0123456789:;<=>?ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";

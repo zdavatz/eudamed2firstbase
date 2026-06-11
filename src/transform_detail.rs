@@ -6,6 +6,15 @@ use crate::firstbase::*;
 use crate::mappings;
 use chrono::Utc;
 
+/// GDSN limits additionalTradeItemIdentificationValue to 80 characters.
+fn truncate_id(s: String) -> String {
+    if s.len() <= 80 {
+        s
+    } else {
+        s.chars().take(80).collect()
+    }
+}
+
 /// Transform a full API device detail record into a firstbase TradeItem.
 /// Optional `basic_udi` provides real MDR mandatory fields from the Basic UDI-DI level.
 pub fn transform_detail_device(
@@ -204,14 +213,6 @@ pub fn transform_detail_device(
 
     // --- Reference → additional identification ---
     // 097.006: MANUFACTURER_PART_NUMBER is mandatory. Use reference, fallback to primary DI code.
-    // GDSN limits additionalTradeItemIdentificationValue to 80 characters.
-    let truncate_id = |s: String| -> String {
-        if s.len() <= 80 {
-            s
-        } else {
-            s.chars().take(80).collect()
-        }
-    };
     let mut additional_identification = Vec::new();
     let mfr_part = device
         .reference
@@ -257,34 +258,21 @@ pub fn transform_detail_device(
         }
     }
 
-    // MODEL_NUMBER from Basic UDI-DI deviceModel (FLD-UDID-20).
+    // MODEL_NUMBER ← Basic UDI-DI deviceModel (FLD-UDID-20) ONLY.
     //
     // 097.025 (UDI_REGISTRY) requires MODEL_NUMBER OR globalModelDescription[en].
-    // globalModelDescription can only be emitted inside globalModelInformation,
-    // which the GDSN XSD requires to carry a globalModelNumber — so for a legacy
-    // device whose Basic UDI-DI code is not a valid GMN there is NO place for the
-    // description and 097.025 must be met by MODEL_NUMBER. When such a device has
-    // no deviceModel we fall back to deviceName (FLD-UDID-22) as MODEL_NUMBER so
-    // the device still satisfies 097.025 (v1.0.59 — without this the v1.0.58
-    // element-drop would trade the G361 XSD failure for a 097.025 rejection).
+    // The choice maps 1:1 to the two source fields (Maik's rule, v1.0.64):
+    //   deviceModel (FLD-UDID-20) → MODEL_NUMBER
+    //   deviceName  (FLD-UDID-22) → globalModelDescription (en)
+    // deviceName is a description, NOT an identifier, so it must NEVER become a
+    // MODEL_NUMBER (the v1.0.59 fallback did exactly that — removed). Since
+    // globalModelNumber is now always emitted (incl. legacy B-<GTIN>),
+    // globalModelInformation always exists, so deviceName has a valid home in
+    // globalModelDescription and the wrong fallback is no longer needed.
     let model_number = basic_udi
         .and_then(|b| b.device_model.as_ref())
         .filter(|m| !m.is_empty())
-        .cloned()
-        .or_else(|| {
-            let code = basic_udi
-                .and_then(|b| b.basic_udi.as_ref())
-                .and_then(|di| di.code.as_deref())
-                .unwrap_or("");
-            if mappings::is_valid_gmn(code) {
-                None // globalModelDescription will satisfy 097.025
-            } else {
-                basic_udi
-                    .and_then(|b| b.device_name.as_ref())
-                    .filter(|n| !n.is_empty())
-                    .cloned()
-            }
-        });
+        .cloned();
     if let Some(model) = model_number {
         additional_identification.push(AdditionalTradeItemIdentification {
             type_code: "MODEL_NUMBER".to_string(),
@@ -1832,6 +1820,24 @@ pub fn transform_detail_document(
         .and_then(|bu| bu.code.as_deref())
         .unwrap_or("");
 
+    // 097.025 fields for package levels — same Basic UDI-DI as the base unit:
+    // deviceName → globalModelDescription, deviceModel → MODEL_NUMBER. Without
+    // these a container package has a globalModelNumber but neither field → 097.025.
+    let pkg_descriptions: Vec<LangValue> = basic_udi
+        .and_then(|b| b.device_name.as_ref())
+        .filter(|n| !n.is_empty())
+        .map(|n| {
+            vec![LangValue {
+                language_code: "en".to_string(),
+                value: n.clone(),
+            }]
+        })
+        .unwrap_or_default();
+    let pkg_model_number = basic_udi
+        .and_then(|b| b.device_model.as_ref())
+        .filter(|m| !m.is_empty())
+        .cloned();
+
     let base_gtin = base_trade_item.gtin.clone();
 
     // Build innermost child link (base unit)
@@ -1955,9 +1961,20 @@ pub fn transform_detail_document(
             },
             // Only emit globalModelNumber when the Basic UDI-DI code is a valid
             // GMN (097.116); legacy `B-<GTIN>` codes are dropped.
-            global_model_info: GlobalModelInformation::build(basic_udi_code, vec![]),
+            global_model_info: GlobalModelInformation::build(
+                basic_udi_code,
+                pkg_descriptions.clone(),
+            ),
             gtin: level.code.clone(),
-            additional_identification: vec![],
+            additional_identification: pkg_model_number
+                .clone()
+                .map(|m| {
+                    vec![AdditionalTradeItemIdentification {
+                        type_code: "MODEL_NUMBER".to_string(),
+                        value: truncate_id(m),
+                    }]
+                })
+                .unwrap_or_default(),
             referenced_trade_items: Vec::new(),
             trade_item_information: Vec::new(),
         };

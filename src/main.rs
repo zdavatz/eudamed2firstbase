@@ -1352,9 +1352,11 @@ fn load_listing_index(path: &Path) -> Result<HashMap<String, ListingData>> {
 }
 
 fn merge_listing_data(trade_item: &mut firstbase::TradeItem, listing: &ListingData) {
-    // Set basic UDI as global model number — only if it is a valid GS1 GMN
-    // (097.116); legacy `B-<GTIN>` codes must not be written here.
-    if mappings::is_valid_gmn(&listing.basic_udi) {
+    // Set basic UDI as global model number 1:1 (v1.0.64, Maik's mapping): the
+    // real GMN for MDR/IVDR, the `B-<GTIN>` placeholder for legacy. No local GMN
+    // gate — EUDAMED validates GS1 identifiers at registration. (097.116 on
+    // legacy B-<GTIN> is the open TEST-push question; see firstbase::build.)
+    if !listing.basic_udi.is_empty() {
         if let Some(gmi) = trade_item.global_model_info.first_mut() {
             gmi.number = listing.basic_udi.clone();
         }
