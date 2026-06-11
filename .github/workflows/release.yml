@@ -1,5 +1,11 @@
 name: Release
 
+# Store publishing toggle: set the repo variable STORE_PUBLISH=false to
+# cut a GitHub-only release (DMG + Windows zip/MSIX + Linux tar.gz/AppImage
+# attached to the GitHub Release, no Microsoft Store auto-publish and no
+# macOS App Store Connect upload). Absent/any-other value = stores publish
+# as normal. The DMG is still notarized so macOS users can run it directly.
+
 on:
   push:
     tags: ['v*']
@@ -153,7 +159,7 @@ jobs:
           path: eudamed2firstbase-*-macos-universal.dmg
 
       - name: Build App Store package (if API key available)
-        if: env.APPLE_API_KEY_P8 != ''
+        if: env.APPLE_API_KEY_P8 != '' && vars.STORE_PUBLISH != 'false'
         env:
           APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -398,7 +404,7 @@ jobs:
   publish-microsoft-store:
     needs: [build-windows]
     runs-on: windows-latest
-    if: vars.MSSTORE_ENABLED == 'true'
+    if: vars.MSSTORE_ENABLED == 'true' && vars.STORE_PUBLISH != 'false'
     steps:
       - uses: actions/checkout@v4
 

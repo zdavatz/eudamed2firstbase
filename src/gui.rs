@@ -4,11 +4,25 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use eframe::egui;
 
 use crate::download::{self, DownloadConfig, DownloadEvent, DownloadProgress};
+use crate::{installer, update};
+
+/// Live progress for the in-app GitHub updater, shared between the
+/// install worker thread and the UI's banner renderer.
+#[derive(Clone, Default)]
+struct InstallProgress {
+    /// 0.0–1.0 download fraction; 0.0 means "indeterminate / no length yet".
+    fraction: f32,
+    /// Current phase label (Downloading / Mounting / Staging / …).
+    phase: String,
+    /// Extra detail line (e.g. "12.3 / 41.0 MB").
+    detail: String,
+}
 
 fn settings_path() -> PathBuf {
     download::app_data_dir().join("settings.json")
@@ -124,6 +138,22 @@ pub struct App {
     qr_texture: Option<egui::TextureHandle>,
     /// Raw QR data last received — kept so we can redraw without regenerating.
     qr_data: Option<String>,
+
+    // --- GitHub in-app updater ---
+    /// Receiver for the one-shot startup update check.
+    update_rx: Option<mpsc::Receiver<Option<update::UpdateInfo>>>,
+    /// The newest GitHub release found to be newer than the running build.
+    update_info: Option<update::UpdateInfo>,
+    /// User dismissed the update banner this session.
+    update_dismissed: bool,
+    /// Receiver for in-app install events (download/swap progress).
+    install_rx: Option<mpsc::Receiver<installer::InstallEvent>>,
+    /// True while the in-app update is downloading/swapping.
+    installing: bool,
+    /// Last install failure message (shown in the banner).
+    install_error: Option<String>,
+    /// Shared download/swap progress for the banner.
+    install_progress: Arc<Mutex<InstallProgress>>,
 }
 
 impl App {
@@ -191,7 +221,218 @@ impl App {
             error_dialog: None,
             qr_texture: None,
             qr_data: None,
+            update_rx: Some(spawn_update_check()),
+            update_info: None,
+            update_dismissed: false,
+            install_rx: None,
+            installing: false,
+            install_error: None,
+            install_progress: Arc::new(Mutex::new(InstallProgress::default())),
         }
+    }
+
+    /// Drain the one-shot update-check result and any in-flight install
+    /// events. Called once per frame from `update()`.
+    fn pump_update_events(&mut self, ctx: &egui::Context) {
+        if let Some(rx) = &self.update_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.update_rx = None;
+                self.update_info = result;
+            }
+        }
+
+        if let Some(rx) = &self.install_rx {
+            let mut done = false;
+            let mut closed = false;
+            loop {
+                match rx.try_recv() {
+                    Ok(installer::InstallEvent::Log(s)) => self.log_lines.push(s),
+                    Ok(installer::InstallEvent::Phase(p)) => {
+                        if let Ok(mut prog) = self.install_progress.lock() {
+                            prog.phase = p;
+                        }
+                    }
+                    Ok(installer::InstallEvent::DownloadProgress { bytes, total }) => {
+                        if let Ok(mut prog) = self.install_progress.lock() {
+                            prog.fraction = if total > 0 {
+                                bytes as f32 / total as f32
+                            } else {
+                                0.0
+                            };
+                            prog.detail = if total > 0 {
+                                format!(
+                                    "{:.1} / {:.1} MB",
+                                    bytes as f64 / 1_048_576.0,
+                                    total as f64 / 1_048_576.0
+                                )
+                            } else {
+                                format!("{:.1} MB", bytes as f64 / 1_048_576.0)
+                            };
+                        }
+                    }
+                    Ok(installer::InstallEvent::Done) => {
+                        done = true;
+                        break;
+                    }
+                    Ok(installer::InstallEvent::Error(e)) => {
+                        self.install_error = Some(e);
+                        self.installing = false;
+                        closed = true;
+                        break;
+                    }
+                    Err(mpsc::TryRecvError::Empty) => break,
+                    Err(mpsc::TryRecvError::Disconnected) => {
+                        closed = true;
+                        break;
+                    }
+                }
+            }
+            if done {
+                // The swap helper is detached and waiting for this PID to
+                // die. Show "Restarting…" briefly, then exit so the swap
+                // + relaunch can run.
+                if let Ok(mut prog) = self.install_progress.lock() {
+                    prog.phase = "Restarting…".into();
+                    prog.detail.clear();
+                }
+                self.log_lines
+                    .push("Update staged — restarting to apply…".to_string());
+                self.settings.save();
+                self.save_log();
+                std::thread::sleep(std::time::Duration::from_millis(600));
+                std::process::exit(0);
+            }
+            if closed {
+                self.install_rx = None;
+            }
+            // Keep the banner's progress bar animating.
+            if self.installing {
+                ctx.request_repaint();
+            }
+        }
+    }
+
+    /// Kick off the in-app update: download the platform artifact, swap
+    /// it next to the running binary, and relaunch. Runs on a worker
+    /// thread; the banner shows progress.
+    fn start_install(&mut self) {
+        if self.installing {
+            return;
+        }
+        let Some(info) = self.update_info.clone() else {
+            return;
+        };
+        let Some(download_url) = info.download_url.clone() else {
+            self.install_error =
+                Some("This release has no artifact for the current platform yet.".into());
+            return;
+        };
+        if !installer::can_in_app_update() {
+            self.install_error = Some(
+                "In-app update is not supported in this build context (e.g. `cargo run`). \
+                 Open the release page to download manually."
+                    .into(),
+            );
+            return;
+        }
+
+        self.install_error = None;
+        if let Ok(mut p) = self.install_progress.lock() {
+            *p = InstallProgress::default();
+        }
+        let (tx, rx) = mpsc::channel::<installer::InstallEvent>();
+        self.install_rx = Some(rx);
+        self.installing = true;
+        self.log_lines
+            .push(format!("Starting in-app update to {}…", info.pretty()));
+
+        thread::spawn(move || {
+            if let Err(e) = installer::install(&download_url, tx.clone()) {
+                let _ = tx.send(installer::InstallEvent::Error(e));
+            }
+        });
+    }
+
+    /// Render the "update available" banner (and install progress).
+    /// Returns nothing; mutates state when the user clicks a button.
+    fn render_update_banner(&mut self, ui: &mut egui::Ui) {
+        if self.update_dismissed {
+            return;
+        }
+        let Some(info) = self.update_info.clone() else {
+            return;
+        };
+        let can_in_app = info.download_url.is_some() && installer::can_in_app_update();
+        egui::Frame::new()
+            .fill(egui::Color32::from_rgb(220, 240, 255))
+            .stroke(egui::Stroke::new(
+                1.0,
+                egui::Color32::from_rgb(80, 130, 200),
+            ))
+            .inner_margin(8.0)
+            .corner_radius(4.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(20, 60, 120),
+                        format!(
+                            "⬆ Neue Version verfügbar: {} (installiert: v{})",
+                            info.pretty(),
+                            env!("CARGO_PKG_VERSION")
+                        ),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if !self.installing && ui.button("Ausblenden").clicked() {
+                            self.update_dismissed = true;
+                        }
+                        if can_in_app {
+                            let label = if self.installing {
+                                "Aktualisiere…"
+                            } else {
+                                "Jetzt aktualisieren"
+                            };
+                            let resp = ui.add_enabled(!self.installing, egui::Button::new(label));
+                            if resp.clicked() {
+                                self.start_install();
+                            }
+                        } else if ui.button("Release-Seite öffnen").clicked() {
+                            let _ = open::that(&info.url);
+                        }
+                    });
+                });
+                if self.installing {
+                    let p = self
+                        .install_progress
+                        .lock()
+                        .map(|g| g.clone())
+                        .unwrap_or_default();
+                    let bar = if p.fraction > 0.0 {
+                        egui::ProgressBar::new(p.fraction)
+                            .show_percentage()
+                            .animate(true)
+                    } else {
+                        egui::ProgressBar::new(0.0).animate(true)
+                    };
+                    let phase_label = if p.phase.is_empty() {
+                        "Arbeite…".to_string()
+                    } else {
+                        p.phase.clone()
+                    };
+                    ui.add_space(4.0);
+                    ui.add(bar.text(phase_label));
+                    if !p.detail.is_empty() {
+                        ui.label(egui::RichText::new(p.detail).weak().small());
+                    }
+                }
+                if let Some(err) = self.install_error.clone() {
+                    ui.add_space(4.0);
+                    ui.colored_label(
+                        egui::Color32::from_rgb(160, 30, 30),
+                        format!("Update fehlgeschlagen: {}", err),
+                    );
+                }
+            });
+        ui.add_space(6.0);
     }
 
     fn save_log(&self) {
@@ -476,6 +717,17 @@ impl App {
     }
 }
 
+/// Spawn the one-shot GitHub release check on a worker thread so the UI
+/// never blocks on the network. Sends the result (Some when a newer
+/// release exists, None otherwise) back over the channel.
+fn spawn_update_check() -> mpsc::Receiver<Option<update::UpdateInfo>> {
+    let (tx, rx) = mpsc::channel::<Option<update::UpdateInfo>>();
+    thread::spawn(move || {
+        let _ = tx.send(update::check_latest(env!("CARGO_PKG_VERSION")));
+    });
+    rx
+}
+
 impl eframe::App for App {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.settings.save();
@@ -483,6 +735,9 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Drain the GitHub update check + any in-app install events.
+        self.pump_update_events(ctx);
+
         // Drain messages from worker thread
         if let Some(ref rx) = self.rx {
             let mut qr_to_render: Option<String> = None;
@@ -574,6 +829,9 @@ impl eframe::App for App {
                 });
             });
             ui.separator();
+
+            // GitHub in-app updater banner (only shows when a newer release exists)
+            self.render_update_banner(ui);
 
             if self.horizontal_split {
                 // --- Horizontal: Settings left, Log right ---
