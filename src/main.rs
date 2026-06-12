@@ -1618,51 +1618,81 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
 
 /// Fetch Basic UDI-DI data from EUDAMED API and cache it.
 /// Returns None on any failure (network, parse, etc.).
+/// Fetch a device's Basic UDI-DI from the EUDAMED API on a cache miss.
+///
+/// **Hardened (v1.0.65):** retries with backoff and only caches/returns a body
+/// that actually parses to a Basic UDI-DI carrying a non-empty `basic_udi.code`.
+/// The old single-shot version returned `None` on any transient hiccup (timeout,
+/// 429, 5xx) — under a 5000-device bulk Mode 5/Mode 0 reconvert that silently left
+/// `basic_udi = None` for the unlucky devices, so their `GlobalModelInformation`
+/// came out empty (no globalModelNumber, no globalModelDescription) → 097.025 on
+/// every push (the FR/CH/BR 50-device reject batch). Parsing *before* caching also
+/// stops an error page from being written to the cache and then counting as a
+/// "present" basic file forever.
 fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicUdiDiData> {
     let url = format!(
         "https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData/{}?languageIso2Code=en",
         uuid
     );
-    let body = match ureq::get(&url).call() {
-        Ok(resp) => match resp.into_body().read_to_string() {
-            Ok(s) => s,
+    let agent = ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .timeout_global(Some(std::time::Duration::from_secs(15)))
+        .build()
+        .new_agent();
+
+    for attempt in 1..=4 {
+        match agent.get(&url).call() {
+            Ok(mut resp) => {
+                let body = resp.body_mut().read_to_string().unwrap_or_default();
+                match api_detail::parse_basic_udi_di(&body) {
+                    Ok(data)
+                        if data
+                            .basic_udi
+                            .as_ref()
+                            .and_then(|b| b.code.as_ref())
+                            .map(|c| !c.is_empty())
+                            .unwrap_or(false) =>
+                    {
+                        // Only cache a body that is a real, code-carrying Basic UDI-DI.
+                        let _ = std::fs::create_dir_all(cache_dir);
+                        let cache_path = cache_dir.join(format!("{}.json", uuid));
+                        if let Err(e) = std::fs::write(&cache_path, &body) {
+                            eprintln!(
+                                "  Warning: failed to cache Basic UDI-DI for {}: {}",
+                                uuid, e
+                            );
+                        }
+                        return Some(data);
+                    }
+                    _ => {
+                        // Parsed but empty/invalid, or unparseable (error page / partial).
+                        // Treat as transient and retry rather than poisoning the cache.
+                        if attempt < 4 {
+                            std::thread::sleep(std::time::Duration::from_secs(attempt));
+                            continue;
+                        }
+                        eprintln!(
+                            "  Warning: Basic UDI-DI for {} had no usable code after {} attempts",
+                            uuid, attempt
+                        );
+                        return None;
+                    }
+                }
+            }
             Err(e) => {
+                if attempt < 4 {
+                    std::thread::sleep(std::time::Duration::from_secs(attempt));
+                    continue;
+                }
                 eprintln!(
-                    "  Warning: failed to read Basic UDI-DI response for {}: {}",
-                    uuid, e
+                    "  Warning: failed to fetch Basic UDI-DI for {} after {} attempts: {}",
+                    uuid, attempt, e
                 );
                 return None;
             }
-        },
-        Err(e) => {
-            eprintln!(
-                "  Warning: failed to fetch Basic UDI-DI for {}: {}",
-                uuid, e
-            );
-            return None;
-        }
-    };
-
-    // Save to cache
-    let _ = std::fs::create_dir_all(cache_dir);
-    let cache_path = cache_dir.join(format!("{}.json", uuid));
-    if let Err(e) = std::fs::write(&cache_path, &body) {
-        eprintln!(
-            "  Warning: failed to cache Basic UDI-DI for {}: {}",
-            uuid, e
-        );
-    }
-
-    match api_detail::parse_basic_udi_di(&body) {
-        Ok(data) => Some(data),
-        Err(e) => {
-            eprintln!(
-                "  Warning: failed to parse Basic UDI-DI for {}: {}",
-                uuid, e
-            );
-            None
         }
     }
+    None
 }
 
 /// Convert EUDAMED JSON → Swissdamed JSON (almost 1:1 mapping)
