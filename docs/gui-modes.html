@@ -54,15 +54,15 @@
 </head>
 <body>
 
-<h1>eudamed2firstbase &mdash; GUI-Modi 0&ndash;5</h1>
+<h1>eudamed2firstbase &mdash; GUI-Modi 0&ndash;6</h1>
 <p class="lead">Was jeder Knopf in der GUI tut, wann er der richtige ist und welche
 Stolperfallen er hat.</p>
-<p class="meta">Document version: 2026-06-10 &nbsp;·&nbsp; Tool version: v1.0.58+
+<p class="meta">Document version: 2026-06-12 &nbsp;·&nbsp; Tool version: v1.0.66+
 &nbsp;·&nbsp; Source of truth: <code>src/gui.rs</code>, <code>src/main.rs</code>,
 <code>src/download.rs</code></p>
 
 <h2>1. Übersicht</h2>
-<p>Die GUI hat sechs nummerierte Knöpfe (Mode 0&ndash;5). Jede Pipeline schreibt ihren Modus
+<p>Die GUI hat sieben nummerierte Knöpfe (Mode 0&ndash;6). Jede Pipeline schreibt ihren Modus
 in die erste Logzeile (<code>eudamed2firstbase v&lt;version&gt; &mdash; mode: &lt;name&gt;</code>)
 und in die <code>version</code>-Spalte der <code>push_session</code>-Tabelle, damit man
 hinterher genau weiss, welcher Knopf was ausgelöst hat.</p>
@@ -81,6 +81,8 @@ hinterher genau weiss, welcher Knopf was ausgelöst hat.</p>
       <td>Restore aus <code>processed/</code> &rarr; Push (SRN-UUIDs)</td></tr>
   <tr><td>5</td><td>Reconvert + Repush SRN</td><td>SRN-Liste</td>
       <td>Reconvert aus <code>eudamed_json/detail/</code> &rarr; Push (SRN-UUIDs)</td></tr>
+  <tr><td>6</td><td>StaleCleaner</td><td>SRN-Liste</td>
+      <td>Force-Refetch detail+Basic aus EUDAMED &rarr; Reconvert &rarr; Push (SRN-UUIDs)</td></tr>
 </table>
 
 <div class="callout">
@@ -283,7 +285,53 @@ erst Mode 0 für die SRNs laufen lassen, damit die Detail-JSONs lokal sind, dann
 </div>
 </div>
 
-<h2>8. Entscheidungshilfe &mdash; welcher Mode?</h2>
+<h2>8. Mode 6 &mdash; StaleCleaner</h2>
+
+<div class="mode-card">
+<h3><span class="mode-num">6</span>StaleCleaner</h3>
+
+<div class="label">Ablauf</div>
+<ol>
+  <li>UUIDs aus <code>listing_cache</code> für die gewählten SRNs holen.</li>
+  <li><span class="pill cv">Force-Reload</span> &mdash; für <em>jede</em> UUID das
+      <code>eudamed_json/basic/&lt;uuid&gt;.json</code> löschen und dann <strong>detail + Basic
+      UDI-DI frisch von der EUDAMED-API</strong> nachladen
+      (<code>force_reload_eudamed</code> &rarr; <code>fetch_detail</code> +
+      <code>fetch_basic_udi_di</code>, beide gehärtet: 15&nbsp;s Timeout, 4 Retries mit Backoff,
+      parse-before-cache). Überschreibt den lokalen Cache <em>bedingungslos</em>.</li>
+  <li><span class="pill cv">Reconvert</span> aus <code>eudamed_json/detail/</code> mit den
+      frischen Daten &rarr; frisches <code>firstbase_json/&lt;uuid&gt;.json</code>.</li>
+  <li><span class="pill push">Push</span> der frischen Files (akzeptierte UUIDs werden
+      übersprungen).</li>
+</ol>
+
+<div class="label">Wann verwenden</div>
+<ul class="tight">
+  <li>Wenn ein Push <strong>097.025</strong> wirft, obwohl die EUDAMED-Daten korrekt sind
+      (<code>deviceName</code> vorhanden) &mdash; typischerweise legacy MDDs, deren
+      gecachtes Basic-UDI-DI-File <em>stale oder unvollständig</em> ist.</li>
+  <li>Immer dann, wenn du sicher sein willst, dass der lokale Cache <em>exakt</em> dem
+      aktuellen EUDAMED-Stand entspricht, bevor du pushst.</li>
+</ul>
+
+<div class="callout">
+<strong>Warum nicht Mode 5?</strong> Der fetch-on-miss in Mode 5 füllt nur einen
+<em>echten</em> Cache-Miss. Ein Basic-UDI-DI-File, das <em>vorhanden, aber unvollständig</em>
+ist (z.&nbsp;B. gecacht, bevor EUDAMED den <code>deviceName</code> gesetzt hatte), parst
+sauber und wird as-is akzeptiert &rarr; leere <code>globalModelDescription</code> &rarr;
+097.025. Mode 6 löscht das File zuerst und lädt es bedingungslos neu &mdash; heilt stale,
+partielle <em>und</em> fehlende Caches in einem Durchgang. CLI-Pendant:
+<code>repush-srn --force-reload &lt;SRN&gt;</code> (impliziert <code>--reconvert</code>).
+</div>
+
+<div class="warn">
+<strong>Kosten.</strong> Mode 6 macht pro UUID zwei EUDAMED-Requests (detail + basic) &mdash;
+deutlich mehr Netzwerklast als Mode 5. Für gezielte SRN-Reparaturen gedacht, nicht als
+Routine-Lauf über alle SRNs.
+</div>
+</div>
+
+<h2>9. Entscheidungshilfe &mdash; welcher Mode?</h2>
 
 <table>
   <tr><th>Situation</th><th>Mode</th></tr>
@@ -294,9 +342,10 @@ erst Mode 0 für die SRNs laufen lassen, damit die Detail-JSONs lokal sind, dann
   <tr><td>Lokaler Bestand soll komplett raus</td><td>1 (Vorsicht: Hash-Skip)</td></tr>
   <tr><td>Ein Hersteller ist in Firstbase verschwunden</td><td>4</td></tr>
   <tr><td>Nur die abgelehnten UUIDs nochmal probieren</td><td>3</td></tr>
+  <tr><td>097.025 trotz korrekter EUDAMED-Daten (stale/fehlender Basic-Cache)</td><td>6</td></tr>
 </table>
 
-<h2>9. Was alle Modi gemeinsam haben</h2>
+<h2>10. Was alle Modi gemeinsam haben</h2>
 
 <ul class="tight">
   <li><strong>Push-Target</strong> wird im Push-Target-Selektor festgelegt
@@ -316,7 +365,7 @@ erst Mode 0 für die SRNs laufen lassen, damit die Detail-JSONs lokal sind, dann
       die jeweils das neueste HTML-Log aus dem entsprechenden Subdir senden.</li>
 </ul>
 
-<h2>10. Häufige Fragen</h2>
+<h2>11. Häufige Fragen</h2>
 
 <h3>Wenn ich Mode 0 (DL+Convert+Push) drücke, holt das alle Datensätze frisch aus EUDAMED?</h3>
 <p>Nein. Mode 0 holt das paginierte <em>Listing</em> für jede SRN (das ist günstig &mdash;
@@ -336,8 +385,16 @@ Konverter sie nicht neu erzeugen. Mode 5 verwendet dann das alte
 <code>processed/</code>-File &mdash; also die Konverter-Version vor dem Fix. Lösung:
 zuerst Mode 0 für diese SRNs (lädt das Detail-JSON), dann Mode 5.</p>
 
-<h3>Warum sind das 6 Knöpfe und nicht 5?</h3>
-<p>Modes sind 0-indexiert: 0, 1, 2, 3, 4, 5 &mdash; macht sechs. Die Nummer steht seit v1.0.47
+<h3>Wann Mode 6 (StaleCleaner) statt Mode 5?</h3>
+<p>Wenn ein Push <strong>097.025</strong> wirft, obwohl die EUDAMED-Daten stimmen. Mode 5
+holt eine Basic UDI-DI nur nach, wenn sie <em>ganz fehlt</em>; ein vorhandenes, aber
+unvollständiges File (z.&nbsp;B. ohne <code>deviceName</code>) bleibt unangetastet &mdash;
+und liefert dann eine leere <code>globalModelDescription</code> &rarr; 097.025. Mode 6 löscht
+das Basic-File und lädt detail+basic <em>bedingungslos</em> frisch, bevor er reconvertet.
+Faustregel: erst Mode 5 versuchen; bleibt 097.025 bei korrekten Daten, dann Mode 6.</p>
+
+<h3>Warum sind das 7 Knöpfe und nicht 6?</h3>
+<p>Modes sind 0-indexiert: 0, 1, 2, 3, 4, 5, 6 &mdash; macht sieben. Die Nummer steht seit v1.0.47
 vorne in der Beschriftung, damit sich Knopf, Logzeile und <code>push_session.version</code>
 direkt korrelieren lassen.</p>
 
