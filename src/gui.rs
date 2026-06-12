@@ -958,6 +958,11 @@ impl eframe::App for App {
                             self.pipeline_mode = 5;
                             self.start_pipeline(ctx.clone());
                         }
+                        if ui.add_enabled(can_repush_srn, egui::Button::new("6: StaleCleaner").min_size(egui::vec2(150.0, 28.0)))
+                            .on_hover_text("Force-refetch detail + Basic UDI-DI fresh from EUDAMED for the given SRN(s) (heals stale/incomplete cache → fixes 097.025), then reconvert & push").clicked() {
+                            self.pipeline_mode = 6;
+                            self.start_pipeline(ctx.clone());
+                        }
                     });
 
                 // Splitter
@@ -1245,6 +1250,14 @@ impl eframe::App for App {
                     .clicked()
                 {
                     self.pipeline_mode = 5;
+                    self.start_pipeline(ctx.clone());
+                }
+                if ui
+                    .add_enabled(can_repush_srn, egui::Button::new("6: StaleCleaner").min_size(egui::vec2(150.0, 32.0)))
+                    .on_hover_text("Force-refetch detail + Basic UDI-DI fresh from EUDAMED for the given SRN(s) (heals stale/incomplete cache → fixes 097.025), then reconvert & push")
+                    .clicked()
+                {
+                    self.pipeline_mode = 6;
                     self.start_pipeline(ctx.clone());
                 }
             });
@@ -1694,11 +1707,16 @@ fn run_pipeline(
     // fresh firstbase_json/<uuid>.json. Use after a converter change (e.g.
     // v1.0.43 added DescriptionShort) when the EUDAMED detail JSON itself
     // hasn't changed but you want the new GS1 fields live in Firstbase.
-    if pipeline_mode == 4 || pipeline_mode == 5 {
-        let mode_label = if pipeline_mode == 5 {
-            "Reconvert + Repush SRN"
-        } else {
-            "Repush SRN"
+    // Mode 6: StaleCleaner — same as Mode 5, but first force-refetches
+    // detail + Basic UDI-DI fresh from EUDAMED for the SRN's UUIDs, overwriting
+    // any stale/incomplete cached eudamed_json/detail|basic/<uuid>.json. Heals
+    // the 097.025 class where a present-but-incomplete Basic UDI-DI (e.g. cached
+    // before deviceName was populated) survives the fetch-on-miss safety net.
+    if pipeline_mode == 4 || pipeline_mode == 5 || pipeline_mode == 6 {
+        let mode_label = match pipeline_mode {
+            6 => "StaleCleaner",
+            5 => "Reconvert + Repush SRN",
+            _ => "Repush SRN",
         };
         if !matches!(settings.push_target, PushTarget::Firstbase) {
             done(
@@ -1803,8 +1821,35 @@ fn run_pipeline(
         }
         drop(conn);
 
-        // Mode 5: reconvert from eudamed_json/detail/ before push.
-        if pipeline_mode == 5 {
+        // Mode 6: StaleCleaner — force-refetch detail + Basic UDI-DI fresh from
+        // EUDAMED before reconverting, so stale/incomplete cached files are
+        // healed (the fetch-on-miss path only fills genuine misses).
+        if pipeline_mode == 6 {
+            log(&format!(
+                "[{}] Force-reloading detail + Basic UDI-DI for {} UUID(s) from EUDAMED...",
+                mode_label,
+                uuids.len()
+            ));
+            ctx.request_repaint();
+            let (detail_ok, basic_ok) = crate::force_reload_eudamed(&uuids, &app_data);
+            log(&format!(
+                "[{}] Force-reload: {} detail, {} Basic UDI-DI refetched ({} requested)",
+                mode_label,
+                detail_ok,
+                basic_ok,
+                uuids.len()
+            ));
+            if basic_ok < uuids.len() {
+                log(&format!(
+                    "[{}] WARNING: {} UUID(s) did not get a fresh Basic UDI-DI (EUDAMED throttling or no record) — they may still reject with 097.025",
+                    mode_label,
+                    uuids.len().saturating_sub(basic_ok)
+                ));
+            }
+        }
+
+        // Mode 5/6: reconvert from eudamed_json/detail/ before push.
+        if pipeline_mode == 5 || pipeline_mode == 6 {
             let config_path = app_data.join("config.toml");
             let fb_config = match crate::config::load_config(&config_path) {
                 Ok(c) => c,
@@ -1865,7 +1910,7 @@ fn run_pipeline(
                         if uuids.contains(stem_s.as_ref()) {
                             if let Some(name) = path.file_name() {
                                 let dest = firstbase_dir.join(name);
-                                if pipeline_mode == 5 && dest.exists() {
+                                if (pipeline_mode == 5 || pipeline_mode == 6) && dest.exists() {
                                     continue;
                                 }
                                 if std::fs::rename(&path, &dest).is_ok() {

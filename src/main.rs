@@ -597,7 +597,11 @@ fn main() -> Result<()> {
                 env!("CARGO_PKG_VERSION")
             );
 
-            let reconvert = args.iter().any(|a| a == "--reconvert");
+            // --force-reload (CLI mirror of GUI Mode 6 / StaleCleaner): force-
+            // refetch detail + Basic UDI-DI fresh from EUDAMED before converting,
+            // healing stale/incomplete cached files. Implies --reconvert.
+            let force_reload = args.iter().any(|a| a == "--force-reload");
+            let reconvert = force_reload || args.iter().any(|a| a == "--reconvert");
             let srns: Vec<String> = if let Some(pos) = args.iter().position(|a| a == "--file") {
                 let file = args
                     .get(pos + 1)
@@ -616,8 +620,9 @@ fn main() -> Result<()> {
             };
 
             if srns.is_empty() {
-                eprintln!("Usage: eudamed2firstbase repush-srn [--reconvert] <SRN1> [SRN2 ...]");
-                eprintln!("   or: eudamed2firstbase repush-srn [--reconvert] --file <srns.txt>");
+                eprintln!("Usage: eudamed2firstbase repush-srn [--reconvert|--force-reload] <SRN1> [SRN2 ...]");
+                eprintln!("   or: eudamed2firstbase repush-srn [--reconvert|--force-reload] --file <srns.txt>");
+                eprintln!("   --force-reload: refetch detail + Basic UDI-DI fresh from EUDAMED (Mode 6 / StaleCleaner), implies --reconvert");
                 std::process::exit(1);
             }
             eprintln!(
@@ -678,6 +683,23 @@ fn main() -> Result<()> {
                     skipped
                 );
                 return Ok(());
+            }
+
+            // --- Force-reload (optional, Mode 6 / StaleCleaner) ---
+            // Refetch detail + Basic UDI-DI fresh from EUDAMED, overwriting any
+            // stale/incomplete cache, before the reconvert below reads them.
+            if force_reload {
+                eprintln!(
+                    "Force-reloading detail + Basic UDI-DI for {} UUID(s) from EUDAMED...",
+                    uuids.len()
+                );
+                let (detail_ok, basic_ok) = force_reload_eudamed(&uuids, &data_dir);
+                eprintln!(
+                    "Force-reload: {} detail, {} Basic UDI-DI refetched ({} requested)",
+                    detail_ok,
+                    basic_ok,
+                    uuids.len()
+                );
             }
 
             // --- Reconvert (optional) ---
@@ -1693,6 +1715,113 @@ fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicU
         }
     }
     None
+}
+
+/// Force-fetch the UDI-DI **detail** record from EUDAMED, overwriting any cached
+/// `detail/<uuid>.json`. Mirrors [`fetch_basic_udi_di`]'s hardened shape: a 15 s
+/// global timeout + a 4-attempt retry loop with linear backoff, and
+/// parse-before-cache — the body is only written when it parses to an
+/// `ApiDeviceDetail`, so an error page / partial body can never poison the cache.
+///
+/// Used by [`force_reload_eudamed`] (Mode 6). Unlike the fetch-on-miss path in
+/// [`reconvert_uuids_from_detail`], this refetches **unconditionally**, so a
+/// stale or incomplete cached file is replaced with the current EUDAMED record.
+fn fetch_detail(uuid: &str, cache_dir: &Path) -> Option<api_detail::ApiDeviceDetail> {
+    let url = format!(
+        "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData/{}?languageIso2Code=en",
+        uuid
+    );
+    let agent = ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .timeout_global(Some(std::time::Duration::from_secs(15)))
+        .build()
+        .new_agent();
+
+    for attempt in 1..=4 {
+        match agent.get(&url).call() {
+            Ok(mut resp) => {
+                let body = resp.body_mut().read_to_string().unwrap_or_default();
+                match serde_json::from_str::<api_detail::ApiDeviceDetail>(&body) {
+                    Ok(data) => {
+                        let _ = std::fs::create_dir_all(cache_dir);
+                        let cache_path = cache_dir.join(format!("{}.json", uuid));
+                        if let Err(e) = std::fs::write(&cache_path, &body) {
+                            eprintln!("  Warning: failed to cache detail for {}: {}", uuid, e);
+                        }
+                        return Some(data);
+                    }
+                    Err(_) => {
+                        if attempt < 4 {
+                            std::thread::sleep(std::time::Duration::from_secs(attempt));
+                            continue;
+                        }
+                        eprintln!(
+                            "  Warning: detail for {} unparseable after {} attempts",
+                            uuid, attempt
+                        );
+                        return None;
+                    }
+                }
+            }
+            Err(e) => {
+                if attempt < 4 {
+                    std::thread::sleep(std::time::Duration::from_secs(attempt));
+                    continue;
+                }
+                eprintln!(
+                    "  Warning: failed to fetch detail for {} after {} attempts: {}",
+                    uuid, attempt, e
+                );
+                return None;
+            }
+        }
+    }
+    None
+}
+
+/// Mode 6 (Force-Reload) helper: re-fetch **detail + Basic UDI-DI** from EUDAMED
+/// for every UUID, overwriting the cached `eudamed_json/detail|basic/<uuid>.json`.
+///
+/// Why this exists: the fetch-on-miss safety net in
+/// [`reconvert_uuids_from_detail`] only fills a *genuine* cache miss — it never
+/// refreshes a file that is present but **stale or incomplete** (e.g. a Basic
+/// UDI-DI cached before EUDAMED populated `deviceName`, which parses fine and so
+/// is accepted as-is → empty `globalModelDescription` → 097.025). Mode 6 deletes
+/// the basic file first and refetches both records unconditionally, healing
+/// stale, partial, and missing caches in one pass. After this, a normal
+/// reconvert reads fresh data.
+///
+/// Returns `(detail_ok, basic_ok)` — how many UUIDs got a fresh, valid record.
+fn force_reload_eudamed(
+    uuids: &std::collections::HashSet<String>,
+    data_dir: &Path,
+) -> (usize, usize) {
+    use rayon::prelude::*;
+    let detail_dir = data_dir.join("eudamed_json/detail");
+    let basic_dir = data_dir.join("eudamed_json/basic");
+    let _ = std::fs::create_dir_all(&detail_dir);
+    let _ = std::fs::create_dir_all(&basic_dir);
+
+    let detail_ok = std::sync::atomic::AtomicUsize::new(0);
+    let basic_ok = std::sync::atomic::AtomicUsize::new(0);
+
+    let list: Vec<&String> = uuids.iter().collect();
+    list.par_iter().for_each(|uuid| {
+        if fetch_detail(uuid, &detail_dir).is_some() {
+            detail_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        // Remove first so a stale-but-parseable basic can't survive a transient
+        // refetch failure (fetch_basic_udi_di only writes on a valid body).
+        let _ = std::fs::remove_file(basic_dir.join(format!("{}.json", uuid)));
+        if fetch_basic_udi_di(uuid, &basic_dir).is_some() {
+            basic_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+    });
+
+    (
+        detail_ok.load(std::sync::atomic::Ordering::Relaxed),
+        basic_ok.load(std::sync::atomic::Ordering::Relaxed),
+    )
 }
 
 /// Convert EUDAMED JSON → Swissdamed JSON (almost 1:1 mapping)
