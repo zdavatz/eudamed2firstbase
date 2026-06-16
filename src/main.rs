@@ -1786,10 +1786,17 @@ fn fetch_detail(uuid: &str, cache_dir: &Path) -> Option<api_detail::ApiDeviceDet
 /// [`reconvert_uuids_from_detail`] only fills a *genuine* cache miss — it never
 /// refreshes a file that is present but **stale or incomplete** (e.g. a Basic
 /// UDI-DI cached before EUDAMED populated `deviceName`, which parses fine and so
-/// is accepted as-is → empty `globalModelDescription` → 097.025). Mode 6 deletes
-/// the basic file first and refetches both records unconditionally, healing
-/// stale, partial, and missing caches in one pass. After this, a normal
-/// reconvert reads fresh data.
+/// is accepted as-is → empty `globalModelDescription` → 097.025). Mode 6 refetches
+/// both records unconditionally and overwrites the cached file on success (a valid,
+/// code-carrying body), healing stale, partial, and missing caches in one pass.
+/// After this, a normal reconvert reads fresh data.
+///
+/// IMPORTANT — never delete the existing basic before the refetch: a refetch that
+/// fails under EUDAMED throttling would leave the device with no basic at all →
+/// `basic_udi=None` → mass 097.025. (That delete-first bug wiped 4218/5330 basics in
+/// the v1.0.66 run on FR-MF-000000602 / CH-MF-000009933 / BR-MF-000014512 → 0
+/// accepted, 969 rejected.) We keep the old file on failure; concurrency is bounded
+/// to stay under EUDAMED's rate limit so the refetch actually succeeds.
 ///
 /// Returns `(detail_ok, basic_ok)` — how many UUIDs got a fresh, valid record.
 fn force_reload_eudamed(
@@ -1806,17 +1813,34 @@ fn force_reload_eudamed(
     let basic_ok = std::sync::atomic::AtomicUsize::new(0);
 
     let list: Vec<&String> = uuids.iter().collect();
-    list.par_iter().for_each(|uuid| {
-        if fetch_detail(uuid, &detail_dir).is_some() {
-            detail_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        }
-        // Remove first so a stale-but-parseable basic can't survive a transient
-        // refetch failure (fetch_basic_udi_di only writes on a valid body).
-        let _ = std::fs::remove_file(basic_dir.join(format!("{}.json", uuid)));
-        if fetch_basic_udi_di(uuid, &basic_dir).is_some() {
-            basic_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        }
-    });
+
+    // Bound concurrency. The default rayon pool (= #CPUs) over thousands of UUIDs
+    // fires a burst of detail+basic requests that EUDAMED throttles — that throttle
+    // is what made 4218/5330 Basic UDI-DI refetches fail in Maik's 1.0.66 run. A
+    // small pool keeps us under the rate limit so the refetch actually succeeds.
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(8).build().ok();
+
+    let run = || {
+        list.par_iter().for_each(|uuid| {
+            if fetch_detail(uuid, &detail_dir).is_some() {
+                detail_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
+            // Fetch-first, replace-on-success: fetch_basic_udi_di only writes a
+            // valid, code-carrying body (parse-before-cache) and overwrites the
+            // cached file on success, so it already heals a stale/incomplete basic.
+            // We must NOT delete the existing file first: if the refetch fails
+            // (EUDAMED throttling/timeout) a deleted basic is gone for good →
+            // basic_udi=None → 097.025. A stale-but-parseable basic with a valid
+            // code is strictly better than no basic, so we keep it on failure.
+            if fetch_basic_udi_di(uuid, &basic_dir).is_some() {
+                basic_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
+        });
+    };
+    match &pool {
+        Some(p) => p.install(run),
+        None => run(),
+    }
 
     (
         detail_ok.load(std::sync::atomic::Ordering::Relaxed),

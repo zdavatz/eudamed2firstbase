@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Download specific media messages from a chat by re-fetching history protos
-// (which carry mediaKey/directPath) and decrypting them. Reuses ./auth-sync
+// (which carry mediaKey/directPath) and decrypting them. Reuses ./auth
 // (already paired) — no QR. Saves decrypted files to ./attachments/.
 //
 // Usage: node fetch-media.mjs <jid> <anchorId> <anchorTs> <fromMe 0|1> <id1> [id2 ...]
@@ -18,7 +18,7 @@ import { fileURLToPath } from "url";
 import { mkdirSync, writeFileSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const AUTH_DIR = resolve(__dirname, "auth-sync");
+const AUTH_DIR = resolve(__dirname, "auth");
 const OUT_DIR = resolve(__dirname, "attachments");
 const logger = pino({ level: "silent" });
 
@@ -54,7 +54,7 @@ async function start() {
     version,
     logger,
     auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) },
-    browser: ["eudamed2firstbase-sync", "CLI", "1.0"],
+    browser: ["eudamed2firstbase", "CLI", "1.0"],
     syncFullHistory: true,
     markOnlineOnConnect: false,
   });

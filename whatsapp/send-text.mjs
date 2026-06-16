@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Send a plain text message via the auth-sync session.
+// Send a plain text message via the auth session.
 // Usage: node send-text.mjs <jid-or-number> <textfile>
 //   <jid-or-number> : e.g. 4917661063798  or  4917661063798@s.whatsapp.net
 //   <textfile>      : path to a UTF-8 file whose contents are sent verbatim
@@ -16,7 +16,7 @@ import { fileURLToPath } from "url";
 import { readFileSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const AUTH_DIR = resolve(__dirname, "auth-sync");
+const AUTH_DIR = resolve(__dirname, "auth");
 const logger = pino({ level: "silent" });
 
 const [, , target, textFile] = process.argv;
@@ -34,7 +34,7 @@ async function start() {
     version,
     logger,
     auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) },
-    browser: ["eudamed2firstbase-sync", "CLI", "1.0"],
+    browser: ["eudamed2firstbase", "CLI", "1.0"],
     markOnlineOnConnect: false,
   });
   sock.ev.on("creds.update", saveCreds);

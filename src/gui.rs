@@ -1448,6 +1448,8 @@ fn run_pipeline(
         2 => "convert & push (SRN filter)",
         3 => "repush failed (from last push session)",
         4 => "repush SRN (restore from processed/ + push)",
+        5 => "reconvert + repush SRN (force-reconvert from detail/)",
+        6 => "StaleCleaner (force-reload detail+BUDI from EUDAMED, reconvert + push)",
         _ => "unknown",
     };
     log(&format!(

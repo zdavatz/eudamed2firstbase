@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Reconnect auth-sync and print/append any messages from one jid that arrive
+// Reconnect auth and print/append any messages from one jid that arrive
 // via offline-delivery (messages.upsert notify) or history.set, downloading
 // attachments inline. No QR if already paired.
 //
@@ -18,7 +18,7 @@ import { fileURLToPath } from "url";
 import { mkdirSync, writeFileSync, appendFileSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const AUTH_DIR = resolve(__dirname, "auth-sync");
+const AUTH_DIR = resolve(__dirname, "auth");
 const OUT_DIR = resolve(__dirname, "attachments");
 const NDJSON = resolve(__dirname, "messages.ndjson");
 const logger = pino({ level: "silent" });
@@ -86,8 +86,8 @@ async function start() {
   const sock = makeWASocket({
     version, logger,
     auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) },
-    browser: ["eudamed2firstbase-sync", "CLI", "1.0"],
-    markOnlineOnConnect: false,
+    browser: ["eudamed2firstbase", "CLI", "1.0"],
+    markOnlineOnConnect: true,
   });
   sock.ev.on("creds.update", saveCreds);
   sock.ev.on("messaging-history.set", async ({ messages }) => { for (const m of messages || []) await handle(sock, m); });

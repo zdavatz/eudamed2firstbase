@@ -3,8 +3,9 @@
 // and append every message to messages.ndjson. Read-only w.r.t. chats: it
 // only sends the unavoidable delivery receipts + the QR pairing handshake.
 //
-// Auth lives in ./auth-sync (independent of ./auth used for sending), so the
-// existing send session is untouched.
+// Auth lives in ./auth — a single shared session for sending AND reading, exactly
+// like Pegelstand (one linked device, one browser identity). This avoids the
+// dual-device 401 conflict the old separate ./auth-sync session caused.
 //
 // Usage: node sync.mjs            # pair (QR) + sync, keeps running
 //        node sync.mjs --seconds 600   # auto-exit after N seconds idle-capped
@@ -26,7 +27,7 @@ import { fileURLToPath } from "url";
 import { appendFileSync, writeFileSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const AUTH_DIR = resolve(__dirname, "auth-sync");
+const AUTH_DIR = resolve(__dirname, "auth");
 const STORE = resolve(__dirname, "messages.ndjson");
 const QR_PNG = resolve(__dirname, "qr-sync.png");
 const logger = pino({ level: "silent" });
@@ -88,7 +89,7 @@ async function start() {
     version,
     logger,
     auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) },
-    browser: ["eudamed2firstbase-sync", "CLI", "1.0"],
+    browser: ["eudamed2firstbase", "CLI", "1.0"],
     syncFullHistory: true,
     markOnlineOnConnect: false,
   });
@@ -123,7 +124,7 @@ async function start() {
       const code = lastDisconnect?.error?.output?.statusCode;
       console.error(`[close] code=${code}`);
       if (code === DisconnectReason.loggedOut) {
-        console.error("[loggedOut] auth invalid — delete auth-sync/ and re-pair");
+        console.error("[loggedOut] auth invalid — delete auth/ and re-pair");
         process.exit(2);
       }
       // 515 restartRequired (after first pair) or transient → reconnect
