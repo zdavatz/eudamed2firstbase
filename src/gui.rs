@@ -1833,19 +1833,17 @@ fn run_pipeline(
                 uuids.len()
             ));
             ctx.request_repaint();
-            let (detail_ok, basic_ok) = crate::force_reload_eudamed(&uuids, &app_data);
+            let stats = crate::force_reload_eudamed(&uuids, &app_data);
             log(&format!(
                 "[{}] Force-reload: {} detail, {} Basic UDI-DI refetched ({} requested)",
-                mode_label,
-                detail_ok,
-                basic_ok,
-                uuids.len()
+                mode_label, stats.detail_ok, stats.basic_ok, stats.requested
             ));
-            if basic_ok < uuids.len() {
+            if stats.basic_missing() > 0 {
                 log(&format!(
-                    "[{}] WARNING: {} UUID(s) did not get a fresh Basic UDI-DI (EUDAMED throttling or no record) — they may still reject with 097.025",
+                    "[{}] WARNING: {} UUID(s) did not get a fresh Basic UDI-DI — reasons: {} (404 = no record at EUDAMED, kept old file; 429 = throttled). They keep their previous basic; only genuine misses may reject with 097.025.",
                     mode_label,
-                    uuids.len().saturating_sub(basic_ok)
+                    stats.basic_missing(),
+                    stats.breakdown()
                 ));
             }
         }

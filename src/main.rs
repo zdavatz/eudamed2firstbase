@@ -693,13 +693,18 @@ fn main() -> Result<()> {
                     "Force-reloading detail + Basic UDI-DI for {} UUID(s) from EUDAMED...",
                     uuids.len()
                 );
-                let (detail_ok, basic_ok) = force_reload_eudamed(&uuids, &data_dir);
+                let stats = force_reload_eudamed(&uuids, &data_dir);
                 eprintln!(
                     "Force-reload: {} detail, {} Basic UDI-DI refetched ({} requested)",
-                    detail_ok,
-                    basic_ok,
-                    uuids.len()
+                    stats.detail_ok, stats.basic_ok, stats.requested
                 );
+                if stats.basic_missing() > 0 {
+                    eprintln!(
+                        "  {} did not refetch — reasons: {} (404 = no record, kept old file; 429 = throttled)",
+                        stats.basic_missing(),
+                        stats.breakdown()
+                    );
+                }
             }
 
             // --- Reconvert (optional) ---
@@ -1651,7 +1656,27 @@ fn process_eudamed_json_dir(input_dir: &Path, config: &config::Config) -> Result
 /// every push (the FR/CH/BR 50-device reject batch). Parsing *before* caching also
 /// stops an error page from being written to the cache and then counting as a
 /// "present" basic file forever.
-fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicUdiDiData> {
+/// Why a Basic UDI-DI (re)fetch ended the way it did — captured so a bulk
+/// force-reload can tell EUDAMED **throttling (HTTP 429)** from a **genuinely
+/// absent record (HTTP 404)** from a **client-side timeout/connection error**,
+/// instead of guessing. `Http(code)` is the last non-2xx status EUDAMED actually
+/// returned; `Network` is a connection/timeout error (no HTTP response at all);
+/// `EmptyBody` is a 2xx whose body carried no valid, code-carrying Basic UDI-DI.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BasicFetchReason {
+    Ok,
+    Http(u16),
+    Network,
+    EmptyBody,
+}
+
+/// Core fetch returning both the data (for callers that need it) and the failure
+/// reason (for force-reload diagnostics). Parse-before-cache: only a valid,
+/// code-carrying body is ever written to disk.
+fn fetch_basic_udi_di_outcome(
+    uuid: &str,
+    cache_dir: &Path,
+) -> (Option<api_detail::BasicUdiDiData>, BasicFetchReason) {
     let url = format!(
         "https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData/{}?languageIso2Code=en",
         uuid
@@ -1662,9 +1687,13 @@ fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicU
         .build()
         .new_agent();
 
+    let mut last_reason = BasicFetchReason::Network;
     for attempt in 1..=4 {
         match agent.get(&url).call() {
             Ok(mut resp) => {
+                // http_status_as_error(false) ⇒ 404/429/5xx arrive here as Ok with a
+                // readable status, NOT as Err. Capture it so we can categorise.
+                let status = resp.status().as_u16();
                 let body = resp.body_mut().read_to_string().unwrap_or_default();
                 match api_detail::parse_basic_udi_di(&body) {
                     Ok(data)
@@ -1684,24 +1713,31 @@ fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicU
                                 uuid, e
                             );
                         }
-                        return Some(data);
+                        return (Some(data), BasicFetchReason::Ok);
                     }
                     _ => {
-                        // Parsed but empty/invalid, or unparseable (error page / partial).
-                        // Treat as transient and retry rather than poisoning the cache.
+                        // EUDAMED answered but the body has no usable code. A non-2xx
+                        // status is the real signal (429 throttle / 404 no record /
+                        // 5xx server error); a 2xx here means an empty/partial body.
+                        last_reason = if (200..300).contains(&status) {
+                            BasicFetchReason::EmptyBody
+                        } else {
+                            BasicFetchReason::Http(status)
+                        };
                         if attempt < 4 {
                             std::thread::sleep(std::time::Duration::from_secs(attempt));
                             continue;
                         }
                         eprintln!(
-                            "  Warning: Basic UDI-DI for {} had no usable code after {} attempts",
-                            uuid, attempt
+                            "  Warning: Basic UDI-DI for {} unusable after {} attempts (last HTTP {})",
+                            uuid, attempt, status
                         );
-                        return None;
+                        return (None, last_reason);
                     }
                 }
             }
             Err(e) => {
+                last_reason = BasicFetchReason::Network;
                 if attempt < 4 {
                     std::thread::sleep(std::time::Duration::from_secs(attempt));
                     continue;
@@ -1710,11 +1746,18 @@ fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicU
                     "  Warning: failed to fetch Basic UDI-DI for {} after {} attempts: {}",
                     uuid, attempt, e
                 );
-                return None;
+                return (None, last_reason);
             }
         }
     }
-    None
+    (None, last_reason)
+}
+
+/// Public wrapper: fetch the Basic UDI-DI, returning just the data. Used by the
+/// convert fetch-on-miss path. Force-reload calls [`fetch_basic_udi_di_outcome`]
+/// directly so it can categorise why a refetch failed.
+fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicUdiDiData> {
+    fetch_basic_udi_di_outcome(uuid, cache_dir).0
 }
 
 /// Force-fetch the UDI-DI **detail** record from EUDAMED, overwriting any cached
@@ -1779,6 +1822,39 @@ fn fetch_detail(uuid: &str, cache_dir: &Path) -> Option<api_detail::ApiDeviceDet
     None
 }
 
+/// Result of a [`force_reload_eudamed`] run: fresh-record counts plus a breakdown
+/// of why Basic UDI-DI refetches that did not succeed failed.
+pub(crate) struct ForceReloadStats {
+    pub requested: usize,
+    pub detail_ok: usize,
+    pub basic_ok: usize,
+    pub basic_429: usize,
+    pub basic_404: usize,
+    pub basic_http_other: usize,
+    pub basic_network: usize,
+    pub basic_empty: usize,
+}
+
+impl ForceReloadStats {
+    /// Basic UDI-DIs that did not get a fresh record (kept their old file, if any).
+    pub fn basic_missing(&self) -> usize {
+        self.requested.saturating_sub(self.basic_ok)
+    }
+
+    /// One-line failure breakdown, e.g. `429×0, 404×4218, 5xx×0, timeout×0, empty×0`.
+    /// 404 = no Basic UDI-DI record exists; 429 = EUDAMED throttled us.
+    pub fn breakdown(&self) -> String {
+        format!(
+            "429×{}, 404×{}, 5xx/other×{}, timeout×{}, empty×{}",
+            self.basic_429,
+            self.basic_404,
+            self.basic_http_other,
+            self.basic_network,
+            self.basic_empty,
+        )
+    }
+}
+
 /// Mode 6 (Force-Reload) helper: re-fetch **detail + Basic UDI-DI** from EUDAMED
 /// for every UUID, overwriting the cached `eudamed_json/detail|basic/<uuid>.json`.
 ///
@@ -1798,42 +1874,72 @@ fn fetch_detail(uuid: &str, cache_dir: &Path) -> Option<api_detail::ApiDeviceDet
 /// accepted, 969 rejected.) We keep the old file on failure; concurrency is bounded
 /// to stay under EUDAMED's rate limit so the refetch actually succeeds.
 ///
-/// Returns `(detail_ok, basic_ok)` — how many UUIDs got a fresh, valid record.
+/// Returns a [`ForceReloadStats`] with the fresh-record counts plus a breakdown
+/// of *why* each Basic UDI-DI refetch that did not succeed failed, so the log can
+/// state plainly whether it was EUDAMED throttling (429), absent records (404),
+/// timeouts, or empty bodies — instead of the old "throttling or no record" guess.
 fn force_reload_eudamed(
     uuids: &std::collections::HashSet<String>,
     data_dir: &Path,
-) -> (usize, usize) {
+) -> ForceReloadStats {
     use rayon::prelude::*;
     let detail_dir = data_dir.join("eudamed_json/detail");
     let basic_dir = data_dir.join("eudamed_json/basic");
     let _ = std::fs::create_dir_all(&detail_dir);
     let _ = std::fs::create_dir_all(&basic_dir);
 
-    let detail_ok = std::sync::atomic::AtomicUsize::new(0);
-    let basic_ok = std::sync::atomic::AtomicUsize::new(0);
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let detail_ok = AtomicUsize::new(0);
+    let basic_ok = AtomicUsize::new(0);
+    // Failure breakdown for Basic UDI-DI refetches.
+    let basic_429 = AtomicUsize::new(0); // EUDAMED rate-limited us
+    let basic_404 = AtomicUsize::new(0); // no Basic UDI-DI record exists
+    let basic_http_other = AtomicUsize::new(0); // other non-2xx (5xx etc.)
+    let basic_network = AtomicUsize::new(0); // timeout / connection error
+    let basic_empty = AtomicUsize::new(0); // 2xx but no valid code-carrying body
 
     let list: Vec<&String> = uuids.iter().collect();
 
-    // Bound concurrency. The default rayon pool (= #CPUs) over thousands of UUIDs
-    // fires a burst of detail+basic requests that EUDAMED throttles — that throttle
-    // is what made 4218/5330 Basic UDI-DI refetches fail in Maik's 1.0.66 run. A
-    // small pool keeps us under the rate limit so the refetch actually succeeds.
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(8).build().ok();
+    // Bound concurrency to 50 — the same width download.rs has long used against
+    // these EUDAMED endpoints (`parallel_threads`/`listing_threads` = 50), the one
+    // empirically-proven setting. The default rayon pool (= #CPUs) is not the issue;
+    // what wrecked Maik's 1.0.66 run was deleting each basic *before* refetching, so
+    // a throttled/failed refetch left no basic at all. With the delete removed
+    // (below), a failed refetch is harmless (old file kept), so we don't need an
+    // overly-cautious narrow pool — we match the tested download width.
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(50).build().ok();
 
     let run = || {
         list.par_iter().for_each(|uuid| {
             if fetch_detail(uuid, &detail_dir).is_some() {
-                detail_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                detail_ok.fetch_add(1, Ordering::Relaxed);
             }
-            // Fetch-first, replace-on-success: fetch_basic_udi_di only writes a
-            // valid, code-carrying body (parse-before-cache) and overwrites the
+            // Fetch-first, replace-on-success: fetch_basic_udi_di_outcome only writes
+            // a valid, code-carrying body (parse-before-cache) and overwrites the
             // cached file on success, so it already heals a stale/incomplete basic.
-            // We must NOT delete the existing file first: if the refetch fails
-            // (EUDAMED throttling/timeout) a deleted basic is gone for good →
-            // basic_udi=None → 097.025. A stale-but-parseable basic with a valid
-            // code is strictly better than no basic, so we keep it on failure.
-            if fetch_basic_udi_di(uuid, &basic_dir).is_some() {
-                basic_ok.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            // We must NOT delete the existing file first: if the refetch fails a
+            // deleted basic is gone for good → basic_udi=None → 097.025. A
+            // stale-but-parseable basic with a valid code is strictly better than no
+            // basic, so we keep it on failure — and record *why* it failed.
+            match fetch_basic_udi_di_outcome(uuid, &basic_dir).1 {
+                BasicFetchReason::Ok => {
+                    basic_ok.fetch_add(1, Ordering::Relaxed);
+                }
+                BasicFetchReason::Http(429) => {
+                    basic_429.fetch_add(1, Ordering::Relaxed);
+                }
+                BasicFetchReason::Http(404) => {
+                    basic_404.fetch_add(1, Ordering::Relaxed);
+                }
+                BasicFetchReason::Http(_) => {
+                    basic_http_other.fetch_add(1, Ordering::Relaxed);
+                }
+                BasicFetchReason::Network => {
+                    basic_network.fetch_add(1, Ordering::Relaxed);
+                }
+                BasicFetchReason::EmptyBody => {
+                    basic_empty.fetch_add(1, Ordering::Relaxed);
+                }
             }
         });
     };
@@ -1842,10 +1948,16 @@ fn force_reload_eudamed(
         None => run(),
     }
 
-    (
-        detail_ok.load(std::sync::atomic::Ordering::Relaxed),
-        basic_ok.load(std::sync::atomic::Ordering::Relaxed),
-    )
+    ForceReloadStats {
+        requested: list.len(),
+        detail_ok: detail_ok.load(Ordering::Relaxed),
+        basic_ok: basic_ok.load(Ordering::Relaxed),
+        basic_429: basic_429.load(Ordering::Relaxed),
+        basic_404: basic_404.load(Ordering::Relaxed),
+        basic_http_other: basic_http_other.load(Ordering::Relaxed),
+        basic_network: basic_network.load(Ordering::Relaxed),
+        basic_empty: basic_empty.load(Ordering::Relaxed),
+    }
 }
 
 /// Convert EUDAMED JSON → Swissdamed JSON (almost 1:1 mapping)
