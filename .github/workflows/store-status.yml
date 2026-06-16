@@ -1,0 +1,54 @@
+name: Store Status
+
+# Read-only check of the Microsoft Store submission status for this app.
+# Uses the existing MSSTORE_* secrets to GET the application + pending submission
+# status — it never creates, updates, deletes, or commits a submission.
+# Run with: gh workflow run store-status.yml   (then read the run log)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    if: vars.MSSTORE_ENABLED == 'true'
+    steps:
+      - name: Query Store submission status
+        env:
+          MSSTORE_TENANT_ID: ${{ secrets.MSSTORE_TENANT_ID }}
+          MSSTORE_CLIENT_ID: ${{ secrets.MSSTORE_CLIENT_ID }}
+          MSSTORE_CLIENT_SECRET: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          APP_ID="9P889JD1XWS2"
+          BASE="https://manage.devcenter.microsoft.com/v1.0/my/applications/$APP_ID"
+
+          echo "Getting OAuth token…"
+          TOKEN=$(curl -s -X POST \
+            "https://login.microsoftonline.com/${MSSTORE_TENANT_ID}/oauth2/token" \
+            -d "grant_type=client_credentials" \
+            -d "client_id=${MSSTORE_CLIENT_ID}" \
+            -d "client_secret=${MSSTORE_CLIENT_SECRET}" \
+            -d "resource=https://manage.devcenter.microsoft.com" \
+            | jq -r '.access_token')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::error::Failed to obtain access token"; exit 1
+          fi
+          echo "Got token."
+
+          echo "Getting application…"
+          APP=$(curl -s -H "Authorization: Bearer $TOKEN" "$BASE")
+          echo "App: $(echo "$APP" | jq -r '.primaryName // "?"')"
+
+          PENDING_ID=$(echo "$APP" | jq -r '.pendingApplicationSubmission.id // empty')
+          PUBLISHED_ID=$(echo "$APP" | jq -r '.lastPublishedApplicationSubmission.id // empty')
+          echo "lastPublishedApplicationSubmission.id : ${PUBLISHED_ID:-<none>}"
+          echo "pendingApplicationSubmission.id       : ${PENDING_ID:-<none>}"
+
+          if [ -n "$PENDING_ID" ]; then
+            echo "----- pending submission status -----"
+            ST=$(curl -s -H "Authorization: Bearer $TOKEN" "$BASE/submissions/$PENDING_ID/status")
+            echo "$ST" | jq '{status, statusDetails}'
+          else
+            echo "No pending submission — nothing certifying right now."
+          fi
