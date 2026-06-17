@@ -220,7 +220,8 @@ fn main() -> Result<()> {
             let log_fn = |msg: &str| {
                 eprintln!("{}", msg);
             };
-            match gui::push_to_firstbase(&settings, &log_fn) {
+            // `check` pushes everything in firstbase_json/ (unscoped).
+            match gui::push_to_firstbase(&settings, &log_fn, None) {
                 Ok((accepted, rejected)) => {
                     eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
                 }
@@ -814,7 +815,9 @@ fn main() -> Result<()> {
             let log_fn = |msg: &str| {
                 eprintln!("{}", msg);
             };
-            match gui::push_to_firstbase(&settings, &log_fn) {
+            // SRN-scoped (CLI mirror of Mode 4/5/6): push ONLY this run's UUIDs,
+            // not the whole firstbase_json/ backlog of other SRNs.
+            match gui::push_to_firstbase(&settings, &log_fn, Some(&uuids)) {
                 Ok((accepted, rejected)) => {
                     eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
                 }

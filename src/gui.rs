@@ -1615,7 +1615,9 @@ fn run_pipeline(
 
                 log("[Repush] Pushing to GS1 firstbase Catalogue Item API...");
                 ctx.request_repaint();
-                match push_to_firstbase(&settings, &log) {
+                // Mode 3 (Repush failed, ALL): intentionally unscoped — push every
+                // rejected file still in firstbase_json/, across all SRNs.
+                match push_to_firstbase(&settings, &log, None) {
                     Ok((accepted, rejected)) => {
                         done(
                             true,
@@ -1945,7 +1947,9 @@ fn run_pipeline(
             mode_label
         ));
         ctx.request_repaint();
-        match push_to_firstbase(&settings, &log) {
+        // SRN-scoped (Mode 4/5/6): push ONLY this run's UUIDs, not the whole
+        // firstbase_json/ backlog of other SRNs' rejected files.
+        match push_to_firstbase(&settings, &log, Some(&uuids)) {
             Ok((accepted, rejected)) => {
                 done(
                     true,
@@ -2333,7 +2337,8 @@ fn run_pipeline(
             log("[Push] Pushing to GS1 firstbase Catalogue Item API...");
             ctx.request_repaint();
 
-            let push_result = push_to_firstbase(&settings, &log);
+            // Mode 0/1/2: push everything currently in firstbase_json/ (unscoped).
+            let push_result = push_to_firstbase(&settings, &log, None);
 
             match push_result {
                 Ok((accepted, rejected)) => {
@@ -2423,7 +2428,18 @@ fn sanitize_global_model_info(doc: &mut serde_json::Value) -> bool {
 }
 
 /// Push firstbase JSON files to GS1 Catalogue Item API
-pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Result<(u32, u32)> {
+/// Push every pushable `firstbase_json/<uuid>.json` to the GS1 firstbase
+/// Catalogue Item API. When `uuid_filter` is `Some`, only files whose stem
+/// (the UUID) is in the set are pushed — used by the SRN-scoped modes
+/// (GUI Mode 4/5/6 + CLI `repush-srn`) so an SRN-targeted run touches **only**
+/// that SRN's devices and never drags the whole `firstbase_json/` retry backlog
+/// (rejected files of other SRNs) into the push. `None` = push everything in the
+/// directory (Mode 0/1/2/3 + `check`), the historical behaviour.
+pub fn push_to_firstbase(
+    settings: &Settings,
+    log: &dyn Fn(&str),
+    uuid_filter: Option<&std::collections::HashSet<String>>,
+) -> anyhow::Result<(u32, u32)> {
     let api_base = settings.firstbase_env.api_base();
     let env_label = match settings.firstbase_env {
         FirstbaseEnv::Test => "TEST",
@@ -2437,13 +2453,28 @@ pub fn push_to_firstbase(settings: &Settings, log: &dyn Fn(&str)) -> anyhow::Res
     let processed_dir = firstbase_dir.join("processed");
     let _ = std::fs::create_dir_all(&processed_dir);
 
-    // Collect pushable files (numeric GTIN)
+    if let Some(allow) = uuid_filter {
+        log(&format!(
+            "Scoped push: limited to this run's {} UUID(s) — other files in firstbase_json/ are left untouched.",
+            allow.len()
+        ));
+    }
+
+    // Collect pushable files (numeric GTIN). When a uuid_filter is set, skip any
+    // file whose stem (UUID) is not in the allowlist — keeps an SRN-scoped run
+    // from pushing unrelated rejected files left in firstbase_json/.
     let mut files: Vec<std::path::PathBuf> = Vec::new();
     if firstbase_dir.exists() {
         for entry in std::fs::read_dir(&firstbase_dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.extension().map(|e| e == "json").unwrap_or(false) {
+                if let Some(allow) = uuid_filter {
+                    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                    if !allow.contains(stem) {
+                        continue;
+                    }
+                }
                 files.push(path);
             }
         }
