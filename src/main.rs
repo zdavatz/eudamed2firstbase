@@ -694,14 +694,14 @@ fn main() -> Result<()> {
                     "Force-reloading detail + Basic UDI-DI for {} UUID(s) from EUDAMED...",
                     uuids.len()
                 );
-                let stats = force_reload_eudamed(&uuids, &data_dir);
+                let stats = force_reload_eudamed(&uuids, &data_dir, &|s: &str| eprintln!("{}", s));
                 eprintln!(
-                    "Force-reload: {} detail, {} Basic UDI-DI refetched ({} requested)",
-                    stats.detail_ok, stats.basic_ok, stats.requested
+                    "Force-reload: {} detail fresh; Basic UDI-DI {} already-complete (skipped), {} refetched of {} attempted",
+                    stats.detail_ok, stats.skipped_complete, stats.basic_ok, stats.refetch_attempted
                 );
                 if stats.basic_missing() > 0 {
                     eprintln!(
-                        "  {} did not refetch — reasons: {} (404 = no record, kept old file; 429 = throttled)",
+                        "  {} of the attempted refetches failed — reasons: {} (404 = no record, kept old file; 429 = throttled)",
                         stats.basic_missing(),
                         stats.breakdown()
                     );
@@ -1697,6 +1697,17 @@ fn fetch_basic_udi_di_outcome(
                 // http_status_as_error(false) ⇒ 404/429/5xx arrive here as Ok with a
                 // readable status, NOT as Err. Capture it so we can categorise.
                 let status = resp.status().as_u16();
+                // Capture Retry-After (seconds) BEFORE consuming the body. EUDAMED's
+                // Basic-UDI endpoint is rate-limited to ~60 req/60s (measured) and
+                // answers a 429 with `Retry-After: 60`; honoring that header is the
+                // only backoff that actually clears the window — the old linear 1-3s
+                // backoff could never win against a 60s throttle, which is why a
+                // 50-thread burst lost 429×4978 of 5372 in Maik's v1.0.69 run.
+                let retry_after_secs = resp
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|s| s.trim().parse::<u64>().ok());
                 let body = resp.body_mut().read_to_string().unwrap_or_default();
                 match api_detail::parse_basic_udi_di(&body) {
                     Ok(data)
@@ -1728,7 +1739,14 @@ fn fetch_basic_udi_di_outcome(
                             BasicFetchReason::Http(status)
                         };
                         if attempt < 4 {
-                            std::thread::sleep(std::time::Duration::from_secs(attempt));
+                            // On a 429 throttle, wait the server-stated Retry-After
+                            // (capped at 70s); otherwise a short linear backoff.
+                            let wait = if status == 429 {
+                                retry_after_secs.unwrap_or(60).min(70)
+                            } else {
+                                attempt
+                            };
+                            std::thread::sleep(std::time::Duration::from_secs(wait));
                             continue;
                         }
                         eprintln!(
@@ -1761,6 +1779,42 @@ fn fetch_basic_udi_di_outcome(
 /// directly so it can categorise why a refetch failed.
 fn fetch_basic_udi_di(uuid: &str, cache_dir: &Path) -> Option<api_detail::BasicUdiDiData> {
     fetch_basic_udi_di_outcome(uuid, cache_dir).0
+}
+
+/// True if the cached Basic UDI-DI for `uuid` is missing, unparseable, or
+/// incomplete (no `basic_udi.code` or no `device_name`) — i.e. it needs a fresh
+/// refetch to heal the 097.013/097.025 reject drivers. A cached basic that
+/// already carries a non-empty code AND deviceName is treated as current and
+/// skipped.
+///
+/// This is the gate that keeps Mode 6 within EUDAMED's ~60-req/60s Basic-UDI
+/// budget: refetching all 5372 every run blows the budget (429×4978), but only
+/// the genuinely stale/missing handful actually need healing. A device whose
+/// EUDAMED record is itself empty (e.g. FR-MF-000000602: no deviceName at the
+/// source) will keep returning true and be refetched each run — harmless, it is
+/// a small constant set, and the refetch simply confirms the source gap.
+fn basic_needs_refetch(uuid: &str, basic_dir: &Path) -> bool {
+    let path = basic_dir.join(format!("{}.json", uuid));
+    match std::fs::read_to_string(&path) {
+        Ok(body) => match api_detail::parse_basic_udi_di(&body) {
+            Ok(d) => {
+                let has_code = d
+                    .basic_udi
+                    .as_ref()
+                    .and_then(|b| b.code.as_ref())
+                    .map(|c| !c.trim().is_empty())
+                    .unwrap_or(false);
+                let has_name = d
+                    .device_name
+                    .as_ref()
+                    .map(|n| !n.trim().is_empty())
+                    .unwrap_or(false);
+                !(has_code && has_name)
+            }
+            Err(_) => true,
+        },
+        Err(_) => true,
+    }
 }
 
 /// Force-fetch the UDI-DI **detail** record from EUDAMED, overwriting any cached
@@ -1830,6 +1884,10 @@ fn fetch_detail(uuid: &str, cache_dir: &Path) -> Option<api_detail::ApiDeviceDet
 pub(crate) struct ForceReloadStats {
     pub requested: usize,
     pub detail_ok: usize,
+    /// Basic UDI-DIs already complete in cache (code + deviceName) → not refetched.
+    pub skipped_complete: usize,
+    /// Basic UDI-DIs we actually tried to refetch (= requested - skipped_complete).
+    pub refetch_attempted: usize,
     pub basic_ok: usize,
     pub basic_429: usize,
     pub basic_404: usize,
@@ -1839,9 +1897,11 @@ pub(crate) struct ForceReloadStats {
 }
 
 impl ForceReloadStats {
-    /// Basic UDI-DIs that did not get a fresh record (kept their old file, if any).
+    /// Basic UDI-DIs we tried to refetch but could not (kept their old file, if
+    /// any). Already-complete basics that were intentionally skipped do NOT count
+    /// here — only failures among the refetch-attempted set.
     pub fn basic_missing(&self) -> usize {
-        self.requested.saturating_sub(self.basic_ok)
+        self.refetch_attempted.saturating_sub(self.basic_ok)
     }
 
     /// One-line failure breakdown, e.g. `429×0, 404×4218, 5xx×0, timeout×0, empty×0`.
@@ -1884,82 +1944,118 @@ impl ForceReloadStats {
 fn force_reload_eudamed(
     uuids: &std::collections::HashSet<String>,
     data_dir: &Path,
+    progress: &dyn Fn(&str),
 ) -> ForceReloadStats {
     use rayon::prelude::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::{Duration, Instant};
+
     let detail_dir = data_dir.join("eudamed_json/detail");
     let basic_dir = data_dir.join("eudamed_json/basic");
     let _ = std::fs::create_dir_all(&detail_dir);
     let _ = std::fs::create_dir_all(&basic_dir);
 
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    let detail_ok = AtomicUsize::new(0);
-    let basic_ok = AtomicUsize::new(0);
-    // Failure breakdown for Basic UDI-DI refetches.
-    let basic_429 = AtomicUsize::new(0); // EUDAMED rate-limited us
-    let basic_404 = AtomicUsize::new(0); // no Basic UDI-DI record exists
-    let basic_http_other = AtomicUsize::new(0); // other non-2xx (5xx etc.)
-    let basic_network = AtomicUsize::new(0); // timeout / connection error
-    let basic_empty = AtomicUsize::new(0); // 2xx but no valid code-carrying body
-
     let list: Vec<&String> = uuids.iter().collect();
 
-    // Bound concurrency to 50 — the same width download.rs has long used against
-    // these EUDAMED endpoints (`parallel_threads`/`listing_threads` = 50), the one
-    // empirically-proven setting. The default rayon pool (= #CPUs) is not the issue;
-    // what wrecked Maik's 1.0.66 run was deleting each basic *before* refetching, so
-    // a throttled/failed refetch left no basic at all. With the delete removed
-    // (below), a failed refetch is harmless (old file kept), so we don't need an
-    // overly-cautious narrow pool — we match the tested download width.
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(50).build().ok();
-
-    let run = || {
+    // --- DETAIL pass: 50 threads. The detail endpoint is NOT tightly rate-limited
+    // (Maik's 2026-06-25 run refetched 5372/5372 detail fine at 50 threads), so we
+    // keep the proven download width here.
+    let detail_ok = AtomicUsize::new(0);
+    let detail_pool = rayon::ThreadPoolBuilder::new().num_threads(50).build().ok();
+    let detail_run = || {
         list.par_iter().for_each(|uuid| {
             if fetch_detail(uuid, &detail_dir).is_some() {
                 detail_ok.fetch_add(1, Ordering::Relaxed);
             }
-            // Fetch-first, replace-on-success: fetch_basic_udi_di_outcome only writes
-            // a valid, code-carrying body (parse-before-cache) and overwrites the
-            // cached file on success, so it already heals a stale/incomplete basic.
-            // We must NOT delete the existing file first: if the refetch fails a
-            // deleted basic is gone for good → basic_udi=None → 097.025. A
-            // stale-but-parseable basic with a valid code is strictly better than no
-            // basic, so we keep it on failure — and record *why* it failed.
-            match fetch_basic_udi_di_outcome(uuid, &basic_dir).1 {
-                BasicFetchReason::Ok => {
-                    basic_ok.fetch_add(1, Ordering::Relaxed);
-                }
-                BasicFetchReason::Http(429) => {
-                    basic_429.fetch_add(1, Ordering::Relaxed);
-                }
-                BasicFetchReason::Http(404) => {
-                    basic_404.fetch_add(1, Ordering::Relaxed);
-                }
-                BasicFetchReason::Http(_) => {
-                    basic_http_other.fetch_add(1, Ordering::Relaxed);
-                }
-                BasicFetchReason::Network => {
-                    basic_network.fetch_add(1, Ordering::Relaxed);
-                }
-                BasicFetchReason::EmptyBody => {
-                    basic_empty.fetch_add(1, Ordering::Relaxed);
-                }
-            }
         });
     };
-    match &pool {
-        Some(p) => p.install(run),
-        None => run(),
+    match &detail_pool {
+        Some(p) => p.install(detail_run),
+        None => detail_run(),
+    }
+    let detail_ok = detail_ok.load(Ordering::Relaxed);
+    progress(&format!(
+        "Detail refetch: {}/{} fresh (50 threads)",
+        detail_ok,
+        list.len()
+    ));
+
+    // --- BASIC UDI-DI pass: RATE-LIMITED, not concurrent.
+    // The Basic-UDI endpoint allows ~60 requests per rolling 60-second window
+    // (measured 2026-06-25), then returns 429 + `Retry-After: 60`. At 50 threads it
+    // blows that budget in ~1s → 429×4978 of 5372 in Maik's v1.0.69 run, so most
+    // stale basics never healed → residual 097.025/097.054. Two fixes:
+    //   (1) skip basics that are already complete (code + deviceName present) — only
+    //       the genuinely stale/missing handful need healing, which keeps the request
+    //       count far under the budget; and
+    //   (2) refetch the rest SEQUENTIALLY paced at ~1 req/s, with
+    //       `fetch_basic_udi_di_outcome` honoring the 429 `Retry-After` header.
+    // Proven harness: 120 paced requests across 2+ rate windows = 0 throttles.
+    // We still NEVER delete the old basic first — a failed refetch keeps the
+    // existing (stale-but-parseable ≫ absent) file (the v1.0.66 delete-first bug
+    // wiped 4218/5330 basics → 0 accepted, 969 rejected).
+    let need: Vec<&String> = list
+        .iter()
+        .copied()
+        .filter(|u| basic_needs_refetch(u, &basic_dir))
+        .collect();
+    let skipped_complete = list.len().saturating_sub(need.len());
+    let refetch_attempted = need.len();
+    progress(&format!(
+        "Basic UDI-DI: {} already complete (skipped), {} to refetch at ≤1 req/s (EUDAMED ~60/min limit)...",
+        skipped_complete, refetch_attempted
+    ));
+
+    let mut basic_ok = 0usize;
+    let mut basic_429 = 0usize;
+    let mut basic_404 = 0usize;
+    let mut basic_http_other = 0usize;
+    let mut basic_network = 0usize;
+    let mut basic_empty = 0usize;
+
+    // ~54 req/min (just under the 60/60s budget) — paced by request start time.
+    let min_interval = Duration::from_millis(1100);
+    let mut last_start: Option<Instant> = None;
+    for (i, uuid) in need.iter().enumerate() {
+        if let Some(t) = last_start {
+            let elapsed = t.elapsed();
+            if elapsed < min_interval {
+                std::thread::sleep(min_interval - elapsed);
+            }
+        }
+        last_start = Some(Instant::now());
+        match fetch_basic_udi_di_outcome(uuid, &basic_dir).1 {
+            BasicFetchReason::Ok => basic_ok += 1,
+            BasicFetchReason::Http(429) => basic_429 += 1,
+            BasicFetchReason::Http(404) => basic_404 += 1,
+            BasicFetchReason::Http(_) => basic_http_other += 1,
+            BasicFetchReason::Network => basic_network += 1,
+            BasicFetchReason::EmptyBody => basic_empty += 1,
+        }
+        // Live monitoring: progress + throttle state every 25 (and at the end).
+        if (i + 1) % 25 == 0 || i + 1 == refetch_attempted {
+            progress(&format!(
+                "  Basic UDI-DI refetch {}/{} — {} ok, {} throttled(429), {} no-record(404)",
+                i + 1,
+                refetch_attempted,
+                basic_ok,
+                basic_429,
+                basic_404
+            ));
+        }
     }
 
     ForceReloadStats {
         requested: list.len(),
-        detail_ok: detail_ok.load(Ordering::Relaxed),
-        basic_ok: basic_ok.load(Ordering::Relaxed),
-        basic_429: basic_429.load(Ordering::Relaxed),
-        basic_404: basic_404.load(Ordering::Relaxed),
-        basic_http_other: basic_http_other.load(Ordering::Relaxed),
-        basic_network: basic_network.load(Ordering::Relaxed),
-        basic_empty: basic_empty.load(Ordering::Relaxed),
+        detail_ok,
+        skipped_complete,
+        refetch_attempted,
+        basic_ok,
+        basic_429,
+        basic_404,
+        basic_http_other,
+        basic_network,
+        basic_empty,
     }
 }
 
