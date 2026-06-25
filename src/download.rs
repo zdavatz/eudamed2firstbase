@@ -94,13 +94,18 @@ pub struct DownloadConfig {
     pub limit: Option<usize>,
     pub data_dir: PathBuf,
     pub parallel_threads: usize,
-    /// Detail-endpoint concurrency. Kept higher than `parallel_threads`/
-    /// `listing_threads` because the detail endpoint is far less rate-limited than
-    /// the listing + Basic-UDI endpoints (it refetched 5372/5372 fine at 50
-    /// threads in the Mode 6 test), so the detail phase need not be paced as hard.
+    /// Detail-endpoint concurrency. (Pre-v1.0.72 this was kept high on the theory
+    /// that detail was less throttled; v1.0.72 disproved that — EUDAMED's rate
+    /// budget is SHARED across all device endpoints — so it now matches the others.
+    /// Under the proactive `RateLimiter` the thread count is throughput-irrelevant
+    /// anyway; a few threads just overlap network latency / survive a slow request.)
     pub detail_threads: usize,
     pub listing_threads: usize,
     pub max_retries: u32,
+    /// Minimum interval between EUDAMED requests (ms), enforced globally by the
+    /// shared `RateLimiter`. ~1050 ms ≈ 57 req/min, just under the measured shared
+    /// ~60-req/60 s per-IP budget → steady throughput with ~0 throttles.
+    pub rate_interval_ms: u64,
 }
 
 impl Default for DownloadConfig {
@@ -109,17 +114,16 @@ impl Default for DownloadConfig {
             srns: Vec::new(),
             limit: None,
             data_dir: app_data_dir().join(DEFAULT_DATA_DIR),
-            // Lowered from 50 (v1.0.71): the EUDAMED listing + Basic-UDI endpoints
-            // are rate-limited to ~60 req/60s. At 50 threads we blew that budget in
-            // ~1 s → 49×429 and truncated listings (DE-MF-000018836: 40 of 4795).
-            // eudamed_get() now retries 429s honoring Retry-After (so completeness
-            // is guaranteed at any width); a lower width just avoids a 429 storm and
-            // the wasted 60 s waits it causes. Detail is less throttled than
-            // listing/basic, hence parallel_threads > listing_threads.
-            parallel_threads: 12,
-            detail_threads: 50,
+            // v1.0.72: EUDAMED's ~60-req/60 s budget is SHARED across listing +
+            // detail + basic (per-IP), so throughput is governed by the proactive
+            // RateLimiter (rate_interval_ms), NOT the thread counts. Keep modest,
+            // uniform pools — a few threads to overlap latency / survive a slow
+            // request; the limiter paces the aggregate to ~57/min regardless.
+            parallel_threads: 6,
+            detail_threads: 6,
             listing_threads: 6,
             max_retries: 3,
+            rate_interval_ms: 1050,
         }
     }
 }
@@ -170,11 +174,16 @@ pub fn run_download(
         detail: "Fetching listings from EUDAMED API...".into(),
     });
 
+    // One shared limiter for the WHOLE run: EUDAMED's ~60/60 s budget is shared
+    // across listing + detail + basic (per-IP), so a single bucket paces them all.
+    let limiter = RateLimiter::new(std::time::Duration::from_millis(config.rate_interval_ms));
+
     let uuid_versions = download_listings(
         EUDAMED_BASE_URL,
         &config.srns,
         config.limit,
         config.listing_threads,
+        &limiter,
         progress,
     )?;
 
@@ -228,6 +237,7 @@ pub fn run_download(
         &download_log,
         config.detail_threads,
         config.max_retries,
+        &limiter,
         progress,
     )?;
     log(&format!(
@@ -246,6 +256,7 @@ pub fn run_download(
         &download_log,
         config.parallel_threads,
         config.max_retries,
+        &limiter,
         progress,
     )?;
     log(&format!(
@@ -304,6 +315,7 @@ pub fn run_download(
                 &download_log,
                 config.detail_threads,
                 5, // more retries for completeness check
+                &limiter,
                 progress,
             )?;
         }
@@ -316,6 +328,7 @@ pub fn run_download(
                 &download_log,
                 config.parallel_threads,
                 5,
+                &limiter,
                 progress,
             )?;
         }
@@ -546,6 +559,45 @@ fn ensure_listing_cache(conn: &rusqlite::Connection) {
     );
 }
 
+/// Proactive global rate limiter (v1.0.72). EUDAMED throttles ALL device
+/// endpoints (listing + detail + Basic-UDI) against a SINGLE shared ~60-req/60 s
+/// per-IP budget — measured 2026-06-25: draining detail's 60-request budget then
+/// immediately hitting basic 429s instantly. The v1.0.71 *reactive* approach
+/// (fire at N threads → eat a 60 s `Retry-After` on each 429) collapsed
+/// throughput to ~12/min (threads sleeping a window in lockstep). This limiter
+/// instead hands every request a time slot spaced `interval` apart, so the
+/// AGGREGATE rate across all threads/endpoints stays just under the budget and
+/// 429s never happen: measured **steady 57/min, 0 throttles** across 2+ windows.
+pub struct RateLimiter {
+    next_slot: std::sync::Mutex<std::time::Instant>,
+    interval: std::time::Duration,
+}
+
+impl RateLimiter {
+    pub fn new(interval: std::time::Duration) -> Self {
+        Self {
+            next_slot: std::sync::Mutex::new(std::time::Instant::now()),
+            interval,
+        }
+    }
+
+    /// Block until this caller's paced slot. Slots are handed out `interval`
+    /// apart; `.max(now)` caps catch-up after an idle gap (e.g. a phase boundary)
+    /// to a SINGLE immediate request, never a burst that could trip the window.
+    pub fn acquire(&self) {
+        let wait = {
+            let mut slot = self.next_slot.lock().unwrap_or_else(|e| e.into_inner());
+            let now = std::time::Instant::now();
+            let mine = (*slot).max(now);
+            *slot = mine + self.interval;
+            mine.saturating_duration_since(now)
+        };
+        if !wait.is_zero() {
+            std::thread::sleep(wait);
+        }
+    }
+}
+
 /// A ureq agent that surfaces HTTP status (so 429 / `Retry-After` are readable
 /// instead of arriving as an opaque `Err`) with a generous global timeout.
 fn eudamed_agent() -> ureq::Agent {
@@ -568,9 +620,18 @@ fn eudamed_agent() -> ureq::Agent {
 /// 4795) or backed off 2–6 s (parallel_fetch → never clears a 60 s window →
 /// "still missing"). Here a throttled request waits out the window and retries
 /// rather than abandoning the page/file, so nothing is silently dropped.
-fn eudamed_get(agent: &ureq::Agent, url: &str, max_attempts: u32) -> Result<String, String> {
+fn eudamed_get(
+    agent: &ureq::Agent,
+    limiter: &RateLimiter,
+    url: &str,
+    max_attempts: u32,
+) -> Result<String, String> {
     let mut last = String::from("no response");
     for attempt in 1..=max_attempts.max(1) {
+        // Proactive pacing: wait for a budget slot BEFORE every request so the
+        // aggregate stays under EUDAMED's shared ~60/60 s limit and 429s (and
+        // their 60 s Retry-After stalls) are avoided rather than reacted to.
+        limiter.acquire();
         match agent.get(url).call() {
             Ok(mut resp) => {
                 let status = resp.status().as_u16();
@@ -618,6 +679,7 @@ fn download_listing_for_srn(
     srn: &str,
     limit: Option<usize>,
     conn: &Mutex<rusqlite::Connection>,
+    limiter: &RateLimiter,
     progress: &dyn DownloadProgress,
 ) -> Vec<(String, Option<u32>, Option<u32>)> {
     let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
@@ -639,7 +701,7 @@ fn download_listing_for_srn(
         // Retry the page on a 429 (honoring Retry-After) instead of breaking — a
         // throttled page used to abort the whole SRN's pagination and truncate it
         // (DE-MF-000018836: 40 of 4795). Now pagination runs to completion.
-        let body: String = match eudamed_get(&agent, &url, 6) {
+        let body: String = match eudamed_get(&agent, limiter, &url, 6) {
             Ok(b) => b,
             Err(e) => {
                 progress.on_event(DownloadEvent::Log(format!(
@@ -796,6 +858,7 @@ fn download_listings(
     srns: &[String],
     limit: Option<usize>,
     listing_threads: usize,
+    limiter: &RateLimiter,
     progress: &dyn DownloadProgress,
 ) -> anyhow::Result<Vec<(String, Option<u32>, Option<u32>)>> {
     // Open DB for listing cache
@@ -824,8 +887,14 @@ fn download_listings(
         .install(|| {
             srns.par_iter()
                 .map(|srn| {
-                    let entries =
-                        download_listing_for_srn(&base_url_owned, srn, limit, &conn, progress);
+                    let entries = download_listing_for_srn(
+                        &base_url_owned,
+                        srn,
+                        limit,
+                        &conn,
+                        limiter,
+                        progress,
+                    );
                     let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
                     if done % 100 == 0 || done == total_srns {
                         progress.on_event(DownloadEvent::Log(format!(
@@ -939,6 +1008,7 @@ fn parallel_fetch(
     download_log: &Arc<Mutex<Option<std::fs::File>>>,
     threads: usize,
     max_retries: u32,
+    limiter: &RateLimiter,
     progress: &dyn DownloadProgress,
 ) -> anyhow::Result<(usize, usize)> {
     // Filter to only UUIDs not already on disk
@@ -979,7 +1049,7 @@ fn parallel_fetch(
                 let full_url = format!("{}/{}?languageIso2Code=en", base_url_owned, uuid);
                 // Honors Retry-After on a 429 (replaces a 2-6 s linear backoff that
                 // could never clear EUDAMED's ~60 s rate window → "still missing").
-                if let Ok(body) = eudamed_get(&agent, &full_url, max_retries.max(4)) {
+                if let Ok(body) = eudamed_get(&agent, limiter, &full_url, max_retries.max(4)) {
                     let path = target_dir_owned.join(format!("{}.json", uuid));
                     let _ = std::fs::write(&path, &body);
                     let count = downloaded.fetch_add(1, Ordering::Relaxed) + 1;
