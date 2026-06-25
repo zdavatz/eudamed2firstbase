@@ -44,6 +44,12 @@ enum WorkerMsg {
     },
     /// Raw Baileys QR string — GUI renders it as an image in a modal.
     QrCode(String),
+    /// Live download progress for the status bar (phase, done, total).
+    DownloadStatus {
+        phase: String,
+        done: usize,
+        total: usize,
+    },
 }
 
 /// Target system for push.
@@ -134,6 +140,8 @@ pub struct App {
     pipeline_mode: u8,
     /// If Some, an error dialog is shown with this message.
     error_dialog: Option<String>,
+    /// Live download progress (phase, done, total) for the status bar.
+    download_status: Option<(String, usize, usize)>,
     /// Live QR code from a WhatsApp pairing session (rendered as an egui texture).
     qr_texture: Option<egui::TextureHandle>,
     /// Raw QR data last received — kept so we can redraw without regenerating.
@@ -219,6 +227,7 @@ impl App {
             horizontal_split: false,
             pipeline_mode: 0,
             error_dialog: None,
+            download_status: None,
             qr_texture: None,
             qr_data: None,
             update_rx: Some(spawn_update_check()),
@@ -433,6 +442,28 @@ impl App {
                 }
             });
         ui.add_space(6.0);
+    }
+
+    /// Render a download progress bar while a download phase is active, so the
+    /// user sees listing/detail/basic advancing (esp. during the now-paced,
+    /// rate-limited download that can take a while on large SRN sets).
+    fn render_download_status_bar(&self, ui: &mut egui::Ui) {
+        if !self.running {
+            return;
+        }
+        if let Some((phase, done, total)) = &self.download_status {
+            let frac = if *total > 0 {
+                (*done as f32 / *total as f32).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            ui.add(
+                egui::ProgressBar::new(frac)
+                    .text(format!("{}: {}/{}", phase, done, total))
+                    .animate(true),
+            );
+            ui.add_space(2.0);
+        }
     }
 
     fn save_log(&self) {
@@ -690,6 +721,7 @@ impl App {
         self.rx = Some(rx);
         self.running = true;
         self.log_lines.clear();
+        self.download_status = None;
         self.log_lines.push("Pipeline started...".to_string());
 
         let settings = self.settings.clone();
@@ -761,6 +793,9 @@ impl eframe::App for App {
                             .push("WhatsApp: QR code received — scan to pair.".to_string());
                         qr_to_render = Some(data);
                     }
+                    WorkerMsg::DownloadStatus { phase, done, total } => {
+                        self.download_status = Some((phase, done, total));
+                    }
                     WorkerMsg::Done { ok, summary } => {
                         self.log_lines.push(String::new());
                         if ok {
@@ -772,6 +807,7 @@ impl eframe::App for App {
                             self.error_dialog = Some(summary.clone());
                         }
                         self.running = false;
+                        self.download_status = None;
                         self.qr_texture = None;
                         self.qr_data = None;
                         self.save_log();
@@ -996,6 +1032,7 @@ impl eframe::App for App {
                 );
                 let mut right_ui = ui.new_child(egui::UiBuilder::new().max_rect(right_rect));
                 right_ui.label("Log:");
+                self.render_download_status_bar(&mut right_ui);
                 egui::ScrollArea::vertical()
                     .id_salt("log_horiz")
                     .stick_to_bottom(true)
@@ -1292,6 +1329,7 @@ impl eframe::App for App {
 
             // --- Bottom: Log output ---
             ui.label("Log:");
+            self.render_download_status_bar(ui);
             egui::ScrollArea::vertical()
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
@@ -1395,6 +1433,9 @@ impl DownloadProgress for GuiProgress {
         let msg = match event {
             DownloadEvent::Log(s) => WorkerMsg::Log(s),
             DownloadEvent::Progress { step, detail } => WorkerMsg::Progress { step, detail },
+            DownloadEvent::Status { phase, done, total } => {
+                WorkerMsg::DownloadStatus { phase, done, total }
+            }
         };
         let _ = self.tx.send(msg);
         self.ctx.request_repaint();

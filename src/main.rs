@@ -86,6 +86,7 @@ fn main() -> Result<()> {
             };
             if let Some(t) = threads {
                 dl_config.parallel_threads = t;
+                dl_config.detail_threads = t;
                 dl_config.listing_threads = t;
             }
             let progress = download::StderrProgress;
@@ -252,6 +253,7 @@ fn main() -> Result<()> {
             };
             if let Some(t) = threads {
                 dl_config.parallel_threads = t;
+                dl_config.detail_threads = t;
                 dl_config.listing_threads = t;
             }
             let progress = download::StderrProgress;

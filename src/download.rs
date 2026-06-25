@@ -52,7 +52,18 @@ pub fn app_data_dir() -> PathBuf {
 /// Progress/log messages emitted during the download pipeline.
 pub enum DownloadEvent {
     Log(String),
-    Progress { step: String, detail: String },
+    Progress {
+        step: String,
+        detail: String,
+    },
+    /// Structured progress for a GUI status bar: `done` of `total` items finished
+    /// in `phase` ("Listings" / "detail" / "basic"). CLI ignores it (the Log lines
+    /// already cover stderr); the GUI renders it as a progress bar.
+    Status {
+        phase: String,
+        done: usize,
+        total: usize,
+    },
 }
 
 /// Trait for receiving download progress. Implemented differently by GUI and CLI.
@@ -70,6 +81,9 @@ impl DownloadProgress for StderrProgress {
             DownloadEvent::Progress { step, detail } => {
                 eprintln!("[{}] {}", step, detail);
             }
+            // CLI already prints per-phase Log lines; the Status event exists for
+            // the GUI progress bar, so the stderr reporter ignores it.
+            DownloadEvent::Status { .. } => {}
         }
     }
 }
@@ -80,6 +94,11 @@ pub struct DownloadConfig {
     pub limit: Option<usize>,
     pub data_dir: PathBuf,
     pub parallel_threads: usize,
+    /// Detail-endpoint concurrency. Kept higher than `parallel_threads`/
+    /// `listing_threads` because the detail endpoint is far less rate-limited than
+    /// the listing + Basic-UDI endpoints (it refetched 5372/5372 fine at 50
+    /// threads in the Mode 6 test), so the detail phase need not be paced as hard.
+    pub detail_threads: usize,
     pub listing_threads: usize,
     pub max_retries: u32,
 }
@@ -90,8 +109,16 @@ impl Default for DownloadConfig {
             srns: Vec::new(),
             limit: None,
             data_dir: app_data_dir().join(DEFAULT_DATA_DIR),
-            parallel_threads: 50,
-            listing_threads: 50,
+            // Lowered from 50 (v1.0.71): the EUDAMED listing + Basic-UDI endpoints
+            // are rate-limited to ~60 req/60s. At 50 threads we blew that budget in
+            // ~1 s → 49×429 and truncated listings (DE-MF-000018836: 40 of 4795).
+            // eudamed_get() now retries 429s honoring Retry-After (so completeness
+            // is guaranteed at any width); a lower width just avoids a 429 storm and
+            // the wasted 60 s waits it causes. Detail is less throttled than
+            // listing/basic, hence parallel_threads > listing_threads.
+            parallel_threads: 12,
+            detail_threads: 50,
+            listing_threads: 6,
             max_retries: 3,
         }
     }
@@ -199,7 +226,7 @@ pub fn run_download(
         EUDAMED_BASE_URL,
         "detail",
         &download_log,
-        config.parallel_threads,
+        config.detail_threads,
         config.max_retries,
         progress,
     )?;
@@ -275,7 +302,7 @@ pub fn run_download(
                 EUDAMED_BASE_URL,
                 "detail",
                 &download_log,
-                config.parallel_threads,
+                config.detail_threads,
                 5, // more retries for completeness check
                 progress,
             )?;
@@ -519,6 +546,72 @@ fn ensure_listing_cache(conn: &rusqlite::Connection) {
     );
 }
 
+/// A ureq agent that surfaces HTTP status (so 429 / `Retry-After` are readable
+/// instead of arriving as an opaque `Err`) with a generous global timeout.
+fn eudamed_agent() -> ureq::Agent {
+    ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .timeout_global(Some(std::time::Duration::from_secs(30)))
+        .build()
+        .new_agent()
+}
+
+/// GET `url`, returning the body on 2xx. On **HTTP 429 it honors the
+/// `Retry-After` header** (waits the stated seconds, capped at 70) and retries;
+/// on any other non-2xx or a network error it does a short linear backoff.
+/// Returns `Err(reason)` only after `max_attempts`.
+///
+/// This is the single choke-point that makes every EUDAMED download — listings,
+/// detail, basic — survive the endpoints' rate limit (~60 req / 60 s on the
+/// listing + Basic-UDI endpoints, measured 2026-06-25). The old paths either
+/// `break` on a 429 (listing pagination → truncation: DE-MF-000018836 got 40 of
+/// 4795) or backed off 2–6 s (parallel_fetch → never clears a 60 s window →
+/// "still missing"). Here a throttled request waits out the window and retries
+/// rather than abandoning the page/file, so nothing is silently dropped.
+fn eudamed_get(agent: &ureq::Agent, url: &str, max_attempts: u32) -> Result<String, String> {
+    let mut last = String::from("no response");
+    for attempt in 1..=max_attempts.max(1) {
+        match agent.get(url).call() {
+            Ok(mut resp) => {
+                let status = resp.status().as_u16();
+                if (200..300).contains(&status) {
+                    return resp.body_mut().read_to_string().map_err(|e| e.to_string());
+                }
+                if status == 429 {
+                    let wait = resp
+                        .headers()
+                        .get("retry-after")
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|s| s.trim().parse::<u64>().ok())
+                        .unwrap_or(60)
+                        .min(70);
+                    last = format!("HTTP 429 (waited {}s)", wait);
+                    if attempt < max_attempts {
+                        std::thread::sleep(std::time::Duration::from_secs(wait));
+                        continue;
+                    }
+                    return Err(last);
+                }
+                last = format!("HTTP {}", status);
+                if attempt < max_attempts {
+                    std::thread::sleep(std::time::Duration::from_secs(attempt as u64));
+                    continue;
+                }
+                return Err(last);
+            }
+            Err(e) => {
+                last = format!("network error: {}", e);
+                if attempt < max_attempts {
+                    std::thread::sleep(std::time::Duration::from_secs(attempt as u64));
+                    continue;
+                }
+                return Err(last);
+            }
+        }
+    }
+    Err(last)
+}
+
 /// Download paginated listings for a single SRN. Returns entries found.
 fn download_listing_for_srn(
     base_url: &str,
@@ -535,6 +628,7 @@ fn download_listing_for_srn(
     let mut srn_budi_bumped = 0usize;
     let mut srn_unchanged = 0usize;
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let agent = eudamed_agent();
 
     loop {
         let url = format!(
@@ -542,19 +636,18 @@ fn download_listing_for_srn(
             base_url, page, DEFAULT_PAGE_SIZE, srn
         );
 
-        let resp = match ureq::get(&url).call() {
-            Ok(r) => r,
+        // Retry the page on a 429 (honoring Retry-After) instead of breaking — a
+        // throttled page used to abort the whole SRN's pagination and truncate it
+        // (DE-MF-000018836: 40 of 4795). Now pagination runs to completion.
+        let body: String = match eudamed_get(&agent, &url, 6) {
+            Ok(b) => b,
             Err(e) => {
                 progress.on_event(DownloadEvent::Log(format!(
-                    "  SRN {} page {} error: {}",
+                    "  SRN {} page {} failed after retries: {}",
                     srn, page, e
                 )));
                 break;
             }
-        };
-        let body: String = match resp.into_body().read_to_string() {
-            Ok(b) => b,
-            Err(_) => break,
         };
 
         let json: serde_json::Value = match serde_json::from_str(&body) {
@@ -740,6 +833,11 @@ fn download_listings(
                             done, total_srns
                         )));
                     }
+                    progress.on_event(DownloadEvent::Status {
+                        phase: "Listings".into(),
+                        done,
+                        total: total_srns,
+                    });
                     entries
                 })
                 .collect()
@@ -870,6 +968,7 @@ fn parallel_fetch(
     let dl_log = download_log.clone();
     let prefix = log_prefix.to_string();
     let last_reported = AtomicUsize::new(0);
+    let agent = eudamed_agent();
 
     rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -878,46 +977,35 @@ fn parallel_fetch(
         .install(|| {
             need.par_iter().for_each(|uuid| {
                 let full_url = format!("{}/{}?languageIso2Code=en", base_url_owned, uuid);
-                for attempt in 1..=max_retries {
-                    match ureq::get(&full_url).call() {
-                        Ok(resp) => {
-                            if let Ok(body) = resp.into_body().read_to_string() {
-                                let path = target_dir_owned.join(format!("{}.json", uuid));
-                                let _ = std::fs::write(&path, &body);
-                                let count = downloaded.fetch_add(1, Ordering::Relaxed) + 1;
-                                // Report progress every 10 files or at the end
-                                let prev = last_reported.load(Ordering::Relaxed);
-                                if count == total_need || count >= prev + 10 {
-                                    if last_reported
-                                        .compare_exchange(
-                                            prev,
-                                            count,
-                                            Ordering::Relaxed,
-                                            Ordering::Relaxed,
-                                        )
-                                        .is_ok()
-                                    {
-                                        progress.on_event(DownloadEvent::Log(format!(
-                                            "  {} {}/{} downloaded",
-                                            prefix, count, total_need
-                                        )));
-                                    }
-                                }
-                                if let Ok(mut guard) = dl_log.lock() {
-                                    if let Some(ref mut f) = *guard {
-                                        let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
-                                        let _ = writeln!(f, "{} {} {}.json", ts, prefix, uuid);
-                                    }
-                                }
-                            }
-                            return;
+                // Honors Retry-After on a 429 (replaces a 2-6 s linear backoff that
+                // could never clear EUDAMED's ~60 s rate window → "still missing").
+                if let Ok(body) = eudamed_get(&agent, &full_url, max_retries.max(4)) {
+                    let path = target_dir_owned.join(format!("{}.json", uuid));
+                    let _ = std::fs::write(&path, &body);
+                    let count = downloaded.fetch_add(1, Ordering::Relaxed) + 1;
+                    // Report progress every 10 files or at the end
+                    let prev = last_reported.load(Ordering::Relaxed);
+                    if count == total_need || count >= prev + 10 {
+                        if last_reported
+                            .compare_exchange(prev, count, Ordering::Relaxed, Ordering::Relaxed)
+                            .is_ok()
+                        {
+                            progress.on_event(DownloadEvent::Log(format!(
+                                "  {} {}/{} downloaded",
+                                prefix, count, total_need
+                            )));
+                            progress.on_event(DownloadEvent::Status {
+                                phase: prefix.clone(),
+                                done: count,
+                                total: total_need,
+                            });
                         }
-                        Err(_) if attempt < max_retries => {
-                            std::thread::sleep(std::time::Duration::from_secs(
-                                (attempt as u64) * 2,
-                            ));
+                    }
+                    if let Ok(mut guard) = dl_log.lock() {
+                        if let Some(ref mut f) = *guard {
+                            let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
+                            let _ = writeln!(f, "{} {} {}.json", ts, prefix, uuid);
                         }
-                        Err(_) => {}
                     }
                 }
             });
