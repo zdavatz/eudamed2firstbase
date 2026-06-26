@@ -669,15 +669,26 @@ fn main() -> Result<()> {
                 srns.len()
             );
 
-            // Issue #10: skip NO_LONGER devices already ACCEPTED in TEST.
-            // CLI repush-srn uses gui::Settings::default() further down → Test env.
-            // (PROD pushes go through the GUI; CLI is dev/test only.)
+            // Target environment: FIRSTBASE_ENV=Production switches the CLI push
+            // to the GS1 production endpoint; anything else (incl. unset) = Test.
+            let fb_env = match std::env::var("FIRSTBASE_ENV").as_deref() {
+                Ok("Production") | Ok("production") | Ok("PROD") | Ok("prod") => {
+                    gui::FirstbaseEnv::Production
+                }
+                _ => gui::FirstbaseEnv::Test,
+            };
+            let env_label = match fb_env {
+                gui::FirstbaseEnv::Production => "Production",
+                gui::FirstbaseEnv::Test => "Test",
+            };
+
+            // Issue #10: skip NO_LONGER devices already ACCEPTED in this env.
             let (uuids, skipped) =
-                version_db::filter_skip_no_longer_accepted(&conn, &uuids, "Test");
+                version_db::filter_skip_no_longer_accepted(&conn, &uuids, env_label);
             if skipped > 0 {
                 eprintln!(
-                    "Skipping {} NO_LONGER UUID(s) already ACCEPTED in Test (G485 mitigation, Issue #10)",
-                    skipped
+                    "Skipping {} NO_LONGER UUID(s) already ACCEPTED in {} (G485 mitigation, Issue #10)",
+                    skipped, env_label
                 );
             }
             if uuids.is_empty() {
@@ -812,8 +823,14 @@ fn main() -> Result<()> {
                 firstbase_password: password,
                 publish_to_gln: publish_gln,
                 provider_gln: config.provider.gln.clone(),
+                firstbase_env: fb_env,
                 ..Default::default()
             };
+            eprintln!(
+                "Firstbase environment: {} ({})",
+                env_label,
+                settings.firstbase_env.api_base()
+            );
             let log_fn = |msg: &str| {
                 eprintln!("{}", msg);
             };
