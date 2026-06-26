@@ -234,20 +234,35 @@ fn main() -> Result<()> {
         }
         Some("download") => {
             // Download from EUDAMED API (replaces download.sh)
-            let (srns, limit, threads) = parse_download_args(&args[2..]);
-            if srns.is_empty() && limit.is_none() {
-                eprintln!(
-                    "Usage: eudamed2firstbase download [--N] [--srn <SRN> ...] [--threads N]"
+            let (srns, mut gtins, limit, threads) = parse_download_args(&args[2..]);
+            // --gtin-file <path>: one GTIN (UDI-DI primary code) per line, # comments ok.
+            if let Some(pos) = args.iter().position(|a| a == "--gtin-file") {
+                let file = args
+                    .get(pos + 1)
+                    .ok_or_else(|| anyhow::anyhow!("--gtin-file requires a path argument"))?;
+                gtins.extend(
+                    std::fs::read_to_string(file)?
+                        .lines()
+                        .map(|l| l.trim().to_string())
+                        .filter(|s| !s.is_empty() && !s.starts_with('#')),
                 );
-                eprintln!("  --N              Number of products per SRN (e.g. --10, --100)");
-                eprintln!("  --srn <SRN> ...  Filter by manufacturer/AR SRN(s)");
+            }
+            if srns.is_empty() && gtins.is_empty() && limit.is_none() {
                 eprintln!(
-                    "  --threads N      Parallel threads for listings (default 10) and downloads"
+                    "Usage: eudamed2firstbase download [--N] [--srn <SRN> ...] [--gtin <GTIN> ...] [--gtin-file <file>] [--threads N] [--convert]"
+                );
+                eprintln!("  --N                Number of products per SRN (e.g. --10, --100)");
+                eprintln!("  --srn <SRN> ...    Filter by manufacturer/AR SRN(s)");
+                eprintln!("  --gtin <GTIN> ...  Fetch specific device(s) by UDI-DI primary code (GTIN); takes precedence over --srn");
+                eprintln!("  --gtin-file <file> Read GTINs from a file (one per line)");
+                eprintln!(
+                    "  --threads N        Parallel threads for listings/lookups and downloads"
                 );
                 std::process::exit(1);
             }
             let mut dl_config = download::DownloadConfig {
                 srns,
+                gtins,
                 limit,
                 ..Default::default()
             };
@@ -270,9 +285,16 @@ fn main() -> Result<()> {
                     result.basic_downloaded,
                 );
             }
-            // Auto-convert if --convert flag present
+            // Auto-convert if --convert flag present.
+            // process_eudamed_json_dir resolves all paths (input detail dir, output
+            // firstbase_json/, db/, basic cache) relative to the CWD, but the download
+            // above wrote under app_data_dir(). Run the convert from app_data_dir() so
+            // input/output/db all line up with where the data lives (and where the
+            // push step later reads firstbase_json/).
             if args.iter().any(|a| a == "--convert") {
                 eprintln!("\n=== Converting to firstbase JSON ===");
+                std::env::set_current_dir(download::app_data_dir())
+                    .context("Failed to chdir to app data dir for convert")?;
                 process_eudamed_json_dir(Path::new("eudamed_json/detail"), &config)?;
             }
             Ok(())
@@ -1013,8 +1035,11 @@ fn main() -> Result<()> {
     }
 }
 
-fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>, Option<usize>) {
+fn parse_download_args(
+    args: &[String],
+) -> (Vec<String>, Vec<String>, Option<usize>, Option<usize>) {
     let mut srns = Vec::new();
+    let mut gtins = Vec::new();
     let mut limit = None;
     let mut threads = None;
     let mut i = 0;
@@ -1024,6 +1049,12 @@ fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>, Option<u
             i += 1;
             while i < args.len() && !args[i].starts_with("--") {
                 srns.push(args[i].clone());
+                i += 1;
+            }
+        } else if args[i] == "--gtin" {
+            i += 1;
+            while i < args.len() && !args[i].starts_with("--") {
+                gtins.push(args[i].clone());
                 i += 1;
             }
         } else if args[i] == "--threads" {
@@ -1042,7 +1073,7 @@ fn parse_download_args(args: &[String]) -> (Vec<String>, Option<usize>, Option<u
         }
     }
 
-    (srns, limit, threads)
+    (srns, gtins, limit, threads)
 }
 
 fn process_xml_dir(config: &config::Config) -> Result<()> {

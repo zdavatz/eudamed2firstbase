@@ -91,6 +91,10 @@ impl DownloadProgress for StderrProgress {
 /// Configuration for a download run.
 pub struct DownloadConfig {
     pub srns: Vec<String>,
+    /// UDI-DI primary codes (GTINs) to fetch directly via the `primaryDi` listing
+    /// filter, bypassing SRN pagination. When non-empty this takes precedence over
+    /// `srns` for the listing step. Each GTIN resolves to one device (or none).
+    pub gtins: Vec<String>,
     pub limit: Option<usize>,
     pub data_dir: PathBuf,
     pub parallel_threads: usize,
@@ -112,6 +116,7 @@ impl Default for DownloadConfig {
     fn default() -> Self {
         Self {
             srns: Vec::new(),
+            gtins: Vec::new(),
             limit: None,
             data_dir: app_data_dir().join(DEFAULT_DATA_DIR),
             // v1.0.72: EUDAMED's ~60-req/60 s budget is SHARED across listing +
@@ -178,14 +183,28 @@ pub fn run_download(
     // across listing + detail + basic (per-IP), so a single bucket paces them all.
     let limiter = RateLimiter::new(std::time::Duration::from_millis(config.rate_interval_ms));
 
-    let uuid_versions = download_listings(
-        EUDAMED_BASE_URL,
-        &config.srns,
-        config.limit,
-        config.listing_threads,
-        &limiter,
-        progress,
-    )?;
+    // GTIN mode takes precedence: resolve each GTIN to its device via the
+    // `primaryDi` filter (one request each) instead of paginating SRN listings.
+    // Either path returns the same (uuid, version, budi_version) tuples, so the
+    // rest of the pipeline (version check, detail/basic fetch, indexing) is shared.
+    let uuid_versions = if !config.gtins.is_empty() {
+        download_listings_by_gtin(
+            EUDAMED_BASE_URL,
+            &config.gtins,
+            config.listing_threads,
+            &limiter,
+            progress,
+        )?
+    } else {
+        download_listings(
+            EUDAMED_BASE_URL,
+            &config.srns,
+            config.limit,
+            config.listing_threads,
+            &limiter,
+            progress,
+        )?
+    };
 
     if uuid_versions.is_empty() {
         return Ok(DownloadResult {
@@ -916,6 +935,175 @@ fn download_listings(
         all_entries.into_iter().flatten().collect();
 
     // Deduplicate by UUID (keep highest versions)
+    flat.sort_by(|a, b| a.0.cmp(&b.0));
+    flat.dedup_by(|a, b| {
+        if a.0 == b.0 {
+            if a.1 > b.1 {
+                b.1 = a.1;
+            }
+            if a.2 > b.2 {
+                b.2 = a.2;
+            }
+            true
+        } else {
+            false
+        }
+    });
+
+    Ok(flat)
+}
+
+/// Resolve a single GTIN (UDI-DI `primaryDi` code) to its listing entry via the
+/// `primaryDi` filter, write it to listing_cache (with the real manufacturerSrn,
+/// so the device can also be pushed by SRN later), and return its
+/// (uuid, version, budi_version) tuple. Empty Vec when EUDAMED has no such device.
+fn download_listing_for_gtin(
+    base_url: &str,
+    gtin: &str,
+    conn: &Mutex<rusqlite::Connection>,
+    limiter: &RateLimiter,
+    progress: &dyn DownloadProgress,
+) -> Vec<(String, Option<u32>, Option<u32>)> {
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let agent = eudamed_agent();
+    let url = format!(
+        "{}?page=0&pageSize=5&primaryDi={}&iso2Code=en&languageIso2Code=en",
+        base_url, gtin
+    );
+
+    let body = match eudamed_get(&agent, limiter, &url, 6) {
+        Ok(b) => b,
+        Err(e) => {
+            progress.on_event(DownloadEvent::Log(format!(
+                "  GTIN {} lookup failed after retries: {}",
+                gtin, e
+            )));
+            return Vec::new();
+        }
+    };
+    let json: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(j) => j,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut entries = Vec::new();
+    if let Some(items) = json.get("content").and_then(|c| c.as_array()) {
+        if let Ok(db) = conn.lock() {
+            for item in items {
+                if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
+                    let version = item
+                        .get("versionNumber")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32);
+                    let budi_version = item
+                        .get("basicUdiDataVersionNumber")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32);
+                    let primary_di = item.get("primaryDi").and_then(|v| v.as_str()).unwrap_or("");
+                    let trade_name = item.get("tradeName").and_then(|v| v.as_str()).unwrap_or("");
+                    let risk_class = item
+                        .get("riskClass")
+                        .and_then(|v| v.get("code"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let device_status = item
+                        .get("deviceStatusType")
+                        .and_then(|v| v.get("code"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let mfr_srn = item
+                        .get("manufacturerSrn")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let mfr_name = item
+                        .get("manufacturerName")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+
+                    let _ = db.execute(
+                        "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at) \
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                        rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, budi_version, now],
+                    );
+                    entries.push((uuid.to_string(), version, budi_version));
+                }
+            }
+        }
+    }
+
+    if entries.is_empty() {
+        progress.on_event(DownloadEvent::Log(format!(
+            "  GTIN {}: no device in EUDAMED",
+            gtin
+        )));
+    } else {
+        for (uuid, _, _) in &entries {
+            progress.on_event(DownloadEvent::Log(format!("  GTIN {} -> {}", gtin, uuid)));
+        }
+    }
+    entries
+}
+
+/// Resolve a list of GTINs to listing entries via the `primaryDi` filter (one
+/// request per GTIN). Returns deduplicated (uuid, version, budi_version) tuples —
+/// the same shape `download_listings` produces, so the rest of `run_download`
+/// (version check, detail/basic fetch, indexing) is identical.
+fn download_listings_by_gtin(
+    base_url: &str,
+    gtins: &[String],
+    listing_threads: usize,
+    limiter: &RateLimiter,
+    progress: &dyn DownloadProgress,
+) -> anyhow::Result<Vec<(String, Option<u32>, Option<u32>)>> {
+    let db_dir = app_data_dir().join("db");
+    std::fs::create_dir_all(&db_dir)?;
+    let db_path = db_dir.join("version_tracking.db");
+    let conn = rusqlite::Connection::open(&db_path)?;
+    ensure_listing_cache(&conn);
+    let conn = Mutex::new(conn);
+
+    progress.on_event(DownloadEvent::Log(format!(
+        "Resolving {} GTIN(s) via primaryDi ({} parallel)...",
+        gtins.len(),
+        listing_threads
+    )));
+
+    let base_url_owned = base_url.to_string();
+    let completed = AtomicUsize::new(0);
+    let total = gtins.len();
+
+    let all_entries: Vec<Vec<(String, Option<u32>, Option<u32>)>> = rayon::ThreadPoolBuilder::new()
+        .num_threads(listing_threads)
+        .build()
+        .context("Failed to build rayon thread pool for GTIN lookups")?
+        .install(|| {
+            gtins
+                .par_iter()
+                .map(|gtin| {
+                    let entries =
+                        download_listing_for_gtin(&base_url_owned, gtin, &conn, limiter, progress);
+                    let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
+                    if done % 100 == 0 || done == total {
+                        progress.on_event(DownloadEvent::Log(format!(
+                            "[GTIN] {}/{} resolved",
+                            done, total
+                        )));
+                    }
+                    progress.on_event(DownloadEvent::Status {
+                        phase: "GTIN lookup".into(),
+                        done,
+                        total,
+                    });
+                    entries
+                })
+                .collect()
+        });
+
+    let mut flat: Vec<(String, Option<u32>, Option<u32>)> =
+        all_entries.into_iter().flatten().collect();
+
+    // Deduplicate by UUID (keep highest versions) — two GTINs could map to the
+    // same device (rare), and the same device must not be downloaded twice.
     flat.sort_by(|a, b| a.0.cmp(&b.0));
     flat.dedup_by(|a, b| {
         if a.0 == b.0 {
