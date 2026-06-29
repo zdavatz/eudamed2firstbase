@@ -210,21 +210,44 @@ fn main() -> Result<()> {
                 return Ok(());
             }
 
+            // Target environment: FIRSTBASE_ENV=Production (anything else = Test),
+            // mirroring repush-srn. Default Test keeps ad-hoc `check` runs safe.
+            let fb_env = match std::env::var("FIRSTBASE_ENV").as_deref() {
+                Ok("Production") | Ok("production") | Ok("PROD") | Ok("prod") => {
+                    gui::FirstbaseEnv::Production
+                }
+                _ => gui::FirstbaseEnv::Test,
+            };
+
             // provider_gln comes from config.toml, not a hardcoded default.
             let settings = gui::Settings {
                 firstbase_email: email,
                 firstbase_password: password,
                 publish_to_gln: publish_gln,
                 provider_gln: fb_config.provider.gln.clone(),
+                firstbase_env: fb_env,
                 ..Default::default()
             };
             let log_fn = |msg: &str| {
                 eprintln!("{}", msg);
             };
-            // `check` pushes everything in firstbase_json/ (unscoped).
-            match gui::push_to_firstbase(&settings, &log_fn, None) {
+            // Push ONLY the changed devices (scoped to this run's new/changed UUIDs),
+            // not the whole firstbase_json/ backlog — so a nightly run never re-pushes
+            // unrelated leftover rejects (e.g. the HIBC/IFA or 097.095-blocked files).
+            let changed: std::collections::HashSet<String> =
+                result.need_download.iter().cloned().collect();
+            match gui::push_to_firstbase(&settings, &log_fn, Some(&changed)) {
                 Ok((accepted, rejected)) => {
                     eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
+                    // After a Production push, auto-email the GS1 report (non-fatal —
+                    // a mail error never fails the run). Only fires here when devices
+                    // actually changed (we returned early above if nothing changed).
+                    if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
+                        if let Err(e) = send_gs1_prod_report(&fb_config, accepted, rejected, &srns)
+                        {
+                            eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("\nPush failed: {}", e);
