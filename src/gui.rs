@@ -2468,6 +2468,44 @@ fn sanitize_global_model_info(doc: &mut serde_json::Value) -> bool {
     changed
 }
 
+/// GS1 910.005: `discontinuedDateTime`, if present, must be **greater than
+/// `registrationDateTime`** — and GS1 stamps `registrationDateTime` itself at
+/// push time. Our converter freezes `discontinuedDateTime` at convert time
+/// (now + 1 day); when the push happens hours or days later, that frozen value
+/// can be earlier than the push-time registration → 910.005 (31 NO_LONGER
+/// devices rejected in the 2026-06-28 prod run). Re-stamp it, in memory and per
+/// push, to **push-time + 2 days** so it is always safely after the registration
+/// timestamp (the +2 day margin also covers a multi-hour bulk push whose later
+/// batches register later). Only touches docs that already carry the field
+/// (NO_LONGER devices); returns true if updated.
+fn restamp_discontinued_date(
+    doc: &mut serde_json::Value,
+    now: chrono::DateTime<chrono::Utc>,
+) -> bool {
+    let Some(sd) = doc.pointer_mut("/DraftItem/TradeItem/TradeItemSynchronisationDates") else {
+        return false;
+    };
+    let Some(obj) = sd.as_object_mut() else {
+        return false;
+    };
+    let present = obj
+        .get("DiscontinuedDateTime")
+        .and_then(|v| v.as_str())
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+    if !present {
+        return false;
+    }
+    let new_val = (now + chrono::Duration::days(2))
+        .format("%Y-%m-%dT%H:%M:%S")
+        .to_string();
+    obj.insert(
+        "DiscontinuedDateTime".to_string(),
+        serde_json::Value::String(new_val),
+    );
+    true
+}
+
 /// Push firstbase JSON files to GS1 Catalogue Item API
 /// Push every pushable `firstbase_json/<uuid>.json` to the GS1 firstbase
 /// Catalogue Item API. When `uuid_filter` is `Some`, only files whose stem
@@ -2532,6 +2570,10 @@ pub fn push_to_firstbase(
     let mut pushable: Vec<(std::path::PathBuf, String, String, serde_json::Value)> = Vec::new();
     let mut skipped_no_gtin = 0;
     let mut sanitized = 0u32;
+    let mut restamped = 0u32;
+    // Single push-time reference so all docs in this run get a consistent
+    // discontinuedDateTime safely after GS1's push-time registrationDateTime.
+    let push_now = chrono::Utc::now();
     for f in &files {
         if let Ok(content) = std::fs::read_to_string(f) {
             if let Ok(mut doc) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -2542,6 +2584,11 @@ pub fn push_to_firstbase(
                         let _ = std::fs::write(f, fixed);
                     }
                     sanitized += 1;
+                }
+                // Re-stamp discontinuedDateTime to push-time + 2 days (in memory)
+                // so NO_LONGER devices clear GS1 910.005 (must be > registration).
+                if restamp_discontinued_date(&mut doc, push_now) {
+                    restamped += 1;
                 }
                 let gtin = doc
                     .pointer("/DraftItem/TradeItem/Gtin")
@@ -2611,6 +2658,12 @@ pub fn push_to_firstbase(
         log(&format!(
             "Repaired {} stale file(s): dropped description-only globalModelInformation (G361/SCHEMA)",
             sanitized
+        ));
+    }
+    if restamped > 0 {
+        log(&format!(
+            "Re-stamped discontinuedDateTime to push-time +2d on {} NO_LONGER device(s) (GS1 910.005)",
+            restamped
         ));
     }
     if pushable.is_empty() {

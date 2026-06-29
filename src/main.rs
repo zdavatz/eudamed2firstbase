@@ -714,6 +714,32 @@ fn main() -> Result<()> {
                 .collect();
             drop(stmt);
 
+            // --uuid-file: restrict the push scope to exactly these UUIDs (a subset
+            // of the SRNs' devices) — e.g. to re-push only the previously-rejected
+            // handful instead of every device of the SRN. The SRNs are still used
+            // for the report/log; the scope becomes (SRN UUIDs ∩ file UUIDs).
+            let uuids: std::collections::HashSet<String> =
+                if let Some(pos) = args.iter().position(|a| a == "--uuid-file") {
+                    let file = args
+                        .get(pos + 1)
+                        .ok_or_else(|| anyhow::anyhow!("--uuid-file requires a path argument"))?;
+                    let want: std::collections::HashSet<String> = std::fs::read_to_string(file)?
+                        .lines()
+                        .map(|l| l.trim().to_string())
+                        .filter(|s| !s.is_empty() && !s.starts_with('#'))
+                        .collect();
+                    let scoped: std::collections::HashSet<String> =
+                        uuids.intersection(&want).cloned().collect();
+                    eprintln!(
+                        "--uuid-file: scope restricted to {} UUID(s) ({} in file)",
+                        scoped.len(),
+                        want.len()
+                    );
+                    scoped
+                } else {
+                    uuids
+                };
+
             if uuids.is_empty() {
                 eprintln!("No UUIDs in listing_cache for these SRNs. Run Download first.");
                 std::process::exit(1);
@@ -909,14 +935,32 @@ fn main() -> Result<()> {
             Ok(())
         }
         Some("gs1-report") => {
-            // Manually (re)send the GS1 Production push report: errors-only CSV +
-            // latest Production HTML log, to GS1. Mirrors the automatic send that
-            // runs after a `repush-srn` Production push.
-            // Usage: gs1-report [<accepted> <rejected>]
-            //   GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE env overrides apply.
+            // Manually (re)send the GS1 Production push report (errors CSV +
+            // devices CSV + HTML log) for the latest Production session. Mirrors
+            // the automatic send after a `repush-srn` Production push.
+            // Usage: gs1-report [<accepted> <rejected>] [SRN ...] [--file <srns.txt>]
+            //   The SRNs (positional after the two counts, or --file) are listed in
+            //   the mail body. GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE apply.
             let accepted = args.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
             let rejected = args.get(3).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
-            send_gs1_prod_report(&config, accepted, rejected, &[])?;
+            let srns: Vec<String> = if let Some(pos) = args.iter().position(|a| a == "--file") {
+                let file = args
+                    .get(pos + 1)
+                    .ok_or_else(|| anyhow::anyhow!("--file requires a path argument"))?;
+                std::fs::read_to_string(file)?
+                    .lines()
+                    .map(|l| l.trim().to_string())
+                    .filter(|s| !s.is_empty() && !s.starts_with('#'))
+                    .collect()
+            } else {
+                // Positional SRNs after the two count args (skip non-SRN flags).
+                args.iter()
+                    .skip(4)
+                    .filter(|a| !a.starts_with("--"))
+                    .cloned()
+                    .collect()
+            };
+            send_gs1_prod_report(&config, accepted, rejected, &srns)?;
             Ok(())
         }
         Some("status") => {
@@ -1285,39 +1329,40 @@ fn send_gs1_prod_report(
         push_date, accepted, total, pct
     );
 
-    // Body lists the pushed SRNs. Prefer the SRNs passed by the caller (the full
-    // pushed worklist, incl. fully-accepted ones); fall back to the distinct SRNs
-    // seen among the rejected devices (e.g. for a manual `gs1-report` resend).
-    let from_caller = !srns.is_empty();
-    let mut srn_list: Vec<String> = if from_caller {
-        srns.to_vec()
-    } else {
-        let mut s: Vec<String> = error_rows
-            .iter()
-            .map(|(srn, ..)| srn.clone())
-            .filter(|s| !s.is_empty())
-            .collect();
-        s.sort();
-        s.dedup();
-        s
-    };
-    srn_list.retain(|s| !s.is_empty());
-    let body = if srn_list.is_empty() {
-        String::new()
-    } else {
-        // Full pushed worklist vs. only the SRNs that had push errors (fallback).
-        let header = if from_caller {
-            "SRNs"
-        } else {
-            "SRNs mit Push Fehlern"
-        };
-        format!(
-            "{} ({}):\n{}\n",
-            header,
-            srn_list.len(),
-            srn_list.join("\n")
-        )
-    };
+    // Body separates the pushed SRNs into "ok" (no push errors) and "not-ok"
+    // (>=1 rejected device). not-ok = distinct SRNs among the rejected devices;
+    // ok = the caller's full pushed list minus not-ok (so a fully-accepted run
+    // lists every SRN under "ok" and nothing under "not-ok"). For a manual
+    // `gs1-report` resend without a pushed list, only "not-ok" can be shown.
+    let mut not_ok: Vec<String> = error_rows
+        .iter()
+        .map(|(srn, ..)| srn.clone())
+        .filter(|s| !s.is_empty())
+        .collect();
+    not_ok.sort();
+    not_ok.dedup();
+    let not_ok_set: std::collections::HashSet<&String> = not_ok.iter().collect();
+    let mut ok: Vec<String> = srns
+        .iter()
+        .filter(|s| !s.is_empty() && !not_ok_set.contains(s))
+        .cloned()
+        .collect();
+    ok.sort();
+    ok.dedup();
+    let mut body = String::new();
+    if !ok.is_empty() {
+        body.push_str(&format!("SRNs ok ({}):\n{}\n", ok.len(), ok.join("\n")));
+    }
+    if !not_ok.is_empty() {
+        if !body.is_empty() {
+            body.push('\n');
+        }
+        body.push_str(&format!(
+            "SRNs not-ok ({}):\n{}\n",
+            not_ok.len(),
+            not_ok.join("\n")
+        ));
+    }
 
     mail::send_email_with_attachments(
         &p12,
