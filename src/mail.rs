@@ -7,7 +7,28 @@
 use anyhow::{Context, Result};
 use std::process::Command;
 
-/// Send an email with a file attachment via Gmail API.
+/// MIME content type for a file name, by extension.
+fn content_type_for(file_name: &str) -> &'static str {
+    let n = file_name.to_ascii_lowercase();
+    if n.ends_with(".csv") {
+        "text/csv"
+    } else if n.ends_with(".html") || n.ends_with(".htm") {
+        "text/html"
+    } else if n.ends_with(".xlsx") {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    } else if n.ends_with(".pdf") {
+        "application/pdf"
+    } else if n.ends_with(".json") {
+        "application/json"
+    } else if n.ends_with(".txt") || n.ends_with(".log") {
+        "text/plain"
+    } else {
+        "application/octet-stream"
+    }
+}
+
+/// Send an email with a single file attachment via Gmail API.
+/// Thin wrapper over [`send_email_with_attachments`].
 pub fn send_email_with_attachment(
     p12_path: &str,
     service_email: &str,
@@ -17,41 +38,47 @@ pub fn send_email_with_attachment(
     body_text: &str,
     attachment_path: &str,
 ) -> Result<()> {
+    send_email_with_attachments(
+        p12_path,
+        service_email,
+        from_email,
+        to_email,
+        subject,
+        body_text,
+        &[attachment_path.to_string()],
+    )
+}
+
+/// Send an email with one or more file attachments via Gmail API.
+/// `body_text` may be empty (an empty text/plain part is still included so the
+/// message is well-formed; the recipient sees no body text).
+pub fn send_email_with_attachments(
+    p12_path: &str,
+    service_email: &str,
+    from_email: &str,
+    to_email: &str,
+    subject: &str,
+    body_text: &str,
+    attachment_paths: &[String],
+) -> Result<()> {
     use base64::Engine;
     let engine = base64::engine::general_purpose::STANDARD;
     let url_engine = base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
-    eprintln!("Sending {} via email to {} ...", attachment_path, to_email);
+    eprintln!(
+        "Sending {} attachment(s) via email to {} ...",
+        attachment_paths.len(),
+        to_email
+    );
 
     let pem = extract_pem_from_p12(p12_path)?;
     let token = get_gmail_access_token(&pem, service_email, from_email)?;
 
-    let file_name = std::path::Path::new(attachment_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(attachment_path);
-
-    let file_content = std::fs::read(attachment_path)
-        .with_context(|| format!("Cannot read {}", attachment_path))?;
-    let encoded_attachment = engine.encode(&file_content);
-
-    // Detect content type from extension
-    let content_type = if file_name.ends_with(".csv") {
-        "text/csv"
-    } else if file_name.ends_with(".xlsx") {
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    } else if file_name.ends_with(".pdf") {
-        "application/pdf"
-    } else if file_name.ends_with(".json") {
-        "application/json"
-    } else {
-        "application/octet-stream"
-    };
-
     let boundary = "eudamed2firstbase_email_boundary";
     let subject = encode_header(subject);
 
-    let raw_email = format!(
+    // Header + leading text/plain part (empty body allowed).
+    let mut raw_email = format!(
         "From: {from}\r\n\
          To: {to}\r\n\
          Subject: {subject}\r\n\
@@ -61,24 +88,38 @@ pub fn send_email_with_attachment(
          --{boundary}\r\n\
          Content-Type: text/plain; charset=\"UTF-8\"\r\n\
          \r\n\
-         {body}\r\n\
-         \r\n\
-         --{boundary}\r\n\
-         Content-Type: {content_type}; name=\"{file_name}\"\r\n\
-         Content-Disposition: attachment; filename=\"{file_name}\"\r\n\
-         Content-Transfer-Encoding: base64\r\n\
-         \r\n\
-         {attachment}\r\n\
-         --{boundary}--\r\n",
+         {body}\r\n",
         from = from_email,
         to = to_email,
         subject = subject,
         boundary = boundary,
         body = body_text,
-        content_type = content_type,
-        file_name = file_name,
-        attachment = encoded_attachment,
     );
+
+    // One MIME part per attachment.
+    for path in attachment_paths {
+        let file_name = std::path::Path::new(path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(path.as_str());
+        let file_content = std::fs::read(path).with_context(|| format!("Cannot read {}", path))?;
+        let encoded_attachment = engine.encode(&file_content);
+        let content_type = content_type_for(file_name);
+
+        raw_email.push_str(&format!(
+            "\r\n--{boundary}\r\n\
+             Content-Type: {content_type}; name=\"{file_name}\"\r\n\
+             Content-Disposition: attachment; filename=\"{file_name}\"\r\n\
+             Content-Transfer-Encoding: base64\r\n\
+             \r\n\
+             {attachment}\r\n",
+            boundary = boundary,
+            content_type = content_type,
+            file_name = file_name,
+            attachment = encoded_attachment,
+        ));
+    }
+    raw_email.push_str(&format!("--{boundary}--\r\n", boundary = boundary));
 
     let encoded_message = url_engine.encode(raw_email.as_bytes());
     let payload = serde_json::json!({ "raw": encoded_message });

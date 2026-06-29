@@ -325,13 +325,20 @@ fn main() -> Result<()> {
             process_swissdamed(Path::new(detail_dir), Path::new(basic_dir))
         }
         Some("mailto") => {
-            // Send file as email attachment via Gmail API.
+            // Send one or more files as email attachments via Gmail API.
             // Credentials default to [gmail] in config.toml; --p12 overrides the key path.
-            // Usage: cargo run mailto <file> --to <email> [--from <email>] [--subject <text>] [--p12 <key>]
-            let mut file = None;
+            // Usage: cargo run mailto <file> [<file2> ...] --to <email> [--from <email>]
+            //        [--subject <text>] [--body <text>] [--p12 <key>] [--max-bytes <N>]
+            // Files are attached in the order given. With --max-bytes, files whose
+            // cumulative raw size would exceed N are skipped (the first file is always
+            // kept), so listing the small error report first and the large log last
+            // means an oversized log is dropped and only the report is sent.
+            let mut files: Vec<String> = Vec::new();
             let mut to = None;
             let mut subject = None;
             let mut from: Option<String> = None;
+            let mut body: Option<String> = None;
+            let mut max_bytes: Option<u64> = None;
             // Default p12 path from config; CLI --p12 flag overrides.
             let mut p12 = config.gmail.p12_key.clone();
             let mut i = 2;
@@ -349,23 +356,31 @@ fn main() -> Result<()> {
                         i += 1;
                         from = args.get(i).cloned();
                     }
+                    "--body" => {
+                        i += 1;
+                        body = args.get(i).cloned();
+                    }
                     "--p12" => {
                         i += 1;
                         if let Some(v) = args.get(i) {
                             p12 = v.clone();
                         }
                     }
-                    _ if file.is_none() => {
-                        file = Some(args[i].clone());
+                    "--max-bytes" => {
+                        i += 1;
+                        max_bytes = args.get(i).and_then(|v| v.parse::<u64>().ok());
+                    }
+                    other if !other.starts_with("--") => {
+                        files.push(args[i].clone());
                     }
                     _ => {}
                 }
                 i += 1;
             }
-            let file = file.unwrap_or_else(|| {
-                eprintln!("Usage: eudamed2firstbase mailto <file> --to <email> [--from <email>] [--subject <text>] [--p12 <key>]");
+            if files.is_empty() {
+                eprintln!("Usage: eudamed2firstbase mailto <file> [<file2> ...] --to <email> [--from <email>] [--subject <text>] [--body <text>] [--p12 <key>] [--max-bytes <N>]");
                 std::process::exit(1);
-            });
+            }
             let to = to.unwrap_or_else(|| {
                 eprintln!("--to <email> is required");
                 std::process::exit(1);
@@ -377,12 +392,36 @@ fn main() -> Result<()> {
             let subject = subject.unwrap_or_else(|| {
                 format!(
                     "eudamed2firstbase: {}",
-                    std::path::Path::new(&file)
+                    std::path::Path::new(&files[0])
                         .file_name()
                         .and_then(|n| n.to_str())
-                        .unwrap_or(&file)
+                        .unwrap_or(&files[0])
                 )
             });
+            // No body by default (the report speaks for itself); --body overrides.
+            let body = body.unwrap_or_default();
+
+            // Size guard: skip files that would push the cumulative raw size over
+            // --max-bytes; always keep the first (highest-priority) file.
+            let send_files: Vec<String> = if let Some(limit) = max_bytes {
+                let mut total: u64 = 0;
+                let mut kept: Vec<String> = Vec::new();
+                for f in &files {
+                    let sz = std::fs::metadata(f).map(|m| m.len()).unwrap_or(0);
+                    if kept.is_empty() || total + sz <= limit {
+                        total += sz;
+                        kept.push(f.clone());
+                    } else {
+                        eprintln!(
+                            "Skipping attachment {} ({} bytes) — over --max-bytes {} limit",
+                            f, sz, limit
+                        );
+                    }
+                }
+                kept
+            } else {
+                files.clone()
+            };
 
             if p12.is_empty() {
                 anyhow::bail!(
@@ -399,20 +438,14 @@ fn main() -> Result<()> {
                      under [gmail] in config.toml (see config.sample.toml)."
                 );
             }
-            mail::send_email_with_attachment(
+            mail::send_email_with_attachments(
                 &p12,
                 &service_email,
                 &from,
                 &to,
                 &subject,
-                &format!(
-                    "File attached: {}",
-                    std::path::Path::new(&file)
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or(&file)
-                ),
-                &file,
+                &body,
+                &send_files,
             )?;
             Ok(())
         }
@@ -861,11 +894,29 @@ fn main() -> Result<()> {
             match gui::push_to_firstbase(&settings, &log_fn, Some(&uuids)) {
                 Ok((accepted, rejected)) => {
                     eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
+                    // After a Production push, auto-email the GS1 report (errors-only
+                    // CSV + full HTML log) to GS1. Never fail the run on a mail error.
+                    if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
+                        if let Err(e) = send_gs1_prod_report(&config, accepted, rejected) {
+                            eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("\nPush failed: {}", e);
                 }
             }
+            Ok(())
+        }
+        Some("gs1-report") => {
+            // Manually (re)send the GS1 Production push report: errors-only CSV +
+            // latest Production HTML log, to GS1. Mirrors the automatic send that
+            // runs after a `repush-srn` Production push.
+            // Usage: gs1-report [<accepted> <rejected>]
+            //   GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE env overrides apply.
+            let accepted = args.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+            let rejected = args.get(3).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+            send_gs1_prod_report(&config, accepted, rejected)?;
             Ok(())
         }
         Some("status") => {
@@ -1033,6 +1084,206 @@ fn main() -> Result<()> {
             }
         }
     }
+}
+
+/// After a Production push, email a report to GS1: a separate errors-only CSV
+/// (the rejected GTINs + their GS1 codes) plus the full HTML push log. If the
+/// HTML log would push the message over the size limit it is dropped and only
+/// the errors-only CSV is sent. Configurable via env:
+///   GS1_REPORT_TO    (default maik.sippl@gs1.ch)
+///   GS1_REPORT_FROM  (default zdavatz@ywesee.com)
+///   GS1_REPORT_DISABLE=1  to skip entirely
+/// Gmail credentials come from `[gmail]` in config.toml (p12 + service account).
+/// Never fails the push: returns Err only to be logged as non-fatal by the caller.
+fn send_gs1_prod_report(
+    config: &config::Config,
+    accepted: u32,
+    rejected: u32,
+) -> anyhow::Result<()> {
+    if std::env::var("GS1_REPORT_DISABLE")
+        .map(|v| !v.is_empty())
+        .unwrap_or(false)
+    {
+        eprintln!("GS1 auto-report skipped (GS1_REPORT_DISABLE set).");
+        return Ok(());
+    }
+    let to = std::env::var("GS1_REPORT_TO").unwrap_or_else(|_| "maik.sippl@gs1.ch".to_string());
+    let from =
+        std::env::var("GS1_REPORT_FROM").unwrap_or_else(|_| "zdavatz@ywesee.com".to_string());
+    let p12 = config.gmail.p12_key.clone();
+    let service_email = config.gmail.service_email.clone();
+    if p12.is_empty() || service_email.is_empty() {
+        eprintln!(
+            "GS1 auto-report skipped: Gmail not configured ([gmail] p12_key/service_email \
+             in config.toml)."
+        );
+        return Ok(());
+    }
+
+    let data_dir = download::app_data_dir();
+    let prod_log_dir = data_dir.join("log").join("firstbase_prod");
+
+    // --- Build two CSVs from the latest Production push session ---
+    //   1) errors  CSV: one row per GS1 error (a device can have several)
+    //   2) devices CSV: one row per rejected device (codes aggregated)
+    let db_path = data_dir.join("db").join("version_tracking.db");
+    let ts = chrono::Local::now().format("%Y-%m-%d_%H%M%S").to_string();
+    let errors_csv = prod_log_dir.join(format!("rejects_errors_{}.csv", ts));
+    let devices_csv = prod_log_dir.join(format!("rejects_devices_{}.csv", ts));
+    let _ = std::fs::create_dir_all(&prod_log_dir);
+    let esc = |s: &str| format!("\"{}\"", s.replace('"', "\"\""));
+
+    // Fetch every error row for the latest Production session.
+    let mut error_rows: Vec<(String, String, String, String, String)> = Vec::new();
+    {
+        let conn = version_db::open_db(&db_path).context("open version DB for GS1 report")?;
+        let session_id: Option<i64> = conn
+            .query_row(
+                "SELECT id FROM push_session WHERE firstbase_env='Production' \
+                 ORDER BY id DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .ok();
+        if let Some(sid) = session_id {
+            let mut stmt = conn.prepare(
+                "SELECT COALESCE(l.srn,''), COALESCE(e.gtin,''), COALESCE(e.error_code,''), \
+                 COALESCE(e.attribute_name,''), COALESCE(e.error_description,'') \
+                 FROM push_error e LEFT JOIN listing_cache l ON l.uuid = e.uuid \
+                 WHERE e.session_id = ?1 ORDER BY l.srn, e.gtin, e.error_code",
+            )?;
+            let rows = stmt.query_map([sid], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                ))
+            })?;
+            for row in rows {
+                error_rows.push(row?);
+            }
+        }
+    }
+
+    // 1) errors CSV — one row per error.
+    {
+        let mut csv = String::from("srn,gtin,error_code,attribute,description\r\n");
+        for (srn, gtin, code, attr, desc) in &error_rows {
+            csv.push_str(&format!(
+                "{},{},{},{},{}\r\n",
+                esc(srn),
+                esc(gtin),
+                esc(code),
+                esc(attr),
+                esc(desc)
+            ));
+        }
+        std::fs::write(&errors_csv, csv.as_bytes())
+            .with_context(|| format!("write {}", errors_csv.display()))?;
+    }
+
+    // 2) devices CSV — one row per device, distinct codes joined, error count.
+    let device_count;
+    {
+        // (srn, gtin) -> (distinct codes in first-seen order, total error count)
+        let mut devices: Vec<(String, String, Vec<String>, usize)> = Vec::new();
+        for (srn, gtin, code, _attr, _desc) in &error_rows {
+            if let Some(d) = devices.iter_mut().find(|d| &d.0 == srn && &d.1 == gtin) {
+                if !d.2.contains(code) {
+                    d.2.push(code.clone());
+                }
+                d.3 += 1;
+            } else {
+                devices.push((srn.clone(), gtin.clone(), vec![code.clone()], 1));
+            }
+        }
+        device_count = devices.len();
+        let mut csv = String::from("srn,gtin,error_codes,error_count\r\n");
+        for (srn, gtin, codes, count) in &devices {
+            csv.push_str(&format!(
+                "{},{},{},{}\r\n",
+                esc(srn),
+                esc(gtin),
+                esc(&codes.join("; ")),
+                count
+            ));
+        }
+        std::fs::write(&devices_csv, csv.as_bytes())
+            .with_context(|| format!("write {}", devices_csv.display()))?;
+    }
+    eprintln!(
+        "GS1 auto-report: {} error rows / {} devices -> {} , {}",
+        error_rows.len(),
+        device_count,
+        errors_csv.display(),
+        devices_csv.display()
+    );
+
+    // --- Locate the most recent Production HTML log ---
+    let latest_html: Option<std::path::PathBuf> = std::fs::read_dir(&prod_log_dir)
+        .ok()
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.ends_with(".log.html"))
+                .unwrap_or(false)
+        })
+        .max_by_key(|p| std::fs::metadata(p).and_then(|m| m.modified()).ok());
+
+    // --- Attachment list with size guard: both CSVs always; HTML only if it fits ---
+    // Gmail caps a message at 25 MB; base64 inflates ~33%, so keep raw under ~18 MB.
+    const MAX_TOTAL_RAW: u64 = 18 * 1024 * 1024;
+    let mut attachments: Vec<String> = vec![
+        errors_csv.to_string_lossy().to_string(),
+        devices_csv.to_string_lossy().to_string(),
+    ];
+    let base_size = std::fs::metadata(&errors_csv).map(|m| m.len()).unwrap_or(0)
+        + std::fs::metadata(&devices_csv)
+            .map(|m| m.len())
+            .unwrap_or(0);
+    if let Some(html) = &latest_html {
+        let html_size = std::fs::metadata(html).map(|m| m.len()).unwrap_or(0);
+        if base_size + html_size <= MAX_TOTAL_RAW {
+            attachments.push(html.to_string_lossy().to_string());
+        } else {
+            eprintln!(
+                "GS1 auto-report: HTML log {} ({} bytes) too large — sending the two CSVs only.",
+                html.display(),
+                html_size
+            );
+        }
+    } else {
+        eprintln!("GS1 auto-report: no Production HTML log found — sending the two CSVs only.");
+    }
+
+    let total = accepted + rejected;
+    let pct = if total > 0 {
+        accepted as f64 * 100.0 / total as f64
+    } else {
+        0.0
+    };
+    let subject = format!(
+        "Produktiv-Push abgeschlossen — {} / {} ACCEPTED ({:.2}%)",
+        accepted, total, pct
+    );
+
+    mail::send_email_with_attachments(
+        &p12,
+        &service_email,
+        &from,
+        &to,
+        &subject,
+        "",
+        &attachments,
+    )?;
+    eprintln!("GS1 auto-report sent to {}.", to);
+    Ok(())
 }
 
 fn parse_download_args(

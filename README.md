@@ -141,9 +141,17 @@ cargo run repush-srn --reconvert DE-MF-000005190           # Reconvert + Repush:
 cargo run repush-srn --force-reload DE-MF-000006357        # Mode 6 / StaleCleaner: force-refetch detail+Basic UDI-DI fresh from EUDAMED (heals stale/missing cache → fixes 097.025), then reconvert & push (implies --reconvert)
 FIRSTBASE_ENV=Production cargo run repush-srn --file srns.txt   # push to PRODUCTION (webapi-firstbase.gs1.ch) instead of Test; needs prod FIRSTBASE_EMAIL/FIRSTBASE_PASSWORD
 
-# Send file as email attachment via Gmail API (service account)
+# Send file(s) as email attachment(s) via Gmail API (service account)
 cargo run mailto /tmp/report.csv --to "a@gs1.ch, b@gs1.ch" --from sender@ywesee.com --subject "Report"
 cargo run mailto file.xlsx --to recipient@example.com --from sender@example.com --p12 /path/to/key.p12
+# Multiple attachments + empty body; --max-bytes drops oversized trailing files (e.g. a big log)
+cargo run mailto errors.csv devices.csv push.log.html --to maik@gs1.ch --from sender@ywesee.com \
+  --subject "Report" --body "" --max-bytes 18000000
+
+# (Re)send the GS1 Production push report (errors CSV + devices CSV + HTML log) for the latest prod session
+cargo run gs1-report 28545 36
+# Auto-sent after every `FIRSTBASE_ENV=Production cargo run repush-srn` run.
+# Env: GS1_REPORT_TO (default maik.sippl@gs1.ch), GS1_REPORT_FROM (default zdavatz@ywesee.com), GS1_REPORT_DISABLE=1
 
 # Send file (PDF/HTML/image/…) via WhatsApp (Baileys)
 cargo run whatsapp --pair                                            # first run: scan QR in terminal
