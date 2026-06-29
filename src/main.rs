@@ -897,7 +897,7 @@ fn main() -> Result<()> {
                     // After a Production push, auto-email the GS1 report (errors-only
                     // CSV + full HTML log) to GS1. Never fail the run on a mail error.
                     if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
-                        if let Err(e) = send_gs1_prod_report(&config, accepted, rejected) {
+                        if let Err(e) = send_gs1_prod_report(&config, accepted, rejected, &srns) {
                             eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                         }
                     }
@@ -916,7 +916,7 @@ fn main() -> Result<()> {
             //   GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE env overrides apply.
             let accepted = args.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
             let rejected = args.get(3).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
-            send_gs1_prod_report(&config, accepted, rejected)?;
+            send_gs1_prod_report(&config, accepted, rejected, &[])?;
             Ok(())
         }
         Some("status") => {
@@ -1099,6 +1099,7 @@ fn send_gs1_prod_report(
     config: &config::Config,
     accepted: u32,
     rejected: u32,
+    srns: &[String],
 ) -> anyhow::Result<()> {
     if std::env::var("GS1_REPORT_DISABLE")
         .map(|v| !v.is_empty())
@@ -1135,16 +1136,26 @@ fn send_gs1_prod_report(
 
     // Fetch every error row for the latest Production session.
     let mut error_rows: Vec<(String, String, String, String, String)> = Vec::new();
+    // Push date for the subject, taken from the session timestamp (DD.MM.YYYY).
+    let mut push_date = chrono::Local::now().format("%d.%m.%Y").to_string();
     {
         let conn = version_db::open_db(&db_path).context("open version DB for GS1 report")?;
-        let session_id: Option<i64> = conn
+        let session: Option<(i64, String)> = conn
             .query_row(
-                "SELECT id FROM push_session WHERE firstbase_env='Production' \
-                 ORDER BY id DESC LIMIT 1",
+                "SELECT id, COALESCE(session_ts,'') FROM push_session \
+                 WHERE firstbase_env='Production' ORDER BY id DESC LIMIT 1",
                 [],
-                |r| r.get(0),
+                |r| Ok((r.get(0)?, r.get(1)?)),
             )
             .ok();
+        let session_id: Option<i64> = session.as_ref().map(|(id, _)| *id);
+        // session_ts is ISO "YYYY-MM-DDT..." — reformat the date part to DD.MM.YYYY.
+        if let Some((_, ts)) = &session {
+            if ts.len() >= 10 {
+                let (y, m, d) = (&ts[0..4], &ts[5..7], &ts[8..10]);
+                push_date = format!("{}.{}.{}", d, m, y);
+            }
+        }
         if let Some(sid) = session_id {
             let mut stmt = conn.prepare(
                 "SELECT COALESCE(l.srn,''), COALESCE(e.gtin,''), COALESCE(e.error_code,''), \
@@ -1268,10 +1279,45 @@ fn send_gs1_prod_report(
     } else {
         0.0
     };
+    // Subject leads with the push date instead of a fixed phrase.
     let subject = format!(
-        "Produktiv-Push abgeschlossen — {} / {} ACCEPTED ({:.2}%)",
-        accepted, total, pct
+        "{} — {} / {} ACCEPTED ({:.2}%)",
+        push_date, accepted, total, pct
     );
+
+    // Body lists the pushed SRNs. Prefer the SRNs passed by the caller (the full
+    // pushed worklist, incl. fully-accepted ones); fall back to the distinct SRNs
+    // seen among the rejected devices (e.g. for a manual `gs1-report` resend).
+    let from_caller = !srns.is_empty();
+    let mut srn_list: Vec<String> = if from_caller {
+        srns.to_vec()
+    } else {
+        let mut s: Vec<String> = error_rows
+            .iter()
+            .map(|(srn, ..)| srn.clone())
+            .filter(|s| !s.is_empty())
+            .collect();
+        s.sort();
+        s.dedup();
+        s
+    };
+    srn_list.retain(|s| !s.is_empty());
+    let body = if srn_list.is_empty() {
+        String::new()
+    } else {
+        // Full pushed worklist vs. only the SRNs that had push errors (fallback).
+        let header = if from_caller {
+            "SRNs"
+        } else {
+            "SRNs mit Push Fehlern"
+        };
+        format!(
+            "{} ({}):\n{}\n",
+            header,
+            srn_list.len(),
+            srn_list.join("\n")
+        )
+    };
 
     mail::send_email_with_attachments(
         &p12,
@@ -1279,7 +1325,7 @@ fn send_gs1_prod_report(
         &from,
         &to,
         &subject,
-        "",
+        &body,
         &attachments,
     )?;
     eprintln!("GS1 auto-report sent to {}.", to);
