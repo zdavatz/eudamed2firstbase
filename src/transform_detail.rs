@@ -338,12 +338,17 @@ pub fn transform_detail_device(
         build_healthcare_module(device, basic_udi, is_ivdr, primary_lang, is_system_or_pack);
 
     // --- Chemical regulation module (substances) ---
-    // 097.095: Legacy devices must not have CMR_SUBSTANCE or ENDOCRINE_SUBSTANCE
-    let chemical_regulation_module = if is_legacy {
-        None
-    } else {
-        build_chemical_regulation_module(device)
-    };
+    // Per Maik/EUDAMED: medicinalProduct (FLD-UDID-158) drives the medicinal
+    // product substance list (FLD-UDID-311) and humanProductCheck (FLD-UDID-155)
+    // drives the human product substance list — BOTH apply to MDD/AIMDD legacy
+    // devices too, so they must be mapped (the reference maik/CIN output emits
+    // them as WHO/INN + RegulatedChemicalTypeCode MEDICINAL_PRODUCT/HUMAN_PRODUCT).
+    // 097.095 only legitimately forbids CMR_SUBSTANCE + ENDOCRINE_SUBSTANCE on
+    // legacy, so build_chemical_regulation_module skips just those for legacy and
+    // keeps medicinal/human. (Open GS1 item: 097.095 currently also rejects the
+    // ChemicalRegulationAgency/Name of the medicinal/human WHO/INN entry on legacy
+    // — reported to GS1; needs narrowing to CMR/ENDOCRINE only.)
+    let chemical_regulation_module = build_chemical_regulation_module(device, is_legacy);
 
     // --- Referenced file module (IFU URL) ---
     let referenced_file_module = device.additional_information_url.as_ref().map(|url| {
@@ -1465,11 +1470,13 @@ fn build_certification_module(
 
 fn build_chemical_regulation_module(
     device: &ApiDeviceDetail,
+    is_legacy: bool,
 ) -> Option<ChemicalRegulationInformationModule> {
     let mut who_chemicals = Vec::new();
     let mut echa_chemicals = Vec::new();
 
     // --- Medicinal product substances → WHO/INN/MEDICINAL_PRODUCT ---
+    // Always emitted incl. legacy (FLD-UDID-158 → FLD-UDID-311 applies to MDD/AIMDD).
     if let Some(ref subs) = device.medicinal_product_substances {
         for sub in subs {
             who_chemicals.push(build_substance_chemical(sub, "MEDICINAL_PRODUCT"));
@@ -1477,23 +1484,27 @@ fn build_chemical_regulation_module(
     }
 
     // --- Human product substances → WHO/INN/HUMAN_PRODUCT ---
+    // Always emitted incl. legacy (FLD-UDID-155 applies to MDD/AIMDD).
     if let Some(ref subs) = device.human_product_substances {
         for sub in subs {
             who_chemicals.push(build_substance_chemical(sub, "HUMAN_PRODUCT"));
         }
     }
 
-    // --- Endocrine disrupting substances → ECHA/ECICS/ENDOCRINE_SUBSTANCE ---
-    if let Some(ref subs) = device.endocrine_disrupting_substances {
-        for sub in subs {
-            echa_chemicals.push(build_substance_chemical(sub, "ENDOCRINE_SUBSTANCE"));
+    // --- CMR + endocrine → ECHA/ECICS: MDR/IVDR only. 097.095 forbids
+    // CMR_SUBSTANCE and ENDOCRINE_SUBSTANCE on legacy (MDD/AIMDD/IVDD). ---
+    if !is_legacy {
+        // Endocrine disrupting substances → ECHA/ECICS/ENDOCRINE_SUBSTANCE
+        if let Some(ref subs) = device.endocrine_disrupting_substances {
+            for sub in subs {
+                echa_chemicals.push(build_substance_chemical(sub, "ENDOCRINE_SUBSTANCE"));
+            }
         }
-    }
-
-    // --- CMR substances → ECHA/ECICS/CMR_SUBSTANCE ---
-    if let Some(ref subs) = device.cmr_substances {
-        for sub in subs {
-            echa_chemicals.push(build_cmr_chemical(sub));
+        // CMR substances → ECHA/ECICS/CMR_SUBSTANCE
+        if let Some(ref subs) = device.cmr_substances {
+            for sub in subs {
+                echa_chemicals.push(build_cmr_chemical(sub));
+            }
         }
     }
 
@@ -1740,6 +1751,23 @@ struct PackageLevel {
 /// Returns levels from innermost to outermost.
 fn flatten_package_levels(root: &ContainedItemNode) -> Vec<PackageLevel> {
     let mut levels = Vec::new();
+    // Track every code already used (base unit + emitted levels) so a package
+    // level never reuses the base unit's or an ancestor's GTIN. EUDAMED sometimes
+    // registers a package level with the SAME primary DI as the base unit (e.g.
+    // CH-MF-000020981's 07640132988437 contains 10× 07640132988437), which GS1
+    // rejects with G454 (GTIN child of itself) / G455 / SYS22 (same GTIN on
+    // multiple levels). Skipping the degenerate level collapses it to the valid
+    // single-level item instead of emitting a self-referential hierarchy.
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    if let Some(root_code) = root
+        .item_identifier
+        .as_ref()
+        .and_then(|id| id.code.as_deref())
+    {
+        if !root_code.is_empty() {
+            seen.insert(root_code.to_string());
+        }
+    }
     let mut current_children = root.contained_items.as_deref().unwrap_or(&[]);
 
     while !current_children.is_empty() {
@@ -1751,6 +1779,13 @@ fn flatten_package_levels(root: &ContainedItemNode) -> Vec<PackageLevel> {
             .unwrap_or("")
             .to_string();
         let qty = node.number_of_items.unwrap_or(1);
+        // Descend past — but do not emit — a level whose code is empty or reuses
+        // an already-seen code (self-referential / repeated GTIN).
+        if code.is_empty() || seen.contains(&code) {
+            current_children = node.contained_items.as_deref().unwrap_or(&[]);
+            continue;
+        }
+        seen.insert(code.clone());
         levels.push(PackageLevel {
             code,
             quantity: qty,
