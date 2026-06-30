@@ -14,6 +14,36 @@ pub struct Config {
     /// Optional — only needed when sending emails.
     #[serde(default)]
     pub gmail: Gmail,
+    /// Google Sheet holding the customer SRN worklist, read by `sync-srns`.
+    /// Optional — only needed for the nightly SRN sync.
+    #[serde(default)]
+    pub sheet: Sheet,
+}
+
+/// Google Sheet source for the customer SRN worklist (`sync-srns`).
+/// Uses the same service account as `[gmail]` (p12 + service_email).
+/// Store the real spreadsheet id in `config.toml` (gitignored).
+#[derive(Deserialize, Debug, Clone)]
+pub struct Sheet {
+    /// Spreadsheet id (the long token in the sheet URL).
+    #[serde(default)]
+    pub spreadsheet_id: String,
+    /// A1 range whose first column holds the SRNs (header row tolerated).
+    #[serde(default = "default_srn_range")]
+    pub srn_range: String,
+}
+
+fn default_srn_range() -> String {
+    "eudamed2firstbase_SRN!B1:B".to_string()
+}
+
+impl Default for Sheet {
+    fn default() -> Self {
+        Sheet {
+            spreadsheet_id: String::new(),
+            srn_range: default_srn_range(),
+        }
+    }
 }
 
 /// Gmail service-account credentials used by the `mailto` command.

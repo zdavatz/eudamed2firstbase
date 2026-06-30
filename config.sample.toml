@@ -34,6 +34,16 @@ p12_key       = "/path/to/your-service-account.p12"
 service_email = "your-service-account@your-project.iam.gserviceaccount.com"
 
 # ---------------------------------------------------------------------------
+# Customer SRN worklist Google Sheet (used by `sync-srns` for the nightly
+# `check`). Read-only via the SAME service account as [gmail] above — share the
+# sheet with that service-account email as Viewer. spreadsheet_id is the long
+# token in the sheet URL.
+# ---------------------------------------------------------------------------
+[sheet]
+spreadsheet_id = "your-spreadsheet-id"
+srn_range      = "eudamed2firstbase_SRN!B1:B"   # first column of range = SRN
+
+# ---------------------------------------------------------------------------
 # Endocrine substance EC/CAS identifiers (looked up by substance name).
 # Add entries as needed; the keys must match EUDAMED substance names exactly.
 # ---------------------------------------------------------------------------

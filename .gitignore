@@ -22,3 +22,7 @@ resume_icons/
 
 # macOS Finder metadata
 .DS_Store
+
+# Customer SRN worklist (synced from Google Sheet) — do not commit
+srns_sheet.txt
+run_*.sh

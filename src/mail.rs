@@ -187,7 +187,7 @@ fn find_openssl() -> &'static str {
 }
 
 /// Extract PEM private key from .p12 file using the openssl CLI.
-fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
+pub(crate) fn extract_pem_from_p12(p12_path: &str) -> Result<String> {
     let openssl = std::env::var("OPENSSL_BIN").unwrap_or_else(|_| find_openssl().to_string());
 
     // Try with -legacy flag first (OpenSSL 3.x), fall back without it (LibreSSL/older).

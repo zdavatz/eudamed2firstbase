@@ -13,6 +13,7 @@ mod installer;
 mod mail;
 mod mappings;
 mod scan;
+mod sheet;
 mod swissdamed;
 mod transform;
 mod transform_api;
@@ -52,6 +53,84 @@ fn main() -> Result<()> {
     let config = config::load_config(config_path).context("Failed to load config.toml")?;
 
     match args.get(1).map(|s| s.as_str()) {
+        Some("sync-srns") => {
+            // Refresh the SRN worklist from the eudamed2firstbase_SRN Google Sheet.
+            // Usage: cargo run sync-srns [outfile]   (default: srns_sheet.txt)
+            // Picks up newly added SRNs so the nightly `check` covers them without
+            // anyone editing the file by hand. On any sheet-read error the existing
+            // file is left untouched (a transient API hiccup must never wipe the
+            // worklist) and the command exits non-zero.
+            let out_path = args
+                .get(2)
+                .filter(|s| !s.starts_with("--"))
+                .cloned()
+                .unwrap_or_else(|| "srns_sheet.txt".to_string());
+
+            let config_path = std::path::Path::new("config.toml");
+            let config_path = if config_path.exists() {
+                config_path.to_path_buf()
+            } else {
+                download::app_data_dir().join("config.toml")
+            };
+            let cfg = config::load_config(&config_path)?;
+
+            let srns = match sheet::fetch_srns(&cfg) {
+                Ok(s) if !s.is_empty() => s,
+                Ok(_) => {
+                    eprintln!(
+                        "sync-srns: sheet returned 0 valid SRNs — keeping existing {} unchanged.",
+                        out_path
+                    );
+                    std::process::exit(2);
+                }
+                Err(e) => {
+                    eprintln!(
+                        "sync-srns: ERROR reading sheet ({e}) — keeping existing {} unchanged.",
+                        out_path
+                    );
+                    std::process::exit(2);
+                }
+            };
+
+            let old: Vec<String> = std::fs::read_to_string(&out_path)
+                .map(|s| s.split_whitespace().map(|x| x.to_string()).collect())
+                .unwrap_or_default();
+            let old_set: std::collections::HashSet<&String> = old.iter().collect();
+            let new_set: std::collections::HashSet<&String> = srns.iter().collect();
+            let added: Vec<&String> = srns.iter().filter(|s| !old_set.contains(*s)).collect();
+            let removed: Vec<&String> = old.iter().filter(|s| !new_set.contains(*s)).collect();
+
+            std::fs::write(&out_path, format!("{}\n", srns.join("\n")))
+                .with_context(|| format!("Failed to write {}", out_path))?;
+            eprintln!(
+                "sync-srns: wrote {} SRNs to {} (+{} new, -{} removed)",
+                srns.len(),
+                out_path,
+                added.len(),
+                removed.len()
+            );
+            if !added.is_empty() {
+                eprintln!(
+                    "  new SRNs: {}",
+                    added
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+            if !removed.is_empty() {
+                eprintln!(
+                    "  removed SRNs: {}",
+                    removed
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+            Ok(())
+        }
         Some("check") => {
             // Check SRNs for updates, download changed, convert, and push to Firstbase
             // Usage: cargo run check /tmp/srn_update [--threads N]
