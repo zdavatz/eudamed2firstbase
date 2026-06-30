@@ -163,6 +163,17 @@ fn main() -> Result<()> {
 
                 let mut version_rec = version_db::extract_detail_versions(&json_content);
                 version_rec.last_synced = Some(now_str.clone());
+                // Merge the Basic UDI-DI versionNumber from the basic JSON — the
+                // detail JSON carries no BUDI version, so without this the upsert
+                // overwrites udi_versions.budi_version with NULL every run. The next
+                // check would then see (DB budi=None, listing budi=Some) in
+                // filter_unchanged → "new BUDI data" → re-download + re-push the
+                // ENTIRE worklist (a self-perpetuating mass re-push). Mirrors the
+                // merge in process_eudamed_json_dir.
+                let basic_path = basic_dir.join(format!("{}.json", uuid));
+                if let Ok(budi_json) = std::fs::read_to_string(&basic_path) {
+                    version_db::merge_budi_versions(&mut version_rec, &budi_json);
+                }
                 if let Ok(c) = conn.lock() {
                     let _ = version_db::upsert_version(&c, &version_rec);
                 }

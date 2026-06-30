@@ -1149,23 +1149,29 @@ fn filter_unchanged(
 
     for (uuid, listing_version, budi_listing_version) in uuid_versions {
         if let Ok(Some(db_rec)) = crate::version_db::get_version(conn, uuid) {
-            let udi_match = match (db_rec.udi_version, listing_version) {
-                (Some(db), Some(listing)) => db == *listing,
-                (None, None) => true,
-                _ => false,
-            };
-            let budi_match = match (db_rec.budi_version, budi_listing_version) {
-                (Some(db), Some(listing)) => db == *listing,
-                (None, None) => true,
-                (None, Some(_)) => false, // new BUDI data available
-                _ => false,
-            };
-            if udi_match && budi_match {
+            // Mirror the per-SRN listing classifier exactly: a device is
+            // "changed" only on a strict version INCREASE (listing > DB, both
+            // present). EUDAMED version numbers are monotonic, so equality or a
+            // None on either side is NOT a change. The old logic treated any
+            // mismatch — crucially (DB budi=None, listing budi=Some) — as
+            // changed, which re-downloaded and re-pushed the ENTIRE worklist
+            // whenever budi_version was unpopulated, while the classifier logged
+            // those same devices as "same" (the 29355-new/0-unchanged vs all-same
+            // discrepancy). Now the two agree.
+            let udi_bumped = matches!(
+                (db_rec.udi_version, listing_version),
+                (Some(db), Some(listing)) if *listing > db
+            );
+            let budi_bumped = matches!(
+                (db_rec.budi_version, budi_listing_version),
+                (Some(db), Some(listing)) if *listing > db
+            );
+            if !udi_bumped && !budi_bumped {
                 if file_present(detail_dir, uuid) && file_present(basic_dir, uuid) {
                     unchanged += 1;
                     continue;
                 }
-                // Versions match but the cached files are missing — the local
+                // No version bump but the cached files are missing — the local
                 // cache is incomplete. Invalidate the stale version row and drop
                 // any stale firstbase output built from the incomplete cache.
                 // Step 7 (index_detail_versions) re-creates the version row after
