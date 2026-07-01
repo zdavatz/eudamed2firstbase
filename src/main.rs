@@ -1310,8 +1310,10 @@ fn send_gs1_prod_report(
 
     // Fetch every error row for the latest Production session.
     let mut error_rows: Vec<(String, String, String, String, String)> = Vec::new();
-    // Accepted (successfully pushed) devices for this session: (srn, gtin).
-    let mut accepted_rows: Vec<(String, String)> = Vec::new();
+    // Accepted (successfully pushed) devices for this session, with the version
+    // info + EUDAMED link so GS1 can locate the update in EUDAMED:
+    // (srn, gtin, uuid, udi_version, budi_version, version_date).
+    let mut accepted_rows: Vec<(String, String, String, String, String, String)> = Vec::new();
     // Push date for the subject, taken from the session timestamp (DD.MM.YYYY).
     let mut push_date = chrono::Local::now().format("%d.%m.%Y").to_string();
     {
@@ -1352,15 +1354,30 @@ fn send_gs1_prod_report(
                 error_rows.push(row?);
             }
 
-            // Accepted devices pushed in this session (the "updates" list).
+            // Accepted devices pushed in this session (the "updates" list), with
+            // version info from listing_cache/udi_versions so GS1 can find the
+            // exact version in EUDAMED. version_number matches EUDAMED's
+            // `versionNumber`; udi_date is the EUDAMED version date.
             let mut astmt = conn.prepare(
-                "SELECT COALESCE(l.srn,''), COALESCE(p.gtin,'') \
-                 FROM push_log p LEFT JOIN listing_cache l ON l.uuid = p.uuid \
+                "SELECT COALESCE(l.srn,''), COALESCE(p.gtin,''), p.uuid, \
+                 COALESCE(CAST(l.version_number AS TEXT),''), \
+                 COALESCE(CAST(l.budi_version_number AS TEXT),''), \
+                 COALESCE(v.udi_date,'') \
+                 FROM push_log p \
+                 LEFT JOIN listing_cache l ON l.uuid = p.uuid \
+                 LEFT JOIN udi_versions v ON v.uuid = p.uuid \
                  WHERE p.pushed_at = (SELECT session_ts FROM push_session WHERE id = ?1) \
                  AND p.status = 'ACCEPTED' ORDER BY l.srn, p.gtin",
             )?;
             let arows = astmt.query_map([sid], |r| {
-                Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, String>(5)?,
+                ))
             })?;
             for row in arows {
                 accepted_rows.push(row?);
@@ -1414,11 +1431,27 @@ fn send_gs1_prod_report(
         std::fs::write(&devices_csv, csv.as_bytes())
             .with_context(|| format!("write {}", devices_csv.display()))?;
     }
-    // 3) updates CSV — one row per ACCEPTED (successfully pushed) device.
+    // 3) updates CSV — one row per ACCEPTED (successfully pushed) device, with
+    //    the UDI-DI/Basic UDI-DI version, version date, and a direct EUDAMED
+    //    link (the API URL resolves to that exact device and shows
+    //    `versionNumber`/`versionDate`) so GS1 can verify the update in EUDAMED.
     {
-        let mut csv = String::from("srn,gtin\r\n");
-        for (srn, gtin) in &accepted_rows {
-            csv.push_str(&format!("{},{}\r\n", esc(srn), esc(gtin)));
+        let mut csv =
+            String::from("srn,gtin,udi_version,budi_version,version_date,eudamed_url\r\n");
+        for (srn, gtin, uuid, udi_ver, budi_ver, ver_date) in &accepted_rows {
+            let url = format!(
+                "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData/{}?languageIso2Code=en",
+                uuid
+            );
+            csv.push_str(&format!(
+                "{},{},{},{},{},{}\r\n",
+                esc(srn),
+                esc(gtin),
+                esc(udi_ver),
+                esc(budi_ver),
+                esc(ver_date),
+                esc(&url)
+            ));
         }
         std::fs::write(&updates_csv, csv.as_bytes())
             .with_context(|| format!("write {}", updates_csv.display()))?;
