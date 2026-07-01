@@ -44,6 +44,15 @@ spreadsheet_id = "your-spreadsheet-id"
 srn_range      = "eudamed2firstbase_SRN!B1:B"   # first column of range = SRN
 
 # ---------------------------------------------------------------------------
+# GS1 Production push-report recipients (used by send_gs1_prod_report). Kept
+# here (gitignored) so no mail addresses are committed to source. Env vars
+# GS1_REPORT_TO / GS1_REPORT_FROM override these when set.
+# ---------------------------------------------------------------------------
+[gs1_report]
+to   = "recipient@example.com"                  # comma-separated for several
+from = "sender@example.com"
+
+# ---------------------------------------------------------------------------
 # Endocrine substance EC/CAS identifiers (looked up by substance name).
 # Add entries as needed; the keys must match EUDAMED substance names exactly.
 # ---------------------------------------------------------------------------

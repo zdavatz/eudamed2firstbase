@@ -18,6 +18,23 @@ pub struct Config {
     /// Optional — only needed for the nightly SRN sync.
     #[serde(default)]
     pub sheet: Sheet,
+    /// Recipients/sender for the GS1 Production push report. Kept out of source
+    /// so no mail addresses are committed; real values live in the gitignored
+    /// `config.toml`. Env vars GS1_REPORT_TO / GS1_REPORT_FROM still override.
+    #[serde(default)]
+    pub gs1_report: Gs1Report,
+}
+
+/// GS1 push-report mail settings (see `send_gs1_prod_report`). Store real
+/// addresses in `config.toml` (gitignored) or set GS1_REPORT_TO / GS1_REPORT_FROM.
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct Gs1Report {
+    /// Recipient(s); comma-separated for several (delivered via the `To:` header).
+    #[serde(default)]
+    pub to: String,
+    /// Sender address (the Gmail service account impersonates this user).
+    #[serde(default)]
+    pub from: String,
 }
 
 /// Google Sheet source for the customer SRN worklist (`sync-srns`).

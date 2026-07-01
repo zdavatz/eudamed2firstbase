@@ -1247,9 +1247,10 @@ fn main() -> Result<()> {
 /// (the rejected GTINs + their GS1 codes) plus the full HTML push log. If the
 /// HTML log would push the message over the size limit it is dropped and only
 /// the errors-only CSV is sent. Configurable via env:
-///   GS1_REPORT_TO    (default "maik.sippl@gs1.ch, fas@gs1.ch"; comma-separated)
-///   GS1_REPORT_FROM  (default zdavatz@ywesee.com)
+///   GS1_REPORT_TO    (else config.toml [gs1_report] to; comma-separated)
+///   GS1_REPORT_FROM  (else config.toml [gs1_report] from)
 ///   GS1_REPORT_DISABLE=1  to skip entirely
+/// No mail addresses are hardcoded — they live in the gitignored config.toml.
 /// Gmail credentials come from `[gmail]` in config.toml (p12 + service account).
 /// Never fails the push: returns Err only to be logged as non-fatal by the caller.
 fn send_gs1_prod_report(
@@ -1265,10 +1266,24 @@ fn send_gs1_prod_report(
         eprintln!("GS1 auto-report skipped (GS1_REPORT_DISABLE set).");
         return Ok(());
     }
+    // Recipients/sender are NOT hardcoded (no mail addresses in source): env var
+    // GS1_REPORT_TO / GS1_REPORT_FROM first, else the gitignored config.toml
+    // `[gs1_report]` section.
     let to = std::env::var("GS1_REPORT_TO")
-        .unwrap_or_else(|_| "maik.sippl@gs1.ch, fas@gs1.ch".to_string());
-    let from =
-        std::env::var("GS1_REPORT_FROM").unwrap_or_else(|_| "zdavatz@ywesee.com".to_string());
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| config.gs1_report.to.clone());
+    let from = std::env::var("GS1_REPORT_FROM")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| config.gs1_report.from.clone());
+    if to.trim().is_empty() {
+        eprintln!(
+            "GS1 auto-report skipped: no recipient. Set GS1_REPORT_TO or [gs1_report] to \
+             in config.toml."
+        );
+        return Ok(());
+    }
     let p12 = config.gmail.p12_key.clone();
     let service_email = config.gmail.service_email.clone();
     if p12.is_empty() || service_email.is_empty() {
@@ -1289,11 +1304,14 @@ fn send_gs1_prod_report(
     let ts = chrono::Local::now().format("%Y-%m-%d_%H%M%S").to_string();
     let errors_csv = prod_log_dir.join(format!("rejects_errors_{}.csv", ts));
     let devices_csv = prod_log_dir.join(format!("rejects_devices_{}.csv", ts));
+    let updates_csv = prod_log_dir.join(format!("updates_pushed_{}.csv", ts));
     let _ = std::fs::create_dir_all(&prod_log_dir);
     let esc = |s: &str| format!("\"{}\"", s.replace('"', "\"\""));
 
     // Fetch every error row for the latest Production session.
     let mut error_rows: Vec<(String, String, String, String, String)> = Vec::new();
+    // Accepted (successfully pushed) devices for this session: (srn, gtin).
+    let mut accepted_rows: Vec<(String, String)> = Vec::new();
     // Push date for the subject, taken from the session timestamp (DD.MM.YYYY).
     let mut push_date = chrono::Local::now().format("%d.%m.%Y").to_string();
     {
@@ -1332,6 +1350,20 @@ fn send_gs1_prod_report(
             })?;
             for row in rows {
                 error_rows.push(row?);
+            }
+
+            // Accepted devices pushed in this session (the "updates" list).
+            let mut astmt = conn.prepare(
+                "SELECT COALESCE(l.srn,''), COALESCE(p.gtin,'') \
+                 FROM push_log p LEFT JOIN listing_cache l ON l.uuid = p.uuid \
+                 WHERE p.pushed_at = (SELECT session_ts FROM push_session WHERE id = ?1) \
+                 AND p.status = 'ACCEPTED' ORDER BY l.srn, p.gtin",
+            )?;
+            let arows = astmt.query_map([sid], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+            })?;
+            for row in arows {
+                accepted_rows.push(row?);
             }
         }
     }
@@ -1382,12 +1414,23 @@ fn send_gs1_prod_report(
         std::fs::write(&devices_csv, csv.as_bytes())
             .with_context(|| format!("write {}", devices_csv.display()))?;
     }
+    // 3) updates CSV — one row per ACCEPTED (successfully pushed) device.
+    {
+        let mut csv = String::from("srn,gtin\r\n");
+        for (srn, gtin) in &accepted_rows {
+            csv.push_str(&format!("{},{}\r\n", esc(srn), esc(gtin)));
+        }
+        std::fs::write(&updates_csv, csv.as_bytes())
+            .with_context(|| format!("write {}", updates_csv.display()))?;
+    }
     eprintln!(
-        "GS1 auto-report: {} error rows / {} devices -> {} , {}",
+        "GS1 auto-report: {} error rows / {} devices / {} accepted -> {} , {} , {}",
         error_rows.len(),
         device_count,
+        accepted_rows.len(),
         errors_csv.display(),
-        devices_csv.display()
+        devices_csv.display(),
+        updates_csv.display()
     );
 
     // --- Locate the most recent Production HTML log ---
@@ -1409,10 +1452,14 @@ fn send_gs1_prod_report(
     // Gmail caps a message at 25 MB; base64 inflates ~33%, so keep raw under ~18 MB.
     const MAX_TOTAL_RAW: u64 = 18 * 1024 * 1024;
     let mut attachments: Vec<String> = vec![
+        updates_csv.to_string_lossy().to_string(),
         errors_csv.to_string_lossy().to_string(),
         devices_csv.to_string_lossy().to_string(),
     ];
-    let base_size = std::fs::metadata(&errors_csv).map(|m| m.len()).unwrap_or(0)
+    let base_size = std::fs::metadata(&updates_csv)
+        .map(|m| m.len())
+        .unwrap_or(0)
+        + std::fs::metadata(&errors_csv).map(|m| m.len()).unwrap_or(0)
         + std::fs::metadata(&devices_csv)
             .map(|m| m.len())
             .unwrap_or(0);
