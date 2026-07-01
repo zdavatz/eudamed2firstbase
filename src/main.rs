@@ -1247,7 +1247,7 @@ fn main() -> Result<()> {
 /// (the rejected GTINs + their GS1 codes) plus the full HTML push log. If the
 /// HTML log would push the message over the size limit it is dropped and only
 /// the errors-only CSV is sent. Configurable via env:
-///   GS1_REPORT_TO    (default maik.sippl@gs1.ch)
+///   GS1_REPORT_TO    (default "maik.sippl@gs1.ch, fas@gs1.ch"; comma-separated)
 ///   GS1_REPORT_FROM  (default zdavatz@ywesee.com)
 ///   GS1_REPORT_DISABLE=1  to skip entirely
 /// Gmail credentials come from `[gmail]` in config.toml (p12 + service account).
@@ -1265,7 +1265,8 @@ fn send_gs1_prod_report(
         eprintln!("GS1 auto-report skipped (GS1_REPORT_DISABLE set).");
         return Ok(());
     }
-    let to = std::env::var("GS1_REPORT_TO").unwrap_or_else(|_| "maik.sippl@gs1.ch".to_string());
+    let to = std::env::var("GS1_REPORT_TO")
+        .unwrap_or_else(|_| "maik.sippl@gs1.ch, fas@gs1.ch".to_string());
     let from =
         std::env::var("GS1_REPORT_FROM").unwrap_or_else(|_| "zdavatz@ywesee.com".to_string());
     let p12 = config.gmail.p12_key.clone();
