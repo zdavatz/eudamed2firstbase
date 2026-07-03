@@ -19,6 +19,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use crate::download::{eudamed_agent, eudamed_get, RateLimiter};
+use crate::mappings::ACTOR_COUNTRY_CODES;
 use crate::version_db::{count_actors, upsert_actor, ActorRecord};
 
 const ACTOR_BASE_URL: &str = "https://ec.europa.eu/tools/eudamed/api/eos";
@@ -114,20 +115,28 @@ impl ActorItem {
     }
 }
 
-fn fetch_page(agent: &ureq::Agent, limiter: &RateLimiter, page: u32) -> Result<ActorPage> {
+/// Fetch one page of the `/eos` listing filtered to `country` (ISO alpha-2).
+/// Filtering per country keeps the offset shallow — the unfiltered listing's
+/// deep-offset pagination (page latency 2 s → 15 s past offset ~20 k) is the
+/// whole reason this sync partitions by country.
+fn fetch_page(
+    agent: &ureq::Agent,
+    limiter: &RateLimiter,
+    country: &str,
+    page: u32,
+) -> Result<ActorPage> {
     let url = format!(
-        "{}?page={}&pageSize={}&iso2Code=en&languageIso2Code=en",
-        ACTOR_BASE_URL, page, ACTOR_PAGE_SIZE
+        "{}?page={}&pageSize={}&iso2Code=en&languageIso2Code=en&countryIso2Code={}",
+        ACTOR_BASE_URL, page, ACTOR_PAGE_SIZE, country
     );
     let body = eudamed_get(agent, limiter, &url, 6)
-        .map_err(|e| anyhow::anyhow!("actor page {page}: {e}"))?;
-    serde_json::from_str(&body).with_context(|| format!("parsing actor page {page}"))
+        .map_err(|e| anyhow::anyhow!("actor {country} page {page}: {e}"))?;
+    serde_json::from_str(&body).with_context(|| format!("parsing actor {country} page {page}"))
 }
 
 /// Upsert every actor on a page; returns how many rows were written. The DB
-/// write is serialized behind the shared mutex — but page *fetches* (the slow
-/// part: 2–15 s each due to deep-offset pagination) happen outside the lock, in
-/// parallel — so the mutex is held only microseconds per page.
+/// write is serialized behind the shared mutex — but page *fetches* happen
+/// outside the lock, in parallel — so the mutex is held only microseconds.
 fn store_page(conn: &Mutex<Connection>, page: ActorPage) -> Result<u64> {
     let c = conn.lock().unwrap_or_else(|e| e.into_inner());
     let mut n = 0u64;
@@ -140,64 +149,113 @@ fn store_page(conn: &Mutex<Connection>, page: ActorPage) -> Result<u64> {
     Ok(n)
 }
 
-/// Default parallel fetch width. EUDAMED's `/eos` pages get progressively slower
-/// as the offset grows (deep-offset pagination: ~2 s early, ~12–15 s past
-/// offset 20 k). Single-threaded that collapses throughput to ~5 pages/min. The
-/// shared [`RateLimiter`] caps the AGGREGATE rate under the ~60/60 s budget, so
-/// threads don't raise the request rate — they only overlap the long latencies
-/// (~12 s ÷ 1.05 s pacing ≈ 12 requests need to be in-flight to saturate the
-/// paced budget). 16 keeps the budget filled with margin.
-const DEFAULT_ACTOR_THREADS: usize = 16;
-
-/// Fetch every actor from EUDAMED and upsert into the `actors` table.
+/// Fetch every actor from EUDAMED and upsert into the `actors` table, **paginated
+/// per country** to sidestep deep-offset latency.
 ///
-/// `rate_interval_ms` paces the AGGREGATE request rate (default 1050 ms ≈
-/// 57/min, under the shared budget); `threads` overlap the deep-offset latency
-/// so the paced budget is actually filled (single-threaded it can't be — each
-/// request blocks ~12 s). Re-runnable: `upsert_actor` refreshes existing SRNs
-/// and inserts new ones, and **never deletes**, so existing rows are kept and
-/// only enriched (e.g. backfilling the v1.0.86 address columns).
+/// EUDAMED's unfiltered `/eos` listing uses deep-offset pagination — `page=N`
+/// scans+discards `N×20` rows, so latency climbs from ~2 s (early) to ~15 s (past
+/// offset ~20 k). A full unfiltered walk crawls at ~5 pages/min and any attempt to
+/// parallelize *through* it just trips `/eos`'s ~40/min 429 budget into a 60 s
+/// `Retry-After` lockstep. Partitioning by `countryIso2Code` keeps every partition
+/// small, so **no page reaches a deep offset** — pages stay ~2 s and throughput
+/// becomes rate-bound (not latency-bound). Two phases:
+///   1. probe each of [`ACTOR_COUNTRY_CODES`] with page 0 (also stores that page);
+///   2. fan out the remaining `(country, page)` work across a small pool.
+///
+/// `/eos` tolerates only ~30/min sustained; ANY multi-thread burst eventually
+/// trips a 429 → 60 s `Retry-After` and (with >1 thread) synchronizes into a
+/// lockstep that collapses throughput to ~5/min. So the default is **1 thread**
+/// (`--threads N` to override, at your own 429 risk): a single thread self-limits
+/// via page latency, can't lockstep (a lone 429 is just absorbed), and with fast
+/// per-country pages sustains ~30/min — the `/eos` ceiling anyway. The shared
+/// [`RateLimiter`] (default 2000 ms ≈ 30/min) caps even the sub-second empty-country
+/// probes so the sustained rate never exceeds budget. Re-runnable: `upsert_actor`
+/// refreshes existing SRNs and **never deletes**, so existing rows are kept and
+/// enriched.
 /// Returns `(fetched, total_reported)`.
 pub fn sync_actors(conn: Connection, rate_interval_ms: u64, threads: usize) -> Result<(u64, u64)> {
     let agent = eudamed_agent();
     let limiter = RateLimiter::new(Duration::from_millis(rate_interval_ms));
     let threads = threads.max(1);
-
-    let first = fetch_page(&agent, &limiter, 0)?;
-    let total_pages = first.total_pages.max(1);
-    let total_elements = first.total_elements;
-    eprintln!(
-        "sync-actors: {} actors across {} pages, {} threads, {}ms/req pacing (aggregate ~{}/min)",
-        total_elements,
-        total_pages,
-        threads,
-        rate_interval_ms,
-        60_000 / rate_interval_ms.max(1),
-    );
-
     let conn = Mutex::new(conn);
     let fetched = AtomicU64::new(0);
-    fetched.fetch_add(store_page(&conn, first)?, Ordering::Relaxed);
-    let done_pages = AtomicU64::new(1);
 
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
         .build()
         .context("building actor fetch thread pool")?;
 
+    eprintln!(
+        "sync-actors: phase 1 — probing {} countries, {} threads, {}ms/req (~{}/min)",
+        ACTOR_COUNTRY_CODES.len(),
+        threads,
+        rate_interval_ms,
+        60_000 / rate_interval_ms.max(1),
+    );
+
+    // Phase 1: page 0 per country → (country, remaining_pages, total_elements).
+    // Also stores page 0's actors. Countries with 0 actors are dropped.
+    let mut total_reported: u64 = 0;
+    let country_pages: Vec<(&'static str, u32)> = pool.install(|| {
+        ACTOR_COUNTRY_CODES
+            .par_iter()
+            .filter_map(|&cc| match fetch_page(&agent, &limiter, cc, 0) {
+                Ok(p) => {
+                    let total = p.total_elements;
+                    let total_pages = p.total_pages;
+                    match store_page(&conn, p) {
+                        Ok(n) => {
+                            fetched.fetch_add(n, Ordering::Relaxed);
+                        }
+                        Err(e) => eprintln!("sync-actors: WARN store {cc} page 0: {e}"),
+                    }
+                    if total > 0 {
+                        Some((cc, total, total_pages))
+                    } else {
+                        None
+                    }
+                }
+                Err(e) => {
+                    eprintln!("sync-actors: WARN {e} — skipping country {cc}");
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|(cc, total, total_pages)| {
+                total_reported += total;
+                (cc, total_pages)
+            })
+            .collect()
+    });
+
+    // Phase 2: flat (country, page) work-list for pages 1..total_pages.
+    let work: Vec<(&'static str, u32)> = country_pages
+        .iter()
+        .flat_map(|&(cc, tp)| (1..tp).map(move |pg| (cc, pg)))
+        .collect();
+    let total_pages = work.len();
+    eprintln!(
+        "sync-actors: phase 2 — {} countries with actors ({} total), {} further pages",
+        country_pages.len(),
+        total_reported,
+        total_pages,
+    );
+
+    let done = AtomicU64::new(0);
     pool.install(|| {
-        (1..total_pages).into_par_iter().for_each(|page| {
-            match fetch_page(&agent, &limiter, page) {
+        work.par_iter().for_each(|&(cc, pg)| {
+            match fetch_page(&agent, &limiter, cc, pg) {
                 Ok(p) => match store_page(&conn, p) {
                     Ok(n) => {
                         fetched.fetch_add(n, Ordering::Relaxed);
                     }
-                    Err(e) => eprintln!("sync-actors: WARN store page {page}: {e}"),
+                    Err(e) => eprintln!("sync-actors: WARN store {cc} page {pg}: {e}"),
                 },
-                Err(e) => eprintln!("sync-actors: WARN {e} — skipping page {page}"),
+                Err(e) => eprintln!("sync-actors: WARN {e} — skipping {cc} page {pg}"),
             }
-            let d = done_pages.fetch_add(1, Ordering::Relaxed) + 1;
-            if d % 100 == 0 || d as u32 == total_pages {
+            let d = done.fetch_add(1, Ordering::Relaxed) + 1;
+            if d % 100 == 0 || d as usize == total_pages {
                 eprintln!(
                     "sync-actors: {}/{} pages — {} actors upserted",
                     d,
@@ -215,5 +273,5 @@ pub fn sync_actors(conn: Connection, rate_interval_ms: u64, threads: usize) -> R
         "sync-actors: done — {} fetched this run, {} total in actors table",
         fetched, in_db
     );
-    Ok((fetched, total_elements))
+    Ok((fetched, total_reported))
 }

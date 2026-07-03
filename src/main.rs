@@ -142,13 +142,21 @@ fn main() -> Result<()> {
                 .position(|a| a == "--rate-ms")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(1050);
+                .unwrap_or(2000); // ~30/min — the /eos sustained ceiling; caps even
+                                  // fast empty-country probes so we never exceed budget and 429.
+                                  // threads=1 by default: /eos tolerates only ~30/min sustained, and ANY
+                                  // multi-thread burst eventually trips a 429 → 60s Retry-After lockstep
+                                  // (all threads sleep in sync, throughput collapses to ~5/min). A single
+                                  // thread self-limits via page latency, can't lockstep (nothing to sync
+                                  // with — a lone 429 is just absorbed), and with per-country pagination
+                                  // keeping pages fast (~2s) it sustains ~30/min — which is the /eos
+                                  // ceiling anyway, so 1 thread is both the safest AND the fastest choice.
             let threads: usize = args
                 .iter()
                 .position(|a| a == "--threads")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(16);
+                .unwrap_or(1);
 
             let db_path = download::app_data_dir().join("db/version_tracking.db");
             let conn = version_db::open_db(&db_path)?;
