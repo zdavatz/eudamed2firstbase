@@ -74,6 +74,12 @@ struct ActorItem {
     postal_zone: Option<String>,
     #[serde(rename = "cityName")]
     city_name: Option<String>,
+    #[serde(rename = "geographicalAddress")]
+    geographical_address: Option<String>,
+    #[serde(rename = "countryType")]
+    country_type: Option<String>,
+    #[serde(rename = "abbreviatedName")]
+    abbreviated_name: Option<String>,
     #[serde(rename = "dateOfRegistration")]
     date_of_registration: Option<String>,
     uuid: Option<String>,
@@ -96,6 +102,9 @@ impl ActorItem {
             building_number: self.building_number.unwrap_or_default(),
             postal_zone: self.postal_zone.unwrap_or_default(),
             city_name: self.city_name.unwrap_or_default(),
+            geographical_address: self.geographical_address.unwrap_or_default(),
+            country_type: self.country_type.unwrap_or_default(),
+            abbreviated_name: self.abbreviated_name.unwrap_or_default(),
             date_of_registration: self.date_of_registration.unwrap_or_default(),
             uuid: self.uuid.unwrap_or_default(),
         })

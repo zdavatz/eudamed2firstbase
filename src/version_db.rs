@@ -206,6 +206,9 @@ pub fn open_db(path: &Path) -> Result<Connection> {
             building_number TEXT NOT NULL DEFAULT '',
             postal_zone TEXT NOT NULL DEFAULT '',
             city_name TEXT NOT NULL DEFAULT '',
+            geographical_address TEXT NOT NULL DEFAULT '',
+            country_type TEXT NOT NULL DEFAULT '',
+            abbreviated_name TEXT NOT NULL DEFAULT '',
             date_of_registration TEXT NOT NULL DEFAULT '',
             uuid TEXT NOT NULL DEFAULT '',
             last_synced TEXT NOT NULL DEFAULT ''
@@ -214,7 +217,34 @@ pub fn open_db(path: &Path) -> Result<Connection> {
         CREATE INDEX IF NOT EXISTS idx_actors_role ON actors(role_name);",
     )?;
 
+    // Additive migration: a DB created by an earlier build already has `actors`
+    // without these columns (CREATE TABLE IF NOT EXISTS won't add them). Add each
+    // if missing; a re-run of `sync-actors` then backfills the values via upsert.
+    add_column_if_missing(&conn, "actors", "geographical_address")?;
+    add_column_if_missing(&conn, "actors", "country_type")?;
+    add_column_if_missing(&conn, "actors", "abbreviated_name")?;
+
     Ok(conn)
+}
+
+/// Add `TEXT NOT NULL DEFAULT ''` column `col` to `table` if it doesn't exist.
+/// No-op when already present (checked via `PRAGMA table_info`), so it's safe to
+/// run on every `open_db`.
+fn add_column_if_missing(conn: &Connection, table: &str, col: &str) -> Result<()> {
+    let exists: bool = {
+        let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+        let names: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(1))?
+            .collect::<std::result::Result<_, _>>()?;
+        names.iter().any(|n| n == col)
+    };
+    if !exists {
+        conn.execute(
+            &format!("ALTER TABLE {table} ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"),
+            [],
+        )?;
+    }
+    Ok(())
 }
 
 /// One EUDAMED actor row for upsert into the `actors` table.
@@ -233,6 +263,9 @@ pub struct ActorRecord {
     pub building_number: String,
     pub postal_zone: String,
     pub city_name: String,
+    pub geographical_address: String,
+    pub country_type: String,
+    pub abbreviated_name: String,
     pub date_of_registration: String,
     pub uuid: String,
 }
@@ -244,8 +277,9 @@ pub fn upsert_actor(conn: &Connection, a: &ActorRecord) -> Result<()> {
         "INSERT INTO actors (
             srn, name, role_name, actor_status, country_iso2, country_name,
             eudamed_identifier, email, telephone, street_name, building_number,
-            postal_zone, city_name, date_of_registration, uuid, last_synced
-         ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)
+            postal_zone, city_name, geographical_address, country_type,
+            abbreviated_name, date_of_registration, uuid, last_synced
+         ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)
          ON CONFLICT(srn) DO UPDATE SET
             name=excluded.name, role_name=excluded.role_name,
             actor_status=excluded.actor_status, country_iso2=excluded.country_iso2,
@@ -254,6 +288,9 @@ pub fn upsert_actor(conn: &Connection, a: &ActorRecord) -> Result<()> {
             email=excluded.email, telephone=excluded.telephone,
             street_name=excluded.street_name, building_number=excluded.building_number,
             postal_zone=excluded.postal_zone, city_name=excluded.city_name,
+            geographical_address=excluded.geographical_address,
+            country_type=excluded.country_type,
+            abbreviated_name=excluded.abbreviated_name,
             date_of_registration=excluded.date_of_registration,
             uuid=excluded.uuid, last_synced=excluded.last_synced",
         params![
@@ -270,6 +307,9 @@ pub fn upsert_actor(conn: &Connection, a: &ActorRecord) -> Result<()> {
             a.building_number,
             a.postal_zone,
             a.city_name,
+            a.geographical_address,
+            a.country_type,
+            a.abbreviated_name,
             a.date_of_registration,
             a.uuid,
             now,
