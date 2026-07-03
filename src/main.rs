@@ -143,10 +143,16 @@ fn main() -> Result<()> {
                 .and_then(|i| args.get(i + 1))
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(1050);
+            let threads: usize = args
+                .iter()
+                .position(|a| a == "--threads")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(16);
 
             let db_path = download::app_data_dir().join("db/version_tracking.db");
             let conn = version_db::open_db(&db_path)?;
-            match actors::sync_actors(&conn, rate_ms) {
+            match actors::sync_actors(conn, rate_ms, threads) {
                 Ok((fetched, total)) => {
                     println!("sync-actors: {} of {} actors synced", fetched, total);
                     Ok(())

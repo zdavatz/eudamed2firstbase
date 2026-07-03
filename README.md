@@ -131,8 +131,8 @@ cargo run check /tmp/srn_update --threads 50           # with parallel threads
 cargo run status                                       # counts from listing_cache, udi_versions, firstbase_json, push_log
 
 # Sync the EUDAMED actor registry (SRN → manufacturer/AR name, country, address) into the `actors` DB table
-cargo run sync-actors                                  # full refresh of all ~48'000 actors (upsert; re-runnable)
-cargo run sync-actors --rate-ms 1050                   # tune request pacing (default 1050 ms ≈ 57/min)
+cargo run sync-actors                                  # full refresh of all ~48'000 actors (parallel, upsert; re-runnable)
+cargo run sync-actors --threads 16 --rate-ms 1050      # tune fetch width + aggregate pacing (defaults: 16 threads, 1050 ms ≈ 57/min)
 
 # Force re-convert every local detail file → firstbase_json (rayon parallel, ignores version tracking)
 cargo run regenerate                                   # all eudamed_json/detail/*.json → firstbase_json/

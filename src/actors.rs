@@ -12,7 +12,10 @@
 //! (upsert, so existing rows are updated in place, new actors added).
 
 use anyhow::{Context, Result};
+use rayon::prelude::*;
 use rusqlite::Connection;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use crate::download::{eudamed_agent, eudamed_get, RateLimiter};
@@ -121,57 +124,93 @@ fn fetch_page(agent: &ureq::Agent, limiter: &RateLimiter, page: u32) -> Result<A
     serde_json::from_str(&body).with_context(|| format!("parsing actor page {page}"))
 }
 
-/// Upsert every actor on a page; returns how many rows were written.
-fn store_page(conn: &Connection, page: ActorPage) -> Result<u64> {
+/// Upsert every actor on a page; returns how many rows were written. The DB
+/// write is serialized behind the shared mutex — but page *fetches* (the slow
+/// part: 2–15 s each due to deep-offset pagination) happen outside the lock, in
+/// parallel — so the mutex is held only microseconds per page.
+fn store_page(conn: &Mutex<Connection>, page: ActorPage) -> Result<u64> {
+    let c = conn.lock().unwrap_or_else(|e| e.into_inner());
     let mut n = 0u64;
     for item in page.content {
         if let Some(rec) = item.into_record() {
-            upsert_actor(conn, &rec)?;
+            upsert_actor(&c, &rec)?;
             n += 1;
         }
     }
     Ok(n)
 }
 
+/// Default parallel fetch width. EUDAMED's `/eos` pages get progressively slower
+/// as the offset grows (deep-offset pagination: ~2 s early, ~12–15 s past
+/// offset 20 k). Single-threaded that collapses throughput to ~5 pages/min. The
+/// shared [`RateLimiter`] caps the AGGREGATE rate under the ~60/60 s budget, so
+/// threads don't raise the request rate — they only overlap the long latencies
+/// (~12 s ÷ 1.05 s pacing ≈ 12 requests need to be in-flight to saturate the
+/// paced budget). 16 keeps the budget filled with margin.
+const DEFAULT_ACTOR_THREADS: usize = 16;
+
 /// Fetch every actor from EUDAMED and upsert into the `actors` table.
 ///
-/// `rate_interval_ms` paces requests (default 1050 ms ≈ 57/min, under the
-/// shared budget). Re-runnable: upsert refreshes existing SRNs and inserts new
-/// ones. Returns `(fetched, total_reported)`.
-pub fn sync_actors(conn: &Connection, rate_interval_ms: u64) -> Result<(u64, u64)> {
+/// `rate_interval_ms` paces the AGGREGATE request rate (default 1050 ms ≈
+/// 57/min, under the shared budget); `threads` overlap the deep-offset latency
+/// so the paced budget is actually filled (single-threaded it can't be — each
+/// request blocks ~12 s). Re-runnable: `upsert_actor` refreshes existing SRNs
+/// and inserts new ones, and **never deletes**, so existing rows are kept and
+/// only enriched (e.g. backfilling the v1.0.86 address columns).
+/// Returns `(fetched, total_reported)`.
+pub fn sync_actors(conn: Connection, rate_interval_ms: u64, threads: usize) -> Result<(u64, u64)> {
     let agent = eudamed_agent();
     let limiter = RateLimiter::new(Duration::from_millis(rate_interval_ms));
+    let threads = threads.max(1);
 
     let first = fetch_page(&agent, &limiter, 0)?;
     let total_pages = first.total_pages.max(1);
     let total_elements = first.total_elements;
     eprintln!(
-        "sync-actors: {} actors across {} pages (~{} min at {}ms/req)",
+        "sync-actors: {} actors across {} pages, {} threads, {}ms/req pacing (aggregate ~{}/min)",
         total_elements,
         total_pages,
-        (total_pages as u64 * rate_interval_ms) / 60_000,
-        rate_interval_ms
+        threads,
+        rate_interval_ms,
+        60_000 / rate_interval_ms.max(1),
     );
 
-    let mut fetched = 0u64;
-    fetched += store_page(conn, first)?;
+    let conn = Mutex::new(conn);
+    let fetched = AtomicU64::new(0);
+    fetched.fetch_add(store_page(&conn, first)?, Ordering::Relaxed);
+    let done_pages = AtomicU64::new(1);
 
-    for page in 1..total_pages {
-        match fetch_page(&agent, &limiter, page) {
-            Ok(p) => fetched += store_page(conn, p)?,
-            Err(e) => eprintln!("sync-actors: WARN {e} — skipping page {page}"),
-        }
-        if page % 100 == 0 || page == total_pages - 1 {
-            eprintln!(
-                "sync-actors: page {}/{} — {} actors upserted",
-                page + 1,
-                total_pages,
-                fetched
-            );
-        }
-    }
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()
+        .context("building actor fetch thread pool")?;
 
-    let in_db = count_actors(conn)?;
+    pool.install(|| {
+        (1..total_pages).into_par_iter().for_each(|page| {
+            match fetch_page(&agent, &limiter, page) {
+                Ok(p) => match store_page(&conn, p) {
+                    Ok(n) => {
+                        fetched.fetch_add(n, Ordering::Relaxed);
+                    }
+                    Err(e) => eprintln!("sync-actors: WARN store page {page}: {e}"),
+                },
+                Err(e) => eprintln!("sync-actors: WARN {e} — skipping page {page}"),
+            }
+            let d = done_pages.fetch_add(1, Ordering::Relaxed) + 1;
+            if d % 100 == 0 || d as u32 == total_pages {
+                eprintln!(
+                    "sync-actors: {}/{} pages — {} actors upserted",
+                    d,
+                    total_pages,
+                    fetched.load(Ordering::Relaxed)
+                );
+            }
+        });
+    });
+
+    let conn = conn.into_inner().unwrap_or_else(|e| e.into_inner());
+    let in_db = count_actors(&conn)?;
+    let fetched = fetched.load(Ordering::Relaxed);
     eprintln!(
         "sync-actors: done — {} fetched this run, {} total in actors table",
         fetched, in_db
