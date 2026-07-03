@@ -187,10 +187,101 @@ pub fn open_db(path: &Path) -> Result<Connection> {
             error_msg TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_swissdamed_uuid ON swissdamed_push_log(uuid);
-        CREATE INDEX IF NOT EXISTS idx_swissdamed_status ON swissdamed_push_log(status);",
+        CREATE INDEX IF NOT EXISTS idx_swissdamed_status ON swissdamed_push_log(status);
+
+        -- EUDAMED actor / economic-operator registry (SRN -> manufacturer/AR).
+        -- Populated by the `sync-actors` subcommand from the /api/eos listing;
+        -- linked to devices via actors.srn = listing_cache.srn.
+        CREATE TABLE IF NOT EXISTS actors (
+            srn TEXT PRIMARY KEY,
+            name TEXT NOT NULL DEFAULT '',
+            role_name TEXT NOT NULL DEFAULT '',
+            actor_status TEXT NOT NULL DEFAULT '',
+            country_iso2 TEXT NOT NULL DEFAULT '',
+            country_name TEXT NOT NULL DEFAULT '',
+            eudamed_identifier TEXT NOT NULL DEFAULT '',
+            email TEXT NOT NULL DEFAULT '',
+            telephone TEXT NOT NULL DEFAULT '',
+            street_name TEXT NOT NULL DEFAULT '',
+            building_number TEXT NOT NULL DEFAULT '',
+            postal_zone TEXT NOT NULL DEFAULT '',
+            city_name TEXT NOT NULL DEFAULT '',
+            date_of_registration TEXT NOT NULL DEFAULT '',
+            uuid TEXT NOT NULL DEFAULT '',
+            last_synced TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_actors_country ON actors(country_iso2);
+        CREATE INDEX IF NOT EXISTS idx_actors_role ON actors(role_name);",
     )?;
 
     Ok(conn)
+}
+
+/// One EUDAMED actor row for upsert into the `actors` table.
+#[derive(Debug, Default, Clone)]
+pub struct ActorRecord {
+    pub srn: String,
+    pub name: String,
+    pub role_name: String,
+    pub actor_status: String,
+    pub country_iso2: String,
+    pub country_name: String,
+    pub eudamed_identifier: String,
+    pub email: String,
+    pub telephone: String,
+    pub street_name: String,
+    pub building_number: String,
+    pub postal_zone: String,
+    pub city_name: String,
+    pub date_of_registration: String,
+    pub uuid: String,
+}
+
+/// Insert or update an actor keyed by SRN. `last_synced` is stamped now.
+pub fn upsert_actor(conn: &Connection, a: &ActorRecord) -> Result<()> {
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    conn.execute(
+        "INSERT INTO actors (
+            srn, name, role_name, actor_status, country_iso2, country_name,
+            eudamed_identifier, email, telephone, street_name, building_number,
+            postal_zone, city_name, date_of_registration, uuid, last_synced
+         ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)
+         ON CONFLICT(srn) DO UPDATE SET
+            name=excluded.name, role_name=excluded.role_name,
+            actor_status=excluded.actor_status, country_iso2=excluded.country_iso2,
+            country_name=excluded.country_name,
+            eudamed_identifier=excluded.eudamed_identifier,
+            email=excluded.email, telephone=excluded.telephone,
+            street_name=excluded.street_name, building_number=excluded.building_number,
+            postal_zone=excluded.postal_zone, city_name=excluded.city_name,
+            date_of_registration=excluded.date_of_registration,
+            uuid=excluded.uuid, last_synced=excluded.last_synced",
+        params![
+            a.srn,
+            a.name,
+            a.role_name,
+            a.actor_status,
+            a.country_iso2,
+            a.country_name,
+            a.eudamed_identifier,
+            a.email,
+            a.telephone,
+            a.street_name,
+            a.building_number,
+            a.postal_zone,
+            a.city_name,
+            a.date_of_registration,
+            a.uuid,
+            now,
+        ],
+    )?;
+    Ok(())
+}
+
+/// Count rows in the `actors` table.
+pub fn count_actors(conn: &Connection) -> Result<u64> {
+    let n: i64 = conn.query_row("SELECT COUNT(*) FROM actors", [], |r| r.get(0))?;
+    Ok(n as u64)
 }
 
 /// Compute SHA256 hash of a JSON string

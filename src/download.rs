@@ -619,7 +619,7 @@ impl RateLimiter {
 
 /// A ureq agent that surfaces HTTP status (so 429 / `Retry-After` are readable
 /// instead of arriving as an opaque `Err`) with a generous global timeout.
-fn eudamed_agent() -> ureq::Agent {
+pub fn eudamed_agent() -> ureq::Agent {
     ureq::Agent::config_builder()
         .http_status_as_error(false)
         .timeout_global(Some(std::time::Duration::from_secs(30)))
@@ -639,7 +639,7 @@ fn eudamed_agent() -> ureq::Agent {
 /// 4795) or backed off 2–6 s (parallel_fetch → never clears a 60 s window →
 /// "still missing"). Here a throttled request waits out the window and retries
 /// rather than abandoning the page/file, so nothing is silently dropped.
-fn eudamed_get(
+pub fn eudamed_get(
     agent: &ureq::Agent,
     limiter: &RateLimiter,
     url: &str,

@@ -1,6 +1,7 @@
 // Hide console window on Windows when running as GUI
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod actors;
 mod api_detail;
 mod api_json;
 mod config;
@@ -130,6 +131,31 @@ fn main() -> Result<()> {
                 );
             }
             Ok(())
+        }
+        Some("sync-actors") => {
+            // Refresh the EUDAMED actor registry (SRN -> manufacturer/AR name +
+            // country/address) into the `actors` table. Re-runnable (upsert).
+            // Usage: cargo run sync-actors [--rate-ms N]   (default 1050 ms/req)
+            // Linked to devices via actors.srn = listing_cache.srn.
+            let rate_ms: u64 = args
+                .iter()
+                .position(|a| a == "--rate-ms")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1050);
+
+            let db_path = download::app_data_dir().join("db/version_tracking.db");
+            let conn = version_db::open_db(&db_path)?;
+            match actors::sync_actors(&conn, rate_ms) {
+                Ok((fetched, total)) => {
+                    println!("sync-actors: {} of {} actors synced", fetched, total);
+                    Ok(())
+                }
+                Err(e) => {
+                    eprintln!("sync-actors: ERROR {e}");
+                    std::process::exit(1);
+                }
+            }
         }
         Some("check") => {
             // Check SRNs for updates, download changed, convert, and push to Firstbase
