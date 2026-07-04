@@ -196,43 +196,49 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
 
-            // Where `check` records the UUIDs it is about to push, so a later
-            // `check --push-only` can retry a failed GS1 push WITHOUT redoing the
-            // ~15 min listing/download/convert (the converted firstbase_json/<uuid>
-            // .json files from the failed run are still on disk).
-            let changed_uuids_file = download::app_data_dir()
+            // Persistent "pending push" list: UUIDs converted this env but NOT yet
+            // confirmed delivered to GS1. `check` unions this into every push scope;
+            // a successful transport push clears the file, a FAILED transport push
+            // (503 / token / network) leaves it — so the NEXT nightly `check`
+            // automatically re-pushes the stranded devices. (Root cause it fixes:
+            // the convert step indexes udi_versions BEFORE the push, so once a device
+            // is converted the version-check no longer flags it as changed; without
+            // this list a push that failed after convert would strand those devices
+            // forever.) `check --push-only` re-pushes the same list immediately,
+            // without waiting for the next nightly. NOTE: only TRANSPORT failures are
+            // auto-retried; per-item validation rejects (097.xxx) return Ok and are
+            // NOT re-pushed nightly (they are data problems, not outages).
+            let pending_uuids_file = download::app_data_dir()
                 .join("log")
-                .join("last_changed_uuids.txt");
+                .join("pending_push_uuids.txt");
+            let read_uuid_set = |path: &std::path::Path| -> std::collections::HashSet<String> {
+                std::fs::read_to_string(path)
+                    .map(|s| {
+                        s.lines()
+                            .map(|l| l.trim().to_string())
+                            .filter(|l| !l.is_empty())
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            };
 
             if args.iter().any(|a| a == "--push-only") {
                 // Retry-only path: skip listing/download/convert entirely and
-                // re-push exactly the UUIDs the last `check` recorded before its
-                // (failed) push. Use after a transient GS1 outage (e.g. token 503).
-                eprintln!("=== check --push-only: re-pushing last run's changed devices ===");
-                let uuids: std::collections::HashSet<String> =
-                    match std::fs::read_to_string(&changed_uuids_file) {
-                        Ok(s) => s
-                            .lines()
-                            .map(|l| l.trim().to_string())
-                            .filter(|l| !l.is_empty())
-                            .collect(),
-                        Err(e) => {
-                            eprintln!(
-                                "No recorded changed-UUID list at {} ({}). Nothing to retry.",
-                                changed_uuids_file.display(),
-                                e
-                            );
-                            std::process::exit(1);
-                        }
-                    };
+                // re-push exactly the pending list. Use after a transient GS1 outage
+                // (e.g. token 503) to deliver now instead of waiting for 01:00.
+                eprintln!("=== check --push-only: re-pushing pending (undelivered) devices ===");
+                let uuids = read_uuid_set(&pending_uuids_file);
                 if uuids.is_empty() {
-                    eprintln!("Recorded changed-UUID list is empty. Nothing to retry.");
+                    eprintln!(
+                        "No pending push list at {} (or empty). Nothing to retry.",
+                        pending_uuids_file.display()
+                    );
                     return Ok(());
                 }
                 eprintln!(
-                    "Loaded {} UUID(s) to re-push from {}",
+                    "Loaded {} pending UUID(s) to re-push from {}",
                     uuids.len(),
-                    changed_uuids_file.display()
+                    pending_uuids_file.display()
                 );
 
                 let config_path = download::app_data_dir().join("config.toml");
@@ -242,9 +248,22 @@ fn main() -> Result<()> {
                     std::path::PathBuf::from("config.toml")
                 };
                 let fb_config = config::load_config(&config_path)?;
-                push_changed_to_firstbase(&fb_config, &uuids, &srns)?;
+                let pushed_ok = push_changed_to_firstbase(&fb_config, &uuids, &srns)?;
+                if pushed_ok {
+                    let _ = std::fs::remove_file(&pending_uuids_file);
+                    eprintln!("Cleared pending push list (delivered to GS1).");
+                } else {
+                    eprintln!(
+                        "Push did not reach GS1 — pending list kept at {} for the next retry/nightly.",
+                        pending_uuids_file.display()
+                    );
+                }
                 return Ok(());
             }
+
+            // Devices still owed from a prior failed push (carried into this run's
+            // push scope below).
+            let pending_prev = read_uuid_set(&pending_uuids_file);
 
             eprintln!("=== Check {} SRNs from {} ===", srns.len(), file);
 
@@ -262,18 +281,46 @@ fn main() -> Result<()> {
             let progress = download::StderrProgress;
             let result = download::run_download(&dl_config, &progress)?;
 
-            if result.need_download.is_empty() {
+            // Devices owed from a prior failed push: keep only those whose converted
+            // firstbase_json/<uuid>.json still exists on disk (an already-accepted one
+            // was moved to processed/ and is no longer owed).
+            let fb_output_dir = download::app_data_dir().join("firstbase_json");
+            let owed: std::collections::HashSet<String> = pending_prev
+                .iter()
+                .filter(|u| fb_output_dir.join(format!("{}.json", u)).exists())
+                .cloned()
+                .collect();
+            if !owed.is_empty() {
+                eprintln!(
+                    "{} device(s) still owed from a prior failed push — will re-push this run.",
+                    owed.len()
+                );
+            }
+
+            if result.need_download.is_empty() && owed.is_empty() {
                 eprintln!(
                     "\nNo updates found. All {} devices unchanged.",
                     result.uuid_versions.len()
                 );
+                // A stale pending file (its devices gone from disk) is cleared so it
+                // does not linger; nothing to deliver.
+                if !pending_prev.is_empty() {
+                    let _ = std::fs::remove_file(&pending_uuids_file);
+                }
                 return Ok(());
             }
-            eprintln!(
-                "\n{} new/changed devices (of {} total)",
-                result.need_download.len(),
-                result.uuid_versions.len()
-            );
+            if result.need_download.is_empty() {
+                eprintln!(
+                    "\nNo new/changed devices; re-pushing {} owed device(s) only.",
+                    owed.len()
+                );
+            } else {
+                eprintln!(
+                    "\n{} new/changed devices (of {} total)",
+                    result.need_download.len(),
+                    result.uuid_versions.len()
+                );
+            }
 
             // Step 2: Convert (reuse existing firstbase pipeline)
             eprintln!("\n=== Converting to firstbase JSON ===");
@@ -366,30 +413,43 @@ fn main() -> Result<()> {
             let converted = converted.load(std::sync::atomic::Ordering::Relaxed);
             eprintln!("Converted {} devices to firstbase_json/", converted);
 
-            if converted == 0 {
+            if converted == 0 && owed.is_empty() {
                 eprintln!("Nothing to push.");
                 return Ok(());
             }
 
-            // Step 3: record the changed UUIDs (so a later `check --push-only` can
-            // retry a failed push without redoing listing/download/convert), then
-            // push — scoped to exactly this run's new/changed UUIDs, not the whole
-            // firstbase_json/ backlog (a nightly run never re-pushes unrelated
-            // leftover rejects, e.g. the HIBC/IFA or 097.095-blocked files).
-            let changed: std::collections::HashSet<String> =
+            // Step 3: push scope = this run's new/changed UUIDs ∪ devices still owed
+            // from a prior failed push. Scoped to exactly these files (never the whole
+            // firstbase_json/ backlog, so unrelated leftover rejects — HIBC/IFA,
+            // 097.095-blocked — are not dragged in). Record the scope as the pending
+            // list BEFORE pushing (survives a crash/failure), then clear it ONLY if
+            // the push actually reached GS1; a transport failure keeps it so the next
+            // nightly `check` (or `check --push-only`) re-pushes automatically.
+            let mut push_scope: std::collections::HashSet<String> =
                 result.need_download.iter().cloned().collect();
-            if let Some(parent) = changed_uuids_file.parent() {
+            push_scope.extend(owed.iter().cloned());
+            if let Some(parent) = pending_uuids_file.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
-            let uuid_list = changed.iter().cloned().collect::<Vec<_>>().join("\n");
-            if let Err(e) = std::fs::write(&changed_uuids_file, uuid_list) {
+            let uuid_list = push_scope.iter().cloned().collect::<Vec<_>>().join("\n");
+            if let Err(e) = std::fs::write(&pending_uuids_file, uuid_list) {
                 eprintln!(
-                    "Warning: could not record changed-UUID list at {}: {}",
-                    changed_uuids_file.display(),
+                    "Warning: could not record pending push list at {}: {}",
+                    pending_uuids_file.display(),
                     e
                 );
             }
-            push_changed_to_firstbase(&fb_config, &changed, &srns)?;
+            let pushed_ok = push_changed_to_firstbase(&fb_config, &push_scope, &srns)?;
+            if pushed_ok {
+                let _ = std::fs::remove_file(&pending_uuids_file);
+            } else {
+                eprintln!(
+                    "Push did not reach GS1 — {} device(s) kept in the pending list ({}); \
+                     the next nightly check (or `check --push-only`) will re-push them.",
+                    push_scope.len(),
+                    pending_uuids_file.display()
+                );
+            }
             Ok(())
         }
         Some("download") => {
@@ -1303,14 +1363,19 @@ fn main() -> Result<()> {
 /// Build the Firstbase push settings (credentials from env; recipient GLN and
 /// target env from env, falling back to config.toml) and push ONLY `uuids`
 /// (scoped). On a Production push, auto-email the GS1 report. Shared by `check`
-/// and `check --push-only`. Returns Ok — like the normal `check`, missing
-/// credentials/GLN or a push error are logged, not propagated (so a retry after
-/// a 503 exits cleanly).
+/// and `check --push-only`.
+///
+/// Returns `Ok(true)` when the push actually REACHED GS1 (`push_to_firstbase`
+/// returned Ok — even if some items were validation-rejected), and `Ok(false)`
+/// on a transport failure (503 / token / network) or a config skip (missing
+/// creds/GLN) where nothing was delivered. Callers use this to decide whether to
+/// clear the pending-push list. Errors are logged, not propagated, so a retry
+/// after an outage still exits cleanly.
 fn push_changed_to_firstbase(
     fb_config: &config::Config,
     uuids: &std::collections::HashSet<String>,
     srns: &[String],
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     eprintln!("\n=== Pushing to GS1 Firstbase API ===");
     let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
     let password = std::env::var("FIRSTBASE_PASSWORD").unwrap_or_default();
@@ -1320,12 +1385,12 @@ fn push_changed_to_firstbase(
         _ if !fb_config.provider.publish_gln.is_empty() => fb_config.provider.publish_gln.clone(),
         _ => {
             eprintln!("Set FIRSTBASE_PUBLISH_GLN (recipient GLN) or add publish_gln under [provider] in config.toml. Skipping push.");
-            return Ok(());
+            return Ok(false);
         }
     };
     if email.is_empty() || password.is_empty() {
         eprintln!("Set FIRSTBASE_EMAIL and FIRSTBASE_PASSWORD to push. Skipping push.");
-        return Ok(());
+        return Ok(false);
     }
 
     // Target environment: FIRSTBASE_ENV=Production (anything else = Test),
@@ -1359,12 +1424,15 @@ fn push_changed_to_firstbase(
                     eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                 }
             }
+            // Reached GS1 (validation rejects are a separate, per-item concern).
+            Ok(true)
         }
         Err(e) => {
+            // Transport failure (503 / token / network) — nothing delivered.
             eprintln!("\nPush failed: {}", e);
+            Ok(false)
         }
     }
-    Ok(())
 }
 
 fn send_gs1_prod_report(
