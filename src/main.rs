@@ -195,6 +195,57 @@ fn main() -> Result<()> {
                 eprintln!("No SRNs found in {}", file);
                 std::process::exit(1);
             }
+
+            // Where `check` records the UUIDs it is about to push, so a later
+            // `check --push-only` can retry a failed GS1 push WITHOUT redoing the
+            // ~15 min listing/download/convert (the converted firstbase_json/<uuid>
+            // .json files from the failed run are still on disk).
+            let changed_uuids_file = download::app_data_dir()
+                .join("log")
+                .join("last_changed_uuids.txt");
+
+            if args.iter().any(|a| a == "--push-only") {
+                // Retry-only path: skip listing/download/convert entirely and
+                // re-push exactly the UUIDs the last `check` recorded before its
+                // (failed) push. Use after a transient GS1 outage (e.g. token 503).
+                eprintln!("=== check --push-only: re-pushing last run's changed devices ===");
+                let uuids: std::collections::HashSet<String> =
+                    match std::fs::read_to_string(&changed_uuids_file) {
+                        Ok(s) => s
+                            .lines()
+                            .map(|l| l.trim().to_string())
+                            .filter(|l| !l.is_empty())
+                            .collect(),
+                        Err(e) => {
+                            eprintln!(
+                                "No recorded changed-UUID list at {} ({}). Nothing to retry.",
+                                changed_uuids_file.display(),
+                                e
+                            );
+                            std::process::exit(1);
+                        }
+                    };
+                if uuids.is_empty() {
+                    eprintln!("Recorded changed-UUID list is empty. Nothing to retry.");
+                    return Ok(());
+                }
+                eprintln!(
+                    "Loaded {} UUID(s) to re-push from {}",
+                    uuids.len(),
+                    changed_uuids_file.display()
+                );
+
+                let config_path = download::app_data_dir().join("config.toml");
+                let config_path = if config_path.exists() {
+                    config_path
+                } else {
+                    std::path::PathBuf::from("config.toml")
+                };
+                let fb_config = config::load_config(&config_path)?;
+                push_changed_to_firstbase(&fb_config, &uuids, &srns)?;
+                return Ok(());
+            }
+
             eprintln!("=== Check {} SRNs from {} ===", srns.len(), file);
 
             // Step 1: Download (with version check)
@@ -320,69 +371,25 @@ fn main() -> Result<()> {
                 return Ok(());
             }
 
-            // Step 3: Push to Firstbase API
-            eprintln!("\n=== Pushing to GS1 Firstbase API ===");
-            let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
-            let password = std::env::var("FIRSTBASE_PASSWORD").unwrap_or_default();
-            // Env var takes priority; fall back to publish_gln from config.toml.
-            let publish_gln = match std::env::var("FIRSTBASE_PUBLISH_GLN") {
-                Ok(v) if !v.is_empty() => v,
-                _ if !fb_config.provider.publish_gln.is_empty() => {
-                    fb_config.provider.publish_gln.clone()
-                }
-                _ => {
-                    eprintln!("Set FIRSTBASE_PUBLISH_GLN (recipient GLN) or add publish_gln under [provider] in config.toml. Skipping push.");
-                    return Ok(());
-                }
-            };
-            if email.is_empty() || password.is_empty() {
-                eprintln!("Set FIRSTBASE_EMAIL and FIRSTBASE_PASSWORD to push. Skipping push.");
-                return Ok(());
-            }
-
-            // Target environment: FIRSTBASE_ENV=Production (anything else = Test),
-            // mirroring repush-srn. Default Test keeps ad-hoc `check` runs safe.
-            let fb_env = match std::env::var("FIRSTBASE_ENV").as_deref() {
-                Ok("Production") | Ok("production") | Ok("PROD") | Ok("prod") => {
-                    gui::FirstbaseEnv::Production
-                }
-                _ => gui::FirstbaseEnv::Test,
-            };
-
-            // provider_gln comes from config.toml, not a hardcoded default.
-            let settings = gui::Settings {
-                firstbase_email: email,
-                firstbase_password: password,
-                publish_to_gln: publish_gln,
-                provider_gln: fb_config.provider.gln.clone(),
-                firstbase_env: fb_env,
-                ..Default::default()
-            };
-            let log_fn = |msg: &str| {
-                eprintln!("{}", msg);
-            };
-            // Push ONLY the changed devices (scoped to this run's new/changed UUIDs),
-            // not the whole firstbase_json/ backlog — so a nightly run never re-pushes
-            // unrelated leftover rejects (e.g. the HIBC/IFA or 097.095-blocked files).
+            // Step 3: record the changed UUIDs (so a later `check --push-only` can
+            // retry a failed push without redoing listing/download/convert), then
+            // push — scoped to exactly this run's new/changed UUIDs, not the whole
+            // firstbase_json/ backlog (a nightly run never re-pushes unrelated
+            // leftover rejects, e.g. the HIBC/IFA or 097.095-blocked files).
             let changed: std::collections::HashSet<String> =
                 result.need_download.iter().cloned().collect();
-            match gui::push_to_firstbase(&settings, &log_fn, Some(&changed)) {
-                Ok((accepted, rejected)) => {
-                    eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
-                    // After a Production push, auto-email the GS1 report (non-fatal —
-                    // a mail error never fails the run). Only fires here when devices
-                    // actually changed (we returned early above if nothing changed).
-                    if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
-                        if let Err(e) = send_gs1_prod_report(&fb_config, accepted, rejected, &srns)
-                        {
-                            eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("\nPush failed: {}", e);
-                }
+            if let Some(parent) = changed_uuids_file.parent() {
+                let _ = std::fs::create_dir_all(parent);
             }
+            let uuid_list = changed.iter().cloned().collect::<Vec<_>>().join("\n");
+            if let Err(e) = std::fs::write(&changed_uuids_file, uuid_list) {
+                eprintln!(
+                    "Warning: could not record changed-UUID list at {}: {}",
+                    changed_uuids_file.display(),
+                    e
+                );
+            }
+            push_changed_to_firstbase(&fb_config, &changed, &srns)?;
             Ok(())
         }
         Some("download") => {
@@ -1293,6 +1300,73 @@ fn main() -> Result<()> {
 /// No mail addresses are hardcoded — they live in the gitignored config.toml.
 /// Gmail credentials come from `[gmail]` in config.toml (p12 + service account).
 /// Never fails the push: returns Err only to be logged as non-fatal by the caller.
+/// Build the Firstbase push settings (credentials from env; recipient GLN and
+/// target env from env, falling back to config.toml) and push ONLY `uuids`
+/// (scoped). On a Production push, auto-email the GS1 report. Shared by `check`
+/// and `check --push-only`. Returns Ok — like the normal `check`, missing
+/// credentials/GLN or a push error are logged, not propagated (so a retry after
+/// a 503 exits cleanly).
+fn push_changed_to_firstbase(
+    fb_config: &config::Config,
+    uuids: &std::collections::HashSet<String>,
+    srns: &[String],
+) -> anyhow::Result<()> {
+    eprintln!("\n=== Pushing to GS1 Firstbase API ===");
+    let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
+    let password = std::env::var("FIRSTBASE_PASSWORD").unwrap_or_default();
+    // Env var takes priority; fall back to publish_gln from config.toml.
+    let publish_gln = match std::env::var("FIRSTBASE_PUBLISH_GLN") {
+        Ok(v) if !v.is_empty() => v,
+        _ if !fb_config.provider.publish_gln.is_empty() => fb_config.provider.publish_gln.clone(),
+        _ => {
+            eprintln!("Set FIRSTBASE_PUBLISH_GLN (recipient GLN) or add publish_gln under [provider] in config.toml. Skipping push.");
+            return Ok(());
+        }
+    };
+    if email.is_empty() || password.is_empty() {
+        eprintln!("Set FIRSTBASE_EMAIL and FIRSTBASE_PASSWORD to push. Skipping push.");
+        return Ok(());
+    }
+
+    // Target environment: FIRSTBASE_ENV=Production (anything else = Test),
+    // mirroring repush-srn. Default Test keeps ad-hoc `check` runs safe.
+    let fb_env = match std::env::var("FIRSTBASE_ENV").as_deref() {
+        Ok("Production") | Ok("production") | Ok("PROD") | Ok("prod") => {
+            gui::FirstbaseEnv::Production
+        }
+        _ => gui::FirstbaseEnv::Test,
+    };
+
+    // provider_gln comes from config.toml, not a hardcoded default.
+    let settings = gui::Settings {
+        firstbase_email: email,
+        firstbase_password: password,
+        publish_to_gln: publish_gln,
+        provider_gln: fb_config.provider.gln.clone(),
+        firstbase_env: fb_env,
+        ..Default::default()
+    };
+    let log_fn = |msg: &str| {
+        eprintln!("{}", msg);
+    };
+    match gui::push_to_firstbase(&settings, &log_fn, Some(uuids)) {
+        Ok((accepted, rejected)) => {
+            eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
+            // After a Production push, auto-email the GS1 report (non-fatal — a
+            // mail error never fails the run).
+            if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
+                if let Err(e) = send_gs1_prod_report(fb_config, accepted, rejected, srns) {
+                    eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("\nPush failed: {}", e);
+        }
+    }
+    Ok(())
+}
+
 fn send_gs1_prod_report(
     config: &config::Config,
     accepted: u32,
