@@ -58,8 +58,17 @@ pub struct ApiDeviceDetail {
     pub endocrine_disrupting_substances: Option<Vec<Substance>>,
     pub endocrine_disruptor: Option<bool>,
 
-    // Annex XVI
+    // Annex XVI (intended purpose other than medical). NB: the JSON key has "XVI"
+    // uppercase, which serde's camelCase would render "annexXvi..." — so rename explicitly.
+    #[serde(rename = "annexXVIApplicable")]
     pub annex_xvi_applicable: Option<bool>,
+    // Per-category flags (each maps 1:1 to a GS1 AnnexXVIIntendedPurposeTypeCode value)
+    pub contact_lenses: Option<bool>,
+    pub products_to_be_introduced: Option<bool>,
+    pub filling_by_injection: Option<bool>,
+    pub equipment_for_adipose_tissue: Option<bool>,
+    pub emr: Option<bool>,
+    pub brain_electro_stimulation: Option<bool>,
 
     // Product designer
     pub product_designer: Option<ProductDesigner>,

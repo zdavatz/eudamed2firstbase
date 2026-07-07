@@ -843,8 +843,32 @@ fn main() -> Result<()> {
                 config
             };
 
-            eprintln!("Regenerating all firstbase JSON files in parallel...");
-            let (converted, errors) = reconvert_uuids_from_detail(None, &data_dir, &fb_config);
+            // Optional `--uuid-file <path>`: reconvert only the listed UUIDs
+            // (convert-only, no push) — a scoped counterpart to the full rewrite.
+            let uuid_filter: Option<std::collections::HashSet<String>> = args
+                .iter()
+                .position(|a| a == "--uuid-file")
+                .and_then(|i| args.get(i + 1))
+                .map(|path| {
+                    std::fs::read_to_string(path)
+                        .map(|s| {
+                            s.lines()
+                                .map(|l| l.trim().to_string())
+                                .filter(|l| !l.is_empty())
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                });
+
+            match &uuid_filter {
+                Some(set) => eprintln!(
+                    "Regenerating {} firstbase JSON file(s) (scoped) in parallel...",
+                    set.len()
+                ),
+                None => eprintln!("Regenerating all firstbase JSON files in parallel..."),
+            }
+            let (converted, errors) =
+                reconvert_uuids_from_detail(uuid_filter.as_ref(), &data_dir, &fb_config);
             eprintln!("Done: {} regenerated, {} errors.", converted, errors);
             Ok(())
         }

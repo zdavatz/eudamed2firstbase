@@ -98,6 +98,38 @@ pub fn transform_detail_device(
         None
     };
 
+    // Annex XVI — intended purpose other than medical (EU MDR Annex XVI).
+    // The EUDAMED API exposes the categories as individual boolean flags (the XML
+    // export uses <nmdType> enum values instead); each true flag maps 1:1 to a GS1
+    // AnnexXVIIntendedPurposeTypeCode value (codelist verified against the maik
+    // UDID_CodeLists sheet). Annex XVI is an MDR concept, so legacy MDD/AIMDD/IVDD
+    // devices strip it (097.095), matching the other MDR-only fields above.
+    let annex_xvi_types: Vec<CodeValue> = if is_legacy || device.annex_xvi_applicable != Some(true)
+    {
+        Vec::new()
+    } else {
+        [
+            (device.contact_lenses, "CONTACT_LENSES"),
+            (device.products_to_be_introduced, "PRODUCT_IN_BODY"),
+            (device.filling_by_injection, "FILLING_BY_INJECTION"),
+            // GS1's codelist value is EQUIPMENT_4_ADIPOSE_TISSUE (not
+            // ..._FOR_...; the _FOR_ spelling is only the human-readable label
+            // and is G541-rejected — proven on a TEST push 2026-07-07).
+            (
+                device.equipment_for_adipose_tissue,
+                "EQUIPMENT_4_ADIPOSE_TISSUE",
+            ),
+            (device.emr, "EMR"),
+            (device.brain_electro_stimulation, "BRAIN_ELECTROSTIMULATION"),
+        ]
+        .iter()
+        .filter(|(flag, _)| *flag == Some(true))
+        .map(|(_, code)| CodeValue {
+            value: code.to_string(),
+        })
+        .collect()
+    };
+
     // --- Sterility ---
     let sterility = build_sterility(device, config);
 
@@ -518,7 +550,7 @@ pub fn transform_detail_device(
                     Some(basic_udi.and_then(|b| b.reusable).unwrap_or(false))
                 },
                 production_identifier_types: production_ids,
-                annex_xvi_types: Vec::new(),
+                annex_xvi_types,
                 special_device_type,
                 // 097.050: SPP devices use SystemOrProcedurePackTypeCode and MUST NOT
                 // emit MultiComponentDeviceTypeCode (and vice versa). The two GDSN code
