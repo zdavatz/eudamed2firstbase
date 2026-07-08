@@ -134,6 +134,7 @@ impl Default for DownloadConfig {
 }
 
 /// Summary of what was downloaded.
+#[derive(Default)]
 pub struct DownloadResult {
     /// All UUIDs from the listing (with version numbers).
     pub uuid_versions: Vec<(String, Option<u32>, Option<u32>)>,

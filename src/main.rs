@@ -253,12 +253,11 @@ fn main() -> Result<()> {
         Some("check") => {
             // Check SRNs for updates, download changed, convert, and push to Firstbase
             // Usage: cargo run check /tmp/srn_update [--threads N]
-            let file = args.get(2).unwrap_or_else(|| {
-                eprintln!("Usage: eudamed2firstbase check <srn_file> [--threads N]");
-                eprintln!("  Reads SRNs from file, checks for updates, downloads changed,");
-                eprintln!("  converts to firstbase JSON, and pushes to GS1 Firstbase API.");
-                std::process::exit(1);
-            });
+            // The SRN worklist file is OPTIONAL: it's the first positional
+            // (non-flag) argument. Omit it to run a GTIN-ONLY check (then
+            // --gtin-file is required) — the customer GTIN worklist is pushed on
+            // its own, skipping the ~30-min SRN listing pass entirely.
+            let srn_file: Option<&String> = args.get(2).filter(|a| !a.starts_with("--"));
             let threads: Option<usize> = args
                 .iter()
                 .position(|a| a == "--threads")
@@ -288,13 +287,30 @@ fn main() -> Result<()> {
                 })
                 .unwrap_or_default();
 
-            let srns: Vec<String> = std::fs::read_to_string(file)?
-                .lines()
-                .map(|l| l.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            if srns.is_empty() {
-                eprintln!("No SRNs found in {}", file);
+            let srns: Vec<String> = match srn_file {
+                Some(f) => std::fs::read_to_string(f)?
+                    .lines()
+                    .map(|l| l.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect(),
+                None => Vec::new(),
+            };
+            if srns.is_empty() && gtins.is_empty() {
+                match srn_file {
+                    Some(f) => eprintln!("No SRNs found in {}", f),
+                    None => {
+                        eprintln!(
+                            "Usage: eudamed2firstbase check <srn_file> [--gtin-file <gtins>] [--threads N]"
+                        );
+                        eprintln!(
+                            "       eudamed2firstbase check --gtin-file <gtins> [--threads N]   (GTIN-only, no SRNs)"
+                        );
+                        eprintln!(
+                            "  Checks SRNs and/or a GTIN worklist for updates, downloads changed,"
+                        );
+                        eprintln!("  converts to firstbase JSON, and pushes to GS1 Firstbase API.");
+                    }
+                }
                 std::process::exit(1);
             }
 
@@ -367,21 +383,33 @@ fn main() -> Result<()> {
             // push scope below).
             let pending_prev = read_uuid_set(&pending_uuids_file);
 
-            eprintln!("=== Check {} SRNs from {} ===", srns.len(), file);
-
-            // Step 1: Download (with version check)
-            let mut dl_config = download::DownloadConfig {
-                srns: srns.clone(),
-                limit: None,
-                ..Default::default()
-            };
-            if let Some(t) = threads {
-                dl_config.parallel_threads = t;
-                dl_config.detail_threads = t;
-                dl_config.listing_threads = t;
+            match srn_file {
+                Some(f) => eprintln!("=== Check {} SRNs from {} ===", srns.len(), f),
+                None => eprintln!(
+                    "=== GTIN-only check: {} GTIN(s), no SRN worklist ===",
+                    gtins.len()
+                ),
             }
+
+            // Step 1: Download (with version check). Skip the SRN listing pass
+            // entirely when there is no SRN worklist (GTIN-only) — start from an
+            // empty result and let the GTIN pass below fill it.
             let progress = download::StderrProgress;
-            let mut result = download::run_download(&dl_config, &progress)?;
+            let mut result = if srns.is_empty() {
+                download::DownloadResult::default()
+            } else {
+                let mut dl_config = download::DownloadConfig {
+                    srns: srns.clone(),
+                    limit: None,
+                    ..Default::default()
+                };
+                if let Some(t) = threads {
+                    dl_config.parallel_threads = t;
+                    dl_config.detail_threads = t;
+                    dl_config.listing_threads = t;
+                }
+                download::run_download(&dl_config, &progress)?
+            };
 
             // Second pass: the GTIN worklist, downloaded SEQUENTIALLY after the SRN
             // pass (never concurrently — the per-IP rate budget is shared; see the
