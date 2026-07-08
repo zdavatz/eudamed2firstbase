@@ -48,10 +48,18 @@ pub struct Sheet {
     /// A1 range whose first column holds the SRNs (header row tolerated).
     #[serde(default = "default_srn_range")]
     pub srn_range: String,
+    /// A1 range whose first column holds the customer GTIN worklist
+    /// (`sync-gtins`, header row tolerated). Same spreadsheet, separate tab.
+    #[serde(default = "default_gtin_range")]
+    pub gtin_range: String,
 }
 
 fn default_srn_range() -> String {
     "eudamed2firstbase_SRN!B1:B".to_string()
+}
+
+fn default_gtin_range() -> String {
+    "eudamed2firstbase_GTIN!B1:B".to_string()
 }
 
 impl Default for Sheet {
@@ -59,6 +67,7 @@ impl Default for Sheet {
         Sheet {
             spreadsheet_id: String::new(),
             srn_range: default_srn_range(),
+            gtin_range: default_gtin_range(),
         }
     }
 }

@@ -34,14 +34,17 @@ p12_key       = "/path/to/your-service-account.p12"
 service_email = "your-service-account@your-project.iam.gserviceaccount.com"
 
 # ---------------------------------------------------------------------------
-# Customer SRN worklist Google Sheet (used by `sync-srns` for the nightly
-# `check`). Read-only via the SAME service account as [gmail] above — share the
-# sheet with that service-account email as Viewer. spreadsheet_id is the long
-# token in the sheet URL.
+# Customer SRN + GTIN worklist Google Sheet (used by `sync-srns` / `sync-gtins`
+# for the nightly `check`). Read-only via the SAME service account as [gmail]
+# above — share the sheet with that service-account email as Viewer.
+# spreadsheet_id is the long token in the sheet URL. srn_range / gtin_range are
+# separate tabs of the same spreadsheet; the first column of each range holds
+# the value (a header row is tolerated).
 # ---------------------------------------------------------------------------
 [sheet]
 spreadsheet_id = "your-spreadsheet-id"
-srn_range      = "eudamed2firstbase_SRN!B1:B"   # first column of range = SRN
+srn_range      = "eudamed2firstbase_SRN!B1:B"    # first column of range = SRN
+gtin_range     = "eudamed2firstbase_GTIN!B1:B"   # first column of range = GTIN
 
 # ---------------------------------------------------------------------------
 # GS1 Production push-report recipients (used by send_gs1_prod_report). Kept

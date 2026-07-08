@@ -77,15 +77,24 @@ fn is_srn(s: &str) -> bool {
         && num.chars().all(|c| c.is_ascii_digit())
 }
 
-/// Fetch the SRN list from the configured Google Sheet, de-duplicated,
-/// preserving sheet order. Errors if `[sheet] spreadsheet_id` or the
-/// `[gmail]` service-account fields are unset, or the API call fails.
-pub fn fetch_srns(config: &crate::config::Config) -> Result<Vec<String>> {
+/// Validate a GTIN (UDI-DI primary code): all ASCII digits, GS1 length 8..=14
+/// (GTIN-8/12/13/14). EUDAMED's `primaryDi` filter expects the exact numeric
+/// code; non-numeric primaries (HIBC/IFA) are not GTINs and are rejected here.
+fn is_gtin(s: &str) -> bool {
+    let len = s.len();
+    (8..=14).contains(&len) && s.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Read the first column of an A1 range from the configured Google Sheet as
+/// trimmed, non-empty cell strings (in sheet order, no de-dup, no validation).
+/// Shared by `fetch_srns` / `fetch_gtins`. Errors if `[sheet] spreadsheet_id`
+/// or the `[gmail]` service-account fields are unset, or the API call fails.
+fn fetch_first_column(config: &crate::config::Config, range: &str) -> Result<Vec<String>> {
     let sheet = &config.sheet;
     let gmail = &config.gmail;
     if sheet.spreadsheet_id.trim().is_empty() {
         return Err(anyhow!(
-            "Set [sheet] spreadsheet_id in config.toml to sync SRNs from the Google Sheet"
+            "Set [sheet] spreadsheet_id in config.toml to sync from the Google Sheet"
         ));
     }
     if gmail.p12_key.trim().is_empty() || gmail.service_email.trim().is_empty() {
@@ -100,7 +109,7 @@ pub fn fetch_srns(config: &crate::config::Config) -> Result<Vec<String>> {
     let url = format!(
         "https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}",
         sheet.spreadsheet_id,
-        urlencode(&sheet.srn_range)
+        urlencode(range)
     );
 
     let agent = ureq::Agent::config_builder()
@@ -125,7 +134,6 @@ pub fn fetch_srns(config: &crate::config::Config) -> Result<Vec<String>> {
         .and_then(|v| v.as_array())
         .ok_or_else(|| anyhow!("Sheets response has no `values` array: {}", body))?;
 
-    let mut seen = std::collections::HashSet::new();
     let mut out = Vec::new();
     for row in rows {
         let cell = row
@@ -134,8 +142,39 @@ pub fn fetch_srns(config: &crate::config::Config) -> Result<Vec<String>> {
             .and_then(|c| c.as_str())
             .unwrap_or("")
             .trim()
-            .to_uppercase();
-        if is_srn(&cell) && seen.insert(cell.clone()) {
+            .to_string();
+        if !cell.is_empty() {
+            out.push(cell);
+        }
+    }
+    Ok(out)
+}
+
+/// Fetch the SRN list from the configured Google Sheet, de-duplicated,
+/// preserving sheet order.
+pub fn fetch_srns(config: &crate::config::Config) -> Result<Vec<String>> {
+    let cells = fetch_first_column(config, &config.sheet.srn_range)?;
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for cell in cells {
+        let srn = cell.to_uppercase();
+        if is_srn(&srn) && seen.insert(srn.clone()) {
+            out.push(srn);
+        }
+    }
+    Ok(out)
+}
+
+/// Fetch the customer GTIN worklist from the configured Google Sheet
+/// (`[sheet] gtin_range`, default the `eudamed2firstbase_GTIN` tab),
+/// de-duplicated, preserving sheet order. Invalid/non-numeric cells (header,
+/// notes) are dropped.
+pub fn fetch_gtins(config: &crate::config::Config) -> Result<Vec<String>> {
+    let cells = fetch_first_column(config, &config.sheet.gtin_range)?;
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for cell in cells {
+        if is_gtin(&cell) && seen.insert(cell.clone()) {
             out.push(cell);
         }
     }
@@ -171,6 +210,18 @@ mod tests {
         assert!(!is_srn("DEU-MF-000017808")); // 3-letter country
         assert!(!is_srn("DE-MF-123")); // too short
         assert!(!is_srn("")); // empty
+    }
+
+    #[test]
+    fn gtin_shape() {
+        assert!(is_gtin("04034342074074")); // 14-digit GTIN-14
+        assert!(is_gtin("7612345000435")); // 13-digit
+        assert!(is_gtin("12345678")); // 8-digit GTIN-8
+        assert!(!is_gtin("GTIN")); // header
+        assert!(!is_gtin("H123ABC")); // HIBC / non-numeric
+        assert!(!is_gtin("1234567")); // too short
+        assert!(!is_gtin("040343420740745")); // 15 digits, too long
+        assert!(!is_gtin("")); // empty
     }
 
     #[test]

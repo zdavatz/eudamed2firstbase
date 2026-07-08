@@ -132,6 +132,85 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Some("sync-gtins") => {
+            // Refresh the customer GTIN worklist from the eudamed2firstbase_GTIN
+            // Google Sheet tab. Usage: cargo run sync-gtins [outfile] (default
+            // gtins_sheet.txt). The nightly `check --gtin-file gtins_sheet.txt`
+            // then covers newly added GTINs. Same safety as sync-srns: on any
+            // sheet-read error or a zero-GTIN result the existing file is left
+            // untouched (a transient API hiccup must never wipe the worklist) and
+            // the command exits non-zero.
+            let out_path = args
+                .get(2)
+                .filter(|s| !s.starts_with("--"))
+                .cloned()
+                .unwrap_or_else(|| "gtins_sheet.txt".to_string());
+
+            let config_path = std::path::Path::new("config.toml");
+            let config_path = if config_path.exists() {
+                config_path.to_path_buf()
+            } else {
+                download::app_data_dir().join("config.toml")
+            };
+            let cfg = config::load_config(&config_path)?;
+
+            let gtins = match sheet::fetch_gtins(&cfg) {
+                Ok(g) if !g.is_empty() => g,
+                Ok(_) => {
+                    eprintln!(
+                        "sync-gtins: sheet returned 0 valid GTINs — keeping existing {} unchanged.",
+                        out_path
+                    );
+                    std::process::exit(2);
+                }
+                Err(e) => {
+                    eprintln!(
+                        "sync-gtins: ERROR reading sheet ({e}) — keeping existing {} unchanged.",
+                        out_path
+                    );
+                    std::process::exit(2);
+                }
+            };
+
+            let old: Vec<String> = std::fs::read_to_string(&out_path)
+                .map(|s| s.split_whitespace().map(|x| x.to_string()).collect())
+                .unwrap_or_default();
+            let old_set: std::collections::HashSet<&String> = old.iter().collect();
+            let new_set: std::collections::HashSet<&String> = gtins.iter().collect();
+            let added: Vec<&String> = gtins.iter().filter(|g| !old_set.contains(*g)).collect();
+            let removed: Vec<&String> = old.iter().filter(|g| !new_set.contains(*g)).collect();
+
+            std::fs::write(&out_path, format!("{}\n", gtins.join("\n")))
+                .with_context(|| format!("Failed to write {}", out_path))?;
+            eprintln!(
+                "sync-gtins: wrote {} GTINs to {} (+{} new, -{} removed)",
+                gtins.len(),
+                out_path,
+                added.len(),
+                removed.len()
+            );
+            if !added.is_empty() {
+                eprintln!(
+                    "  new GTINs: {}",
+                    added
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+            if !removed.is_empty() {
+                eprintln!(
+                    "  removed GTINs: {}",
+                    removed
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+            Ok(())
+        }
         Some("sync-actors") => {
             // Refresh the EUDAMED actor registry (SRN -> manufacturer/AR name +
             // country/address) into the `actors` table. Re-runnable (upsert).
@@ -185,6 +264,29 @@ fn main() -> Result<()> {
                 .position(|a| a == "--threads")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|s| s.parse().ok());
+
+            // Optional customer GTIN worklist (--gtin-file <path>): downloaded in a
+            // SECOND, SEQUENTIAL pass after the SRN pass. EUDAMED's ~60-req/60-s
+            // budget is shared per-IP across ALL device endpoints (listing + detail
+            // + basic), so the SRN and GTIN passes must NOT run concurrently —
+            // each run_download paces itself under the ceiling, and running them
+            // back-to-back keeps the aggregate under it too. One GTIN per line,
+            // '#' comments tolerated.
+            let gtins: Vec<String> = args
+                .iter()
+                .position(|a| a == "--gtin-file")
+                .and_then(|i| args.get(i + 1))
+                .map(|path| {
+                    std::fs::read_to_string(path)
+                        .map(|s| {
+                            s.lines()
+                                .map(|l| l.trim().to_string())
+                                .filter(|l| !l.is_empty() && !l.starts_with('#'))
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default()
+                })
+                .unwrap_or_default();
 
             let srns: Vec<String> = std::fs::read_to_string(file)?
                 .lines()
@@ -248,7 +350,7 @@ fn main() -> Result<()> {
                     std::path::PathBuf::from("config.toml")
                 };
                 let fb_config = config::load_config(&config_path)?;
-                let pushed_ok = push_changed_to_firstbase(&fb_config, &uuids, &srns)?;
+                let pushed_ok = push_changed_to_firstbase(&fb_config, &uuids, &srns, &gtins)?;
                 if pushed_ok {
                     let _ = std::fs::remove_file(&pending_uuids_file);
                     eprintln!("Cleared pending push list (delivered to GS1).");
@@ -279,7 +381,49 @@ fn main() -> Result<()> {
                 dl_config.listing_threads = t;
             }
             let progress = download::StderrProgress;
-            let result = download::run_download(&dl_config, &progress)?;
+            let mut result = download::run_download(&dl_config, &progress)?;
+
+            // Second pass: the GTIN worklist, downloaded SEQUENTIALLY after the SRN
+            // pass (never concurrently — the per-IP rate budget is shared; see the
+            // --gtin-file note above). Each GTIN resolves via the primaryDi filter,
+            // is written to listing_cache with its real manufacturerSrn, and yields
+            // the same (uuid, version, budi) tuples → merged into the SRN result so
+            // the convert + push steps treat SRN- and GTIN-sourced devices
+            // uniformly. Devices already covered by an SRN are de-duplicated.
+            if !gtins.is_empty() {
+                eprintln!(
+                    "\n=== Second pass: checking {} GTIN(s) from --gtin-file (sequential) ===",
+                    gtins.len()
+                );
+                let mut gcfg = download::DownloadConfig {
+                    gtins: gtins.clone(),
+                    limit: None,
+                    ..Default::default()
+                };
+                if let Some(t) = threads {
+                    gcfg.parallel_threads = t;
+                    gcfg.detail_threads = t;
+                    gcfg.listing_threads = t;
+                }
+                let gresult = download::run_download(&gcfg, &progress)?;
+                let mut seen: std::collections::HashSet<String> =
+                    result.need_download.iter().cloned().collect();
+                for u in gresult.need_download {
+                    if seen.insert(u.clone()) {
+                        result.need_download.push(u);
+                    }
+                }
+                let mut seen_v: std::collections::HashSet<String> = result
+                    .uuid_versions
+                    .iter()
+                    .map(|(u, ..)| u.clone())
+                    .collect();
+                for tup in gresult.uuid_versions {
+                    if seen_v.insert(tup.0.clone()) {
+                        result.uuid_versions.push(tup);
+                    }
+                }
+            }
 
             // Devices owed from a prior failed push: keep only those whose converted
             // firstbase_json/<uuid>.json still exists on disk (an already-accepted one
@@ -439,7 +583,36 @@ fn main() -> Result<()> {
                     e
                 );
             }
-            let pushed_ok = push_changed_to_firstbase(&fb_config, &push_scope, &srns)?;
+
+            // GS1 report body lists the pushed SRNs. GTIN-worklist devices resolve
+            // to their real manufacturer SRN in listing_cache, which is NOT in the
+            // SRN worklist file — add those so an accepted customer GTIN device shows
+            // up under "SRNs ok" instead of silently missing. (The report CSVs
+            // already carry per-device SRN via the listing_cache join.)
+            let mut report_srns: Vec<String> = srns.clone();
+            if !gtins.is_empty() {
+                if let Ok(c) = conn.lock() {
+                    if let Ok(mut stmt) = c.prepare("SELECT srn FROM listing_cache WHERE uuid = ?1")
+                    {
+                        let mut extra: Vec<String> = Vec::new();
+                        let existing: std::collections::HashSet<&String> = srns.iter().collect();
+                        for uuid in &push_scope {
+                            if let Ok(srn) = stmt.query_row([uuid], |r| r.get::<_, String>(0)) {
+                                if !srn.is_empty()
+                                    && !existing.contains(&srn)
+                                    && !extra.contains(&srn)
+                                {
+                                    extra.push(srn);
+                                }
+                            }
+                        }
+                        extra.sort();
+                        report_srns.extend(extra);
+                    }
+                }
+            }
+            let pushed_ok =
+                push_changed_to_firstbase(&fb_config, &push_scope, &report_srns, &gtins)?;
             if pushed_ok {
                 let _ = std::fs::remove_file(&pending_uuids_file);
             } else {
@@ -1167,7 +1340,10 @@ fn main() -> Result<()> {
                     // After a Production push, auto-email the GS1 report (errors-only
                     // CSV + full HTML log) to GS1. Never fail the run on a mail error.
                     if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
-                        if let Err(e) = send_gs1_prod_report(&config, accepted, rejected, &srns) {
+                        // repush-srn is SRN-scoped — no GTIN worklist.
+                        if let Err(e) =
+                            send_gs1_prod_report(&config, accepted, rejected, &srns, &[])
+                        {
                             eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                         }
                     }
@@ -1182,9 +1358,25 @@ fn main() -> Result<()> {
             // Manually (re)send the GS1 Production push report (errors CSV +
             // devices CSV + HTML log) for the latest Production session. Mirrors
             // the automatic send after a `repush-srn` Production push.
-            // Usage: gs1-report [<accepted> <rejected>] [SRN ...] [--file <srns.txt>]
+            // Usage: gs1-report [<accepted> <rejected>] [SRN ...] [--file <srns.txt>] [--gtin-file <gtins.txt>]
             //   The SRNs (positional after the two counts, or --file) are listed in
-            //   the mail body. GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE apply.
+            //   the mail body. --gtin-file adds the separate GTIN-worklist updates
+            //   CSV. GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE apply.
+            let gtins: Vec<String> = args
+                .iter()
+                .position(|a| a == "--gtin-file")
+                .and_then(|i| args.get(i + 1))
+                .map(|path| {
+                    std::fs::read_to_string(path)
+                        .map(|s| {
+                            s.lines()
+                                .map(|l| l.trim().to_string())
+                                .filter(|l| !l.is_empty() && !l.starts_with('#'))
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default()
+                })
+                .unwrap_or_default();
             let accepted = args.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
             let rejected = args.get(3).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
             let srns: Vec<String> = if let Some(pos) = args.iter().position(|a| a == "--file") {
@@ -1197,14 +1389,28 @@ fn main() -> Result<()> {
                     .filter(|s| !s.is_empty() && !s.starts_with('#'))
                     .collect()
             } else {
-                // Positional SRNs after the two count args (skip non-SRN flags).
-                args.iter()
-                    .skip(4)
-                    .filter(|a| !a.starts_with("--"))
-                    .cloned()
-                    .collect()
+                // Positional SRNs after the two count args. Skip flags AND the
+                // value that follows a value-taking flag (--gtin-file <path>), so
+                // the path is not mistaken for an SRN in the mail body.
+                let mut out = Vec::new();
+                let mut skip_next = false;
+                for a in args.iter().skip(4) {
+                    if skip_next {
+                        skip_next = false;
+                        continue;
+                    }
+                    if a == "--gtin-file" || a == "--file" {
+                        skip_next = true;
+                        continue;
+                    }
+                    if a.starts_with("--") {
+                        continue;
+                    }
+                    out.push(a.clone());
+                }
+                out
             };
-            send_gs1_prod_report(&config, accepted, rejected, &srns)?;
+            send_gs1_prod_report(&config, accepted, rejected, &srns, &gtins)?;
             Ok(())
         }
         Some("status") => {
@@ -1399,6 +1605,7 @@ fn push_changed_to_firstbase(
     fb_config: &config::Config,
     uuids: &std::collections::HashSet<String>,
     srns: &[String],
+    gtin_worklist: &[String],
 ) -> anyhow::Result<bool> {
     eprintln!("\n=== Pushing to GS1 Firstbase API ===");
     let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
@@ -1444,7 +1651,9 @@ fn push_changed_to_firstbase(
             // After a Production push, auto-email the GS1 report (non-fatal — a
             // mail error never fails the run).
             if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
-                if let Err(e) = send_gs1_prod_report(fb_config, accepted, rejected, srns) {
+                if let Err(e) =
+                    send_gs1_prod_report(fb_config, accepted, rejected, srns, gtin_worklist)
+                {
                     eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                 }
             }
@@ -1464,6 +1673,7 @@ fn send_gs1_prod_report(
     accepted: u32,
     rejected: u32,
     srns: &[String],
+    gtin_worklist: &[String],
 ) -> anyhow::Result<()> {
     if std::env::var("GS1_REPORT_DISABLE")
         .map(|v| !v.is_empty())
@@ -1511,6 +1721,10 @@ fn send_gs1_prod_report(
     let errors_csv = prod_log_dir.join(format!("rejects_errors_{}.csv", ts));
     let devices_csv = prod_log_dir.join(format!("rejects_devices_{}.csv", ts));
     let updates_csv = prod_log_dir.join(format!("updates_pushed_{}.csv", ts));
+    // Separate attachment: only the accepted devices from the customer GTIN
+    // worklist (gtin ∈ gtin_worklist). Written + attached only when the worklist
+    // is non-empty AND ≥1 of its GTINs was accepted this session.
+    let gtin_updates_csv = prod_log_dir.join(format!("updates_gtin_{}.csv", ts));
     let _ = std::fs::create_dir_all(&prod_log_dir);
     let esc = |s: &str| format!("\"{}\"", s.replace('"', "\"\""));
 
@@ -1662,11 +1876,49 @@ fn send_gs1_prod_report(
         std::fs::write(&updates_csv, csv.as_bytes())
             .with_context(|| format!("write {}", updates_csv.display()))?;
     }
+    // 4) GTIN-worklist updates CSV — the subset of the accepted devices whose
+    //    GTIN is in the customer GTIN worklist, so distribution/GS1 can see the
+    //    customer's own updates separately from the SRN-worklist ones. Same
+    //    columns as updates_pushed. Only written when there is ≥1 such row.
+    let gtin_update_count = if gtin_worklist.is_empty() {
+        0
+    } else {
+        let worklist: std::collections::HashSet<&str> =
+            gtin_worklist.iter().map(|g| g.as_str()).collect();
+        let mut csv =
+            String::from("srn,gtin,udi_version,budi_version,version_date,eudamed_url\r\n");
+        let mut n = 0usize;
+        for (srn, gtin, uuid, udi_ver, budi_ver, ver_date) in &accepted_rows {
+            if !worklist.contains(gtin.as_str()) {
+                continue;
+            }
+            n += 1;
+            let url = format!(
+                "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData/{}?languageIso2Code=en",
+                uuid
+            );
+            csv.push_str(&format!(
+                "{},{},{},{},{},{}\r\n",
+                esc(srn),
+                esc(gtin),
+                esc(udi_ver),
+                esc(budi_ver),
+                esc(ver_date),
+                esc(&url)
+            ));
+        }
+        if n > 0 {
+            std::fs::write(&gtin_updates_csv, csv.as_bytes())
+                .with_context(|| format!("write {}", gtin_updates_csv.display()))?;
+        }
+        n
+    };
     eprintln!(
-        "GS1 auto-report: {} error rows / {} devices / {} accepted -> {} , {} , {}",
+        "GS1 auto-report: {} error rows / {} devices / {} accepted ({} GTIN-worklist) -> {} , {} , {}",
         error_rows.len(),
         device_count,
         accepted_rows.len(),
+        gtin_update_count,
         errors_csv.display(),
         devices_csv.display(),
         updates_csv.display()
@@ -1695,11 +1947,19 @@ fn send_gs1_prod_report(
         errors_csv.to_string_lossy().to_string(),
         devices_csv.to_string_lossy().to_string(),
     ];
+    // The GTIN-worklist updates CSV (if any rows) goes right after the full
+    // updates list — tiny, always kept.
+    if gtin_update_count > 0 {
+        attachments.insert(1, gtin_updates_csv.to_string_lossy().to_string());
+    }
     let base_size = std::fs::metadata(&updates_csv)
         .map(|m| m.len())
         .unwrap_or(0)
         + std::fs::metadata(&errors_csv).map(|m| m.len()).unwrap_or(0)
         + std::fs::metadata(&devices_csv)
+            .map(|m| m.len())
+            .unwrap_or(0)
+        + std::fs::metadata(&gtin_updates_csv)
             .map(|m| m.len())
             .unwrap_or(0);
     if let Some(html) = &latest_html {
