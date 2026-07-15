@@ -1659,12 +1659,14 @@ fn run_pipeline(
                 // Mode 3 (Repush failed, ALL): intentionally unscoped — push every
                 // rejected file still in firstbase_json/, across all SRNs.
                 match push_to_firstbase(&settings, &log, None) {
-                    Ok((accepted, rejected)) => {
+                    Ok(out) => {
                         done(
                             true,
                             &format!(
-                                "Repush complete. {} accepted, {} rejected.",
-                                accepted, rejected
+                                "Repush complete. {} accepted, {} rejected.{}",
+                                out.accepted,
+                                out.rejected,
+                                transport_failure_note(out.transport_failed)
                             ),
                         );
                     }
@@ -1991,12 +1993,15 @@ fn run_pipeline(
         // SRN-scoped (Mode 4/5/6): push ONLY this run's UUIDs, not the whole
         // firstbase_json/ backlog of other SRNs' rejected files.
         match push_to_firstbase(&settings, &log, Some(&uuids)) {
-            Ok((accepted, rejected)) => {
+            Ok(out) => {
                 done(
                     true,
                     &format!(
-                        "{} complete. {} accepted, {} rejected.",
-                        mode_label, accepted, rejected
+                        "{} complete. {} accepted, {} rejected.{}",
+                        mode_label,
+                        out.accepted,
+                        out.rejected,
+                        transport_failure_note(out.transport_failed)
                     ),
                 );
             }
@@ -2382,12 +2387,13 @@ fn run_pipeline(
             let push_result = push_to_firstbase(&settings, &log, None);
 
             match push_result {
-                Ok((accepted, rejected)) => {
+                Ok(out) => {
                     done(
                         true,
                         &format!(
-                        "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.",
-                        uuids.len(), converted, accepted, rejected
+                        "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.{}",
+                        uuids.len(), converted, out.accepted, out.rejected,
+                        transport_failure_note(out.transport_failed)
                     ),
                     );
                 }
@@ -2514,11 +2520,39 @@ fn restamp_discontinued_date(
 /// that SRN's devices and never drags the whole `firstbase_json/` retry backlog
 /// (rejected files of other SRNs) into the push. `None` = push everything in the
 /// directory (Mode 0/1/2/3 + `check`), the historical behaviour.
+/// Suffix for GUI completion messages when a push had batch-level transport
+/// failures — makes a partially-dead push visibly different from a clean one.
+fn transport_failure_note(transport_failed: u32) -> String {
+    if transport_failed == 0 {
+        String::new()
+    } else {
+        format!(
+            " WARNING: {} item(s) NOT delivered (GS1 batch transport failure) — run the push again.",
+            transport_failed
+        )
+    }
+}
+
+/// Result of a firstbase push. `accepted`/`rejected` are file-level counts
+/// (moved to `processed/` vs kept in `firstbase_json/` for retry).
+/// `transport_failed` counts the items whose CreateMany batch never got a
+/// validation verdict from GS1 — batch-level "unexpected error" with no
+/// `Gs1ResponseMessage`, poll timeout, or poll network error (issue #50 /
+/// GS1 ticket GDSN-10393). They are included in `rejected`, but unlike
+/// per-item validation rejects (097.xxx) they are outages, not data
+/// problems, so the nightly `check` keeps them on the pending-push list
+/// and retries automatically.
+pub struct PushOutcome {
+    pub accepted: u32,
+    pub rejected: u32,
+    pub transport_failed: u32,
+}
+
 pub fn push_to_firstbase(
     settings: &Settings,
     log: &dyn Fn(&str),
     uuid_filter: Option<&std::collections::HashSet<String>>,
-) -> anyhow::Result<(u32, u32)> {
+) -> anyhow::Result<PushOutcome> {
     let api_base = settings.firstbase_env.api_base();
     let env_label = match settings.firstbase_env {
         FirstbaseEnv::Test => "TEST",
@@ -2561,7 +2595,11 @@ pub fn push_to_firstbase(
 
     if files.is_empty() {
         log("No firstbase JSON files to push.");
-        return Ok((0, 0));
+        return Ok(PushOutcome {
+            accepted: 0,
+            rejected: 0,
+            transport_failed: 0,
+        });
     }
 
     log(&format!("Found {} firstbase JSON files", files.len()));
@@ -2667,7 +2705,11 @@ pub fn push_to_firstbase(
         ));
     }
     if pushable.is_empty() {
-        return Ok((0, 0));
+        return Ok(PushOutcome {
+            accepted: 0,
+            rejected: 0,
+            transport_failed: 0,
+        });
     }
 
     // --- Helper: HTTP POST with JSON ---
@@ -2744,6 +2786,9 @@ pub fn push_to_firstbase(
     // --- CreateMany in batches ---
     let total = pushable.len();
     let mut all_publish_items: Vec<serde_json::Value> = Vec::new();
+    // Items whose CreateMany batch never got a validation verdict from GS1
+    // (batch-level transport failure / poll timeout) — see PushOutcome.
+    let mut transport_failed_items: u32 = 0;
 
     for (bi, batch) in pushable.chunks(batch_size).enumerate() {
         let batch_start = bi * batch_size + 1;
@@ -2881,6 +2926,16 @@ pub fn push_to_firstbase(
         // When non-empty, the whole CreateMany batch document was rejected and
         // none of its items were created Live.
         let mut batch_doc_errors: Vec<(String, String)> = Vec::new();
+        // Batch-level transport failure (issue #50 / GS1 ticket GDSN-10393):
+        // GS1 never processed the batch, so its items got no validation
+        // verdict at all. Distinguished from document-level rejects so the
+        // nightly `check` keeps these on the pending-push list for retry.
+        let mut batch_transport_failed = false;
+        // Whether any poll returned a terminal status (Done/Failed). If the
+        // poll loop ends without one (timeout or poll network error), the
+        // batch outcome is UNKNOWN — treating it as accepted would be the
+        // same phantom-success masking as issue #50.
+        let mut got_terminal = false;
 
         // Poll until Done
         for poll in 1..=24 {
@@ -2901,11 +2956,35 @@ pub fn push_to_firstbase(
                             .and_then(|v| v.as_str())
                             .unwrap_or("unknown");
                         if status == "Done" || status == "Failed" {
+                            got_terminal = true;
                             raw_responses
                                 .push(serde_json::to_string_pretty(&body).unwrap_or_default());
                             let gs1 = body.pointer("/Gs1ResponseMessage/GS1Response");
                             let mut batch_accepted = 0u32;
                             let mut batch_rejected = 0u32;
+                            // Status=Failed with NO GS1Response at all (only an
+                            // ErrorDetails string, "Workflow ID: N/A") = GS1 never
+                            // processed the batch. Without this branch the batch
+                            // yields 0 errors and every item is silently counted
+                            // ACCEPTED (issue #50: the Mode-5 log claimed 158/0
+                            // while a 100-item batch was never created).
+                            if status == "Failed"
+                                && gs1
+                                    .and_then(|v| v.as_array())
+                                    .map_or(true, |r| r.is_empty())
+                            {
+                                let details = body
+                                    .get("ErrorDetails")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("(no ErrorDetails)")
+                                    .replace(['\r', '\n'], " ");
+                                batch_transport_failed = true;
+                                batch_rejected += 1;
+                                batch_doc_errors.push((
+                                    "BATCH_FAILED".to_string(),
+                                    details.chars().take(300).collect(),
+                                ));
+                            }
                             if let Some(responses) = gs1.and_then(|v| v.as_array()) {
                                 for r in responses {
                                     // Accepted
@@ -3102,6 +3181,19 @@ pub fn push_to_firstbase(
             }
         }
 
+        // Poll loop ended without a terminal Done/Failed status (24-poll
+        // timeout or a poll network error): the batch outcome is unconfirmed.
+        // Treat as a transport failure — keep the items for retry instead of
+        // silently counting them accepted.
+        if !got_terminal && batch_doc_errors.is_empty() {
+            batch_transport_failed = true;
+            total_rejected += 1;
+            batch_doc_errors.push((
+                "BATCH_UNCONFIRMED".to_string(),
+                "No terminal status from RequestStatus/Get (poll timeout or network error) — batch delivery unconfirmed".to_string(),
+            ));
+        }
+
         // A document/XSD-level failure (G361 + SCHEMA) fails the ENTIRE CreateMany
         // batch document — none of its items were created Live. Mark them all
         // rejected so they are kept in firstbase_json/ for retry and reported
@@ -3118,12 +3210,22 @@ pub fn push_to_firstbase(
                 c.dedup();
                 c.join(",")
             };
-            log(&format!(
-                "  Batch {} REJECTED at document level ({}) — marking all {} item(s) rejected, not publishing",
-                bi + 1,
-                codes,
-                batch.len()
-            ));
+            if batch_transport_failed {
+                transport_failed_items += batch.len() as u32;
+                log(&format!(
+                    "  Batch {} TRANSPORT FAILURE ({}) — GS1 never processed the batch; all {} item(s) kept for retry, not publishing",
+                    bi + 1,
+                    codes,
+                    batch.len()
+                ));
+            } else {
+                log(&format!(
+                    "  Batch {} REJECTED at document level ({}) — marking all {} item(s) rejected, not publishing",
+                    bi + 1,
+                    codes,
+                    batch.len()
+                ));
+            }
             for (_, ident, _, doc) in batch {
                 let gtin = doc
                     .pointer("/DraftItem/TradeItem/Gtin")
@@ -3132,14 +3234,18 @@ pub fn push_to_firstbase(
                 if !gtin.is_empty() {
                     rejected_gtins.insert(gtin.to_string());
                 }
-                // Attribute each document-level error to every item in the batch so
+                // Attribute each batch-level error to every item in the batch so
                 // the per-device push_log error_code and push_error rows are populated.
                 for (code, desc) in &batch_doc_errors {
                     error_details.push((
                         ident.to_string(),
                         gtin.to_string(),
                         code.clone(),
-                        "(document-level)".to_string(),
+                        if batch_transport_failed {
+                            "(batch transport)".to_string()
+                        } else {
+                            "(document-level)".to_string()
+                        },
                         desc.clone(),
                     ));
                 }
@@ -3237,7 +3343,11 @@ pub fn push_to_firstbase(
         Ok(c) => c,
         Err(e) => {
             log(&format!("[Push] DB error: {}", e));
-            return Ok((0, 0));
+            return Ok(PushOutcome {
+                accepted: 0,
+                rejected: 0,
+                transport_failed: transport_failed_items,
+            });
         }
     };
     let _ = conn.execute_batch(
@@ -3397,6 +3507,12 @@ pub fn push_to_firstbase(
         total_rejected,
         rejected_gtins.len()
     ));
+    if transport_failed_items > 0 {
+        log(&format!(
+            "[Push] WARNING: {} item(s) were in CreateMany batch(es) GS1 never processed (transport failure) — NOT delivered, kept for retry",
+            transport_failed_items
+        ));
+    }
 
     // Update session with file-level counts
     let _ = conn.execute(
@@ -3424,7 +3540,11 @@ pub fn push_to_firstbase(
     log(&format!("[Push] HTML log: {}", log_file.display()));
 
     // Return file-level counts (not API-level error counts)
-    Ok((moved as u32, kept as u32))
+    Ok(PushOutcome {
+        accepted: moved as u32,
+        rejected: kept as u32,
+        transport_failed: transport_failed_items,
+    })
 }
 
 /// Load the embedded app icon as an `egui::IconData`.

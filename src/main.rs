@@ -1363,14 +1363,23 @@ fn main() -> Result<()> {
             // SRN-scoped (CLI mirror of Mode 4/5/6): push ONLY this run's UUIDs,
             // not the whole firstbase_json/ backlog of other SRNs.
             match gui::push_to_firstbase(&settings, &log_fn, Some(&uuids)) {
-                Ok((accepted, rejected)) => {
-                    eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
+                Ok(out) => {
+                    eprintln!(
+                        "\nDone: {} accepted, {} rejected.",
+                        out.accepted, out.rejected
+                    );
+                    if out.transport_failed > 0 {
+                        eprintln!(
+                            "WARNING: {} item(s) were in batch(es) GS1 never processed (transport failure) — re-run this repush to deliver them.",
+                            out.transport_failed
+                        );
+                    }
                     // After a Production push, auto-email the GS1 report (errors-only
                     // CSV + full HTML log) to GS1. Never fail the run on a mail error.
                     if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
                         // repush-srn is SRN-scoped — no GTIN worklist.
                         if let Err(e) =
-                            send_gs1_prod_report(&config, accepted, rejected, &srns, &[])
+                            send_gs1_prod_report(&config, out.accepted, out.rejected, &srns, &[])
                         {
                             eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                         }
@@ -1623,12 +1632,16 @@ fn main() -> Result<()> {
 /// (scoped). On a Production push, auto-email the GS1 report. Shared by `check`
 /// and `check --push-only`.
 ///
-/// Returns `Ok(true)` when the push actually REACHED GS1 (`push_to_firstbase`
-/// returned Ok — even if some items were validation-rejected), and `Ok(false)`
-/// on a transport failure (503 / token / network) or a config skip (missing
-/// creds/GLN) where nothing was delivered. Callers use this to decide whether to
-/// clear the pending-push list. Errors are logged, not propagated, so a retry
-/// after an outage still exits cleanly.
+/// Returns `Ok(true)` when the push was FULLY delivered to GS1 (every
+/// CreateMany batch got a validation verdict — even if some items were
+/// validation-rejected), and `Ok(false)` on a transport failure: a whole-push
+/// outage (503 / token / network), a config skip (missing creds/GLN), or a
+/// batch-level failure where GS1 never processed one or more batches
+/// (`PushOutcome::transport_failed > 0`, issue #50 / GDSN-10393). Callers use
+/// this to decide whether to clear the pending-push list; on `Ok(false)` the
+/// list is kept, and since accepted files move to `processed/`, the next
+/// nightly re-push covers exactly the undelivered remainder. Errors are
+/// logged, not propagated, so a retry after an outage still exits cleanly.
 fn push_changed_to_firstbase(
     fb_config: &config::Config,
     uuids: &std::collections::HashSet<String>,
@@ -1674,19 +1687,36 @@ fn push_changed_to_firstbase(
         eprintln!("{}", msg);
     };
     match gui::push_to_firstbase(&settings, &log_fn, Some(uuids)) {
-        Ok((accepted, rejected)) => {
-            eprintln!("\nDone: {} accepted, {} rejected.", accepted, rejected);
+        Ok(out) => {
+            eprintln!(
+                "\nDone: {} accepted, {} rejected.",
+                out.accepted, out.rejected
+            );
             // After a Production push, auto-email the GS1 report (non-fatal — a
             // mail error never fails the run).
             if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
                 if let Err(e) =
-                    send_gs1_prod_report(fb_config, accepted, rejected, srns, gtin_worklist)
+                    send_gs1_prod_report(fb_config, out.accepted, out.rejected, srns, gtin_worklist)
                 {
                     eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                 }
             }
-            // Reached GS1 (validation rejects are a separate, per-item concern).
-            Ok(true)
+            if out.transport_failed > 0 {
+                // One or more CreateMany batches were never processed by GS1
+                // (issue #50 / GDSN-10393) — their items got no validation
+                // verdict. Keep the pending-push list so the next nightly
+                // `check` (or `check --push-only`) re-pushes them; the
+                // delivered/accepted files have moved to processed/ and drop
+                // out of the pending scope automatically.
+                eprintln!(
+                    "{} item(s) were in batch(es) GS1 never processed — keeping pending list for automatic retry.",
+                    out.transport_failed
+                );
+                Ok(false)
+            } else {
+                // Fully delivered (validation rejects are a separate, per-item concern).
+                Ok(true)
+            }
         }
         Err(e) => {
             // Transport failure (503 / token / network) — nothing delivered.
