@@ -2474,6 +2474,38 @@ fn sanitize_global_model_info(doc: &mut serde_json::Value) -> bool {
     changed
 }
 
+/// True when the draft doc is an MDR/IVDR (Regulation) device, false for a
+/// legacy MDD/AIMDD/IVDD one. Used by the push-time GTIN dedup: a GTIN that
+/// EUDAMED carries twice (legacy registration + MDR re-registration, e.g.
+/// 04049154000074 on DE-MF-000017892) must keep the MDR twin. The old
+/// discriminator "has a GlobalModelNumber" stopped working in v1.0.64, when
+/// legacy devices started emitting the B-<GTIN> placeholder GMN too — the
+/// tie-break then degenerated to directory order and could keep the MDD
+/// (issue #51). Read the RegulatoryAct every converter path emits; for docs
+/// without a RegulatedTradeItemModule fall back to "has a real GMN that is
+/// not the legacy B-<GTIN> placeholder".
+fn doc_is_regulation(doc: &serde_json::Value) -> bool {
+    if let Some(act) = doc
+        .pointer(
+            "/DraftItem/TradeItem/RegulatedTradeItemModule/RegulatoryInformation/0/RegulatoryAct",
+        )
+        .and_then(|v| v.as_str())
+    {
+        return matches!(act, "MDR" | "IVDR");
+    }
+    let gtin = doc
+        .pointer("/DraftItem/TradeItem/Gtin")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    doc.pointer("/DraftItem/TradeItem/GlobalModelInformation")
+        .and_then(|v| v.as_array())
+        .and_then(|a| a.first())
+        .and_then(|g| g.get("GlobalModelNumber"))
+        .and_then(|v| v.as_str())
+        .map(|s| !s.is_empty() && s != format!("B-{gtin}"))
+        .unwrap_or(false)
+}
+
 /// GS1 910.005: `discontinuedDateTime`, if present, must be **greater than
 /// `registrationDateTime`** — and GS1 stamps `registrationDateTime` itself at
 /// push time. Our converter freezes `discontinuedDateTime` at convert time
@@ -2647,11 +2679,14 @@ pub fn push_to_firstbase(
         }
     }
 
-    // Deduplicate by GTIN: prefer MDR/IVDR (has GlobalModelNumber) over MDD/legacy
-    // Move MDD duplicates to processed/ so they don't get re-pushed (Issue #8)
+    // Deduplicate by GTIN: prefer MDR/IVDR over legacy MDD/AIMDD/IVDD, decided
+    // by the doc's RegulatoryAct (see doc_is_regulation — a GlobalModelNumber no
+    // longer discriminates since legacy carries the B-<GTIN> placeholder, #51).
+    // Move losing duplicates to processed/ so they don't get re-pushed (Issue #8)
     let before_dedup = pushable.len();
     {
-        let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut seen: std::collections::HashMap<String, (usize, bool)> =
+            std::collections::HashMap::new();
         let mut to_remove: Vec<usize> = Vec::new();
         for (i, (_, _, _, doc)) in pushable.iter().enumerate() {
             let gtin = doc
@@ -2659,24 +2694,34 @@ pub fn push_to_firstbase(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            let has_gmn = doc
-                .pointer("/DraftItem/TradeItem/GlobalModelInformation")
-                .and_then(|v| v.as_array())
-                .and_then(|a| a.first())
-                .and_then(|g| g.get("GlobalModelNumber"))
-                .and_then(|v| v.as_str())
-                .map(|s| !s.is_empty())
-                .unwrap_or(false);
-            if let Some(&prev_idx) = seen.get(&gtin) {
-                // Duplicate GTIN — keep the one with GMN (MDR/IVDR)
-                if has_gmn {
-                    to_remove.push(prev_idx);
-                    seen.insert(gtin, i);
+            let is_regulation = doc_is_regulation(doc);
+            if let Some(&(prev_idx, prev_is_regulation)) = seen.get(&gtin) {
+                // Duplicate GTIN — keep the MDR/IVDR twin; on a tie keep the first
+                let (keep, drop) = if is_regulation && !prev_is_regulation {
+                    seen.insert(gtin.clone(), (i, is_regulation));
+                    (i, prev_idx)
                 } else {
-                    to_remove.push(i);
-                }
+                    (prev_idx, i)
+                };
+                to_remove.push(drop);
+                log(&format!(
+                    "Dedup GTIN {}: keeping {} ({}), dropping {} ({})",
+                    gtin,
+                    pushable[keep].2,
+                    if doc_is_regulation(&pushable[keep].3) {
+                        "MDR/IVDR"
+                    } else {
+                        "legacy"
+                    },
+                    pushable[drop].2,
+                    if doc_is_regulation(&pushable[drop].3) {
+                        "MDR/IVDR"
+                    } else {
+                        "legacy"
+                    },
+                ));
             } else {
-                seen.insert(gtin, i);
+                seen.insert(gtin, (i, is_regulation));
             }
         }
         to_remove.sort_unstable_by(|a, b| b.cmp(a));
@@ -4325,4 +4370,63 @@ pub fn run_gui() -> eframe::Result {
         options,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::doc_is_regulation;
+
+    fn doc(gtin: &str, act: Option<&str>, gmn: Option<&str>) -> serde_json::Value {
+        let mut trade_item = serde_json::json!({ "Gtin": gtin });
+        if let Some(a) = act {
+            trade_item["RegulatedTradeItemModule"] = serde_json::json!({
+                "RegulatoryInformation": [{ "RegulatoryAct": a, "RegulatoryAgency": "EU" }]
+            });
+        }
+        if let Some(g) = gmn {
+            trade_item["GlobalModelInformation"] = serde_json::json!([{ "GlobalModelNumber": g }]);
+        }
+        serde_json::json!({ "DraftItem": { "TradeItem": trade_item } })
+    }
+
+    /// The DE-MF-000017892 / 04049154000074 case (issue #51): EUDAMED carries
+    /// the GTIN twice — an MDD registration (whose EUDAMED Basic UDI-DI code is
+    /// literally the placeholder `B-04049154000074`) and an MDR re-registration.
+    /// Since v1.0.64 BOTH docs carry a GlobalModelNumber, so the dedup must
+    /// decide on RegulatoryAct, never on GMN presence.
+    #[test]
+    fn dedup_discriminator_uses_regulatory_act_not_gmn_presence() {
+        let mdr = doc(
+            "04049154000074",
+            Some("MDR"),
+            Some("04049154_PC_M2_H2_O2_BU"),
+        );
+        let mdd = doc("04049154000074", Some("MDD"), Some("B-04049154000074"));
+        assert!(doc_is_regulation(&mdr));
+        assert!(
+            !doc_is_regulation(&mdd),
+            "MDD twin must lose the dedup even though it carries the B-<GTIN> placeholder GMN"
+        );
+        assert!(doc_is_regulation(&doc("1", Some("IVDR"), None)));
+        assert!(!doc_is_regulation(&doc("1", Some("AIMDD"), Some("B-1"))));
+        assert!(!doc_is_regulation(&doc("1", Some("IVDD"), None)));
+    }
+
+    /// Docs without a RegulatedTradeItemModule fall back to the refined GMN
+    /// heuristic: a real GMN counts, the legacy B-<GTIN> placeholder does not.
+    #[test]
+    fn dedup_discriminator_fallback_without_regulatory_module() {
+        assert!(doc_is_regulation(&doc(
+            "04049154000074",
+            None,
+            Some("04049154_PC_M2_H2_O2_BU"),
+        )));
+        assert!(!doc_is_regulation(&doc(
+            "04049154000074",
+            None,
+            Some("B-04049154000074"),
+        )));
+        assert!(!doc_is_regulation(&doc("04049154000074", None, None)));
+        assert!(!doc_is_regulation(&doc("04049154000074", None, Some(""))));
+    }
 }
