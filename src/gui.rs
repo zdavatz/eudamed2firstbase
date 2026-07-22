@@ -2506,6 +2506,56 @@ fn doc_is_regulation(doc: &serde_json::Value) -> bool {
         .unwrap_or(false)
 }
 
+/// Cross-registration twin check (issue #52). The in-batch GTIN dedup only fires
+/// when both twins sit in the same push; a *scoped* nightly push carries only the
+/// changed UUIDs, so when EUDAMED bumps a legacy MDD/AIMDD/IVDD registration whose
+/// GTIN is *also* held by an already-accepted MDR/IVDR twin (sitting in
+/// `processed/`), the lone legacy twin goes out alone and SYS25-collides at GS1
+/// with the catalogue item the MDR twin already created (same GTIN + provider +
+/// market → one GS1 item; a non-newer LastChangedDateTime with changed attributes
+/// → SYS25). Rejecting it is functionally correct (the good MDR record must not be
+/// overwritten by the inferior legacy one) but produces recurring, misleading
+/// SYS25 noise. This detects the case *before* the push: look up every OTHER UUID
+/// EUDAMED lists under this GTIN and return true iff one of them has a converted
+/// firstbase doc on disk (in `firstbase_json/` or `processed/`) that is MDR/IVDR.
+/// Only positively-confirmed superior twins count — an unconverted/absent sibling
+/// leaves the doc pushable (no false skips). Called only for legacy docs.
+fn has_superior_regulation_twin(
+    conn: &rusqlite::Connection,
+    gtin: &str,
+    self_uuid: &str,
+    firstbase_dir: &std::path::Path,
+    processed_dir: &std::path::Path,
+) -> bool {
+    let sibling_uuids: Vec<String> = {
+        let mut stmt = match conn
+            .prepare("SELECT uuid FROM listing_cache WHERE primary_di = ?1 AND uuid != ?2")
+        {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+        let rows = stmt.query_map([gtin, self_uuid], |r| r.get::<_, String>(0));
+        match rows {
+            Ok(it) => it.filter_map(|r| r.ok()).collect(),
+            Err(_) => return false,
+        }
+    };
+    for sib in sibling_uuids {
+        let file = format!("{sib}.json");
+        for dir in [firstbase_dir, processed_dir] {
+            let path = dir.join(&file);
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if doc_is_regulation(&doc) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 /// GS1 910.005: `discontinuedDateTime`, if present, must be **greater than
 /// `registrationDateTime`** — and GS1 stamps `registrationDateTime` itself at
 /// push time. Our converter freezes `discontinuedDateTime` at convert time
@@ -2736,7 +2786,58 @@ pub fn push_to_firstbase(
     }
     let deduped = before_dedup - pushable.len();
 
+    // Cross-registration dedup (issue #52): a legacy MDD/AIMDD/IVDD doc alone in
+    // this (scoped) batch whose GTIN is already held by an accepted MDR/IVDR twin
+    // on disk would SYS25-collide at GS1 with the item that twin created. Drop it
+    // here — the same MDR-over-legacy precedence as the in-batch dedup, extended
+    // to the split-across-runs case. Only legacy docs are candidates; a positively
+    // confirmed superior twin is required (absent/unconverted sibling → keep).
+    let mut cross_dropped = 0u32;
+    {
+        let db_path = download::app_data_dir()
+            .join("db")
+            .join("version_tracking.db");
+        if let Ok(conn) = crate::version_db::open_db(&db_path) {
+            let mut to_remove: Vec<usize> = Vec::new();
+            for (i, (_, _, uuid, doc)) in pushable.iter().enumerate() {
+                if doc_is_regulation(doc) {
+                    continue; // never drop an MDR/IVDR twin
+                }
+                let gtin = doc
+                    .pointer("/DraftItem/TradeItem/Gtin")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if gtin.is_empty() {
+                    continue;
+                }
+                if has_superior_regulation_twin(&conn, gtin, uuid, &firstbase_dir, &processed_dir) {
+                    log(&format!(
+                        "Skip GTIN {}: superior MDR/IVDR twin already loaded, dropping legacy {} (SYS25 avoidance, #52)",
+                        gtin, uuid
+                    ));
+                    to_remove.push(i);
+                }
+            }
+            to_remove.sort_unstable_by(|a, b| b.cmp(a));
+            for idx in to_remove {
+                let (path, _, _, _) = &pushable[idx];
+                if let Some(name) = path.file_name() {
+                    let dest = processed_dir.join(name);
+                    let _ = std::fs::rename(path, &dest);
+                }
+                pushable.remove(idx);
+                cross_dropped += 1;
+            }
+        }
+    }
+
     log(&format!("{} files with numeric GTIN (pushable), {} skipped (no GTIN), {} deduped (same GTIN, moved to processed/)", pushable.len(), skipped_no_gtin, deduped));
+    if cross_dropped > 0 {
+        log(&format!(
+            "Cross-registration dedup: dropped {} legacy twin(s) whose GTIN an MDR/IVDR twin already loaded (moved to processed/, #52)",
+            cross_dropped
+        ));
+    }
     if sanitized > 0 {
         log(&format!(
             "Repaired {} stale file(s): dropped description-only globalModelInformation (G361/SCHEMA)",
@@ -4428,5 +4529,96 @@ mod tests {
         )));
         assert!(!doc_is_regulation(&doc("04049154000074", None, None)));
         assert!(!doc_is_regulation(&doc("04049154000074", None, Some(""))));
+    }
+
+    /// Cross-registration dedup (issue #52): the FR-MF-000017518 / 03701264500004
+    /// case. The MDR twin (already accepted → sits in processed/) and a legacy MDD
+    /// twin share the GTIN. When only the MDD twin is in a scoped push, it must be
+    /// recognised as having a superior on-disk twin and be dropped before it
+    /// SYS25-collides at GS1.
+    #[test]
+    fn cross_registration_finds_superior_regulation_twin() {
+        use super::has_superior_regulation_twin;
+        use std::io::Write;
+
+        let base = std::env::temp_dir().join(format!("e2fb_xreg_test_{}", std::process::id()));
+        let firstbase_dir = base.join("firstbase_json");
+        let processed_dir = firstbase_dir.join("processed");
+        std::fs::create_dir_all(&processed_dir).unwrap();
+
+        let mdr_uuid = "d786ebc3-ba10-4170-855d-752ee9377fef";
+        let mdd_uuid = "1dbe4c13-6b9a-4224-ad2d-a87bd609243e";
+        let gtin = "03701264500004";
+
+        // MDR twin already accepted → in processed/
+        let mdr = doc(gtin, Some("MDR"), Some("B-03701264500004"));
+        let mut f = std::fs::File::create(processed_dir.join(format!("{mdr_uuid}.json"))).unwrap();
+        f.write_all(serde_json::to_string(&mdr).unwrap().as_bytes())
+            .unwrap();
+
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE listing_cache (uuid TEXT PRIMARY KEY, primary_di TEXT)",
+            [],
+        )
+        .unwrap();
+        for u in [mdr_uuid, mdd_uuid] {
+            conn.execute(
+                "INSERT INTO listing_cache (uuid, primary_di) VALUES (?1, ?2)",
+                rusqlite::params![u, gtin],
+            )
+            .unwrap();
+        }
+
+        // The lone legacy MDD twin sees the superior MDR twin on disk → drop it.
+        assert!(has_superior_regulation_twin(
+            &conn,
+            gtin,
+            mdd_uuid,
+            &firstbase_dir,
+            &processed_dir
+        ));
+
+        // A GTIN with no twin at all → keep (no false positive).
+        conn.execute(
+            "INSERT INTO listing_cache (uuid, primary_di) VALUES ('solo-uuid', '09999999999999')",
+            [],
+        )
+        .unwrap();
+        assert!(!has_superior_regulation_twin(
+            &conn,
+            "09999999999999",
+            "solo-uuid",
+            &firstbase_dir,
+            &processed_dir
+        ));
+
+        // Two legacy twins (no MDR sibling on disk) → keep (only confirmed
+        // superior twins drop).
+        let mdd2_uuid = "aaaaaaaa-0000-0000-0000-000000000000";
+        let mdd2 = doc("07000000000007", Some("MDD"), Some("B-07000000000007"));
+        let mut f2 =
+            std::fs::File::create(firstbase_dir.join(format!("{mdd2_uuid}.json"))).unwrap();
+        f2.write_all(serde_json::to_string(&mdd2).unwrap().as_bytes())
+            .unwrap();
+        conn.execute(
+            "INSERT INTO listing_cache (uuid, primary_di) VALUES (?1, '07000000000007')",
+            rusqlite::params![mdd2_uuid],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO listing_cache (uuid, primary_di) VALUES ('other-legacy', '07000000000007')",
+            [],
+        )
+        .unwrap();
+        assert!(!has_superior_regulation_twin(
+            &conn,
+            "07000000000007",
+            "other-legacy",
+            &firstbase_dir,
+            &processed_dir
+        ));
+
+        let _ = std::fs::remove_dir_all(&base);
     }
 }
