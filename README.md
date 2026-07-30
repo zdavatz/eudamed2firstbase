@@ -123,12 +123,20 @@ cargo run count --file srns.txt                        # count from text file
 cargo run count --xlsx file.xlsx                       # count from XLSX col D, writes GTIN_Count column back
 cargo run count --xlsx file.xlsx 6                     # custom column number
 
-# Check SRNs for updates, download changed, convert, push to Firstbase
+# Check SRNs for updates, download changed, convert, push to Firstbase (scoped to changed UUIDs)
 cargo run check /tmp/srn_update                        # check SRNs from file (one per line)
 cargo run check /tmp/srn_update --threads 50           # with parallel threads
+FIRSTBASE_ENV=Production cargo run check srns_sheet.txt # nightly: push CHANGED to Production + auto GS1 report (v1.0.79)
+cargo run check srns.txt --gtin-file gtins.txt         # also check a customer GTIN worklist (2nd sequential pass, v1.0.92)
+cargo run check --gtin-file gtins.txt                  # GTIN-only check — skip the SRN listing pass entirely (v1.0.93)
+FIRSTBASE_ENV=Production cargo run check srns.txt --push-only  # retry NOW: re-push pending (undelivered) UUIDs only, skip ingest (v1.0.89)
 
 # Live snapshot of ingest + push state (safe alongside a running `check`)
 cargo run status                                       # counts from listing_cache, udi_versions, firstbase_json, push_log
+
+# Refresh the customer worklists from the Google Sheet (leaves the file untouched + exits non-zero on any sheet error)
+cargo run sync-srns srns_sheet.txt                     # SRN worklist from the eudamed2firstbase_SRN sheet (v1.0.81)
+cargo run sync-gtins gtins_sheet.txt                   # GTIN worklist from the eudamed2firstbase_GTIN sheet (v1.0.92)
 
 # Sync the EUDAMED actor registry (SRN → manufacturer/AR name, country, address) into the `actors` DB table
 cargo run sync-actors                                  # full refresh of all ~48'000 actors (per-country, upsert; re-runnable; ~85 min)
