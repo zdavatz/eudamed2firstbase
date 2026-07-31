@@ -6,6 +6,18 @@ use crate::firstbase::*;
 use crate::mappings;
 use chrono::Utc;
 
+/// Return the later of two optional EUDAMED ISO-8601 timestamps (empty treated
+/// as absent). EUDAMED emits zero-padded `YYYY-MM-DDThh:mm:ss[.fff]` UTC strings,
+/// so lexicographic order == chronological order and no parsing is needed.
+fn iso_max(a: Option<&str>, b: Option<&str>) -> Option<String> {
+    [a, b]
+        .into_iter()
+        .flatten()
+        .filter(|s| !s.is_empty())
+        .max()
+        .map(|s| s.to_string())
+}
+
 /// GDSN limits additionalTradeItemIdentificationValue to 80 characters.
 fn truncate_id(s: String) -> String {
     if s.len() <= 80 {
@@ -25,13 +37,18 @@ pub fn transform_detail_device(
     let now = Utc::now();
     let now_str = now.format("%Y-%m-%dT%H:%M:%S").to_string();
 
-    // Use version_date for effectiveDateTime; lastChangeDateTime uses current time (avoids SYS25 on re-uploads)
-    let effective_date = device
-        .version_date
-        .as_ref()
-        .filter(|d| !d.is_empty())
-        .cloned()
-        .unwrap_or_else(|| now_str.clone());
+    // effectiveDateTime (GDSN 3254) = the latest change across the record parts:
+    // the later of the UDI-DI versionDate and the Basic UDI-DI lastUpdated. The
+    // BUDI's lastUpdated is bumped by sub-record changes (e.g. a certificate
+    // update) that leave the UDI-DI versionDate untouched — this is exactly the
+    // value EUDAMED public surfaces as "Last update date", and GS1 (Maik,
+    // 31.07.2026) prefers effectiveDateTime to reflect the last change over any
+    // part. lastChangeDateTime uses push time instead (avoids SYS25 on re-uploads).
+    let effective_date = iso_max(
+        device.version_date.as_deref(),
+        basic_udi.and_then(|b| b.last_updated.as_deref()),
+    )
+    .unwrap_or_else(|| now_str.clone());
 
     let gtin = device.gtin();
 
@@ -2063,5 +2080,48 @@ pub fn transform_detail_document(
         trade_item: top_catalogue.trade_item,
         children: top_catalogue.children,
         identifier: format!("Draft_{}", stem),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::iso_max;
+
+    #[test]
+    fn iso_max_picks_later_across_parts() {
+        // UDI-DI versionDate stays at 2025-09-10 while the Basic UDI-DI is
+        // touched (certificate update) on 2026-07-28 → effectiveDateTime = BUDI.
+        // (Real device 05055272721714 / 1abbf8d7-…, Maik's 31.07.2026 case.)
+        assert_eq!(
+            iso_max(
+                Some("2025-09-10T11:25:43.728"),
+                Some("2026-07-28T14:52:12.497")
+            ),
+            Some("2026-07-28T14:52:12.497".to_string())
+        );
+        // UDI-DI newer than BUDI → UDI-DI wins.
+        assert_eq!(
+            iso_max(Some("2026-07-21T10:03:32.605"), Some("2025-04-04T10:50:02")),
+            Some("2026-07-21T10:03:32.605".to_string())
+        );
+    }
+
+    #[test]
+    fn iso_max_handles_missing_and_empty() {
+        assert_eq!(
+            iso_max(Some("2025-09-10T11:25:43"), None),
+            Some("2025-09-10T11:25:43".to_string())
+        );
+        assert_eq!(
+            iso_max(None, Some("2026-07-28T14:52:12")),
+            Some("2026-07-28T14:52:12".to_string())
+        );
+        assert_eq!(iso_max(Some(""), Some("")), None);
+        assert_eq!(iso_max(None, None), None);
+        // Empty is treated as absent, not as a minimal string.
+        assert_eq!(
+            iso_max(Some(""), Some("2025-01-01T00:00:00")),
+            Some("2025-01-01T00:00:00".to_string())
+        );
     }
 }

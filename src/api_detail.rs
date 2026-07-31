@@ -551,6 +551,11 @@ pub struct BasicUdiDiData {
     pub authorised_representative: Option<BasicUdiAuthorisedRep>,
     pub device_certificate_info_list_for_display: Option<Vec<DeviceCertificate>>,
     pub medical_purpose: Option<MultiLangText>,
+    /// The Basic UDI-DI record's "last touched" timestamp. Bumped by changes to
+    /// sub-records (e.g. a certificate update) even when the UDI-DI versionDate
+    /// stays put — this is the value EUDAMED public shows as "Last update date".
+    /// Used to raise `effectiveDateTime` to the latest change across record parts.
+    pub last_updated: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

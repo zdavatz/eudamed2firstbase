@@ -2594,6 +2594,36 @@ fn restamp_discontinued_date(
     true
 }
 
+/// Re-stamp `LastChangeDateTime` to the push time (in memory, per push).
+///
+/// GDSN rule **G488 / SYS25**: `lastChangeDateTime` for a trade item must be the
+/// same or later than the value previously sent for that GTIN. The converter
+/// freezes `lastChangeDateTime` at **convert** time, but a re-push (pending-list
+/// retry, `repush-srn`, Mode 3/4/5) re-sends the already-converted file without
+/// reconverting — so it carries the stale convert-time stamp. If anything landed
+/// a newer value at GS1 in between (a prior successful push, or a manual publish
+/// by GS1 — the 31.07.2026 G488 on 72 devices Maik had hand-published the day
+/// before), the stale re-push is < the stored value → G488. Stamping it to the
+/// push time guarantees the re-push is always ≥ the previously-sent value.
+/// Every doc carries the field; returns true when updated.
+fn restamp_last_change_date(
+    doc: &mut serde_json::Value,
+    now: chrono::DateTime<chrono::Utc>,
+) -> bool {
+    let Some(obj) = doc
+        .pointer_mut("/DraftItem/TradeItem/TradeItemSynchronisationDates")
+        .and_then(|sd| sd.as_object_mut())
+    else {
+        return false;
+    };
+    let new_val = now.format("%Y-%m-%dT%H:%M:%S").to_string();
+    obj.insert(
+        "LastChangeDateTime".to_string(),
+        serde_json::Value::String(new_val),
+    );
+    true
+}
+
 /// Push firstbase JSON files to GS1 Catalogue Item API
 /// Push every pushable `firstbase_json/<uuid>.json` to the GS1 firstbase
 /// Catalogue Item API. When `uuid_filter` is `Some`, only files whose stem
@@ -2710,6 +2740,10 @@ pub fn push_to_firstbase(
                 if restamp_discontinued_date(&mut doc, push_now) {
                     restamped += 1;
                 }
+                // Re-stamp lastChangeDateTime to push time so a re-push of an
+                // already-converted file is always >= the previously-sent value
+                // (avoids GS1 G488 / SYS25 on pending-list retries and repushes).
+                restamp_last_change_date(&mut doc, push_now);
                 let gtin = doc
                     .pointer("/DraftItem/TradeItem/Gtin")
                     .and_then(|v| v.as_str())
