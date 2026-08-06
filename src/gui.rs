@@ -2624,6 +2624,42 @@ fn restamp_last_change_date(
     true
 }
 
+/// Collect **every** GTIN in a firstbase document — the top-level TradeItem plus
+/// all nested `CatalogueItemChildItemLink` levels (base unit + inner packages).
+///
+/// A CreateMany document is rejected as a whole when ANY of its trade items fails
+/// validation (GS1 returns one `TransactionException` per document, not per GTIN).
+/// The per-item `AttributeException` that carries the failing GTIN can name a
+/// **child** GTIN (e.g. a base unit's 097.123) rather than the document's top
+/// GTIN, so a rejection check that only looks at `/DraftItem/TradeItem/Gtin`
+/// silently counts the document ACCEPTED, moves it to `processed/`, and even
+/// AddMany-publishes a draft that was never created. Checking the document's
+/// full GTIN set against `rejected_gtins` closes that masking hole.
+fn doc_all_gtins(doc: &serde_json::Value) -> Vec<String> {
+    fn walk(node: &serde_json::Value, out: &mut Vec<String>) {
+        if let Some(g) = node.pointer("/TradeItem/Gtin").and_then(|v| v.as_str()) {
+            if !g.is_empty() {
+                out.push(g.to_string());
+            }
+        }
+        if let Some(links) = node
+            .get("CatalogueItemChildItemLink")
+            .and_then(|v| v.as_array())
+        {
+            for link in links {
+                if let Some(ci) = link.get("CatalogueItem") {
+                    walk(ci, out);
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    if let Some(di) = doc.get("DraftItem") {
+        walk(di, &mut out);
+    }
+    out
+}
+
 /// Push firstbase JSON files to GS1 Catalogue Item API
 /// Push every pushable `firstbase_json/<uuid>.json` to the GS1 firstbase
 /// Catalogue Item API. When `uuid_filter` is `Some`, only files whose stem
@@ -3382,7 +3418,20 @@ pub fn push_to_firstbase(
         // CreateMany batch — e.g. the v1.0.58 legacy-MDD globalModelDescription
         // schema error — still reported every item as accepted.)
         if batch_doc_errors.is_empty() {
-            all_publish_items.extend(batch_publish_items);
+            // Publish only the documents that actually cleared validation. A
+            // per-item AttributeException on ANY of a document's GTINs (top OR a
+            // child level, e.g. a base unit's 097.123) rejects the whole document
+            // at CreateMany — it was never created Live, so publishing it via
+            // AddMany would push a non-existent draft. Filter those out here
+            // (batch and batch_publish_items are built in lockstep, same order).
+            for ((_, _, _, doc), pub_item) in batch.iter().zip(batch_publish_items.iter()) {
+                let doc_rejected = doc_all_gtins(doc)
+                    .iter()
+                    .any(|g| rejected_gtins.contains(g));
+                if !doc_rejected {
+                    all_publish_items.push(pub_item.clone());
+                }
+            }
         } else {
             let codes = {
                 let mut c: Vec<&str> = batch_doc_errors.iter().map(|(c, _)| c.as_str()).collect();
@@ -3629,15 +3678,19 @@ pub fn push_to_firstbase(
             .pointer("/DraftItem/TradeItem/Gtin")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        let status = if rejected_gtins.contains(gtin) {
+        // A document is rejected if ANY of its GTINs (top OR a child level) was
+        // rejected — a child-level 097.xxx rejects the whole CreateMany document.
+        let doc_gtins = doc_all_gtins(doc);
+        let status = if doc_gtins.iter().any(|g| rejected_gtins.contains(g)) {
             "REJECTED"
         } else {
             "ACCEPTED"
         };
-        // Collect error codes for this GTIN
+        // Collect error codes across all of this document's GTINs (the failing
+        // attribute may be reported against a child GTIN, not the top one).
         let error_codes: Vec<&str> = error_details
             .iter()
-            .filter(|(_, g, _, _, _)| g == gtin)
+            .filter(|(_, g, _, _, _)| doc_gtins.iter().any(|dg| dg == g))
             .map(|(_, _, c, _, _)| c.as_str())
             .collect();
         let error_code_str = if error_codes.is_empty() {
@@ -3663,11 +3716,12 @@ pub fn push_to_firstbase(
     let mut moved = 0;
     let mut kept = 0;
     for (path, _, _, doc) in &pushable {
-        let gtin = doc
-            .pointer("/DraftItem/TradeItem/Gtin")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        if rejected_gtins.contains(gtin) {
+        // Keep the file for retry if ANY of its GTINs (top or a child level) was
+        // rejected — a child-level reject means the whole document failed.
+        if doc_all_gtins(doc)
+            .iter()
+            .any(|g| rejected_gtins.contains(g))
+        {
             kept += 1;
             continue;
         }
@@ -4509,7 +4563,38 @@ pub fn run_gui() -> eframe::Result {
 
 #[cfg(test)]
 mod tests {
+    use super::doc_all_gtins;
     use super::doc_is_regulation;
+
+    #[test]
+    fn doc_all_gtins_includes_child_package_levels() {
+        // A base unit nested under a CASE package: both GTINs must be returned so
+        // a child-level reject (e.g. base unit 097.123) is attributed to the doc.
+        let doc = serde_json::json!({
+            "DraftItem": {
+                "TradeItem": { "Gtin": "20653405058233" },
+                "CatalogueItemChildItemLink": [{
+                    "CatalogueItem": {
+                        "TradeItem": { "Gtin": "30653405058230" }
+                    }
+                }]
+            }
+        });
+        let mut gtins = doc_all_gtins(&doc);
+        gtins.sort();
+        assert_eq!(
+            gtins,
+            vec!["20653405058233".to_string(), "30653405058230".to_string(),]
+        );
+    }
+
+    #[test]
+    fn doc_all_gtins_single_level() {
+        let doc = serde_json::json!({
+            "DraftItem": { "TradeItem": { "Gtin": "07612345000435" } }
+        });
+        assert_eq!(doc_all_gtins(&doc), vec!["07612345000435".to_string()]);
+    }
 
     fn doc(gtin: &str, act: Option<&str>, gmn: Option<&str>) -> serde_json::Value {
         let mut trade_item = serde_json::json!({ "Gtin": gtin });

@@ -798,8 +798,12 @@ fn main() -> Result<()> {
                 }
                 i += 1;
             }
-            if files.is_empty() {
-                eprintln!("Usage: eudamed2firstbase mailto <file> [<file2> ...] --to <email> [--from <email>] [--subject <text>] [--body <text>] [--p12 <key>] [--max-bytes <N>]");
+            // At least one attachment OR a non-empty --body is required (a
+            // body-only mail is valid — the leading text/plain part is always
+            // emitted). Without either there is nothing to send.
+            if files.is_empty() && body.as_deref().unwrap_or("").is_empty() {
+                eprintln!("Usage: eudamed2firstbase mailto [<file> ...] --to <email> [--from <email>] [--subject <text>] [--body <text>] [--p12 <key>] [--max-bytes <N>]");
+                eprintln!("Provide at least one attachment file or a non-empty --body.");
                 std::process::exit(1);
             }
             let to = to.unwrap_or_else(|| {
@@ -810,14 +814,15 @@ fn main() -> Result<()> {
                 eprintln!("--from <email> is required");
                 std::process::exit(1);
             });
-            let subject = subject.unwrap_or_else(|| {
-                format!(
+            let subject = subject.unwrap_or_else(|| match files.first() {
+                Some(f) => format!(
                     "eudamed2firstbase: {}",
-                    std::path::Path::new(&files[0])
+                    std::path::Path::new(f)
                         .file_name()
                         .and_then(|n| n.to_str())
-                        .unwrap_or(&files[0])
-                )
+                        .unwrap_or(f)
+                ),
+                None => "eudamed2firstbase".to_string(),
             });
             // No body by default (the report speaks for itself); --body overrides.
             let body = body.unwrap_or_default();
