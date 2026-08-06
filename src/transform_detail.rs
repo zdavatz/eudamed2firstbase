@@ -1854,11 +1854,12 @@ pub fn transform_detail_document(
 ) -> FirstbaseDocument {
     let mut base_trade_item = transform_detail_device(device, config, basic_udi);
 
-    // Capture base unit's eu_status + discontinuedDateTime so package levels
-    // inherit them. Hardcoding ON_MARKET on packages while the base unit is
-    // NO_LONGER_PLACED_ON_THE_MARKET triggers GS1 910.004 / 910.005 / 097.040
-    // (parent/child status mismatch + discontinued child without discontinued
-    // parent). See issue #36 / BR-UDID-073.
+    // Capture base unit's eu_status + discontinuedDateTime. The eu_status is
+    // inherited by every package level (all NO_LONGER or all ON_MARKET) — a
+    // parent/child status mismatch triggers GS1 097.040 (issue #36 / BR-UDID-073).
+    // The discontinuedDateTime, by contrast, is applied to the OUTERMOST level
+    // ONLY (see below): GS1 910.004 forbids a discontinuedDateTime on a child
+    // item in a hierarchy.
     let base_status_code = base_trade_item
         .medical_device_module
         .info
@@ -1885,6 +1886,17 @@ pub fn transform_detail_document(
 
     // Base unit is no longer the despatch unit when packages exist
     base_trade_item.is_despatch_unit = false;
+
+    // GS1 910.004: a trade item that is the CHILD of a higher-level item cannot
+    // carry a discontinuedDateTime — in a GDSN hierarchy only the OUTERMOST
+    // (despatch) level may be discontinued. When packaging exists the base unit
+    // becomes a child, so clear its discontinued date here; `base_discontinued`
+    // (captured above) re-applies it to the outermost package only. Emitting it
+    // on every level (base unit + all packages) is what triggered the 910.004
+    // (on the base unit) + 910.003 (on the parent — "higher level shall not have
+    // a later date than the discontinued lower levels") mass-reject of NO_LONGER
+    // devices with packaging, e.g. GTIN 30653405058230 / CASE 20653405058233.
+    base_trade_item.synchronisation_dates.discontinued = None;
 
     // Extract EMA/EPP/EAR contacts for package DIs (SRN only, for CH-REP filtering)
     let pkg_contacts: Vec<TradeItemContactInformation> = base_trade_item
@@ -2039,9 +2051,17 @@ pub fn transform_detail_document(
                 last_change: now_str.clone(),
                 effective: now_str.clone(),
                 publication: now_str,
-                // Inherit discontinuedDateTime from the base unit so parent and
-                // child stay aligned (910.004/910.005, issue #36).
-                discontinued: base_discontinued.clone(),
+                // Only the OUTERMOST (top-level despatch) item may carry a
+                // discontinuedDateTime — inner package levels are children of a
+                // higher level and GS1 910.004 forbids discontinuing a child;
+                // 910.003 then rejects the parent for a later date than its
+                // (non-)discontinued children. So apply the base unit's
+                // discontinued date to the top level only, None everywhere below.
+                discontinued: if is_outermost {
+                    base_discontinued.clone()
+                } else {
+                    None
+                },
             },
             // Only emit globalModelNumber when the Basic UDI-DI code is a valid
             // GMN (097.116); legacy `B-<GTIN>` codes are dropped.
