@@ -2570,28 +2570,66 @@ fn restamp_discontinued_date(
     doc: &mut serde_json::Value,
     now: chrono::DateTime<chrono::Utc>,
 ) -> bool {
-    let Some(sd) = doc.pointer_mut("/DraftItem/TradeItem/TradeItemSynchronisationDates") else {
+    // `CatalogueItemChildItemLink` is a SIBLING of `TradeItem` (under `DraftItem`,
+    // and under each nested `CatalogueItem`), not a field inside TradeItem — so we
+    // recurse over the container object, not the TradeItem.
+    let Some(container) = doc.pointer_mut("/DraftItem") else {
         return false;
     };
-    let Some(obj) = sd.as_object_mut() else {
-        return false;
-    };
-    let present = obj
-        .get("DiscontinuedDateTime")
+    // Only NO_LONGER docs carry the field (converter emits it on the top level
+    // whenever the device is discontinued); skip everything else.
+    let present = container
+        .pointer("/TradeItem/TradeItemSynchronisationDates/DiscontinuedDateTime")
         .and_then(|v| v.as_str())
         .map(|s| !s.is_empty())
         .unwrap_or(false);
     if !present {
         return false;
     }
-    let new_val = (now + chrono::Duration::days(2))
+    // Base = push-time + 2 days (910.005: discontinuedDateTime must be after the
+    // push-time registrationDateTime; +2d also covers a multi-hour bulk push).
+    // Stagger down the hierarchy by 1 minute per level so every child is strictly
+    // later than its parent (#55, Maik 10.08.2026 — 910.003 parent ≤ child,
+    // 910.004/097.123 both satisfied when all levels carry it): top/outermost
+    // (depth 0) earliest, the base-unit child (deepest) latest.
+    let base = now + chrono::Duration::days(2);
+    restamp_discontinued_tree(container, base, 0);
+    true
+}
+
+/// Recursively (re)stamp `DiscontinuedDateTime` on a container's `TradeItem` and
+/// every nested `CatalogueItemChildItemLink → CatalogueItem` child, `base + depth`
+/// minutes so a lower level (higher depth) is always strictly later than its
+/// parent. `container` is the `DraftItem` (top) or a nested `CatalogueItem` — both
+/// hold `TradeItem` and `CatalogueItemChildItemLink` as siblings. Adds the field
+/// on child levels that lack it — the #55 shape requires it on all levels.
+fn restamp_discontinued_tree(
+    container: &mut serde_json::Value,
+    base: chrono::DateTime<chrono::Utc>,
+    depth: i64,
+) {
+    let val = (base + chrono::Duration::minutes(depth))
         .format("%Y-%m-%dT%H:%M:%S")
         .to_string();
-    obj.insert(
-        "DiscontinuedDateTime".to_string(),
-        serde_json::Value::String(new_val),
-    );
-    true
+    if let Some(obj) = container
+        .pointer_mut("/TradeItem/TradeItemSynchronisationDates")
+        .and_then(|sd| sd.as_object_mut())
+    {
+        obj.insert(
+            "DiscontinuedDateTime".to_string(),
+            serde_json::Value::String(val),
+        );
+    }
+    if let Some(links) = container
+        .get_mut("CatalogueItemChildItemLink")
+        .and_then(|l| l.as_array_mut())
+    {
+        for link in links {
+            if let Some(child) = link.pointer_mut("/CatalogueItem") {
+                restamp_discontinued_tree(child, base, depth + 1);
+            }
+        }
+    }
 }
 
 /// Re-stamp `LastChangeDateTime` to the push time (in memory, per push).
@@ -4565,6 +4603,55 @@ pub fn run_gui() -> eframe::Result {
 mod tests {
     use super::doc_all_gtins;
     use super::doc_is_regulation;
+    use super::restamp_discontinued_date;
+
+    #[test]
+    fn restamp_discontinued_staggers_child_later_than_parent() {
+        // #55 (Maik 10.08.2026): a discontinued device with packaging must carry
+        // discontinuedDateTime on EVERY level, the child strictly LATER than its
+        // parent (910.003 parent ≤ child; +1 min so the base can't be overtaken).
+        // The push-time re-stamp recomputes the staggered set: top/outermost
+        // earliest, base-unit child +1 min. CatalogueItemChildItemLink is a
+        // SIBLING of TradeItem, so a wrong-path walk would leave the child stale.
+        let mut doc = serde_json::json!({
+            "DraftItem": {
+                "TradeItem": {
+                    "Gtin": "20653405058233",
+                    "TradeItemSynchronisationDates": { "DiscontinuedDateTime": "2026-01-01T00:00:00" }
+                },
+                "CatalogueItemChildItemLink": [{
+                    "CatalogueItem": {
+                        "TradeItem": {
+                            "Gtin": "30653405058230",
+                            "TradeItemSynchronisationDates": { "DiscontinuedDateTime": "2026-01-01T00:00:00" }
+                        }
+                    }
+                }]
+            }
+        });
+        let now = chrono::DateTime::parse_from_rfc3339("2026-08-10T09:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        assert!(restamp_discontinued_date(&mut doc, now));
+        // Base = now + 2 days = 2026-08-12T09:00:00; top +0, child +1 min.
+        let top =
+            doc.pointer("/DraftItem/TradeItem/TradeItemSynchronisationDates/DiscontinuedDateTime");
+        let child = doc.pointer(
+            "/DraftItem/CatalogueItemChildItemLink/0/CatalogueItem/TradeItem/TradeItemSynchronisationDates/DiscontinuedDateTime",
+        );
+        assert_eq!(top.and_then(|v| v.as_str()), Some("2026-08-12T09:00:00"));
+        assert_eq!(child.and_then(|v| v.as_str()), Some("2026-08-12T09:01:00"));
+    }
+
+    #[test]
+    fn restamp_discontinued_skips_on_market_docs() {
+        // No DiscontinuedDateTime on the top → not a NO_LONGER doc → untouched.
+        let mut doc = serde_json::json!({
+            "DraftItem": { "TradeItem": { "TradeItemSynchronisationDates": {} } }
+        });
+        let now = chrono::Utc::now();
+        assert!(!restamp_discontinued_date(&mut doc, now));
+    }
 
     #[test]
     fn doc_all_gtins_includes_child_package_levels() {

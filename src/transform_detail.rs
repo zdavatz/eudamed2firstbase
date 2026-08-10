@@ -18,6 +18,22 @@ fn iso_max(a: Option<&str>, b: Option<&str>) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+/// Offset an EUDAMED-shaped ISO-8601 timestamp (`%Y-%m-%dT%H:%M:%S`) by N
+/// minutes. Used to stagger `discontinuedDateTime` down a packaging hierarchy so
+/// each child is strictly LATER than its parent (GS1 910.003: a higher level
+/// must not post-date the discontinued lower levels → parent ≤ child; Maik
+/// 10.08.2026: the base-unit child "muss auf jeden Fall besser später sein").
+/// Returns None when the base is absent (ON_MARKET) or unparseable.
+fn iso_plus_minutes(base: &Option<String>, minutes: i64) -> Option<String> {
+    let s = base.as_deref().filter(|s| !s.is_empty())?;
+    let ndt = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S").ok()?;
+    Some(
+        (ndt + chrono::Duration::minutes(minutes))
+            .format("%Y-%m-%dT%H:%M:%S")
+            .to_string(),
+    )
+}
+
 /// GDSN limits additionalTradeItemIdentificationValue to 80 characters.
 fn truncate_id(s: String) -> String {
     if s.len() <= 80 {
@@ -1887,16 +1903,22 @@ pub fn transform_detail_document(
     // Base unit is no longer the despatch unit when packages exist
     base_trade_item.is_despatch_unit = false;
 
-    // GS1 910.004: a trade item that is the CHILD of a higher-level item cannot
-    // carry a discontinuedDateTime — in a GDSN hierarchy only the OUTERMOST
-    // (despatch) level may be discontinued. When packaging exists the base unit
-    // becomes a child, so clear its discontinued date here; `base_discontinued`
-    // (captured above) re-applies it to the outermost package only. Emitting it
-    // on every level (base unit + all packages) is what triggered the 910.004
-    // (on the base unit) + 910.003 (on the parent — "higher level shall not have
-    // a later date than the discontinued lower levels") mass-reject of NO_LONGER
-    // devices with packaging, e.g. GTIN 30653405058230 / CASE 20653405058233.
-    base_trade_item.synchronisation_dates.discontinued = None;
+    // discontinuedDateTime hierarchy shape (#55, Maik 10.08.2026): a discontinued
+    // device with packaging carries discontinuedDateTime on EVERY level, but the
+    // child must be strictly LATER than its parent — GS1 910.003 ("a higher level
+    // must not post-date the discontinued lower levels" → parent ≤ child) and
+    // Maik's "das Base muss auf jeden Fall besser später sein" (+1 min so the base
+    // can never be overtaken by the case in the message flow). We stagger by
+    // 1 minute per level: outermost/despatch = base value (earliest), each level
+    // inward +1 min, and the base unit (deepest child) latest at
+    // base + total_pkg_levels minutes. (Earlier attempts — the field on the
+    // outermost only, or the same date on all levels — hit 097.123 on the
+    // NO_LONGER base child / 910.003 on the parent respectively; this staggered
+    // shape satisfies 910.003/910.004/097.123 together per Maik.) The push-time
+    // re-stamp (`restamp_discontinued_date`) recomputes the same staggered set
+    // against the actual push time.
+    base_trade_item.synchronisation_dates.discontinued =
+        iso_plus_minutes(&base_discontinued, levels.len() as i64);
 
     // Extract EMA/EPP/EAR contacts for package DIs (SRN only, for CH-REP filtering)
     let pkg_contacts: Vec<TradeItemContactInformation> = base_trade_item
@@ -2051,17 +2073,16 @@ pub fn transform_detail_document(
                 last_change: now_str.clone(),
                 effective: now_str.clone(),
                 publication: now_str,
-                // Only the OUTERMOST (top-level despatch) item may carry a
-                // discontinuedDateTime — inner package levels are children of a
-                // higher level and GS1 910.004 forbids discontinuing a child;
-                // 910.003 then rejects the parent for a later date than its
-                // (non-)discontinued children. So apply the base unit's
-                // discontinued date to the top level only, None everywhere below.
-                discontinued: if is_outermost {
-                    base_discontinued.clone()
-                } else {
-                    None
-                },
+                // Staggered discontinuedDateTime per level (#55, Maik 10.08.2026):
+                // every level carries it, each child strictly later than its
+                // parent (910.003: parent ≤ child). Depth from the top =
+                // (total_pkg_levels - 1 - i) minutes: outermost (i = last) → +0
+                // (earliest), innermost package → +(total-1); the base-unit child
+                // below gets +total (latest). None for ON_MARKET (base absent).
+                discontinued: iso_plus_minutes(
+                    &base_discontinued,
+                    (total_pkg_levels - 1 - i) as i64,
+                ),
             },
             // Only emit globalModelNumber when the Basic UDI-DI code is a valid
             // GMN (097.116); legacy `B-<GTIN>` codes are dropped.
