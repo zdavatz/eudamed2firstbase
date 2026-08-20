@@ -1429,10 +1429,21 @@ fn build_certification_module(
     let certs = basic_udi?
         .device_certificate_info_list_for_display
         .as_ref()?;
-    let mut infos = Vec::new();
+    // GS1 rejects two certificationInformation entries that carry the SAME
+    // certificationStandard (097.101 / BR-UDID-109 — proven on TEST 20.08.2026:
+    // a device with two MDR technical-documentation certificates is rejected as
+    // one entry per certificate and ACCEPTED as one entry with two Certification
+    // children). So group by (standard, agency, NB number) and collect the
+    // individual certificates as repeated Certification elements.
+    let mut infos: Vec<CertificationInformation> = Vec::new();
 
     for cert in certs {
-        let type_code = cert.certificate_type.as_ref()?.code.as_ref()?;
+        // A certificate without a type is skipped — `?` here would abort the
+        // WHOLE module and silently drop every other (valid) certificate.
+        let type_code = match cert.certificate_type.as_ref().and_then(|t| t.code.as_ref()) {
+            Some(c) => c,
+            None => continue,
+        };
         let suffix = type_code.rsplit('.').next().unwrap_or(type_code);
 
         // Map EUDAMED certificate types to GS1 CertificationStandard
@@ -1487,6 +1498,43 @@ fn build_certification_module(
 
         let nb = cert.notified_body.as_ref();
         let nb_number = nb.and_then(|n| n.srn.clone());
+        let agency = nb.and_then(|n| n.name.clone());
+
+        // FLD-UDID-347/346: startingValidityDate, fallback to issueDate
+        let start = cert
+            .starting_validity_date
+            .clone()
+            .or_else(|| cert.issue_date.clone());
+        let certification = if cert.certificate_number.is_some()
+            || cert.certificate_expiry.is_some()
+            || start.is_some()
+        {
+            Some(Certification {
+                // FLD-UDID-61/344 (097.105): CertificationValue = certificate number
+                value: cert.certificate_number.clone(),
+                // FLD-UDID-62/345: CertificationIdentification = revision number
+                identification: cert.certificate_revision.clone(),
+                // FLD-UDID-64/348: CertificationEffectiveEndDateTime = expiry date
+                effective_end: cert.certificate_expiry.clone(),
+                effective_start: start,
+            })
+        } else {
+            None
+        };
+
+        // Merge into an existing entry with the same standard + notified body,
+        // instead of emitting a second entry with a duplicate standard.
+        if let Some(existing) = infos.iter_mut().find(|i| {
+            i.standard == standard
+                && i.agency == agency
+                && i.additional_org_ids.first().map(|a| &a.value) == nb_number.as_ref()
+        }) {
+            if let Some(c) = certification {
+                existing.certifications.push(c);
+            }
+            continue;
+        }
+
         infos.push(CertificationInformation {
             // 097.042: additionalCertificationOrganisationIdentifier with EU_NOTIFIED_BODY_NUMBER
             additional_org_ids: nb_number
@@ -1497,32 +1545,10 @@ fn build_certification_module(
                     }]
                 })
                 .unwrap_or_default(),
-            agency: nb.and_then(|n| n.name.clone()),
+            agency,
             organisation_identifier: None,
             standard: standard.to_string(),
-            certifications: {
-                let mut cs = Vec::new();
-                // FLD-UDID-347/346: startingValidityDate, fallback to issueDate
-                let start = cert
-                    .starting_validity_date
-                    .clone()
-                    .or_else(|| cert.issue_date.clone());
-                if cert.certificate_number.is_some()
-                    || cert.certificate_expiry.is_some()
-                    || start.is_some()
-                {
-                    cs.push(Certification {
-                        // FLD-UDID-61/344 (097.105): CertificationValue = certificate number
-                        value: cert.certificate_number.clone(),
-                        // FLD-UDID-62/345: CertificationIdentification = revision number
-                        identification: cert.certificate_revision.clone(),
-                        // FLD-UDID-64/348: CertificationEffectiveEndDateTime = expiry date
-                        effective_end: cert.certificate_expiry.clone(),
-                        effective_start: start,
-                    });
-                }
-                cs
-            },
+            certifications: certification.into_iter().collect(),
         });
     }
 
@@ -2126,7 +2152,98 @@ pub fn transform_detail_document(
 
 #[cfg(test)]
 mod tests {
-    use super::iso_max;
+    use super::{build_certification_module, iso_max};
+    use crate::api_detail::BasicUdiDiData;
+
+    fn basic_with_certs(certs: &str) -> BasicUdiDiData {
+        serde_json::from_str(&format!(
+            r#"{{"deviceCertificateInfoListForDisplay": {certs}}}"#
+        ))
+        .expect("fixture parses")
+    }
+
+    /// Two certificates of the SAME standard must collapse into ONE
+    /// certificationInformation entry with two Certification children.
+    /// Emitting a second entry with a duplicate certificationStandard is
+    /// rejected by GS1 as 097.101 / BR-UDID-109 even though the value itself
+    /// is the required one (proven on TEST 20.08.2026 with the two DEKRA
+    /// MDR technical-documentation certificates of GTIN 04250203913355 —
+    /// rejected as two entries, accepted as one).
+    #[test]
+    fn certificates_of_same_standard_are_merged() {
+        let basic = basic_with_certs(
+            r#"[
+              {"certificateNumber":"50565-61-A2","certificateRevision":"1",
+               "certificateExpiry":"2025-11-29","startingValidityDate":"2021-12-14",
+               "certificateType":{"code":"refdata.certificate-mdr-type.technical-documentation"},
+               "notifiedBody":{"name":"DEKRA Certification GmbH","srn":"0124"}},
+              {"certificateNumber":"50565-61-A3-00",
+               "certificateExpiry":"2030-11-29","startingValidityDate":"2025-11-30",
+               "certificateType":{"code":"refdata.certificate-mdr-type.technical-documentation"},
+               "notifiedBody":{"name":"DEKRA Certification GmbH","srn":"0124"}}
+            ]"#,
+        );
+        let m = build_certification_module(Some(&basic)).expect("module");
+        assert_eq!(m.infos.len(), 1, "one entry per standard");
+        assert_eq!(m.infos[0].standard, "MDR_TECHNICAL_DOCUMENTATION");
+        assert_eq!(m.infos[0].certifications.len(), 2, "both certificates kept");
+        assert_eq!(
+            m.infos[0].certifications[0].value.as_deref(),
+            Some("50565-61-A2")
+        );
+        assert_eq!(
+            m.infos[0].certifications[1].value.as_deref(),
+            Some("50565-61-A3-00")
+        );
+    }
+
+    /// Different standards stay in separate entries (the accepted MDR Class III
+    /// shape: one QMS + one technical-documentation entry).
+    #[test]
+    fn certificates_of_different_standards_stay_separate() {
+        let basic = basic_with_certs(
+            r#"[
+              {"certificateNumber":"A","certificateType":{"code":"refdata.certificate-mdr-type.technical-documentation"},
+               "notifiedBody":{"name":"DEKRA","srn":"0124"}},
+              {"certificateNumber":"B","certificateType":{"code":"refdata.certificate-mdr-type.quality-management-system"},
+               "notifiedBody":{"name":"DEKRA","srn":"0124"}}
+            ]"#,
+        );
+        let m = build_certification_module(Some(&basic)).expect("module");
+        assert_eq!(m.infos.len(), 2);
+    }
+
+    /// Same standard from two DIFFERENT notified bodies stays separate — the
+    /// entries are distinguishable by agency / EU_NOTIFIED_BODY_NUMBER.
+    #[test]
+    fn same_standard_different_notified_body_stays_separate() {
+        let basic = basic_with_certs(
+            r#"[
+              {"certificateNumber":"A","certificateType":{"code":"refdata.certificate-mdr-type.technical-documentation"},
+               "notifiedBody":{"name":"DEKRA","srn":"0124"}},
+              {"certificateNumber":"B","certificateType":{"code":"refdata.certificate-mdr-type.technical-documentation"},
+               "notifiedBody":{"name":"TUV SUD","srn":"0123"}}
+            ]"#,
+        );
+        let m = build_certification_module(Some(&basic)).expect("module");
+        assert_eq!(m.infos.len(), 2);
+    }
+
+    /// A certificate without a type must not abort the whole module: the
+    /// remaining valid certificates are still emitted (the `?`-in-loop bug).
+    #[test]
+    fn certificate_without_type_does_not_drop_the_module() {
+        let basic = basic_with_certs(
+            r#"[
+              {"certificateNumber":"A"},
+              {"certificateNumber":"B","certificateType":{"code":"refdata.certificate-mdr-type.technical-documentation"},
+               "notifiedBody":{"name":"DEKRA","srn":"0124"}}
+            ]"#,
+        );
+        let m = build_certification_module(Some(&basic)).expect("module");
+        assert_eq!(m.infos.len(), 1);
+        assert_eq!(m.infos[0].certifications[0].value.as_deref(), Some("B"));
+    }
 
     #[test]
     fn iso_max_picks_later_across_parts() {

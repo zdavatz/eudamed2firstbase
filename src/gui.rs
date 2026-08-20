@@ -3313,7 +3313,7 @@ pub fn push_to_firstbase(
                                                                 gtin.to_string(),
                                                                 code.to_string(),
                                                                 attr_name.to_string(),
-                                                                desc.chars().take(200).collect(),
+                                                                desc.chars().take(1000).collect(),
                                                             ));
                                                         }
                                                     }
@@ -3349,7 +3349,7 @@ pub fn push_to_firstbase(
                                                     batch_rejected += 1;
                                                     batch_doc_errors.push((
                                                         code.to_string(),
-                                                        desc.chars().take(200).collect(),
+                                                        desc.chars().take(1000).collect(),
                                                     ));
                                                 }
                                                 for ce in obj
