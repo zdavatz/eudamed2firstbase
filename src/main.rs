@@ -13,6 +13,7 @@ mod gui;
 mod installer;
 mod mail;
 mod mappings;
+mod mirror;
 mod scan;
 mod sheet;
 mod swissdamed;
@@ -48,6 +49,14 @@ fn main() -> Result<()> {
     if args.get(1).map(|s| s.as_str()) == Some("gui") {
         gui::run_gui().map_err(|e| anyhow::anyhow!("GUI error: {}", e))?;
         return Ok(());
+    }
+
+    // `mirror` builds a local SQLite mirror of the public EUDAMED device data.
+    // Handled before the config load: it talks only to the public endpoints, so
+    // it must not require a config.toml to be present.
+    if args.get(1).map(|s| s.as_str()) == Some("mirror") {
+        let opts = mirror::parse_args(&args)?;
+        return mirror::run(&opts);
     }
 
     let config_path = Path::new("config.toml");

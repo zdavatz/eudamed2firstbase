@@ -295,6 +295,7 @@ The `[gmail]` section is only needed for `cargo run mailto`. All other fields ha
 src/
   main.rs                    # Entry point: GUI (no args) or CLI routing for download/xml/ndjson/detail/eudamed_json modes
   download.rs                # Shared EUDAMED download module (listings, version check, parallel fetch, retry)
+  mirror.rs                  # `mirror` subcommand: full local SQLite mirror of public EUDAMED (crawl/details/flatten, resumable)
   gui.rs                     # Cross-platform GUI (egui/eframe): SRN input, credentials, download+convert pipeline
   config.rs                  # config.toml parsing
   eudamed.rs                 # EUDAMED XML parsing (roxmltree DOM)
@@ -388,6 +389,49 @@ The 3 unmapped fields (Certificate Status, Decision Date, Starting Decision Appl
 For hospital customers receiving the EUDAMED data dump via GS1 firstbase, the CertificateLink data provides proof that the Notified Body has confirmed the device — essential for high-risk device procurement decisions.
 
 **Multi-certificate emission.** When EUDAMED holds multiple certificates of different `CertificationStandard` for the same device (typical MDR pattern: `MDR_QUALITY_MANAGEMENT_SYSTEM` + `MDR_TECHNICAL_DOCUMENTATION`), each is emitted as its own element in the `CertificationInformation` array — the GDSN schema requires this because `CertificationStandard` is a single-string field per object. End-to-end verified on 2026-04-27 by re-pushing all 306 devices for SRN `IT-MF-000029499` to GS1 firstbase TEST: 306 accepted, 0 rejected, both standards visible in Firstbase. Across our reference set, 344 of 788 devices carry ≥2 `CertificationInformation` entries.
+
+## Local EUDAMED Mirror (`mirror`)
+
+`mirror` builds and refreshes a **complete local SQLite mirror** of the public EUDAMED
+device data. There is no official bulk export and no official read API for the public
+corpus — the only way to analyse it as a whole is to mirror it.
+
+```bash
+eudamed2firstbase mirror --crawl      # page the listing  -> devices_listing (~3.2 M devices)
+eudamed2firstbase mirror --details    # per-device detail + Basic-UDI -> device_details
+eudamed2firstbase mirror --flatten    # parse stored JSON -> device_details_flat (~70 columns)
+eudamed2firstbase mirror --all        # all three (also the default with no phase flag)
+
+  --db <path>          target DB (default: db/eudamed_DD.MM.YYYY.db under the app data dir)
+  --gtin-file <path>   restrict --details to these GTINs (one per line)
+  --threads N          worker threads (default 8)
+  --rate-ms N          ms between paced requests (default 120)
+```
+
+Each phase is **independently runnable and resumable**: completed listing pages are
+checkpointed in `crawl_pages`, fetched devices in `device_details`. An interrupted run
+continues where it stopped, and a later run picks up devices registered in the meantime.
+A page's rows and its checkpoint are written in one transaction, so a crash can never
+duplicate or lose a page.
+
+Both payloads are stored **verbatim as JSON** (`detailJson`, `basicJson`). The API is
+undocumented and its schema can change without notice — when it does, re-run `--flatten`
+instead of re-crawling for hours.
+
+**Throughput is server-bound, not CPU-bound.** EUDAMED allows roughly 60 requests per
+minute per IP (measured; a burst gets `HTTP 429` with `Retry-After: 60`). All requests
+go through the shared `download::eudamed_get` choke-point, paced by `RateLimiter`, so
+the mirror uses that budget fully without tripping it. More threads do not help — the
+excess only earns 60-second penalties. A full listing crawl takes ~5 h.
+
+Tables written:
+
+| Table | Content |
+|---|---|
+| `devices_listing` | one row per device from the listing endpoint + `rawJson` |
+| `crawl_pages` | page checkpoints for resume |
+| `device_details` | `detailJson` + `basicJson` per device, verbatim |
+| `device_details_flat` | parsed columns: CND nomenclature, risk class, legislation, manufacturer (name/SRN/country/address), AR, sterile/latex/single-use/reusable/implantable, storage conditions, critical warnings, clinical sizes, certificate numbers, market countries, UDI-PI flags |
 
 ## EUDAMED Public API
 

@@ -175,6 +175,40 @@ Always run `cargo fmt` after working with the codebase.
 - **PublishToGln**: first CLI argument to `push_to_firstbase.sh` (e.g. `7612345000527` for GS1 Switzerland UDI Data Dump).
 - **Basic UDI-DI cache** in `eudamed_json/basic/`, keyed by UDI-DI UUID. Provides MDR booleans, riskClass, regulatory act, manufacturer/AR SRN, basicUdi code. Falls back to false defaults on miss. Populated via `GET /devices/basicUdiData/udiDiData/{uuid}`.
 
+## Local EUDAMED Mirror (`src/mirror.rs`)
+
+`mirror` mirrors the **public** EUDAMED corpus into SQLite. Three phases, each resumable
+and separately runnable: `--crawl` (listing → `devices_listing`, checkpointed in
+`crawl_pages`), `--details` (per-device detail + Basic-UDI → `device_details`, stored as
+verbatim JSON), `--flatten` (JSON → `device_details_flat`, ~70 parsed columns). `--all`
+or no phase flag runs all three. Options: `--db`, `--gtin-file` (restrict details to a
+GTIN list), `--threads` (default 8), `--rate-ms` (default 120).
+
+Things that are easy to get wrong here:
+
+- **Page size caps at 300.** Asking for 500/1000 still returns 300; ~10.8 k pages cover
+  the ~3.25 M devices. Do not "optimise" by raising it.
+- **Throughput is server-bound at ~60 req/min per IP**, not CPU-bound. A burst returns
+  `HTTP 429` with `Retry-After: 60`. Everything goes through `download::eudamed_get`
+  (paced by `RateLimiter`); raising `--threads` only buys 60-second penalties. A Python
+  prototype hit exactly the same ceiling — rewriting in Rust bought resumability and
+  reuse, not speed.
+- **Page rows + checkpoint are written in ONE transaction** (`insert_listing_page`).
+  Split them and a crash either duplicates 300 devices on resume or loses them silently.
+- **`Connection` is `Send` but not `Sync`.** The worker threads share a `Mutex<Connection>`
+  that OWNS the connection; a `Mutex<&Connection>` does not compile.
+- **`issuingAgency` is always null in the listing payload** (it is only populated in
+  detail merges). Identify GS1 GTINs by the DI being all-numeric instead.
+- **Actor country/address are FLAT keys** on the actor object (`countryName`,
+  `geographicalAddress`), not a nested `address.country.name`. Reading them as nested
+  yields empty columns with no error — `actor_country_and_address_are_read_flat` guards this.
+- **Store the raw JSON.** The API is undocumented; on a schema change re-run `--flatten`
+  rather than re-crawling for ~5 h.
+
+Unit tests cover GTIN normalisation (EAN-13 ↔ GTIN-14), `refdata.*` code stripping,
+multilingual text selection, both-payload flattening, a missing Basic-UDI payload, and
+the flat-actor-field regression.
+
 ## EUDAMED Public API
 
 - Base: `https://ec.europa.eu/tools/eudamed/api/devices/udiDiData`
