@@ -163,6 +163,9 @@ cargo run mailto errors.csv devices.csv push.log.html --to recipient@gs1.ch --fr
 
 # (Re)send the GS1 Production push report (errors CSV + devices CSV + HTML log) for the latest prod session
 cargo run gs1-report 28545 36
+# Resend the report of ONE specific Production push session (id from the push_session table / `status`);
+# counts come from that row, the HTML log attached is the newest of that session's day
+cargo run gs1-report --session 56 --file srns_sheet.txt --gtin-file gtins_sheet.txt
 # Auto-sent after every `FIRSTBASE_ENV=Production cargo run repush-srn` run.
 # Env: GS1_REPORT_TO, GS1_REPORT_FROM (recipients/sender; else [gs1_report] to/from in config.toml), GS1_REPORT_DISABLE=1
 

@@ -1392,9 +1392,14 @@ fn main() -> Result<()> {
                     // CSV + full HTML log) to GS1. Never fail the run on a mail error.
                     if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
                         // repush-srn is SRN-scoped — no GTIN worklist.
-                        if let Err(e) =
-                            send_gs1_prod_report(&config, out.accepted, out.rejected, &srns, &[])
-                        {
+                        if let Err(e) = send_gs1_prod_report(
+                            &config,
+                            out.accepted,
+                            out.rejected,
+                            &srns,
+                            &[],
+                            None,
+                        ) {
                             eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                         }
                     }
@@ -1409,7 +1414,7 @@ fn main() -> Result<()> {
             // Manually (re)send the GS1 Production push report (errors CSV +
             // devices CSV + HTML log) for the latest Production session. Mirrors
             // the automatic send after a `repush-srn` Production push.
-            // Usage: gs1-report [<accepted> <rejected>] [SRN ...] [--file <srns.txt>] [--gtin-file <gtins.txt>]
+            // Usage: gs1-report [<accepted> <rejected>] [SRN ...] [--file <srns.txt>] [--gtin-file <gtins.txt>] [--session <id>]
             //   The SRNs (positional after the two counts, or --file) are listed in
             //   the mail body. --gtin-file adds the separate GTIN-worklist updates
             //   CSV. GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE apply.
@@ -1450,7 +1455,7 @@ fn main() -> Result<()> {
                         skip_next = false;
                         continue;
                     }
-                    if a == "--gtin-file" || a == "--file" {
+                    if a == "--gtin-file" || a == "--file" || a == "--session" {
                         skip_next = true;
                         continue;
                     }
@@ -1461,7 +1466,15 @@ fn main() -> Result<()> {
                 }
                 out
             };
-            send_gs1_prod_report(&config, accepted, rejected, &srns, &gtins)?;
+            // --session <id>: resend the report of a specific Production
+            // push_session (see `status` / the push_session table) instead of
+            // the latest; counts then come from the DB row.
+            let session_id: Option<i64> = args
+                .iter()
+                .position(|a| a == "--session")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|v| v.parse::<i64>().ok());
+            send_gs1_prod_report(&config, accepted, rejected, &srns, &gtins, session_id)?;
             Ok(())
         }
         Some("status") => {
@@ -1709,9 +1722,14 @@ fn push_changed_to_firstbase(
             // After a Production push, auto-email the GS1 report (non-fatal — a
             // mail error never fails the run).
             if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
-                if let Err(e) =
-                    send_gs1_prod_report(fb_config, out.accepted, out.rejected, srns, gtin_worklist)
-                {
+                if let Err(e) = send_gs1_prod_report(
+                    fb_config,
+                    out.accepted,
+                    out.rejected,
+                    srns,
+                    gtin_worklist,
+                    None,
+                ) {
                     eprintln!("Auto-report to GS1 failed (non-fatal): {}", e);
                 }
             }
@@ -1740,12 +1758,19 @@ fn push_changed_to_firstbase(
     }
 }
 
+/// `session_id`: `None` = the latest Production `push_session` (the automatic
+/// post-push report); `Some(id)` = that specific Production session — used by
+/// `gs1-report --session <id>` to (re)send a report that was never delivered
+/// (e.g. the 27.08.–02.09.2026 nightly reports lost to a Gmail delegation
+/// outage). With an explicit session the accepted/rejected counts are taken
+/// from the `push_session` row, not from the caller.
 fn send_gs1_prod_report(
     config: &config::Config,
     accepted: u32,
     rejected: u32,
     srns: &[String],
     gtin_worklist: &[String],
+    session_id: Option<i64>,
 ) -> anyhow::Result<()> {
     if std::env::var("GS1_REPORT_DISABLE")
         .map(|v| !v.is_empty())
@@ -1808,22 +1833,47 @@ fn send_gs1_prod_report(
     let mut accepted_rows: Vec<(String, String, String, String, String, String)> = Vec::new();
     // Push date for the subject, taken from the session timestamp (DD.MM.YYYY).
     let mut push_date = chrono::Local::now().format("%d.%m.%Y").to_string();
+    let mut push_date_known = false;
+    // Shadow the parameters so an explicit session can override them from the DB.
+    let (mut accepted, mut rejected) = (accepted, rejected);
     {
         let conn = version_db::open_db(&db_path).context("open version DB for GS1 report")?;
-        let session: Option<(i64, String)> = conn
-            .query_row(
-                "SELECT id, COALESCE(session_ts,'') FROM push_session \
-                 WHERE firstbase_env='Production' ORDER BY id DESC LIMIT 1",
-                [],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .ok();
-        let session_id: Option<i64> = session.as_ref().map(|(id, _)| *id);
+        let session: Option<(i64, String, u32, u32)> = match session_id {
+            Some(id) => conn
+                .query_row(
+                    "SELECT id, COALESCE(session_ts,''), total_accepted, total_rejected \
+                     FROM push_session WHERE firstbase_env='Production' AND id = ?1",
+                    [id],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+                )
+                .ok(),
+            None => conn
+                .query_row(
+                    "SELECT id, COALESCE(session_ts,''), total_accepted, total_rejected \
+                     FROM push_session WHERE firstbase_env='Production' \
+                     ORDER BY id DESC LIMIT 1",
+                    [],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+                )
+                .ok(),
+        };
+        if let Some(id) = session_id {
+            if session.is_none() {
+                anyhow::bail!("No Production push_session with id {}", id);
+            }
+            // Explicit session: the counts come from the DB row, not the caller.
+            if let Some((_, _, a, r)) = &session {
+                accepted = *a;
+                rejected = *r;
+            }
+        }
+        let session_id: Option<i64> = session.as_ref().map(|(id, ..)| *id);
         // session_ts is ISO "YYYY-MM-DDT..." — reformat the date part to DD.MM.YYYY.
-        if let Some((_, ts)) = &session {
+        if let Some((_, ts, ..)) = &session {
             if ts.len() >= 10 {
                 let (y, m, d) = (&ts[0..4], &ts[5..7], &ts[8..10]);
                 push_date = format!("{}.{}.{}", d, m, y);
+                push_date_known = true;
             }
         }
         if let Some(sid) = session_id {
@@ -1996,8 +2046,11 @@ fn send_gs1_prod_report(
         updates_csv.display()
     );
 
-    // --- Locate the most recent Production HTML log ---
-    let latest_html: Option<std::path::PathBuf> = std::fs::read_dir(&prod_log_dir)
+    // --- Locate the Production HTML log for this session ---
+    // Log names are `HH.MM_DD.MM.YYYY.log.html`; prefer the newest log of the
+    // session's own day (so a resend of an older session attaches ITS log, not
+    // last night's). Without a session date fall back to the newest log overall.
+    let html_logs: Vec<std::path::PathBuf> = std::fs::read_dir(&prod_log_dir)
         .ok()
         .into_iter()
         .flatten()
@@ -2009,7 +2062,29 @@ fn send_gs1_prod_report(
                 .map(|n| n.ends_with(".log.html"))
                 .unwrap_or(false)
         })
-        .max_by_key(|p| std::fs::metadata(p).and_then(|m| m.modified()).ok());
+        .collect();
+    let newest = |it: &mut dyn Iterator<Item = &std::path::PathBuf>| {
+        it.max_by_key(|p| std::fs::metadata(p).and_then(|m| m.modified()).ok())
+            .cloned()
+    };
+    let day_suffix = format!("_{}.log.html", push_date);
+    let latest_html: Option<std::path::PathBuf> = if push_date_known {
+        newest(&mut html_logs.iter().filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.ends_with(&day_suffix))
+                .unwrap_or(false)
+        }))
+        .or_else(|| {
+            if session_id.is_none() {
+                newest(&mut html_logs.iter())
+            } else {
+                None
+            }
+        })
+    } else {
+        newest(&mut html_logs.iter())
+    };
 
     // --- Attachment list with size guard: both CSVs always; HTML only if it fits ---
     // Gmail caps a message at 25 MB; base64 inflates ~33%, so keep raw under ~18 MB.
