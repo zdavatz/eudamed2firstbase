@@ -15,7 +15,7 @@ The GUI provides:
 - Limit per SRN option
 - Push target selector: **GS1 firstbase** or **Swissdamed** (radio buttons)
 - Target-specific credentials (collapsible):
-  - Firstbase: email, password, provider GLN, publish-to GLN
+  - Firstbase: email, password, provider GLN, publish-to GLN (both GLNs pre-filled from `config.toml` — `7612345000480` / `7612345000527` — so a fresh install can push without knowing them; since v1.0.105)
   - Swissdamed: client ID, client secret, API base URL
 - Dry run mode (download & convert only, no push)
 - Resizable splitter between settings panel and log panel
@@ -25,7 +25,7 @@ The GUI provides:
 - Live progress reporting: listing pages ("page 2/54 — 40 devices so far (of 1074 total)"), per-SRN version classification ("SRN DE-MF-...: 509 devices [12↑ new, 0↑ udi, 0↑ budi, 497 same]"), detail/basic download counters ("detail 10/1074 downloaded"), conversion summary
 - Live scrollable log output with file save paths
 - Worker thread panic protection: panics in the background pipeline are caught and displayed in the log (not silently lost)
-- Persistent settings across restarts (`settings.json`)
+- Persistent settings across restarts (`settings.json`). Since v1.0.105 the file can no longer be lost silently: every field is optional (a `settings.json` written by another build, or one missing a field, no longer resets *all* settings), an unparseable file is kept as `settings.json.corrupt-<ts>` and reported in the log, writes are atomic (temp + rename) and a failed write is logged. Missing push credentials are reported *before* the pipeline starts, naming the field and the settings path.
 - Auto-saved logs to `logs/`
 - All data stored in `~/eudamed2firstbase/` (Windows: `%USERPROFILE%\eudamed2firstbase\`)
 - WhatsApp integration (Baileys): pair this device via native in-GUI QR modal, send any push-log HTML as a document to a group/user JID, session persists across restarts
@@ -65,7 +65,7 @@ The GUI provides:
 - **Legacy `globalModelNumber` + `globalModelDescription` emitted for MDD/AIMDD/IVDD** (since v1.0.54, [#29](https://github.com/zdavatz/eudamed2firstbase/issues/29)): GS1 has narrowed rule **097.116** (Prüfzifferprüfung) to MDR/IVDR-only, so legacy devices can now carry the Basic UDI-DI code (a.k.a. EUDAMED B-GTIN) as `globalModelNumber` and the EUDAMED `deviceName` (FLD-UDID-22) as `globalModelDescription` — the same path MDR/IVDR records have been on since the start. The `if is_legacy { Vec::new() }` strip in `transform_detail.rs` drops out, and the legacy-only `MODEL_NUMBER` fallback that used to back-fill the Basic UDI-DI code into `additionalTradeItemIdentification` is removed (it would now duplicate `globalModelNumber`). `deviceModel` (FLD-UDID-20) still flows to `MODEL_NUMBER` when EUDAMED actually carries it. Run **Mode 0 → Mode 5** on the affected legacy SRNs to land the new fields in firstbase.
 - **Cleanup workflow after a converter fix:** when a release like v1.0.50 (`isDeviceExemptFromImplantObligations`, [#38](https://github.com/zdavatz/eudamed2firstbase/issues/38)) or v1.0.52 (`ClinicalSizeCharacteristicsCode`, [#39](https://github.com/zdavatz/eudamed2firstbase/issues/39)) changes mapping logic without an EUDAMED `versionNumber` bump, the affected records in Firstbase keep the pre-fix payload until you actively repush them. Mode 0 alone won't fix this — its convert step uses the `udi_versions` hash check and skips unchanged devices. The right pattern is **Mode 0 first, then Mode 5**: Mode 0 refreshes EUDAMED detail + BUDI cache (so `sutures`-bumps and similar BUDI fixes land), then Mode 5 forces reconvert through the latest converter logic and pushes regardless of version. Combine the affected SRN list from your data analysis (e.g. all `class-iib` + `implantable=true` BUDI files for #38, or all UUIDs whose `clinicalSize.metricOfMeasurement.code` falls in MU137..MU176 for #39) into one repush — v1.0.53 transparently skips any NO_LONGER+ACCEPTED records so you don't drown in G485 noise.
 
-Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
+Environment variables override saved credentials: `FIRSTBASE_EMAIL`, `FIRSTBASE_PASSWORD`, `FIRSTBASE_PUBLISH_GLN`, `SWISSDAMED_CLIENT_ID`, `SWISSDAMED_CLIENT_SECRET`, `SWISSDAMED_BASE_URL`.
 
 ## Release / Distribution
 

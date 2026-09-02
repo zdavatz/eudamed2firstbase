@@ -80,6 +80,7 @@ impl FirstbaseEnv {
 
 /// Persistent state saved between sessions.
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Settings {
     pub srns: String,
     pub limit: String,
@@ -110,17 +111,89 @@ pub struct Settings {
 }
 
 impl Settings {
-    fn load() -> Self {
-        std::fs::read_to_string(&settings_path())
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default()
+    /// Load the persisted settings.
+    ///
+    /// Never silently discards a settings file. The old implementation collapsed
+    /// every failure (unreadable file, half-written file, a field a different
+    /// build wrote) into `unwrap_or_default()`, i.e. it started with empty
+    /// credentials and then overwrote the file on the next auto-save — the
+    /// credentials were gone without a trace. Now a file that cannot be parsed
+    /// is preserved as `settings.json.corrupt-<ts>` and reported in the log.
+    fn load() -> (Self, Vec<String>) {
+        let path = settings_path();
+        let mut notes = Vec::new();
+        if !path.exists() {
+            notes.push(format!(
+                "No settings file yet — it will be created at {}",
+                path.display()
+            ));
+            return (Self::default(), notes);
+        }
+        let raw = match std::fs::read_to_string(&path) {
+            Ok(s) => s,
+            Err(e) => {
+                notes.push(format!(
+                    "WARNING: could not read {}: {} — starting with empty settings.",
+                    path.display(),
+                    e
+                ));
+                return (Self::default(), notes);
+            }
+        };
+        match serde_json::from_str::<Settings>(&raw) {
+            Ok(s) => {
+                notes.push(format!("Settings loaded from {}", path.display()));
+                (s, notes)
+            }
+            Err(e) => {
+                let backup = path.with_file_name(format!(
+                    "settings.json.corrupt-{}",
+                    chrono::Local::now().format("%Y%m%d_%H%M%S")
+                ));
+                let kept = std::fs::copy(&path, &backup).is_ok();
+                notes.push(format!(
+                    "WARNING: {} could not be parsed ({}). {} Please re-enter your credentials.",
+                    path.display(),
+                    e,
+                    if kept {
+                        format!("A copy was kept as {}.", backup.display())
+                    } else {
+                        String::new()
+                    }
+                ));
+                (Self::default(), notes)
+            }
+        }
     }
 
-    fn save(&self) {
-        if let Ok(json) = serde_json::to_string_pretty(self) {
-            let _ = std::fs::write(&settings_path(), json);
-        }
+    /// Persist the settings atomically (temp file + rename).
+    ///
+    /// `fs::write` truncates first, so a crash / killed process (e.g. during an
+    /// uninstall-reinstall) could leave a half-written `settings.json` that no
+    /// longer parses — which used to mean "all credentials lost". A rename is
+    /// atomic on every platform we ship (and replaces the target on Windows).
+    fn save(&self) -> std::io::Result<()> {
+        let path = settings_path();
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let tmp = path.with_file_name("settings.json.tmp");
+        std::fs::write(&tmp, json.as_bytes())?;
+        std::fs::rename(&tmp, &path)
+    }
+}
+
+/// Persist `settings`, returning a log line when the write failed.
+///
+/// Free function (not an `&mut self` method) so it can be called from the
+/// message-pump block, which already holds a field borrow of `self.rx`.
+fn save_settings_to_disk(settings: &Settings) -> Option<String> {
+    match settings.save() {
+        Ok(()) => None,
+        Err(e) => Some(format!(
+            "WARNING: settings could NOT be saved to {}: {} — credentials will be gone on the next start.",
+            settings_path().display(),
+            e
+        )),
     }
 }
 
@@ -169,7 +242,7 @@ impl App {
         // Light theme: white background, black text
         cc.egui_ctx.set_visuals(egui::Visuals::light());
 
-        let mut settings = Settings::load();
+        let (mut settings, mut settings_notes) = Settings::load();
 
         // Env vars override saved credentials
         if let Ok(v) = std::env::var("FIRSTBASE_EMAIL") {
@@ -182,8 +255,12 @@ impl App {
                 settings.firstbase_password = v;
             }
         }
-        if settings.provider_gln.is_empty() {
-            // Fall back to the GLN defined in config.toml rather than a hardcoded value.
+        if settings.provider_gln.is_empty() || settings.publish_to_gln.is_empty() {
+            // Fall back to the GLNs defined in config.toml rather than hardcoded values.
+            // Both are filled: a fresh install (or a lost settings.json) used to leave
+            // "Publish To GLN" empty while "Provider GLN" was auto-filled, so every push
+            // failed with "Cannot push: Publish To GLN not set" — a field the user has no
+            // reason to know about.
             let config_path = download::app_data_dir().join("config.toml");
             let config_path = if config_path.exists() {
                 config_path
@@ -191,7 +268,17 @@ impl App {
                 std::path::PathBuf::from("config.toml")
             };
             if let Ok(cfg) = crate::config::load_config(&config_path) {
-                settings.provider_gln = cfg.provider.gln;
+                if settings.provider_gln.is_empty() {
+                    settings.provider_gln = cfg.provider.gln;
+                }
+                if settings.publish_to_gln.is_empty() {
+                    settings.publish_to_gln = cfg.provider.publish_gln;
+                }
+            }
+        }
+        if let Ok(v) = std::env::var("FIRSTBASE_PUBLISH_GLN") {
+            if !v.is_empty() {
+                settings.publish_to_gln = v;
             }
         }
         // Swissdamed env vars
@@ -215,10 +302,14 @@ impl App {
         }
 
         let last_saved = serde_json::to_string(&settings).unwrap_or_default();
+        settings_notes.push(format!(
+            "Data directory: {}",
+            download::app_data_dir().display()
+        ));
         App {
             settings,
             last_saved_settings: last_saved,
-            log_lines: Vec::new(),
+            log_lines: settings_notes,
             running: false,
             rx: None,
             show_credentials: false,
@@ -306,7 +397,9 @@ impl App {
                 }
                 self.log_lines
                     .push("Update staged — restarting to apply…".to_string());
-                self.settings.save();
+                if let Some(w) = save_settings_to_disk(&self.settings) {
+                    self.log_lines.push(w);
+                }
                 self.save_log();
                 std::thread::sleep(std::time::Duration::from_millis(600));
                 std::process::exit(0);
@@ -715,7 +808,41 @@ impl App {
     }
 
     fn start_pipeline(&mut self, ctx: egui::Context) {
-        self.settings.save();
+        // Paste artefacts (a trailing space / newline from copying the password
+        // out of a mail) make the GS1 token endpoint answer 401, which reads
+        // like "the app does not know my password".
+        self.settings.firstbase_email = self.settings.firstbase_email.trim().to_string();
+        self.settings.firstbase_password = self.settings.firstbase_password.trim().to_string();
+        self.settings.provider_gln = self.settings.provider_gln.trim().to_string();
+        self.settings.publish_to_gln = self.settings.publish_to_gln.trim().to_string();
+
+        // Fail fast on missing push credentials: the per-mode checks sit in the
+        // push step, i.e. AFTER download + convert — Mode 0 only reported a
+        // missing field hours into a run.
+        if !self.settings.dry_run && matches!(self.settings.push_target, PushTarget::Firstbase) {
+            let mut missing: Vec<&str> = Vec::new();
+            if self.settings.firstbase_email.is_empty() {
+                missing.push("Email");
+            }
+            if self.settings.firstbase_password.is_empty() {
+                missing.push("Password");
+            }
+            if self.settings.publish_to_gln.is_empty() {
+                missing.push("Publish To GLN");
+            }
+            if !missing.is_empty() {
+                self.error_dialog = Some(format!(
+                    "Cannot push: {} not set.\n\nOpen the \"GS1 firstbase Credentials\" section and fill in the missing field(s).\n\nSettings file: {}",
+                    missing.join(", "),
+                    settings_path().display()
+                ));
+                return;
+            }
+        }
+
+        if let Some(w) = save_settings_to_disk(&self.settings) {
+            self.log_lines.push(w);
+        }
 
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
@@ -762,7 +889,7 @@ fn spawn_update_check() -> mpsc::Receiver<Option<update::UpdateInfo>> {
 
 impl eframe::App for App {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        self.settings.save();
+        let _ = save_settings_to_disk(&self.settings);
         self.save_log();
     }
 
@@ -811,7 +938,9 @@ impl eframe::App for App {
                         self.qr_texture = None;
                         self.qr_data = None;
                         self.save_log();
-                        self.settings.save();
+                        if let Some(w) = save_settings_to_disk(&self.settings) {
+                            self.log_lines.push(w);
+                        }
                     }
                 }
             }
@@ -1416,7 +1545,12 @@ impl eframe::App for App {
         // Auto-save settings when they change
         let current = serde_json::to_string(&self.settings).unwrap_or_default();
         if current != self.last_saved_settings {
-            self.settings.save();
+            if let Some(w) = save_settings_to_disk(&self.settings) {
+                // Report once, not once per frame.
+                if self.log_lines.last() != Some(&w) {
+                    self.log_lines.push(w);
+                }
+            }
             self.last_saved_settings = current;
         }
     }
@@ -4604,6 +4738,37 @@ mod tests {
     use super::doc_all_gtins;
     use super::doc_is_regulation;
     use super::restamp_discontinued_date;
+    use super::Settings;
+
+    #[test]
+    fn settings_survive_a_file_written_by_another_build() {
+        // Maik, 02.09.2026: after a reinstall the app had lost email + password.
+        // Root cause class: Settings::load() collapsed ANY deserialisation error
+        // into unwrap_or_default(), and `srns` / `limit` / `dry_run` had no
+        // #[serde(default)] — so a settings.json missing a single field (older or
+        // newer build, half-written file) silently wiped ALL settings, credentials
+        // included. Every field must now be optional.
+        let json =
+            r#"{"firstbase_email":"a@b.ch","firstbase_password":"secret","a_future_field":1}"#;
+        let s: Settings = serde_json::from_str(json).expect("partial settings must parse");
+        assert_eq!(s.firstbase_email, "a@b.ch");
+        assert_eq!(s.firstbase_password, "secret");
+        assert!(s.srns.is_empty());
+        assert!(!s.dry_run);
+    }
+
+    #[test]
+    fn settings_round_trip_keeps_credentials() {
+        let mut s = Settings::default();
+        s.firstbase_email = "user@example.com".to_string();
+        s.firstbase_password = "pw".to_string();
+        s.publish_to_gln = "7612345000527".to_string();
+        let back: Settings =
+            serde_json::from_str(&serde_json::to_string_pretty(&s).unwrap()).unwrap();
+        assert_eq!(back.firstbase_email, "user@example.com");
+        assert_eq!(back.firstbase_password, "pw");
+        assert_eq!(back.publish_to_gln, "7612345000527");
+    }
 
     #[test]
     fn restamp_discontinued_staggers_child_later_than_parent() {
