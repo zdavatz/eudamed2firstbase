@@ -1128,7 +1128,7 @@ fn transform_market_info(udidi: &MdrUdidiData) -> Option<SalesInformationModule>
         .market_infos
         .iter()
         .filter(|mi| {
-            // Skip GB/XI — not valid GDSN market countries post-Brexit (G541)
+            // Skip GB — not a valid GDSN market country post-Brexit (G541); XI (Northern Ireland) is allowed
             mi.country
                 .as_deref()
                 .map_or(true, |c| mappings::is_valid_gdsn_market_country(c))

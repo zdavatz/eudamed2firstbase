@@ -1225,7 +1225,7 @@ fn build_sales_module(
                 Some(c) => c,
                 None => continue,
             };
-            // Skip GB/XI — not valid GDSN market countries post-Brexit (G541)
+            // Skip GB — not a valid GDSN market country post-Brexit (G541); XI (Northern Ireland) is allowed
             if !mappings::is_valid_gdsn_market_country(iso2) {
                 continue;
             }

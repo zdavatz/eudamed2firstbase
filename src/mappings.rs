@@ -288,9 +288,16 @@ pub fn country_alpha2_to_numeric(code: &str) -> &str {
 }
 
 /// Whether a country alpha-2 code is valid for GDSN market sales conditions.
-/// GB/XI are excluded post-Brexit (G541: invalid country code in GDSN).
+///
+/// `GB` (Great Britain, 826) is excluded post-Brexit: it is not in the GS1
+/// `salesConditionTargetMarketCountry/countryCode` list (G541).
+/// `XI` (Northern Ireland) IS allowed since the GS1 UDI Connector Profile
+/// Apr 2026 V1.1 (UDID_CodeLists row 9110: "may be used as a country code but
+/// not as a Target Market") — it was skipped until v1.0.105 because the
+/// 2026-03 GDSN release still rejected it with G541, which dropped Northern
+/// Ireland from every device's market list (Maik, 24.09.2026, GTIN 04049154166558).
 pub fn is_valid_gdsn_market_country(iso2: &str) -> bool {
-    !matches!(iso2, "GB" | "XI")
+    iso2 != "GB"
 }
 
 /// Whether a country alpha-2 code is an EU or EEA member state.
@@ -855,6 +862,16 @@ mod tests {
         assert!(!is_valid_gmn("04049154_PC_M2_H2_O2_EA")); // wrong check pair
         assert!(!is_valid_gmn("B-04049154000074")); // legacy B-<GTIN>
         assert!(!is_valid_gmn("04049154500321")); // plain GTIN
+    }
+
+    #[test]
+    fn northern_ireland_is_a_valid_market_country_but_gb_is_not() {
+        // GS1 UDID_CodeLists (Apr 2026 V1.1) lists XI under
+        // salesConditionTargetMarketCountry/countryCode; 826/GB is absent.
+        assert!(is_valid_gdsn_market_country("XI"));
+        assert!(is_valid_gdsn_market_country("DE"));
+        assert!(!is_valid_gdsn_market_country("GB"));
+        assert_eq!(country_alpha2_to_numeric("XI"), "XI");
     }
 
     #[test]
