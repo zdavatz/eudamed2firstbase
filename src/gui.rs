@@ -2608,6 +2608,16 @@ fn sanitize_global_model_info(doc: &mut serde_json::Value) -> bool {
     changed
 }
 
+/// `EffectiveDateTime` of a firstbase doc (ISO-8601 string; lexical order equals
+/// chronological order for the converter's zero-padded UTC stamps). Empty when
+/// absent. Used as the tie-break between two twins of the same regulation.
+fn doc_effective_datetime(doc: &serde_json::Value) -> String {
+    doc.pointer("/DraftItem/TradeItem/TradeItemSynchronisationDates/EffectiveDateTime")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string()
+}
+
 /// True when the draft doc is an MDR/IVDR (Regulation) device, false for a
 /// legacy MDD/AIMDD/IVDD one. Used by the push-time GTIN dedup: a GTIN that
 /// EUDAMED carries twice (legacy registration + MDR re-registration, e.g.
@@ -3017,8 +3027,17 @@ pub fn push_to_firstbase(
                 .to_string();
             let is_regulation = doc_is_regulation(doc);
             if let Some(&(prev_idx, prev_is_regulation)) = seen.get(&gtin) {
-                // Duplicate GTIN — keep the MDR/IVDR twin; on a tie keep the first
-                let (keep, drop) = if is_regulation && !prev_is_regulation {
+                // Duplicate GTIN — keep the MDR/IVDR twin; on a regulation tie keep
+                // the doc with the LATER EffectiveDateTime (= the more recently
+                // changed EUDAMED record, v1.0.108), and only on a full tie the first.
+                // Before, a tie kept the first-seen doc, which on 25.09.2026 dropped
+                // the freshly changed MDR twin 7a647260 of 04049154460649 (BUDI v2)
+                // in favour of its stale sibling 5cfd66a6 (v1).
+                let newer =
+                    doc_effective_datetime(doc) > doc_effective_datetime(&pushable[prev_idx].3);
+                let (keep, drop) = if (is_regulation && !prev_is_regulation)
+                    || (is_regulation == prev_is_regulation && newer)
+                {
                     seen.insert(gtin.clone(), (i, is_regulation));
                     (i, prev_idx)
                 } else {
@@ -4765,6 +4784,7 @@ pub fn run_gui() -> eframe::Result {
 #[cfg(test)]
 mod tests {
     use super::doc_all_gtins;
+    use super::doc_effective_datetime;
     use super::doc_is_regulation;
     use super::restamp_discontinued_date;
     use super::restamp_last_change_date;
@@ -4961,6 +4981,21 @@ mod tests {
         assert!(doc_is_regulation(&doc("1", Some("IVDR"), None)));
         assert!(!doc_is_regulation(&doc("1", Some("AIMDD"), Some("B-1"))));
         assert!(!doc_is_regulation(&doc("1", Some("IVDD"), None)));
+    }
+
+    /// Two MDR twins of the same GTIN (04049154460649, 25.09.2026): the one whose
+    /// EUDAMED record changed more recently carries the later EffectiveDateTime
+    /// and must win the dedup, regardless of read_dir order.
+    #[test]
+    fn dedup_tie_prefers_the_later_effective_datetime() {
+        let mut old = doc("04049154460649", Some("MDR"), None);
+        old["DraftItem"]["TradeItem"]["TradeItemSynchronisationDates"] =
+            serde_json::json!({ "EffectiveDateTime": "2025-11-05T17:00:54.762" });
+        let mut new = doc("04049154460649", Some("MDR"), None);
+        new["DraftItem"]["TradeItem"]["TradeItemSynchronisationDates"] =
+            serde_json::json!({ "EffectiveDateTime": "2026-09-24T15:35:07.045" });
+        assert!(doc_effective_datetime(&new) > doc_effective_datetime(&old));
+        assert_eq!(doc_effective_datetime(&doc("1", None, None)), "");
     }
 
     /// Docs without a RegulatedTradeItemModule fall back to the refined GMN

@@ -1046,6 +1046,366 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Some("deep-scan") => {
+            // Rolling deep scan (v1.0.108): the nightly `check` only sees what the
+            // EUDAMED LISTING exposes, and that is the UDI-DI `versionNumber` alone —
+            // `basicUdiDataVersionNumber` is always 0 and `lastUpdateDate` always
+            // null in the listing (measured 25.09.2026). A change to ONLY the Basic
+            // UDI-DI, the market info, the manufacturer/AR, the certificates or the
+            // container packages leaves the UDI-DI version untouched and is
+            // therefore invisible to `check` (Maik 25.09.2026, HumanOptics
+            // DE-MF-000017892: 04049154179046 market v1→v2 and 04049154460649
+            // BUDI+market v1→v2 were not pushed). The only way to see those parts
+            // is to fetch detail + Basic UDI-DI per device — 2 requests each, ~57
+            // req/min per IP → ~40'000 devices ≈ 23 h. So the worklist is scanned
+            // in `--slices N` (default 7) stable slices, one per night (slice =
+            // days-since-epoch mod N unless `--slice K` is given): each device is
+            // re-fetched, all version parts are compared against `udi_versions`
+            // (`detect_changes` + the BUDI-side fields), changed devices get their
+            // cache refreshed, are reconverted and pushed (scoped, with the GS1
+            // report). Worst-case latency for a non-UDI change: N nights.
+            // Usage: deep-scan [<srn_file>] [--gtin-file <gtins>] [--slices N]
+            //        [--slice K] [--rate-ms N] [--dry-run]
+            let srn_file: Option<&String> = args.get(2).filter(|a| !a.starts_with("--"));
+            let arg_val = |flag: &str| -> Option<String> {
+                args.iter()
+                    .position(|a| a == flag)
+                    .and_then(|i| args.get(i + 1))
+                    .cloned()
+            };
+            let read_list = |path: &str| -> Vec<String> {
+                std::fs::read_to_string(path)
+                    .map(|s| {
+                        s.lines()
+                            .map(|l| l.trim().to_string())
+                            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            };
+            let srns: Vec<String> = srn_file.map(|f| read_list(f)).unwrap_or_default();
+            let gtins: Vec<String> = arg_val("--gtin-file")
+                .map(|p| read_list(&p))
+                .unwrap_or_default();
+            let slices: u64 = arg_val("--slices")
+                .and_then(|s| s.parse().ok())
+                .filter(|n: &u64| *n >= 1)
+                .unwrap_or(7);
+            let slice: u64 = match arg_val("--slice").and_then(|s| s.parse::<u64>().ok()) {
+                Some(k) => k % slices,
+                None => {
+                    let days = chrono::Utc::now().timestamp().div_euclid(86_400) as u64;
+                    days % slices
+                }
+            };
+            let rate_ms: u64 = arg_val("--rate-ms")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1050);
+            let dry_run = args.iter().any(|a| a == "--dry-run");
+
+            let data_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR);
+            let detail_dir = data_dir.join("detail");
+            let basic_dir = data_dir.join("basic");
+            let _ = std::fs::create_dir_all(&detail_dir);
+            let _ = std::fs::create_dir_all(&basic_dir);
+            let db_path = download::app_data_dir()
+                .join("db")
+                .join("version_tracking.db");
+            let conn = version_db::open_db(&db_path)?;
+
+            // Scope: every UUID in listing_cache under a worklist SRN, plus the
+            // devices of the GTIN worklist (matched on primary_di). No worklist at
+            // all → the whole listing_cache.
+            let mut scope: Vec<String> = Vec::new();
+            {
+                let mut seen = std::collections::HashSet::new();
+                if srns.is_empty() && gtins.is_empty() {
+                    let mut st = conn.prepare("SELECT uuid FROM listing_cache")?;
+                    for u in st.query_map([], |r| r.get::<_, String>(0))?.flatten() {
+                        if seen.insert(u.clone()) {
+                            scope.push(u);
+                        }
+                    }
+                } else {
+                    let mut st = conn.prepare("SELECT uuid FROM listing_cache WHERE srn = ?1")?;
+                    for srn in &srns {
+                        for u in st.query_map([srn], |r| r.get::<_, String>(0))?.flatten() {
+                            if seen.insert(u.clone()) {
+                                scope.push(u);
+                            }
+                        }
+                    }
+                    let mut sg =
+                        conn.prepare("SELECT uuid FROM listing_cache WHERE primary_di = ?1")?;
+                    for g in &gtins {
+                        for u in sg.query_map([g], |r| r.get::<_, String>(0))?.flatten() {
+                            if seen.insert(u.clone()) {
+                                scope.push(u);
+                            }
+                        }
+                    }
+                }
+            }
+            scope.sort();
+            // Stable slice assignment from the UUID itself (first 8 hex chars), so
+            // a device always lands in the same slice regardless of list growth.
+            let in_slice = |u: &str| -> bool {
+                u64::from_str_radix(&u.replace('-', "")[..8.min(u.len())], 16)
+                    .map(|h| h % slices == slice)
+                    .unwrap_or(true)
+            };
+            let todo: Vec<String> = scope.iter().filter(|u| in_slice(u)).cloned().collect();
+            eprintln!(
+                "=== deep-scan: slice {}/{} — {} of {} device(s) in scope (SRNs {}, GTINs {}){} ===",
+                slice + 1,
+                slices,
+                todo.len(),
+                scope.len(),
+                srns.len(),
+                gtins.len(),
+                if dry_run { " [dry-run]" } else { "" }
+            );
+            if todo.is_empty() {
+                eprintln!("Nothing to scan.");
+                return Ok(());
+            }
+            eprintln!(
+                "Fetching detail + Basic UDI-DI for {} device(s) at ~{}/min (ETA ~{} min)...",
+                todo.len(),
+                60_000 / rate_ms.max(1),
+                (todo.len() as u64 * 2 * rate_ms) / 60_000
+            );
+
+            // Fetch both records per device through the shared rate limiter, compare
+            // every version part with the DB, and collect the changed ones. The
+            // cache files are only rewritten for devices that actually changed.
+            #[derive(Default)]
+            struct ScanStats {
+                scanned: usize,
+                fetch_failed: usize,
+                unchanged: usize,
+                new: usize,
+                udi: usize,
+                budi: usize,
+                mfr_ar: usize,
+                cert: usize,
+                pkg: usize,
+                market: usize,
+                status: usize,
+                other: usize,
+            }
+            let limiter = download::RateLimiter::new(std::time::Duration::from_millis(rate_ms));
+            let agent = download::eudamed_agent();
+            let stats = std::sync::Mutex::new(ScanStats::default());
+            let changed: std::sync::Mutex<Vec<(String, String)>> =
+                std::sync::Mutex::new(Vec::new());
+            let conn_m = std::sync::Mutex::new(conn);
+            let done = std::sync::atomic::AtomicUsize::new(0);
+            let total = todo.len();
+            let now_str = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(6)
+                .build()
+                .context("deep-scan thread pool")?
+                .install(|| {
+                    todo.par_iter().for_each(|uuid| {
+                        let d_url = format!(
+                            "{}/{}?languageIso2Code=en",
+                            download::EUDAMED_BASE_URL,
+                            uuid
+                        );
+                        let b_url = format!(
+                            "{}/{}?languageIso2Code=en",
+                            download::BASIC_UDI_BASE_URL,
+                            uuid
+                        );
+                        let detail = download::eudamed_get(&agent, &limiter, &d_url, 4);
+                        let basic = download::eudamed_get(&agent, &limiter, &b_url, 4);
+                        let n = done.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                        if n % 200 == 0 || n == total {
+                            eprintln!("  deep-scan {}/{}", n, total);
+                        }
+                        let (detail, basic) = match (detail, basic) {
+                            (Ok(d), Ok(b)) if d.contains("\"uuid\"") => (d, b),
+                            _ => {
+                                if let Ok(mut s) = stats.lock() {
+                                    s.fetch_failed += 1;
+                                }
+                                return;
+                            }
+                        };
+                        let mut rec = version_db::extract_detail_versions(&detail);
+                        if rec.uuid.is_empty() {
+                            rec.uuid = uuid.clone();
+                        }
+                        version_db::merge_budi_versions(&mut rec, &basic);
+                        rec.last_synced = Some(now_str.clone());
+                        let old = match conn_m.lock() {
+                            Ok(c) => version_db::get_version(&c, uuid).ok().flatten(),
+                            Err(_) => None,
+                        };
+                        let why = deep_scan_diff(old.as_ref(), &rec);
+                        let mut s = match stats.lock() {
+                            Ok(s) => s,
+                            Err(e) => e.into_inner(),
+                        };
+                        s.scanned += 1;
+                        match why.as_deref() {
+                            None => {
+                                s.unchanged += 1;
+                                return;
+                            }
+                            Some("new") => s.new += 1,
+                            Some(w) => {
+                                for part in w.split('+') {
+                                    match part {
+                                        "udi" => s.udi += 1,
+                                        "budi" => s.budi += 1,
+                                        "mfr/ar" => s.mfr_ar += 1,
+                                        "cert" => s.cert += 1,
+                                        "pkg" => s.pkg += 1,
+                                        "market" => s.market += 1,
+                                        "status" => s.status += 1,
+                                        _ => s.other += 1,
+                                    }
+                                }
+                            }
+                        }
+                        drop(s);
+                        if !dry_run {
+                            let _ =
+                                std::fs::write(detail_dir.join(format!("{}.json", uuid)), &detail);
+                            // Only cache a Basic UDI-DI body that carries a code
+                            // (parse-before-cache, same rule as fetch_basic_udi_di).
+                            if basic.contains("\"code\"") {
+                                let _ = std::fs::write(
+                                    basic_dir.join(format!("{}.json", uuid)),
+                                    &basic,
+                                );
+                            }
+                            if let Ok(c) = conn_m.lock() {
+                                let _ = version_db::upsert_version(&c, &rec);
+                            }
+                        }
+                        if let Ok(mut ch) = changed.lock() {
+                            ch.push((uuid.clone(), why.unwrap_or_default()));
+                        }
+                    });
+                });
+
+            let stats = stats.into_inner().unwrap_or_else(|e| e.into_inner());
+            let mut changed = changed.into_inner().unwrap_or_else(|e| e.into_inner());
+            changed.sort();
+            eprintln!(
+                "\ndeep-scan slice {}/{}: {} scanned, {} unchanged, {} changed ({} new), {} fetch failures",
+                slice + 1,
+                slices,
+                stats.scanned,
+                stats.unchanged,
+                changed.len(),
+                stats.new,
+                stats.fetch_failed
+            );
+            eprintln!(
+                "  changed parts: udi {}, budi {}, mfr/ar {}, cert {}, pkg {}, market {}, status {}, other {}",
+                stats.udi,
+                stats.budi,
+                stats.mfr_ar,
+                stats.cert,
+                stats.pkg,
+                stats.market,
+                stats.status,
+                stats.other
+            );
+            let conn = conn_m.into_inner().unwrap_or_else(|e| e.into_inner());
+            if !changed.is_empty() {
+                let mut st =
+                    conn.prepare("SELECT srn, primary_di FROM listing_cache WHERE uuid = ?1")?;
+                for (u, why) in &changed {
+                    let (srn, gtin) = st
+                        .query_row([u], |r| {
+                            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+                        })
+                        .unwrap_or_default();
+                    eprintln!("  changed: {} {} {} [{}]", srn, gtin, u, why);
+                }
+            }
+            if dry_run || changed.is_empty() {
+                if dry_run {
+                    eprintln!("[dry-run] no cache/DB writes, no convert, no push.");
+                }
+                return Ok(());
+            }
+
+            // Convert the changed devices from the refreshed cache and push them
+            // scoped, exactly like the nightly check (pending-push semantics incl.).
+            let config_path = download::app_data_dir().join("config.toml");
+            let config_path = if config_path.exists() {
+                config_path
+            } else {
+                std::path::PathBuf::from("config.toml")
+            };
+            let fb_config = config::load_config(&config_path)?;
+            let uuids: std::collections::HashSet<String> =
+                changed.iter().map(|(u, _)| u.clone()).collect();
+            let (written, errors) =
+                reconvert_uuids_from_detail(Some(&uuids), &download::app_data_dir(), &fb_config);
+            eprintln!("Reconverted {} device(s), {} error(s)", written, errors);
+            if written == 0 {
+                return Ok(());
+            }
+            let pending_uuids_file = download::app_data_dir()
+                .join("log")
+                .join("pending_push_uuids.txt");
+            let mut pending: std::collections::HashSet<String> =
+                std::fs::read_to_string(&pending_uuids_file)
+                    .map(|s| {
+                        s.lines()
+                            .map(|l| l.trim().to_string())
+                            .filter(|l| !l.is_empty())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+            pending.extend(uuids.iter().cloned());
+            if let Some(p) = pending_uuids_file.parent() {
+                let _ = std::fs::create_dir_all(p);
+            }
+            let _ = std::fs::write(
+                &pending_uuids_file,
+                pending.iter().cloned().collect::<Vec<_>>().join("\n"),
+            );
+            let mut report_srns: Vec<String> = srns.clone();
+            {
+                let mut st = conn.prepare("SELECT srn FROM listing_cache WHERE uuid = ?1")?;
+                for u in &uuids {
+                    if let Ok(srn) = st.query_row([u], |r| r.get::<_, String>(0)) {
+                        if !srn.is_empty() && !report_srns.contains(&srn) {
+                            report_srns.push(srn);
+                        }
+                    }
+                }
+            }
+            drop(conn);
+            let pushed_ok = push_changed_to_firstbase(&fb_config, &uuids, &report_srns, &gtins)?;
+            if pushed_ok {
+                // Only this run's devices leave the pending list; anything owed by a
+                // prior failed nightly stays for the next check.
+                let rest: Vec<String> = pending.difference(&uuids).cloned().collect();
+                if rest.is_empty() {
+                    let _ = std::fs::remove_file(&pending_uuids_file);
+                } else {
+                    let _ = std::fs::write(&pending_uuids_file, rest.join("\n"));
+                }
+            } else {
+                eprintln!(
+                    "Push did not reach GS1 — {} device(s) kept in the pending list ({}); \
+                     the next nightly check will re-push them.",
+                    uuids.len(),
+                    pending_uuids_file.display()
+                );
+            }
+            Ok(())
+        }
         Some("regenerate") => {
             // Re-run transform_detail + DraftItemDocument wrap over every detail file
             // in the app-data detail dir, writing to firstbase_json in parallel.
@@ -1641,6 +2001,62 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         }
+    }
+}
+
+/// Compare every version part of a freshly fetched device with the stored
+/// record (deep-scan). Returns `None` when nothing changed, `Some("new")` for an
+/// unknown device, else a `+`-joined list of the changed parts
+/// (`udi`, `budi`, `mfr/ar`, `cert`, `pkg`, `market`, `status`, `designer`, `detail`).
+/// Unlike `detect_changes` this does NOT short-circuit on an equal detail hash:
+/// the Basic-UDI-side parts (budi/mfr/ar/cert) live in the *basic* JSON, which is
+/// not part of the detail hash, so a BUDI-only change must still be reported.
+fn deep_scan_diff(
+    old: Option<&version_db::VersionRecord>,
+    new: &version_db::VersionRecord,
+) -> Option<String> {
+    let old = match old {
+        Some(o) => o,
+        None => return Some("new".to_string()),
+    };
+    let mut parts: Vec<&str> = Vec::new();
+    if old.udi_version != new.udi_version || old.udi_date != new.udi_date {
+        parts.push("udi");
+    }
+    if old.budi_version != new.budi_version || old.budi_date != new.budi_date {
+        parts.push("budi");
+    }
+    if old.mfr_version != new.mfr_version
+        || old.mfr_date != new.mfr_date
+        || old.ar_version != new.ar_version
+        || old.ar_date != new.ar_date
+    {
+        parts.push("mfr/ar");
+    }
+    if old.cert_versions != new.cert_versions {
+        parts.push("cert");
+    }
+    if old.pkg_version != new.pkg_version || old.pkg_date != new.pkg_date {
+        parts.push("pkg");
+    }
+    if old.market_version != new.market_version || old.market_date != new.market_date {
+        parts.push("market");
+    }
+    if old.device_status != new.device_status || old.status_date != new.status_date {
+        parts.push("status");
+    }
+    if old.designer_version != new.designer_version || old.designer_date != new.designer_date {
+        parts.push("designer");
+    }
+    if parts.is_empty() && old.detail_hash != new.detail_hash {
+        // Content changed without any version/date bump (EUDAMED edits the record
+        // in place occasionally) — still worth a re-push.
+        parts.push("detail");
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("+"))
     }
 }
 
