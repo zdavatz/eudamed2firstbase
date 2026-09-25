@@ -2778,22 +2778,51 @@ fn restamp_discontinued_tree(
 /// before), the stale re-push is < the stored value → G488. Stamping it to the
 /// push time guarantees the re-push is always ≥ the previously-sent value.
 /// Every doc carries the field; returns true when updated.
+///
+/// Stamps **every level** of the packaging hierarchy, not only the top-level
+/// `TradeItem`: G488 is evaluated per GTIN, and a base unit nested under a CASE
+/// (`CatalogueItemChildItemLink → CatalogueItem → TradeItem`) is its own trade
+/// item at GS1. Until v1.0.107 only the top level was re-stamped, so a re-push
+/// *without* `--reconvert` sent the children with their old convert-time value
+/// and GS1 answered G488 on the child GTINs (XI round-2 repush 25.09.2026:
+/// 3/100 and 12/100 docs per batch, all "Changed at" on packaged base units).
 fn restamp_last_change_date(
     doc: &mut serde_json::Value,
     now: chrono::DateTime<chrono::Utc>,
 ) -> bool {
-    let Some(obj) = doc
-        .pointer_mut("/DraftItem/TradeItem/TradeItemSynchronisationDates")
-        .and_then(|sd| sd.as_object_mut())
-    else {
+    let Some(container) = doc.pointer_mut("/DraftItem") else {
         return false;
     };
     let new_val = now.format("%Y-%m-%dT%H:%M:%S").to_string();
-    obj.insert(
-        "LastChangeDateTime".to_string(),
-        serde_json::Value::String(new_val),
-    );
-    true
+    restamp_last_change_tree(container, &new_val)
+}
+
+/// Recursively set `LastChangeDateTime` on a container's `TradeItem` and every
+/// nested `CatalogueItemChildItemLink → CatalogueItem` (same tree shape as
+/// [`restamp_discontinued_tree`]). Returns true if at least one level was set.
+fn restamp_last_change_tree(container: &mut serde_json::Value, val: &str) -> bool {
+    let mut any = false;
+    if let Some(obj) = container
+        .pointer_mut("/TradeItem/TradeItemSynchronisationDates")
+        .and_then(|sd| sd.as_object_mut())
+    {
+        obj.insert(
+            "LastChangeDateTime".to_string(),
+            serde_json::Value::String(val.to_string()),
+        );
+        any = true;
+    }
+    if let Some(links) = container
+        .get_mut("CatalogueItemChildItemLink")
+        .and_then(|l| l.as_array_mut())
+    {
+        for link in links {
+            if let Some(child) = link.pointer_mut("/CatalogueItem") {
+                any |= restamp_last_change_tree(child, val);
+            }
+        }
+    }
+    any
 }
 
 /// Collect **every** GTIN in a firstbase document — the top-level TradeItem plus
@@ -4738,6 +4767,7 @@ mod tests {
     use super::doc_all_gtins;
     use super::doc_is_regulation;
     use super::restamp_discontinued_date;
+    use super::restamp_last_change_date;
     use super::Settings;
 
     #[test]
@@ -4768,6 +4798,55 @@ mod tests {
         assert_eq!(back.firstbase_email, "user@example.com");
         assert_eq!(back.firstbase_password, "pw");
         assert_eq!(back.publish_to_gln, "7612345000527");
+    }
+
+    #[test]
+    fn restamp_last_change_stamps_every_hierarchy_level() {
+        // A CASE document with a nested base unit: G488 is checked per GTIN, so
+        // the child TradeItem must be re-stamped too (XI round-2, 25.09.2026).
+        let mut doc = serde_json::json!({
+            "DraftItem": {
+                "TradeItem": {
+                    "Gtin": "20653405058233",
+                    "TradeItemSynchronisationDates": {
+                        "LastChangeDateTime": "2026-09-24T08:05:00",
+                        "EffectiveDateTime": "2026-09-22T14:17:18.273+00:00"
+                    }
+                },
+                "CatalogueItemChildItemLink": [{
+                    "Quantity": 10,
+                    "CatalogueItem": {
+                        "TradeItem": {
+                            "Gtin": "30653405058230",
+                            "TradeItemSynchronisationDates": {
+                                "LastChangeDateTime": "2026-09-24T08:05:00"
+                            }
+                        }
+                    }
+                }]
+            }
+        });
+        let now = chrono::DateTime::parse_from_rfc3339("2026-09-25T10:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        assert!(restamp_last_change_date(&mut doc, now));
+        let top = doc
+            .pointer("/DraftItem/TradeItem/TradeItemSynchronisationDates/LastChangeDateTime")
+            .and_then(|v| v.as_str())
+            .unwrap();
+        let child = doc
+            .pointer("/DraftItem/CatalogueItemChildItemLink/0/CatalogueItem/TradeItem/TradeItemSynchronisationDates/LastChangeDateTime")
+            .and_then(|v| v.as_str())
+            .unwrap();
+        assert_eq!(top, "2026-09-25T10:00:00");
+        assert_eq!(child, "2026-09-25T10:00:00");
+        // EffectiveDateTime is untouched.
+        assert_eq!(
+            doc.pointer("/DraftItem/TradeItem/TradeItemSynchronisationDates/EffectiveDateTime")
+                .and_then(|v| v.as_str())
+                .unwrap(),
+            "2026-09-22T14:17:18.273+00:00"
+        );
     }
 
     #[test]
