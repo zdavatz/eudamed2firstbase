@@ -128,6 +128,7 @@ cargo run count --xlsx file.xlsx 6                     # custom column number
 cargo run check /tmp/srn_update                        # check SRNs from file (one per line)
 cargo run check /tmp/srn_update --threads 50           # with parallel threads
 FIRSTBASE_ENV=Production cargo run check srns_sheet.txt # nightly: push CHANGED to Production + auto GS1 report (v1.0.79)
+FIRSTBASE_ENV=Production cargo run deep-scan srns_sheet.txt --gtin-file gtins_sheet.txt --slices 7  # nightly, after check (v1.0.108): rolling 1/7 deep scan → push changed + auto GS1 report
 cargo run check srns.txt --gtin-file gtins.txt         # also check a customer GTIN worklist (2nd sequential pass, v1.0.92)
 cargo run check --gtin-file gtins.txt                  # GTIN-only check — skip the SRN listing pass entirely (v1.0.93)
 FIRSTBASE_ENV=Production cargo run check srns.txt --push-only  # retry NOW: re-push pending (undelivered) UUIDs only, skip ingest (v1.0.89)
