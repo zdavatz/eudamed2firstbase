@@ -1184,6 +1184,7 @@ fn main() -> Result<()> {
                 scanned: usize,
                 fetch_failed: usize,
                 unchanged: usize,
+                baseline: usize,
                 new: usize,
                 udi: usize,
                 budi: usize,
@@ -1250,14 +1251,22 @@ fn main() -> Result<()> {
                             Err(e) => e.into_inner(),
                         };
                         s.scanned += 1;
+                        let baseline = why.as_deref() == Some("baseline");
                         match why.as_deref() {
                             None => {
                                 s.unchanged += 1;
                                 return;
                             }
                             Some("new") => s.new += 1,
+                            Some("baseline") => s.baseline += 1,
                             Some(w) => {
                                 for part in w.split('+') {
+                                    let part = part.split('(').next().unwrap_or(part);
+                                    let part = if part == "mfr" || part == "ar" {
+                                        "mfr/ar"
+                                    } else {
+                                        part
+                                    };
                                     match part {
                                         "udi" => s.udi += 1,
                                         "budi" => s.budi += 1,
@@ -1287,6 +1296,11 @@ fn main() -> Result<()> {
                                 let _ = version_db::upsert_version(&c, &rec);
                             }
                         }
+                        // A baseline fill only records the missing parts in the DB;
+                        // the device did not change, so it is not reconverted/pushed.
+                        if baseline {
+                            return;
+                        }
                         if let Ok(mut ch) = changed.lock() {
                             ch.push((uuid.clone(), why.unwrap_or_default()));
                         }
@@ -1297,11 +1311,12 @@ fn main() -> Result<()> {
             let mut changed = changed.into_inner().unwrap_or_else(|e| e.into_inner());
             changed.sort();
             eprintln!(
-                "\ndeep-scan slice {}/{}: {} scanned, {} unchanged, {} changed ({} new), {} fetch failures",
+                "\ndeep-scan slice {}/{}: {} scanned, {} unchanged, {} baseline-filled (not pushed), {} changed ({} new), {} fetch failures",
                 slice + 1,
                 slices,
                 stats.scanned,
                 stats.unchanged,
+                stats.baseline,
                 changed.len(),
                 stats.new,
                 stats.fetch_failed
@@ -2005,12 +2020,23 @@ fn main() -> Result<()> {
 }
 
 /// Compare every version part of a freshly fetched device with the stored
-/// record (deep-scan). Returns `None` when nothing changed, `Some("new")` for an
-/// unknown device, else a `+`-joined list of the changed parts
-/// (`udi`, `budi`, `mfr/ar`, `cert`, `pkg`, `market`, `status`, `designer`, `detail`).
-/// Unlike `detect_changes` this does NOT short-circuit on an equal detail hash:
-/// the Basic-UDI-side parts (budi/mfr/ar/cert) live in the *basic* JSON, which is
-/// not part of the detail hash, so a BUDI-only change must still be reported.
+/// record (deep-scan). Returns:
+/// - `None` — nothing changed,
+/// - `Some("new")` — device unknown to `udi_versions`,
+/// - `Some("baseline")` — nothing changed, but the stored record lacked some
+///   parts (NULL), which are now filled in; write to the DB, do NOT push,
+/// - else a `+`-joined list of the parts that really changed, each with
+///   `old→new` (`udi`, `budi`, `mfr/ar`, `cert`, `pkg`, `market`, `status`,
+///   `designer`, `detail`).
+///
+/// A part only counts as changed when BOTH the stored and the fresh value are
+/// present and differ. v1.0.108 treated a stored NULL as a change; ~17'000
+/// devices had never had their Basic-UDI-side parts (budi date, manufacturer,
+/// AR, certificates) recorded, so the first pass of every slice flagged ~99 % of
+/// its 6'000 devices as changed and re-pushed them all (27./28.09.2026, GS1 queue
+/// congested — v1.0.109 fix). Unlike `detect_changes` this does NOT
+/// short-circuit on an equal detail hash (the BUDI-side parts live in the basic
+/// JSON, outside the hash).
 fn deep_scan_diff(
     old: Option<&version_db::VersionRecord>,
     new: &version_db::VersionRecord,
@@ -2019,42 +2045,104 @@ fn deep_scan_diff(
         Some(o) => o,
         None => return Some("new".to_string()),
     };
-    let mut parts: Vec<&str> = Vec::new();
-    if old.udi_version != new.udi_version || old.udi_date != new.udi_date {
-        parts.push("udi");
+    fn norm(s: &Option<String>) -> Option<&str> {
+        s.as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty() && *v != "[]")
     }
-    if old.budi_version != new.budi_version || old.budi_date != new.budi_date {
-        parts.push("budi");
+    let mut parts: Vec<String> = Vec::new();
+    let mut filled = false;
+    // version + date of one part: changed only if both sides are known and differ.
+    let mut cmp =
+        |name: &str, ov: Option<u32>, nv: Option<u32>, od: &Option<String>, nd: &Option<String>| {
+            let (od, nd) = (norm(od), norm(nd));
+            // EUDAMED versions start at 1. A stored 0 is not a version but the
+            // placeholder the LISTING always reports (basicUdiDataVersionNumber = 0),
+            // backfilled into udi_versions on 30.06.2026 — treat it as unknown.
+            let (ov, nv) = (ov.filter(|v| *v > 0), nv.filter(|v| *v > 0));
+            if (ov.is_none() && nv.is_some()) || (od.is_none() && nd.is_some()) {
+                filled = true;
+            }
+            let v_changed = matches!((ov, nv), (Some(a), Some(b)) if a != b);
+            let d_changed = matches!((od, nd), (Some(a), Some(b)) if a != b);
+            if v_changed || d_changed {
+                parts.push(format!(
+                    "{}({}→{})",
+                    name,
+                    ov.map(|v| format!("v{v}"))
+                        .or(od.map(|d| d.chars().take(10).collect()))
+                        .unwrap_or_default(),
+                    nv.map(|v| format!("v{v}"))
+                        .or(nd.map(|d| d.chars().take(10).collect()))
+                        .unwrap_or_default()
+                ));
+            }
+        };
+    cmp(
+        "udi",
+        old.udi_version,
+        new.udi_version,
+        &old.udi_date,
+        &new.udi_date,
+    );
+    cmp(
+        "budi",
+        old.budi_version,
+        new.budi_version,
+        &old.budi_date,
+        &new.budi_date,
+    );
+    cmp(
+        "mfr",
+        old.mfr_version,
+        new.mfr_version,
+        &old.mfr_date,
+        &new.mfr_date,
+    );
+    cmp(
+        "ar",
+        old.ar_version,
+        new.ar_version,
+        &old.ar_date,
+        &new.ar_date,
+    );
+    cmp(
+        "pkg",
+        old.pkg_version,
+        new.pkg_version,
+        &old.pkg_date,
+        &new.pkg_date,
+    );
+    cmp(
+        "market",
+        old.market_version,
+        new.market_version,
+        &old.market_date,
+        &new.market_date,
+    );
+    cmp(
+        "designer",
+        old.designer_version,
+        new.designer_version,
+        &old.designer_date,
+        &new.designer_date,
+    );
+    match (norm(&old.cert_versions), norm(&new.cert_versions)) {
+        (Some(a), Some(b)) if a != b => parts.push(format!("cert({a}→{b})")),
+        (None, Some(_)) => filled = true,
+        _ => {}
     }
-    if old.mfr_version != new.mfr_version
-        || old.mfr_date != new.mfr_date
-        || old.ar_version != new.ar_version
-        || old.ar_date != new.ar_date
-    {
-        parts.push("mfr/ar");
-    }
-    if old.cert_versions != new.cert_versions {
-        parts.push("cert");
-    }
-    if old.pkg_version != new.pkg_version || old.pkg_date != new.pkg_date {
-        parts.push("pkg");
-    }
-    if old.market_version != new.market_version || old.market_date != new.market_date {
-        parts.push("market");
-    }
-    if old.device_status != new.device_status || old.status_date != new.status_date {
-        parts.push("status");
-    }
-    if old.designer_version != new.designer_version || old.designer_date != new.designer_date {
-        parts.push("designer");
-    }
-    if parts.is_empty() && old.detail_hash != new.detail_hash {
-        // Content changed without any version/date bump (EUDAMED edits the record
-        // in place occasionally) — still worth a re-push.
-        parts.push("detail");
+    match (norm(&old.device_status), norm(&new.device_status)) {
+        (Some(a), Some(b)) if a != b => parts.push(format!("status({a}→{b})")),
+        (None, Some(_)) => filled = true,
+        _ => {}
     }
     if parts.is_empty() {
-        None
+        if filled {
+            Some("baseline".to_string())
+        } else {
+            None
+        }
     } else {
         Some(parts.join("+"))
     }
