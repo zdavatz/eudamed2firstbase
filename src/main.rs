@@ -1100,7 +1100,7 @@ fn main() -> Result<()> {
             };
             let rate_ms: u64 = arg_val("--rate-ms")
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(1050);
+                .unwrap_or_else(download::default_rate_interval_ms);
             let dry_run = args.iter().any(|a| a == "--dry-run");
 
             let data_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR);

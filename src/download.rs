@@ -128,7 +128,7 @@ impl Default for DownloadConfig {
             detail_threads: 6,
             listing_threads: 6,
             max_retries: 3,
-            rate_interval_ms: 1050,
+            rate_interval_ms: default_rate_interval_ms(),
         }
     }
 }
@@ -577,6 +577,27 @@ fn ensure_listing_cache(conn: &rusqlite::Connection) {
         "ALTER TABLE listing_cache ADD COLUMN budi_version_number INTEGER",
         [],
     );
+}
+
+/// Built-in pacing between two EUDAMED requests: ~57 req/min, just under the
+/// ~60-req/60 s per-IP budget measured in June 2026.
+pub const DEFAULT_RATE_INTERVAL_MS: u64 = 1050;
+
+/// Pacing between two EUDAMED requests. `EUDAMED_RATE_MS` overrides the built-in
+/// default without a rebuild, because EUDAMED changes its per-IP budget: on
+/// 09.10.2026 only ~20 requests per 60 s got through (20 OK, then 429 +
+/// `Retry-After: 60`), so pacing at 1050 ms ran into the penalty every round
+/// (~15/min) while ~3200 ms stays under the budget (~19/min, no penalty).
+pub fn default_rate_interval_ms() -> u64 {
+    parse_rate_interval_ms(std::env::var("EUDAMED_RATE_MS").ok().as_deref())
+}
+
+/// A missing, unparseable or absurdly small value (< 50 ms) keeps the default.
+fn parse_rate_interval_ms(value: Option<&str>) -> u64 {
+    value
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|ms| *ms >= 50)
+        .unwrap_or(DEFAULT_RATE_INTERVAL_MS)
 }
 
 /// Proactive global rate limiter (v1.0.72). EUDAMED throttles ALL device
@@ -1277,4 +1298,23 @@ fn parallel_fetch(
         });
 
     Ok((downloaded.load(Ordering::Relaxed), cached))
+}
+
+#[cfg(test)]
+mod rate_tests {
+    use super::*;
+
+    #[test]
+    fn rate_interval_override() {
+        assert_eq!(parse_rate_interval_ms(None), DEFAULT_RATE_INTERVAL_MS);
+        assert_eq!(parse_rate_interval_ms(Some("3200")), 3200);
+        assert_eq!(parse_rate_interval_ms(Some(" 3200\n")), 3200);
+        // Garbage or a value that would hammer the API keeps the default.
+        assert_eq!(
+            parse_rate_interval_ms(Some("fast")),
+            DEFAULT_RATE_INTERVAL_MS
+        );
+        assert_eq!(parse_rate_interval_ms(Some("0")), DEFAULT_RATE_INTERVAL_MS);
+        assert_eq!(parse_rate_interval_ms(Some("")), DEFAULT_RATE_INTERVAL_MS);
+    }
 }

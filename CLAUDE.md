@@ -178,6 +178,14 @@ Always run `cargo fmt` after working with the codebase.
 - **PublishToGln**: first CLI argument to `push_to_firstbase.sh` (e.g. `7612345000527` for GS1 Switzerland UDI Data Dump).
 - **Basic UDI-DI cache** in `eudamed_json/basic/`, keyed by UDI-DI UUID. Provides MDR booleans, riskClass, regulatory act, manufacturer/AR SRN, basicUdi code. Falls back to false defaults on miss. Populated via `GET /devices/basicUdiData/udiDiData/{uuid}`.
 
+## EUDAMED request budget (changes over time)
+
+- **Measured 09.10.2026: ~20 requests per 60 s per IP** (20 OK, then `429` + `Retry-After: 60`), down from the ~60/60 s measured in June 2026 (v1.0.72). Measured passively from the nightly log: ~20 devices in ~20 s, then ~60 s silence, repeating every ~80 s. The numbers "57/min" and "≈ 3.5 h per deep-scan slice" elsewhere in this file describe the June budget.
+- **`EUDAMED_RATE_MS`** (`download::default_rate_interval_ms`) overrides the pacing of the shared `RateLimiter` without a rebuild; the built-in default stays `DEFAULT_RATE_INTERVAL_MS` = 1050. `download`, `check` and `deep-scan` read it (`deep-scan --rate-ms` still wins); `mirror` and `sync-actors` have their own `--rate-ms`. The nightly wrapper exports `EUDAMED_RATE_MS=3200` (~19/min, no penalty) — at 1050 ms every round ran into the 60 s penalty (~15/min; the deep-scan slice of 08.10.2026 took 14.5 h). Unit test `download::rate_tests::rate_interval_override`.
+- **The budget is shared by every EUDAMED job on this IP.** A one-off `download --gtin-file` next to the nightly `check`/`deep-scan` starves both (instant 429 for everyone). Run such jobs only when no nightly process is active, and give them their own data dir (`HOME=<dir>` — the data dir is `$HOME/eudamed2firstbase`) so production data stays untouched.
+- **Overlap guard in the nightly wrapper (09.10.2026):** a run can exceed 24 h, so `nightly_eudamed_check.sh` skips a new run while the previous one is active (`flock -n` on `~/eudamed2firstbase/log/nightly_check.lock` plus `pgrep` for a running `check`/`deep-scan`) and logs `===== nightly check SKIPPED … =====`. A skipped night is caught up by the next run.
+- No second IP / proxy on the same machine to multiply the budget — that circumvents a deliberate limit. A second machine with its own task is the only legitimate way to parallelize.
+
 ## Local EUDAMED Mirror (`src/mirror.rs`)
 
 `mirror` mirrors the **public** EUDAMED corpus into SQLite. Three phases, each resumable
