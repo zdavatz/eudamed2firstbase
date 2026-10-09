@@ -577,6 +577,13 @@ fn ensure_listing_cache(conn: &rusqlite::Connection) {
         "ALTER TABLE listing_cache ADD COLUMN budi_version_number INTEGER",
         [],
     );
+    // ULID of the device's Basic UDI-DI record (listing field `basicUdiDiDataUlid`).
+    // Devices sharing it share one Basic UDI-DI record, so the deep-scan fetches
+    // that record once per ULID instead of once per device.
+    let _ = conn.execute(
+        "ALTER TABLE listing_cache ADD COLUMN budi_ulid TEXT NOT NULL DEFAULT ''",
+        [],
+    );
 }
 
 /// Built-in pacing between two EUDAMED requests: ~57 req/min, just under the
@@ -734,8 +741,11 @@ fn download_listing_for_srn(
     let agent = eudamed_agent();
 
     loop {
+        // `size`, not `pageSize`: EUDAMED caps `pageSize` at 20 but honours
+        // `size` up to 300 (measured 09.10.2026: 46 instead of 680 pages for a
+        // 13'583-device SRN) — 15x fewer listing requests out of the shared budget.
         let url = format!(
-            "{}?page={}&pageSize={}&srn={}&iso2Code=en&languageIso2Code=en",
+            "{}?page={}&size={}&srn={}&iso2Code=en&languageIso2Code=en",
             base_url, page, DEFAULT_PAGE_SIZE, srn
         );
 
@@ -803,10 +813,15 @@ fn download_listing_for_srn(
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
 
+                        let budi_ulid = item
+                            .get("basicUdiDiDataUlid")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+
                         let _ = db.execute(
-                            "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at) \
-                             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-                            rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, budi_version, now],
+                            "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at, budi_ulid) \
+                             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                            rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, budi_version, now, budi_ulid],
                         );
 
                         entries.push((uuid.to_string(), version, budi_version));
@@ -1042,10 +1057,15 @@ fn download_listing_for_gtin(
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
 
+                    let budi_ulid = item
+                        .get("basicUdiDiDataUlid")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+
                     let _ = db.execute(
-                        "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at) \
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-                        rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, budi_version, now],
+                        "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at, budi_ulid) \
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                        rusqlite::params![uuid, mfr_srn, mfr_name, primary_di, trade_name, risk_class, device_status, version, budi_version, now, budi_ulid],
                     );
                     entries.push((uuid.to_string(), version, budi_version));
                 }

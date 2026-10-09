@@ -1169,12 +1169,34 @@ fn main() -> Result<()> {
                 eprintln!("Nothing to scan.");
                 return Ok(());
             }
+            // Devices that share a Basic UDI-DI record share its body, so it is
+            // fetched once per record. The key is the record's ULID: from tonight's
+            // listing (`listing_cache.budi_ulid`), else from the cached basic file.
+            // Devices without a key are fetched one by one as before.
+            let listed_ulid: std::collections::HashMap<String, String> = conn
+                .prepare("SELECT uuid, budi_ulid FROM listing_cache WHERE budi_ulid != ''")
+                .and_then(|mut st| {
+                    st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+                        .map(|rows| rows.flatten().collect())
+                })
+                .unwrap_or_default();
+            let groups = group_by_basic_record(&todo, |uuid| {
+                listed_ulid.get(uuid).cloned().or_else(|| {
+                    std::fs::read_to_string(basic_dir.join(format!("{}.json", uuid)))
+                        .ok()
+                        .and_then(|body| basic_record_ulid(&body))
+                })
+            });
+            let requests = todo.len() + groups.len();
             eprintln!(
-                "Fetching detail + Basic UDI-DI for {} device(s) at ~{}/min (ETA ~{} min)...",
+                "Fetching detail for {} device(s) + Basic UDI-DI for {} record(s) = {} requests at ~{}/min (ETA ~{} min)...",
                 todo.len(),
+                groups.len(),
+                requests,
                 60_000 / rate_ms.max(1),
-                (todo.len() as u64 * 2 * rate_ms) / 60_000
+                (requests as u64 * rate_ms) / 60_000
             );
+            let basic_reused = std::sync::atomic::AtomicUsize::new(0);
 
             // Fetch both records per device through the shared rate limiter, compare
             // every version part with the DB, and collect the changed ones. The
@@ -1209,100 +1231,129 @@ fn main() -> Result<()> {
                 .build()
                 .context("deep-scan thread pool")?
                 .install(|| {
-                    todo.par_iter().for_each(|uuid| {
-                        let d_url = format!(
-                            "{}/{}?languageIso2Code=en",
-                            download::EUDAMED_BASE_URL,
-                            uuid
-                        );
-                        let b_url = format!(
-                            "{}/{}?languageIso2Code=en",
-                            download::BASIC_UDI_BASE_URL,
-                            uuid
-                        );
-                        let detail = download::eudamed_get(&agent, &limiter, &d_url, 4);
-                        let basic = download::eudamed_get(&agent, &limiter, &b_url, 4);
-                        let n = done.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-                        if n % 200 == 0 || n == total {
-                            eprintln!("  deep-scan {}/{}", n, total);
-                        }
-                        let (detail, basic) = match (detail, basic) {
-                            (Ok(d), Ok(b)) if d.contains("\"uuid\"") => (d, b),
-                            _ => {
-                                if let Ok(mut s) = stats.lock() {
-                                    s.fetch_failed += 1;
+                    // Everything after the two fetches, per device.
+                    let handle =
+                        |uuid: &String,
+                         detail: std::result::Result<String, String>,
+                         basic: std::result::Result<String, String>| {
+                            let n = done.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                            if n % 200 == 0 || n == total {
+                                eprintln!("  deep-scan {}/{}", n, total);
+                            }
+                            let (detail, basic) = match (detail, basic) {
+                                (Ok(d), Ok(b)) if d.contains("\"uuid\"") => (d, b),
+                                _ => {
+                                    if let Ok(mut s) = stats.lock() {
+                                        s.fetch_failed += 1;
+                                    }
+                                    return;
                                 }
-                                return;
+                            };
+                            let mut rec = version_db::extract_detail_versions(&detail);
+                            if rec.uuid.is_empty() {
+                                rec.uuid = uuid.clone();
                             }
-                        };
-                        let mut rec = version_db::extract_detail_versions(&detail);
-                        if rec.uuid.is_empty() {
-                            rec.uuid = uuid.clone();
-                        }
-                        version_db::merge_budi_versions(&mut rec, &basic);
-                        rec.last_synced = Some(now_str.clone());
-                        let old = match conn_m.lock() {
-                            Ok(c) => version_db::get_version(&c, uuid).ok().flatten(),
-                            Err(_) => None,
-                        };
-                        let why = deep_scan_diff(old.as_ref(), &rec);
-                        let mut s = match stats.lock() {
-                            Ok(s) => s,
-                            Err(e) => e.into_inner(),
-                        };
-                        s.scanned += 1;
-                        let baseline = why.as_deref() == Some("baseline");
-                        match why.as_deref() {
-                            None => {
-                                s.unchanged += 1;
-                                return;
-                            }
-                            Some("new") => s.new += 1,
-                            Some("baseline") => s.baseline += 1,
-                            Some(w) => {
-                                for part in w.split('+') {
-                                    let part = part.split('(').next().unwrap_or(part);
-                                    let part = if part == "mfr" || part == "ar" {
-                                        "mfr/ar"
-                                    } else {
-                                        part
-                                    };
-                                    match part {
-                                        "udi" => s.udi += 1,
-                                        "budi" => s.budi += 1,
-                                        "mfr/ar" => s.mfr_ar += 1,
-                                        "cert" => s.cert += 1,
-                                        "pkg" => s.pkg += 1,
-                                        "market" => s.market += 1,
-                                        "status" => s.status += 1,
-                                        _ => s.other += 1,
+                            version_db::merge_budi_versions(&mut rec, &basic);
+                            rec.last_synced = Some(now_str.clone());
+                            let old = match conn_m.lock() {
+                                Ok(c) => version_db::get_version(&c, uuid).ok().flatten(),
+                                Err(_) => None,
+                            };
+                            let why = deep_scan_diff(old.as_ref(), &rec);
+                            let mut s = match stats.lock() {
+                                Ok(s) => s,
+                                Err(e) => e.into_inner(),
+                            };
+                            s.scanned += 1;
+                            let baseline = why.as_deref() == Some("baseline");
+                            match why.as_deref() {
+                                None => {
+                                    s.unchanged += 1;
+                                    return;
+                                }
+                                Some("new") => s.new += 1,
+                                Some("baseline") => s.baseline += 1,
+                                Some(w) => {
+                                    for part in w.split('+') {
+                                        let part = part.split('(').next().unwrap_or(part);
+                                        let part = if part == "mfr" || part == "ar" {
+                                            "mfr/ar"
+                                        } else {
+                                            part
+                                        };
+                                        match part {
+                                            "udi" => s.udi += 1,
+                                            "budi" => s.budi += 1,
+                                            "mfr/ar" => s.mfr_ar += 1,
+                                            "cert" => s.cert += 1,
+                                            "pkg" => s.pkg += 1,
+                                            "market" => s.market += 1,
+                                            "status" => s.status += 1,
+                                            _ => s.other += 1,
+                                        }
                                     }
                                 }
                             }
-                        }
-                        drop(s);
-                        if !dry_run {
-                            let _ =
-                                std::fs::write(detail_dir.join(format!("{}.json", uuid)), &detail);
-                            // Only cache a Basic UDI-DI body that carries a code
-                            // (parse-before-cache, same rule as fetch_basic_udi_di).
-                            if basic.contains("\"code\"") {
+                            drop(s);
+                            if !dry_run {
                                 let _ = std::fs::write(
-                                    basic_dir.join(format!("{}.json", uuid)),
-                                    &basic,
+                                    detail_dir.join(format!("{}.json", uuid)),
+                                    &detail,
                                 );
+                                // Only cache a Basic UDI-DI body that carries a code
+                                // (parse-before-cache, same rule as fetch_basic_udi_di).
+                                if basic.contains("\"code\"") {
+                                    let _ = std::fs::write(
+                                        basic_dir.join(format!("{}.json", uuid)),
+                                        &basic,
+                                    );
+                                }
+                                if let Ok(c) = conn_m.lock() {
+                                    let _ = version_db::upsert_version(&c, &rec);
+                                }
                             }
-                            if let Ok(c) = conn_m.lock() {
-                                let _ = version_db::upsert_version(&c, &rec);
+                            // A baseline fill only records the missing parts in the DB;
+                            // the device did not change, so it is not reconverted/pushed.
+                            if baseline {
+                                return;
                             }
-                        }
-                        // A baseline fill only records the missing parts in the DB;
-                        // the device did not change, so it is not reconverted/pushed.
-                        if baseline {
-                            return;
-                        }
-                        if let Ok(mut ch) = changed.lock() {
-                            ch.push((uuid.clone(), why.unwrap_or_default()));
+                            if let Ok(mut ch) = changed.lock() {
+                                ch.push((uuid.clone(), why.unwrap_or_default()));
+                            }
+                        };
+                    groups.par_iter().for_each(|(key, members)| {
+                        // The Basic UDI-DI record of a keyed group, once a fetched
+                        // body has proven (by its own ULID) to be that record.
+                        let mut shared: Option<String> = None;
+                        for uuid in members {
+                            let d_url = format!(
+                                "{}/{}?languageIso2Code=en",
+                                download::EUDAMED_BASE_URL,
+                                uuid
+                            );
+                            let detail = download::eudamed_get(&agent, &limiter, &d_url, 4);
+                            let basic = match &shared {
+                                Some(body) => {
+                                    basic_reused.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                    Ok(body.clone())
+                                }
+                                None => {
+                                    let b_url = format!(
+                                        "{}/{}?languageIso2Code=en",
+                                        download::BASIC_UDI_BASE_URL,
+                                        uuid
+                                    );
+                                    let fetched =
+                                        download::eudamed_get(&agent, &limiter, &b_url, 4);
+                                    if let (Some(k), Ok(body)) = (key, &fetched) {
+                                        if basic_record_ulid(body).as_deref() == Some(k.as_str()) {
+                                            shared = Some(body.clone());
+                                        }
+                                    }
+                                    fetched
+                                }
+                            };
+                            handle(uuid, detail, basic);
                         }
                     });
                 });
@@ -1320,6 +1371,10 @@ fn main() -> Result<()> {
                 changed.len(),
                 stats.new,
                 stats.fetch_failed
+            );
+            eprintln!(
+                "  Basic UDI-DI: {} request(s) saved by fetching once per record",
+                basic_reused.load(std::sync::atomic::Ordering::Relaxed)
             );
             eprintln!(
                 "  changed parts: udi {}, budi {}, mfr/ar {}, cert {}, pkg {}, market {}, status {}, other {}",
@@ -2017,6 +2072,41 @@ fn main() -> Result<()> {
             }
         }
     }
+}
+
+/// ULID of a Basic UDI-DI record body (top-level `ulid`); the listing calls the
+/// same value `basicUdiDiDataUlid`.
+fn basic_record_ulid(body: &str) -> Option<String> {
+    serde_json::from_str::<serde_json::Value>(body)
+        .ok()?
+        .get("ulid")?
+        .as_str()
+        .filter(|u| !u.is_empty())
+        .map(str::to_string)
+}
+
+/// Group device UUIDs by the Basic UDI-DI record they belong to. Devices
+/// without a key form a group of their own (key `None`). Order is stable: groups
+/// in order of their first member, members in input order.
+fn group_by_basic_record(
+    uuids: &[String],
+    key: impl Fn(&str) -> Option<String>,
+) -> Vec<(Option<String>, Vec<String>)> {
+    let mut groups: Vec<(Option<String>, Vec<String>)> = Vec::new();
+    let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for uuid in uuids {
+        match key(uuid) {
+            Some(k) => match index.get(&k) {
+                Some(&i) => groups[i].1.push(uuid.clone()),
+                None => {
+                    index.insert(k.clone(), groups.len());
+                    groups.push((Some(k), vec![uuid.clone()]));
+                }
+            },
+            None => groups.push((None, vec![uuid.clone()])),
+        }
+    }
+    groups
 }
 
 /// Compare every version part of a freshly fetched device with the stored
@@ -4053,5 +4143,54 @@ fn format_size(bytes: usize) -> String {
         format!("{:.1} KB", bytes as f64 / 1024.0)
     } else {
         format!("{} B", bytes)
+    }
+}
+
+#[cfg(test)]
+mod deep_scan_group_tests {
+    use super::*;
+
+    #[test]
+    fn devices_of_one_basic_record_form_one_group() {
+        let uuids: Vec<String> = ["a", "b", "c", "d", "e"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let groups = group_by_basic_record(&uuids, |u| match u {
+            "a" | "c" | "e" => Some("ULID1".to_string()),
+            "b" => Some("ULID2".to_string()),
+            _ => None,
+        });
+        assert_eq!(
+            groups,
+            vec![
+                (
+                    Some("ULID1".to_string()),
+                    vec!["a".to_string(), "c".to_string(), "e".to_string()]
+                ),
+                (Some("ULID2".to_string()), vec!["b".to_string()]),
+                (None, vec!["d".to_string()]),
+            ]
+        );
+    }
+
+    #[test]
+    fn devices_without_a_key_are_never_merged() {
+        let uuids: Vec<String> = ["a", "b"].iter().map(|s| s.to_string()).collect();
+        let groups = group_by_basic_record(&uuids, |_| None);
+        assert_eq!(groups.len(), 2);
+    }
+
+    #[test]
+    fn ulid_of_a_basic_record() {
+        assert_eq!(
+            basic_record_ulid(
+                r#"{"uuid":"x","ulid":"01JTTCM6TMYMSKWX5RBBJ5X3AZ","basicUdi":{"code":"C"}}"#
+            ),
+            Some("01JTTCM6TMYMSKWX5RBBJ5X3AZ".to_string())
+        );
+        assert_eq!(basic_record_ulid(r#"{"uuid":"x","ulid":""}"#), None);
+        assert_eq!(basic_record_ulid(r#"{"uuid":"x"}"#), None);
+        assert_eq!(basic_record_ulid("local_rate_limited"), None);
     }
 }
