@@ -1217,8 +1217,10 @@ fn main() -> Result<()> {
                 status: usize,
                 other: usize,
             }
-            let limiter = download::RateLimiter::new(std::time::Duration::from_millis(rate_ms));
-            let agent = download::eudamed_agent();
+            let pool = download::IpPool::new(
+                &download::default_local_ips(),
+                std::time::Duration::from_millis(rate_ms),
+            )?;
             let stats = std::sync::Mutex::new(ScanStats::default());
             let changed: std::sync::Mutex<Vec<(String, String)>> =
                 std::sync::Mutex::new(Vec::new());
@@ -1331,7 +1333,7 @@ fn main() -> Result<()> {
                                 download::EUDAMED_BASE_URL,
                                 uuid
                             );
-                            let detail = download::eudamed_get(&agent, &limiter, &d_url, 4);
+                            let detail = pool.get(&d_url, 4);
                             let basic = match &shared {
                                 Some(body) => {
                                     basic_reused.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1343,8 +1345,7 @@ fn main() -> Result<()> {
                                         download::BASIC_UDI_BASE_URL,
                                         uuid
                                     );
-                                    let fetched =
-                                        download::eudamed_get(&agent, &limiter, &b_url, 4);
+                                    let fetched = pool.get(&b_url, 4);
                                     if let (Some(k), Ok(body)) = (key, &fetched) {
                                         if basic_record_ulid(body).as_deref() == Some(k.as_str()) {
                                             shared = Some(body.clone());

@@ -110,6 +110,10 @@ pub struct DownloadConfig {
     /// shared `RateLimiter`. ~1050 ms ≈ 57 req/min, just under the measured shared
     /// ~60-req/60 s per-IP budget → steady throughput with ~0 throttles.
     pub rate_interval_ms: u64,
+    /// Optional local source IPs (e.g. Hetzner Floating IPs). Each gets its own
+    /// client + `RateLimiter`; requests are spread round-robin, multiplying the
+    /// per-IP budget. Empty = single ureq agent (default).
+    pub local_ips: Vec<std::net::IpAddr>,
 }
 
 impl Default for DownloadConfig {
@@ -129,6 +133,7 @@ impl Default for DownloadConfig {
             listing_threads: 6,
             max_retries: 3,
             rate_interval_ms: default_rate_interval_ms(),
+            local_ips: default_local_ips(),
         }
     }
 }
@@ -182,7 +187,10 @@ pub fn run_download(
 
     // One shared limiter for the WHOLE run: EUDAMED's ~60/60 s budget is shared
     // across listing + detail + basic (per-IP), so a single bucket paces them all.
-    let limiter = RateLimiter::new(std::time::Duration::from_millis(config.rate_interval_ms));
+    let pool = IpPool::new(
+        &config.local_ips,
+        std::time::Duration::from_millis(config.rate_interval_ms),
+    )?;
 
     // GTIN mode takes precedence: resolve each GTIN to its device via the
     // `primaryDi` filter (one request each) instead of paginating SRN listings.
@@ -193,7 +201,7 @@ pub fn run_download(
             EUDAMED_BASE_URL,
             &config.gtins,
             config.listing_threads,
-            &limiter,
+            &pool,
             progress,
         )?
     } else {
@@ -202,7 +210,7 @@ pub fn run_download(
             &config.srns,
             config.limit,
             config.listing_threads,
-            &limiter,
+            &pool,
             progress,
         )?
     };
@@ -257,7 +265,7 @@ pub fn run_download(
         &download_log,
         config.detail_threads,
         config.max_retries,
-        &limiter,
+        &pool,
         progress,
     )?;
     log(&format!(
@@ -276,7 +284,7 @@ pub fn run_download(
         &download_log,
         config.parallel_threads,
         config.max_retries,
-        &limiter,
+        &pool,
         progress,
     )?;
     log(&format!(
@@ -335,7 +343,7 @@ pub fn run_download(
                 &download_log,
                 config.detail_threads,
                 5, // more retries for completeness check
-                &limiter,
+                &pool,
                 progress,
             )?;
         }
@@ -348,7 +356,7 @@ pub fn run_download(
                 &download_log,
                 config.parallel_threads,
                 5,
-                &limiter,
+                &pool,
                 progress,
             )?;
         }
@@ -674,8 +682,7 @@ pub fn eudamed_get(
     url: &str,
     max_attempts: u32,
 ) -> Result<String, String> {
-    let mut last = String::from("no response");
-    for attempt in 1..=max_attempts.max(1) {
+    get_with_retry(max_attempts, || {
         // Proactive pacing: wait for a budget slot BEFORE every request so the
         // aggregate stays under EUDAMED's shared ~60/60 s limit and 429s (and
         // their 60 s Retry-After stalls) are avoided rather than reacted to.
@@ -683,14 +690,53 @@ pub fn eudamed_get(
         match agent.get(url).call() {
             Ok(mut resp) => {
                 let status = resp.status().as_u16();
+                let retry_after = resp
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|v| v.to_str().ok())
+                    .map(str::to_string);
+                let body = if (200..300).contains(&status) {
+                    Some(resp.body_mut().read_to_string().map_err(|e| e.to_string()))
+                } else {
+                    None
+                };
+                Ok(RawResponse {
+                    status,
+                    retry_after,
+                    body,
+                })
+            }
+            Err(e) => Err(e.to_string()),
+        }
+    })
+}
+
+/// Transport-independent result of one HTTP attempt (ureq or reqwest).
+struct RawResponse {
+    status: u16,
+    retry_after: Option<String>,
+    /// Body read, only populated for 2xx responses.
+    body: Option<Result<String, String>>,
+}
+
+/// Shared retry policy for every EUDAMED transport: 2xx returns the body, a 429
+/// honors `Retry-After` (default 60 s, capped at 70 s), any other status or a
+/// network error backs off linearly. `attempt_fn` performs ONE paced request.
+fn get_with_retry(
+    max_attempts: u32,
+    mut attempt_fn: impl FnMut() -> Result<RawResponse, String>,
+) -> Result<String, String> {
+    let mut last = String::from("no response");
+    for attempt in 1..=max_attempts.max(1) {
+        match attempt_fn() {
+            Ok(resp) => {
+                let status = resp.status;
                 if (200..300).contains(&status) {
-                    return resp.body_mut().read_to_string().map_err(|e| e.to_string());
+                    return resp.body.unwrap_or_else(|| Err("empty body".into()));
                 }
                 if status == 429 {
                     let wait = resp
-                        .headers()
-                        .get("retry-after")
-                        .and_then(|v| v.to_str().ok())
+                        .retry_after
                         .and_then(|s| s.trim().parse::<u64>().ok())
                         .unwrap_or(60)
                         .min(70);
@@ -721,13 +767,153 @@ pub fn eudamed_get(
     Err(last)
 }
 
+/// One source IP: a reqwest client bound to `local_address(ip)` plus its own
+/// pacing, since EUDAMED's ~60 req/60 s budget is per source IP.
+struct IpSlot {
+    client: reqwest::blocking::Client,
+    limiter: RateLimiter,
+}
+
+/// Pool of source IPs (e.g. Hetzner Floating IPs) that multiplies the per-IP
+/// rate budget. Requests are distributed round-robin, each IP paced by its own
+/// `RateLimiter`. With no local IPs configured it falls back to the single
+/// ureq agent + one global limiter (the pre-pool behaviour).
+pub struct IpPool {
+    slots: Vec<IpSlot>,
+    next: std::sync::atomic::AtomicUsize,
+    fallback_agent: ureq::Agent,
+    fallback_limiter: RateLimiter,
+}
+
+impl IpPool {
+    pub fn new(
+        local_ips: &[std::net::IpAddr],
+        interval: std::time::Duration,
+    ) -> anyhow::Result<Self> {
+        let mut slots = Vec::new();
+        for ip in local_ips {
+            let client = reqwest::blocking::Client::builder()
+                .local_address(Some(*ip))
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .with_context(|| format!("Failed to build HTTP client bound to {}", ip))?;
+            slots.push(IpSlot {
+                client,
+                limiter: RateLimiter::new(interval),
+            });
+        }
+        Ok(Self {
+            slots,
+            next: std::sync::atomic::AtomicUsize::new(0),
+            fallback_agent: eudamed_agent(),
+            fallback_limiter: RateLimiter::new(interval),
+        })
+    }
+
+    /// Single-IP pool (ureq fallback), as used before multi-IP support.
+    pub fn single(interval: std::time::Duration) -> Self {
+        Self::new(&[], interval).expect("empty pool cannot fail")
+    }
+
+    /// Number of bound source IPs (0 = ureq fallback).
+    pub fn len(&self) -> usize {
+        self.slots.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.slots.is_empty()
+    }
+
+    /// Index of the next slot in round-robin order.
+    fn pick(&self) -> usize {
+        self.next.fetch_add(1, Ordering::Relaxed) % self.slots.len()
+    }
+
+    /// GET with the same 429 / `Retry-After` / backoff policy as [`eudamed_get`].
+    /// Every attempt (including retries) takes the next IP in the rotation.
+    pub fn get(&self, url: &str, max_attempts: u32) -> Result<String, String> {
+        if self.slots.is_empty() {
+            return eudamed_get(
+                &self.fallback_agent,
+                &self.fallback_limiter,
+                url,
+                max_attempts,
+            );
+        }
+        get_with_retry(max_attempts, || {
+            let slot = &self.slots[self.pick()];
+            slot.limiter.acquire();
+            match slot.client.get(url).send() {
+                Ok(resp) => {
+                    let status = resp.status().as_u16();
+                    let retry_after = resp
+                        .headers()
+                        .get("retry-after")
+                        .and_then(|v| v.to_str().ok())
+                        .map(str::to_string);
+                    let body = if (200..300).contains(&status) {
+                        Some(resp.text().map_err(|e| e.to_string()))
+                    } else {
+                        None
+                    };
+                    Ok(RawResponse {
+                        status,
+                        retry_after,
+                        body,
+                    })
+                }
+                Err(e) => Err(e.to_string()),
+            }
+        })
+    }
+}
+
+/// Parse a comma/whitespace-separated list of IPs, skipping invalid entries.
+pub fn parse_local_ips(value: &str) -> Vec<std::net::IpAddr> {
+    value
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|t| !t.is_empty())
+        .filter_map(|t| t.parse().ok())
+        .collect()
+}
+
+/// Source IPs from `EUDAMED_LOCAL_IPS` (comma-separated) or, if unset, the
+/// `[download] local_ips = [...]` array in `config.toml`. Empty = single-IP.
+pub fn default_local_ips() -> Vec<std::net::IpAddr> {
+    if let Ok(v) = std::env::var("EUDAMED_LOCAL_IPS") {
+        return parse_local_ips(&v);
+    }
+    for path in [
+        app_data_dir().join("config.toml"),
+        PathBuf::from("config.toml"),
+    ] {
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            if let Ok(val) = text.parse::<toml::Value>() {
+                if let Some(arr) = val
+                    .get("download")
+                    .and_then(|d| d.get("local_ips"))
+                    .and_then(|v| v.as_array())
+                {
+                    return arr
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .filter_map(|s| s.trim().parse().ok())
+                        .collect();
+                }
+            }
+            return Vec::new();
+        }
+    }
+    Vec::new()
+}
+
 /// Download paginated listings for a single SRN. Returns entries found.
 fn download_listing_for_srn(
     base_url: &str,
     srn: &str,
     limit: Option<usize>,
     conn: &Mutex<rusqlite::Connection>,
-    limiter: &RateLimiter,
+    pool: &IpPool,
     progress: &dyn DownloadProgress,
 ) -> Vec<(String, Option<u32>, Option<u32>)> {
     let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
@@ -738,7 +924,6 @@ fn download_listing_for_srn(
     let mut srn_budi_bumped = 0usize;
     let mut srn_unchanged = 0usize;
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
-    let agent = eudamed_agent();
 
     loop {
         // `size`, not `pageSize`: EUDAMED caps `pageSize` at 20 but honours
@@ -752,7 +937,7 @@ fn download_listing_for_srn(
         // Retry the page on a 429 (honoring Retry-After) instead of breaking — a
         // throttled page used to abort the whole SRN's pagination and truncate it
         // (DE-MF-000018836: 40 of 4795). Now pagination runs to completion.
-        let body: String = match eudamed_get(&agent, limiter, &url, 6) {
+        let body: String = match pool.get(&url, 6) {
             Ok(b) => b,
             Err(e) => {
                 progress.on_event(DownloadEvent::Log(format!(
@@ -914,7 +1099,7 @@ fn download_listings(
     srns: &[String],
     limit: Option<usize>,
     listing_threads: usize,
-    limiter: &RateLimiter,
+    pool: &IpPool,
     progress: &dyn DownloadProgress,
 ) -> anyhow::Result<Vec<(String, Option<u32>, Option<u32>)>> {
     // Open DB for listing cache
@@ -948,7 +1133,7 @@ fn download_listings(
                         srn,
                         limit,
                         &conn,
-                        limiter,
+                        pool,
                         progress,
                     );
                     let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
@@ -998,17 +1183,16 @@ fn download_listing_for_gtin(
     base_url: &str,
     gtin: &str,
     conn: &Mutex<rusqlite::Connection>,
-    limiter: &RateLimiter,
+    pool: &IpPool,
     progress: &dyn DownloadProgress,
 ) -> Vec<(String, Option<u32>, Option<u32>)> {
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
-    let agent = eudamed_agent();
     let url = format!(
         "{}?page=0&pageSize=5&primaryDi={}&iso2Code=en&languageIso2Code=en",
         base_url, gtin
     );
 
-    let body = match eudamed_get(&agent, limiter, &url, 6) {
+    let body = match pool.get(&url, 6) {
         Ok(b) => b,
         Err(e) => {
             progress.on_event(DownloadEvent::Log(format!(
@@ -1094,7 +1278,7 @@ fn download_listings_by_gtin(
     base_url: &str,
     gtins: &[String],
     listing_threads: usize,
-    limiter: &RateLimiter,
+    pool: &IpPool,
     progress: &dyn DownloadProgress,
 ) -> anyhow::Result<Vec<(String, Option<u32>, Option<u32>)>> {
     let db_dir = app_data_dir().join("db");
@@ -1123,7 +1307,7 @@ fn download_listings_by_gtin(
                 .par_iter()
                 .map(|gtin| {
                     let entries =
-                        download_listing_for_gtin(&base_url_owned, gtin, &conn, limiter, progress);
+                        download_listing_for_gtin(&base_url_owned, gtin, &conn, pool, progress);
                     let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
                     if done % 100 == 0 || done == total {
                         progress.on_event(DownloadEvent::Log(format!(
@@ -1244,7 +1428,7 @@ fn parallel_fetch(
     download_log: &Arc<Mutex<Option<std::fs::File>>>,
     threads: usize,
     max_retries: u32,
-    limiter: &RateLimiter,
+    pool: &IpPool,
     progress: &dyn DownloadProgress,
 ) -> anyhow::Result<(usize, usize)> {
     // Filter to only UUIDs not already on disk
@@ -1274,7 +1458,6 @@ fn parallel_fetch(
     let dl_log = download_log.clone();
     let prefix = log_prefix.to_string();
     let last_reported = AtomicUsize::new(0);
-    let agent = eudamed_agent();
 
     rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -1285,7 +1468,7 @@ fn parallel_fetch(
                 let full_url = format!("{}/{}?languageIso2Code=en", base_url_owned, uuid);
                 // Honors Retry-After on a 429 (replaces a 2-6 s linear backoff that
                 // could never clear EUDAMED's ~60 s rate window → "still missing").
-                if let Ok(body) = eudamed_get(&agent, limiter, &full_url, max_retries.max(4)) {
+                if let Ok(body) = pool.get(&full_url, max_retries.max(4)) {
                     let path = target_dir_owned.join(format!("{}.json", uuid));
                     let _ = std::fs::write(&path, &body);
                     let count = downloaded.fetch_add(1, Ordering::Relaxed) + 1;
@@ -1336,5 +1519,17 @@ mod rate_tests {
         );
         assert_eq!(parse_rate_interval_ms(Some("0")), DEFAULT_RATE_INTERVAL_MS);
         assert_eq!(parse_rate_interval_ms(Some("")), DEFAULT_RATE_INTERVAL_MS);
+    }
+
+    #[test]
+    fn local_ips_parse_and_round_robin() {
+        let ips = parse_local_ips("127.0.0.1, ::1 bogus,127.0.0.2");
+        assert_eq!(ips.len(), 3);
+        assert!(parse_local_ips("").is_empty());
+        let pool = IpPool::new(&ips, std::time::Duration::from_millis(50)).unwrap();
+        assert_eq!(pool.len(), 3);
+        let order: Vec<usize> = (0..6).map(|_| pool.pick()).collect();
+        assert_eq!(order, vec![0, 1, 2, 0, 1, 2]);
+        assert!(IpPool::single(std::time::Duration::from_millis(50)).is_empty());
     }
 }
