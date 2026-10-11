@@ -1197,6 +1197,8 @@ fn main() -> Result<()> {
                 (requests as u64 * rate_ms) / 60_000
             );
             let basic_reused = std::sync::atomic::AtomicUsize::new(0);
+            let baseline_parts: std::sync::Mutex<std::collections::BTreeMap<String, usize>> =
+                std::sync::Mutex::new(std::collections::BTreeMap::new());
 
             // Fetch both records per device through the shared rate limiter, compare
             // every version part with the DB, and collect the changed ones. The
@@ -1265,14 +1267,22 @@ fn main() -> Result<()> {
                                 Err(e) => e.into_inner(),
                             };
                             s.scanned += 1;
-                            let baseline = why.as_deref() == Some("baseline");
+                            let baseline =
+                                why.as_deref().is_some_and(|w| w.starts_with("baseline"));
                             match why.as_deref() {
                                 None => {
                                     s.unchanged += 1;
                                     return;
                                 }
                                 Some("new") => s.new += 1,
-                                Some("baseline") => s.baseline += 1,
+                                Some(w) if w.starts_with("baseline") => {
+                                    s.baseline += 1;
+                                    if let Ok(mut t) = baseline_parts.lock() {
+                                        for part in w.trim_start_matches("baseline:").split(',') {
+                                            *t.entry(part.to_string()).or_insert(0usize) += 1;
+                                        }
+                                    }
+                                }
                                 Some(w) => {
                                     for part in w.split('+') {
                                         let part = part.split('(').next().unwrap_or(part);
@@ -1372,6 +1382,12 @@ fn main() -> Result<()> {
                 stats.new,
                 stats.fetch_failed
             );
+            if let Ok(t) = baseline_parts.lock() {
+                if !t.is_empty() {
+                    let list: Vec<String> = t.iter().map(|(k, v)| format!("{k} {v}")).collect();
+                    eprintln!("  baseline-filled parts: {}", list.join(", "));
+                }
+            }
             eprintln!(
                 "  Basic UDI-DI: {} request(s) saved by fetching once per record",
                 basic_reused.load(std::sync::atomic::Ordering::Relaxed)
@@ -2113,8 +2129,9 @@ fn group_by_basic_record(
 /// record (deep-scan). Returns:
 /// - `None` — nothing changed,
 /// - `Some("new")` — device unknown to `udi_versions`,
-/// - `Some("baseline")` — nothing changed, but the stored record lacked some
-///   parts (NULL), which are now filled in; write to the DB, do NOT push,
+/// - `Some("baseline:<part>,…")` — nothing changed, but the stored record
+///   lacked the named parts (NULL / 0), which are now filled in; write to the
+///   DB, do NOT push,
 /// - else a `+`-joined list of the parts that really changed, each with
 ///   `old→new` (`udi`, `budi`, `mfr/ar`, `cert`, `pkg`, `market`, `status`,
 ///   `designer`, `detail`).
@@ -2141,7 +2158,8 @@ fn deep_scan_diff(
             .filter(|v| !v.is_empty() && *v != "[]")
     }
     let mut parts: Vec<String> = Vec::new();
-    let mut filled = false;
+    // Names of the parts whose stored value was unknown and is known now.
+    let mut filled: Vec<String> = Vec::new();
     // version + date of one part: changed only if both sides are known and differ.
     let mut cmp =
         |name: &str, ov: Option<u32>, nv: Option<u32>, od: &Option<String>, nd: &Option<String>| {
@@ -2150,8 +2168,11 @@ fn deep_scan_diff(
             // placeholder the LISTING always reports (basicUdiDataVersionNumber = 0),
             // backfilled into udi_versions on 30.06.2026 — treat it as unknown.
             let (ov, nv) = (ov.filter(|v| *v > 0), nv.filter(|v| *v > 0));
-            if (ov.is_none() && nv.is_some()) || (od.is_none() && nd.is_some()) {
-                filled = true;
+            if ov.is_none() && nv.is_some() {
+                filled.push(format!("{name}-version"));
+            }
+            if od.is_none() && nd.is_some() {
+                filled.push(format!("{name}-date"));
             }
             let v_changed = matches!((ov, nv), (Some(a), Some(b)) if a != b);
             let d_changed = matches!((od, nd), (Some(a), Some(b)) if a != b);
@@ -2219,19 +2240,20 @@ fn deep_scan_diff(
     );
     match (norm(&old.cert_versions), norm(&new.cert_versions)) {
         (Some(a), Some(b)) if a != b => parts.push(format!("cert({a}→{b})")),
-        (None, Some(_)) => filled = true,
+        (None, Some(_)) => filled.push("cert".to_string()),
         _ => {}
     }
     match (norm(&old.device_status), norm(&new.device_status)) {
         (Some(a), Some(b)) if a != b => parts.push(format!("status({a}→{b})")),
-        (None, Some(_)) => filled = true,
+        (None, Some(_)) => filled.push("status".to_string()),
         _ => {}
     }
     if parts.is_empty() {
-        if filled {
-            Some("baseline".to_string())
-        } else {
+        if filled.is_empty() {
             None
+        } else {
+            // "baseline:<part>,<part>" — the parts are for the summary only.
+            Some(format!("baseline:{}", filled.join(",")))
         }
     } else {
         Some(parts.join("+"))

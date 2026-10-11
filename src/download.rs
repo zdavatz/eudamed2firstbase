@@ -387,12 +387,17 @@ pub fn run_download(
     // --- Step 8: Update budi_version from listing data ---
     // The listing provides basicUdiDataVersionNumber which is not in the detail JSON.
     // Store it in udi_versions so the next check can compare both versions.
+    // EUDAMED's listing reports 0 there for every device (a placeholder, real
+    // versions start at 1). Writing that 0 wiped the real Basic UDI-DI version the
+    // deep-scan had stored, every night, for every listed device — so each
+    // deep-scan saw the version as "unknown" again and reported ~99 % of its
+    // slice as baseline-filled. Only a real version is written.
     {
         let tx = conn
             .unchecked_transaction()
             .context("Failed to open budi_version update transaction")?;
         for (uuid, _udi_ver, budi_ver) in &uuid_versions {
-            if let Some(bv) = budi_ver {
+            if let Some(bv) = real_listing_version(*budi_ver) {
                 let _ = tx.execute(
                     "UPDATE udi_versions SET budi_version=?1 WHERE uuid=?2",
                     rusqlite::params![bv, uuid],
@@ -584,6 +589,12 @@ fn ensure_listing_cache(conn: &rusqlite::Connection) {
         "ALTER TABLE listing_cache ADD COLUMN budi_ulid TEXT NOT NULL DEFAULT ''",
         [],
     );
+}
+
+/// A version number from the listing, unless it is the `0` placeholder EUDAMED
+/// reports for the Basic UDI-DI of every device (real versions start at 1).
+fn real_listing_version(v: Option<u32>) -> Option<u32> {
+    v.filter(|n| *n > 0)
 }
 
 /// Built-in pacing between two EUDAMED requests: ~57 req/min, just under the
@@ -1323,6 +1334,13 @@ fn parallel_fetch(
 #[cfg(test)]
 mod rate_tests {
     use super::*;
+
+    #[test]
+    fn listing_placeholder_never_counts_as_a_version() {
+        assert_eq!(real_listing_version(Some(0)), None);
+        assert_eq!(real_listing_version(None), None);
+        assert_eq!(real_listing_version(Some(2)), Some(2));
+    }
 
     #[test]
     fn rate_interval_override() {
