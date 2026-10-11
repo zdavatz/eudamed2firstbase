@@ -429,11 +429,14 @@ Both payloads are stored **verbatim as JSON** (`detailJson`, `basicJson`). The A
 undocumented and its schema can change without notice — when it does, re-run `--flatten`
 instead of re-crawling for hours.
 
-**Throughput is server-bound, not CPU-bound.** EUDAMED allows roughly 60 requests per
-minute per IP (measured; a burst gets `HTTP 429` with `Retry-After: 60`). All requests
+**Throughput is server-bound, not CPU-bound.** EUDAMED allowed roughly 60 requests per
+minute per IP when the mirror was written (June 2026) and about 20 since October 2026
+(measured; a burst gets `HTTP 429` with `Retry-After: 60`). The mirror's default
+`--rate-ms 120` predates the lower budget — pass `--rate-ms 3200` to stay under it. All requests
 go through the shared `download::eudamed_get` choke-point, paced by `RateLimiter`, so
 the mirror uses that budget fully without tripping it. More threads do not help — the
-excess only earns 60-second penalties. A full listing crawl takes ~5 h.
+excess only earns 60-second penalties. A full listing crawl took ~5 h at the June budget;
+at 20 requests per minute it is about 12 h (not measured).
 
 Tables written:
 
@@ -448,8 +451,9 @@ Tables written:
 
 The download script uses the EUDAMED public API at `https://ec.europa.eu/tools/eudamed/api/devices/udiDiData`:
 
-- **Listing endpoint**: `GET ?page=N&pageSize=300` — basic device info (GTIN, risk class, manufacturer)
-- **Listing with SRN filter**: `GET ?page=N&pageSize=300&srn=<SRN>` — server-side filtering by manufacturer or authorised rep SRN
+- **Listing endpoint**: `GET ?page=N&size=300` — basic device info (GTIN, risk class, manufacturer). `size` is honoured up to 300; the similar `pageSize` is capped at 20 per page.
+- **Listing with SRN filter**: `GET ?page=N&size=300&srn=<SRN>` — server-side filtering by manufacturer or authorised rep SRN
+- **Listing by GTIN**: `GET ?page=0&pageSize=5&primaryDi=<GTIN-14>` — the one device with that primary DI; the only device-code filter that works
 - **Detail endpoint**: `GET /{uuid}?languageIso2Code=en` — full device data (clinical sizes, substances, market info, warnings)
 
 - **Basic UDI-DI endpoint**: `GET /basicUdiData/udiDiData/{uuid}?languageIso2Code=en` — Basic UDI-DI record for a UDI-DI UUID
