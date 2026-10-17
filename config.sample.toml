@@ -62,3 +62,11 @@ from = "sender@example.com"
 [endocrine_substances.Estradiol]
 ec_number  = "200-023-8"
 cas_number = "50-28-2"
+
+# ---------------------------------------------------------------------------
+# Optional: several local source IPs (e.g. Hetzner Floating IPs) for EUDAMED
+# downloads. Each IP gets its own rate limiter; requests are spread round-robin.
+# Env EUDAMED_LOCAL_IPS (comma-separated) takes precedence. Empty = single IP.
+# ---------------------------------------------------------------------------
+# [download]
+# local_ips = ["203.0.113.10", "203.0.113.11"]
