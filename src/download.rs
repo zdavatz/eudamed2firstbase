@@ -126,7 +126,10 @@ impl Default for DownloadConfig {
             // request; the limiter paces the aggregate to ~57/min regardless.
             parallel_threads: 6,
             detail_threads: 6,
-            listing_threads: 6,
+            // Listing / GTIN answers take ~40 s (10.2026): with 6 threads only ~9
+            // requests per minute were in flight. 12 keep the limiter busy; it still
+            // spaces the starts, so the per-IP budget is never exceeded.
+            listing_threads: 12,
             max_retries: 3,
             rate_interval_ms: default_rate_interval_ms(),
         }
@@ -657,12 +660,19 @@ impl RateLimiter {
     }
 }
 
+/// Upper bound for one EUDAMED request. Listing and `primaryDi` answers took
+/// 13–43 s in October 2026 (detail / Basic UDI-DI stay under 1 s); the former
+/// 30 s cut most of them off — on 21.10.2026 345 of 391 GTIN lookups and on
+/// 19.10.2026 58 SRN list pages failed with `timeout: global`, so their devices
+/// were not checked that night.
+pub const EUDAMED_TIMEOUT_SECS: u64 = 120;
+
 /// A ureq agent that surfaces HTTP status (so 429 / `Retry-After` are readable
 /// instead of arriving as an opaque `Err`) with a generous global timeout.
 pub fn eudamed_agent() -> ureq::Agent {
     ureq::Agent::config_builder()
         .http_status_as_error(false)
-        .timeout_global(Some(std::time::Duration::from_secs(30)))
+        .timeout_global(Some(std::time::Duration::from_secs(EUDAMED_TIMEOUT_SECS)))
         .build()
         .new_agent()
 }

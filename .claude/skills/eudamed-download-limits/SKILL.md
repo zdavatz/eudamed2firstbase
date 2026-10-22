@@ -66,3 +66,5 @@ the flat-actor-field regression.
 - Basic UDI-DI: `GET /basicUdiData/udiDiData/{uuid}?languageIso2Code=en`.
 - Detail lacks manufacturer/AR SRN, risk class, MDR booleans → merged from BUDI cache and/or listing data.
 - Serde structs use `#[allow(dead_code)]` (parsing-only fields).
+
+- **Request timeout 120 s, 12 listing threads (22.10.2026):** since mid-October EUDAMED answers listing and `primaryDi` requests in 13–43 s (detail and Basic UDI-DI stay under 1 s). The client's 30 s `timeout_global` cut most of them off: on 19.10.2026 58 SRN list pages and 223 GTIN lookups, on 21.10.2026 345 of 391 GTIN lookups failed with `timeout: global` — those devices were not checked that night (a failed page 0 drops the whole SRN). `EUDAMED_TIMEOUT_SECS` is now 120 and `listing_threads` 12, so slow answers overlap; the shared `RateLimiter` still spaces the starts, so the per-IP budget is unchanged. Proof: the two GTINs that timed out on 21.10. resolved at once. Watch for `failed after retries: network error: timeout: global` in the nightly log — if it comes back, EUDAMED got slower again.
