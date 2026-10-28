@@ -13,6 +13,30 @@ pub const EUDAMED_BASE_URL: &str = "https://ec.europa.eu/tools/eudamed/api/devic
 pub const BASIC_UDI_BASE_URL: &str =
     "https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData";
 pub const DEFAULT_PAGE_SIZE: usize = 300;
+/// Attempts for a listing page whose answer is unusable (see `listing_page_check`).
+const LISTING_BAD_PAGE_ATTEMPTS: usize = 4;
+const LISTING_BAD_PAGE_WAIT_SECS: u64 = 15;
+
+/// Parse one SRN listing page and reject answers that would end the
+/// pagination early: unparseable body, no `content` array, or an empty
+/// `content` on a page that the previous page said exists. An empty first
+/// page is a genuine "SRN has no devices".
+fn listing_page_check(
+    body: &str,
+    page: usize,
+    known_total_pages: Option<u64>,
+) -> Result<serde_json::Value, &'static str> {
+    let json: serde_json::Value =
+        serde_json::from_str(body).map_err(|_| "unreadable answer (not JSON)")?;
+    let items = json
+        .get("content")
+        .and_then(|c| c.as_array())
+        .ok_or("answer without device list")?;
+    if items.is_empty() && page > 0 && known_total_pages.is_some_and(|t| (page as u64) < t) {
+        return Err("empty page before the last page");
+    }
+    Ok(json)
+}
 pub const DEFAULT_DATA_DIR: &str = "eudamed_json";
 
 /// Returns the application data directory.
@@ -760,6 +784,8 @@ fn download_listing_for_srn(
     let mut srn_unchanged = 0usize;
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let agent = eudamed_agent();
+    let mut known_total_pages: Option<u64> = None;
+    let mut known_total_elements: Option<u64> = None;
 
     loop {
         // `size`, not `pageSize`: EUDAMED caps `pageSize` at 20 but honours
@@ -773,20 +799,40 @@ fn download_listing_for_srn(
         // Retry the page on a 429 (honoring Retry-After) instead of breaking — a
         // throttled page used to abort the whole SRN's pagination and truncate it
         // (DE-MF-000018836: 40 of 4795). Now pagination runs to completion.
-        let body: String = match eudamed_get(&agent, limiter, &url, 6) {
-            Ok(b) => b,
-            Err(e) => {
+        //
+        // An answer that does not parse, has no `content`, or is empty before the
+        // last known page is retried too (28.10.2026: during an EUDAMED outage
+        // such an answer silently ended CH-MF-000016376 at 60 of 111 devices).
+        let mut json: Option<serde_json::Value> = None;
+        let mut last_err = String::new();
+        for attempt in 0..LISTING_BAD_PAGE_ATTEMPTS {
+            if attempt > 0 {
+                std::thread::sleep(std::time::Duration::from_secs(LISTING_BAD_PAGE_WAIT_SECS));
+            }
+            match eudamed_get(&agent, limiter, &url, 6) {
+                Ok(b) => match listing_page_check(&b, page, known_total_pages) {
+                    Ok(j) => {
+                        json = Some(j);
+                        break;
+                    }
+                    Err(e) => last_err = e.to_string(),
+                },
+                Err(e) => {
+                    // eudamed_get already retried 429/network errors itself.
+                    last_err = e.to_string();
+                    break;
+                }
+            }
+        }
+        let json = match json {
+            Some(j) => j,
+            None => {
                 progress.on_event(DownloadEvent::Log(format!(
                     "  SRN {} page {} failed after retries: {}",
-                    srn, page, e
+                    srn, page, last_err
                 )));
                 break;
             }
-        };
-
-        let json: serde_json::Value = match serde_json::from_str(&body) {
-            Ok(j) => j,
-            Err(_) => break,
         };
         let content = json.get("content").and_then(|c| c.as_array());
 
@@ -797,6 +843,8 @@ fn download_listing_for_srn(
 
             let total_pages = json.get("totalPages").and_then(|t| t.as_u64()).unwrap_or(1);
             let total_elements = json.get("totalElements").and_then(|t| t.as_u64());
+            known_total_pages = Some(total_pages);
+            known_total_elements = total_elements;
 
             // Batch insert into DB + on-the-fly version classification
             let page_start = entries.len();
@@ -922,6 +970,14 @@ fn download_listing_for_srn(
             "  SRN {}: {} devices  [{}↑ new, {}↑ udi, {}↑ budi, {} same]",
             srn, srn_count, srn_new, srn_udi_bumped, srn_budi_bumped, srn_unchanged
         )));
+    }
+    if let (Some(total), None) = (known_total_elements, limit) {
+        if (srn_count as u64) < total {
+            progress.on_event(DownloadEvent::Log(format!(
+                "  WARNING: SRN {} incomplete — {} of {} devices listed; run again for the rest",
+                srn, srn_count, total
+            )));
+        }
     }
 
     entries
@@ -1343,6 +1399,17 @@ fn parallel_fetch(
 
 #[cfg(test)]
 mod rate_tests {
+    #[test]
+    fn listing_page_check_rejects_answers_that_truncate() {
+        let ok = r#"{"content":[{"uuid":"a"}],"totalPages":6}"#;
+        assert!(listing_page_check(ok, 3, Some(6)).is_ok());
+        assert!(listing_page_check("<html>down</html>", 3, Some(6)).is_err());
+        assert!(listing_page_check(r#"{"error":"x"}"#, 3, Some(6)).is_err());
+        assert!(listing_page_check(r#"{"content":[]}"#, 3, Some(6)).is_err());
+        // An SRN without devices answers with an empty first page.
+        assert!(listing_page_check(r#"{"content":[],"totalPages":0}"#, 0, None).is_ok());
+    }
+
     use super::*;
 
     #[test]
