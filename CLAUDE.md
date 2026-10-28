@@ -19,7 +19,7 @@ cargo run check srns.txt [--gtin-file gtins.txt]      # detect updates, download
 FIRSTBASE_ENV=Production cargo run check srns.txt     # anything else / unset = Test
 FIRSTBASE_ENV=Production cargo run check srns.txt --push-only   # re-push the pending (undelivered) devices now
 cargo run deep-scan srns.txt --gtin-file gtins.txt --slices 7 [--slice K] [--dry-run]
-cargo run repush-srn [--reconvert|--force-reload] <SRN…> [--uuid-file f]
+cargo run repush-srn [--reconvert|--force-reload] <SRN…> [--uuid-file f]   # value-taking flags (--file, --uuid-file) are skipped by repush_srn_args
 cargo run gs1-report --session <id> --file srns.txt --gtin-file gtins.txt
 cargo run status                                      # read-only snapshot, safe next to a running check
 python3 firstbase_validation.py [--verbose]           # validate output against the GS1 Swagger schemas
@@ -40,6 +40,7 @@ The full command list is in `README.md` and `src/main.rs`. No golden-file tests:
 - **EUDAMED list and GTIN answers can take 40 s or more** (October 2026): keep the request timeout well above that (`EUDAMED_TIMEOUT_SECS` = 120 since 22.10.2026; the old 30 s silently dropped hundreds of lookups per night). `timeout: global` in the nightly log means devices went unchecked.
 - **The budget is shared by every EUDAMED job on this IP.** A one-off `download --gtin-file` next to the nightly `check`/`deep-scan` starves both (instant 429 for everyone). Run such jobs only when no nightly process is active, and give them their own data dir (`HOME=<dir>` — the data dir is `$HOME/eudamed2firstbase`) so production data stays untouched.
 - **Overlap guard in the nightly wrapper (09.10.2026):** a run can exceed 24 h, so `nightly_eudamed_check.sh` skips a new run while the previous one is active (`flock -n` on `~/eudamed2firstbase/log/nightly_check.lock` plus `pgrep` for a running `check`/`deep-scan`) and logs `===== nightly check SKIPPED … =====`. A skipped night is caught up by the next run.
+- **A BATCH_UNCONFIRMED `repush-srn` is not retried by the nightly** — its devices are not in `pending_push_uuids.txt`; run the same `repush-srn … --uuid-file` again by hand once GS1's queue has cleared (28.10.2026).
 - No second IP / proxy on the same machine to multiply the budget — that circumvents a deliberate limit. A second machine with its own task is the only legitimate way to parallelize.
 
 ## Where the details are

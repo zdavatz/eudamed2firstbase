@@ -1575,11 +1575,7 @@ fn main() -> Result<()> {
                     .filter(|s| !s.is_empty() && !s.starts_with('#'))
                     .collect()
             } else {
-                args.iter()
-                    .skip(2)
-                    .filter(|a| !a.starts_with("--"))
-                    .cloned()
-                    .collect()
+                repush_srn_args(&args)
             };
 
             if srns.is_empty() {
@@ -4165,6 +4161,48 @@ fn format_size(bytes: usize) -> String {
         format!("{:.1} KB", bytes as f64 / 1024.0)
     } else {
         format!("{} B", bytes)
+    }
+}
+
+/// Positional SRN arguments of `repush-srn`. Skips flags and the value that
+/// follows a value-taking flag — before 28.10.2026 the `--uuid-file` path was
+/// taken as an SRN and showed up under "SRNs ok" in the GS1 report body.
+fn repush_srn_args(args: &[String]) -> Vec<String> {
+    const VALUE_FLAGS: &[&str] = &["--file", "--uuid-file"];
+    let mut out = Vec::new();
+    let mut it = args.iter().skip(2);
+    while let Some(a) = it.next() {
+        if VALUE_FLAGS.contains(&a.as_str()) {
+            it.next();
+        } else if !a.starts_with("--") {
+            out.push(a.clone());
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod repush_srn_args_tests {
+    use super::*;
+
+    #[test]
+    fn uuid_file_path_is_not_an_srn() {
+        let args: Vec<String> = [
+            "eudamed2firstbase",
+            "repush-srn",
+            "NZ-MF-000002767",
+            "--uuid-file",
+            "/tmp/uuids.txt",
+            "--reconvert",
+            "FR-PR-000000348",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        assert_eq!(
+            repush_srn_args(&args),
+            vec!["NZ-MF-000002767", "FR-PR-000000348"]
+        );
     }
 }
 
