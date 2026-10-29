@@ -701,6 +701,80 @@ pub fn eudamed_agent() -> ureq::Agent {
         .new_agent()
 }
 
+/// Network trace for a suspicious (empty) listing answer, written to the log so
+/// a user behind a proxy can show where the answer came from (29.10.2026: GS1
+/// got empty listings for SRNs that have devices). One extra request: HTTP
+/// status, time, the proxy/cache headers, the addresses `ec.europa.eu`
+/// resolves to, the proxy environment and the start of the body.
+fn listing_trace(agent: &ureq::Agent, limiter: &RateLimiter, url: &str) -> Vec<String> {
+    let mut out = vec![format!("    trace: GET {}", url)];
+    let resolved = std::net::ToSocketAddrs::to_socket_addrs(&("ec.europa.eu", 443))
+        .map(|a| a.map(|a| a.ip().to_string()).collect::<Vec<_>>().join(", "))
+        .unwrap_or_else(|e| format!("DNS error: {}", e));
+    out.push(format!("    trace: ec.europa.eu resolves to {}", resolved));
+    for var in [
+        "HTTPS_PROXY",
+        "https_proxy",
+        "HTTP_PROXY",
+        "http_proxy",
+        "ALL_PROXY",
+        "NO_PROXY",
+    ] {
+        if let Ok(v) = std::env::var(var) {
+            out.push(format!("    trace: env {}={}", var, v));
+        }
+    }
+    limiter.acquire();
+    let start = std::time::Instant::now();
+    match agent
+        .get(url)
+        .header("Cache-Control", "no-cache")
+        .header("Pragma", "no-cache")
+        .call()
+    {
+        Ok(mut resp) => {
+            out.push(format!(
+                "    trace: HTTP {} after {} ms",
+                resp.status().as_u16(),
+                start.elapsed().as_millis()
+            ));
+            for h in [
+                "via",
+                "x-cache",
+                "x-cache-hits",
+                "age",
+                "server",
+                "date",
+                "cache-control",
+                "x-forwarded-for",
+                "x-proxy-id",
+                "proxy-connection",
+                "content-length",
+                "content-type",
+            ] {
+                if let Some(v) = resp.headers().get(h).and_then(|v| v.to_str().ok()) {
+                    out.push(format!("    trace: {}: {}", h, v));
+                }
+            }
+            let body = resp.body_mut().read_to_string().unwrap_or_default();
+            let head: String = body
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+                .chars()
+                .take(300)
+                .collect();
+            out.push(format!("    trace: body ({} bytes): {}", body.len(), head));
+        }
+        Err(e) => out.push(format!(
+            "    trace: request failed after {} ms: {}",
+            start.elapsed().as_millis(),
+            e
+        )),
+    }
+    out
+}
+
 /// GET `url`, returning the body on 2xx. On **HTTP 429 it honors the
 /// `Retry-After` header** (waits the stated seconds, capped at 70) and retries;
 /// on any other non-2xx or a network error it does a short linear backoff.
@@ -725,7 +799,15 @@ pub fn eudamed_get(
         // aggregate stays under EUDAMED's shared ~60/60 s limit and 429s (and
         // their 60 s Retry-After stalls) are avoided rather than reacted to.
         limiter.acquire();
-        match agent.get(url).call() {
+        // no-cache: a caching proxy on the user's side served GS1 an empty
+        // listing for CH-MF-000016376 for hours after an EUDAMED outage
+        // (29.10.2026, v1.0.110); this asks every cache on the way to refetch.
+        match agent
+            .get(url)
+            .header("Cache-Control", "no-cache")
+            .header("Pragma", "no-cache")
+            .call()
+        {
             Ok(mut resp) => {
                 let status = resp.status().as_u16();
                 if (200..300).contains(&status) {
@@ -786,15 +868,25 @@ fn download_listing_for_srn(
     let agent = eudamed_agent();
     let mut known_total_pages: Option<u64> = None;
     let mut known_total_elements: Option<u64> = None;
+    // Set when the `size=300` listing came back empty: the SRN is asked once
+    // more with v1.0.109's `pageSize=20` (a different URL, so no cached answer).
+    let mut small_pages = false;
 
     loop {
         // `size`, not `pageSize`: EUDAMED caps `pageSize` at 20 but honours
         // `size` up to 300 (measured 09.10.2026: 46 instead of 680 pages for a
         // 13'583-device SRN) — 15x fewer listing requests out of the shared budget.
-        let url = format!(
-            "{}?page={}&size={}&srn={}&iso2Code=en&languageIso2Code=en",
-            base_url, page, DEFAULT_PAGE_SIZE, srn
-        );
+        let url = if small_pages {
+            format!(
+                "{}?page={}&pageSize=20&srn={}&iso2Code=en&languageIso2Code=en",
+                base_url, page, srn
+            )
+        } else {
+            format!(
+                "{}?page={}&size={}&srn={}&iso2Code=en&languageIso2Code=en",
+                base_url, page, DEFAULT_PAGE_SIZE, srn
+            )
+        };
 
         // Retry the page on a 429 (honoring Retry-After) instead of breaking — a
         // throttled page used to abort the whole SRN's pagination and truncate it
@@ -838,6 +930,27 @@ fn download_listing_for_srn(
 
         if let Some(items) = content {
             if items.is_empty() {
+                let total = json.get("totalElements").and_then(|t| t.as_u64());
+                if page == 0 && !small_pages {
+                    progress.on_event(DownloadEvent::Log(format!(
+                        "  SRN {}: empty answer for size={} (totalElements {}), asking again with pageSize=20",
+                        srn,
+                        DEFAULT_PAGE_SIZE,
+                        total.map_or("missing".to_string(), |t| t.to_string())
+                    )));
+                    for line in listing_trace(&agent, limiter, &url) {
+                        progress.on_event(DownloadEvent::Log(line));
+                    }
+                    small_pages = true;
+                    continue;
+                }
+                if page == 0 {
+                    progress.on_event(DownloadEvent::Log(format!(
+                        "  SRN {}: EUDAMED lists no devices (totalElements {})",
+                        srn,
+                        total.map_or("missing".to_string(), |t| t.to_string())
+                    )));
+                }
                 break;
             }
 
