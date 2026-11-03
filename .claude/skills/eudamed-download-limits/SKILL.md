@@ -40,6 +40,12 @@ Things that are easy to get wrong here:
   (paced by `RateLimiter`); raising `--threads` only buys 60-second penalties. A Python
   prototype hit exactly the same ceiling — rewriting in Rust bought resumability and
   reuse, not speed.
+- **Empty placeholder answers (03.11.2026):** EUDAMED can answer a listing page with 200
+  and `"content": [], "totalElements": 0, "pageable": "INSTANCE"`. `crawl_listing` retries
+  such a page (4×, 15 s apart) and does not checkpoint it if it stays empty. Do not add
+  `sort=primaryDi,asc` — it returned the placeholder for page 1 every time. Rows are
+  upserted under a unique `uuid` index. With 30–75 s per answer use `--threads 16
+  --rate-ms 3200`; 4.77 M devices = 15'903 pages ≈ 15 h.
 - **Page rows + checkpoint are written in ONE transaction** (`insert_listing_page`).
   Split them and a crash either duplicates 300 devices on resume or loses them silently.
 - **`Connection` is `Send` but not `Sync`.** The worker threads share a `Mutex<Connection>`

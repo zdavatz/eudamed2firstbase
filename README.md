@@ -413,7 +413,7 @@ device data. There is no official bulk export and no official read API for the p
 corpus — the only way to analyse it as a whole is to mirror it.
 
 ```bash
-eudamed2firstbase mirror --crawl      # page the listing  -> devices_listing (~3.2 M devices)
+eudamed2firstbase mirror --crawl      # page the listing  -> devices_listing (4.77 M devices on 03.11.2026)
 eudamed2firstbase mirror --details    # per-device detail + Basic-UDI -> device_details
 eudamed2firstbase mirror --flatten    # parse stored JSON -> device_details_flat (~70 columns)
 eudamed2firstbase mirror --all        # all three (also the default with no phase flag)
@@ -439,9 +439,24 @@ minute per IP when the mirror was written (June 2026) and about 20 since October
 (measured; a burst gets `HTTP 429` with `Retry-After: 60`). The mirror's default
 `--rate-ms 120` predates the lower budget — pass `--rate-ms 3200` to stay under it. All requests
 go through the shared `download::eudamed_get` choke-point, paced by `RateLimiter`, so
-the mirror uses that budget fully without tripping it. More threads do not help — the
-excess only earns 60-second penalties. A full listing crawl took ~5 h at the June budget;
-at 20 requests per minute it is about 12 h (not measured).
+the mirror uses that budget fully without tripping it. Since October 2026 a listing page
+takes 30–75 s to answer, so a few requests must be in flight at once to reach the budget:
+`--threads 16 --rate-ms 3200` (the limiter still starts at most one request every 3.2 s;
+more threads only wait). A full listing crawl took ~5 h at the June budget; on 03.11.2026
+EUDAMED listed 4'770'705 devices = 15'903 pages ≈ 15 h at 18 pages per minute.
+
+**Listing quirks (measured 03.11.2026):**
+
+- EUDAMED sometimes answers **200 with an empty placeholder** (`"content": []`,
+  `"totalElements": 0`, `"pageable": "INSTANCE"`) after ~10 s instead of an error. The crawl
+  asks such a page again (4 attempts, 15 s apart); a page that stays empty is **not**
+  checkpointed, so the next run fetches it instead of keeping a silent gap.
+- **No `sort`:** `sort=primaryDi,asc` returned that placeholder for page 1 every time while
+  deep pages worked. Without it the same page fetched twice came back identical, and the
+  last page held exactly `totalElements` − 300 × (pages − 1) devices.
+- Rows are written with `INSERT OR REPLACE` under a unique `uuid` index, so a device that
+  shifts between pages during a long crawl is stored once. An older mirror that already
+  holds duplicate uuids keeps working without the index.
 
 Tables written:
 

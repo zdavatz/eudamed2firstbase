@@ -273,6 +273,13 @@ fn ensure_schema(conn: &Connection) -> Result<()> {
              uuid TEXT PRIMARY KEY, primaryDi TEXT, detailJson TEXT, basicJson TEXT, fetched_at TEXT);
          CREATE INDEX IF NOT EXISTS idx_details_di ON device_details(primaryDi);"
     ))?;
+    // One row per device. An older mirror that already holds duplicate uuids
+    // cannot take the unique index; it keeps working, just without the dedup.
+    if let Err(e) = conn.execute_batch(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_listing_uuid ON devices_listing(uuid);",
+    ) {
+        eprintln!("[mirror] no unique uuid index (existing duplicates?): {e}");
+    }
     Ok(())
 }
 
@@ -318,20 +325,42 @@ fn crawl_listing(conn: &Mutex<Connection>, opts: &MirrorOpts) -> Result<()> {
     pool.install(|| {
         use rayon::prelude::*;
         todo.par_iter().for_each(|&page| {
-            let url = format!("{LIST_URL}?page={page}&size={PAGE_SIZE}");
-            let body = match eudamed_get(&agent, &limiter, &url, 6) {
-                Ok(b) => b,
-                Err(e) => {
-                    eprintln!("[crawl] page {page} failed: {e}");
-                    errors.fetch_add(1, Ordering::Relaxed);
-                    return;
+            // No `sort`: with `sort=primaryDi,asc` EUDAMED answered page 1 with an
+            // empty placeholder every time while deep pages worked (03.11.2026);
+            // the default order was stable for the same page fetched twice.
+            let url =
+                format!("{LIST_URL}?page={page}&size={PAGE_SIZE}&iso2Code=en&languageIso2Code=en");
+            // EUDAMED sometimes answers 200 with an empty placeholder
+            // (`"content": [], "totalElements": 0, "pageable": "INSTANCE"`) instead
+            // of an error. Before the last page that is a failed fetch: ask again,
+            // and if it stays empty leave the page out of `crawl_pages` so the next
+            // run fetches it instead of keeping a silent gap.
+            let mut content: Vec<Value> = Vec::new();
+            for attempt in 0..4 {
+                if attempt > 0 {
+                    std::thread::sleep(Duration::from_secs(15));
                 }
-            };
-            let content = serde_json::from_str::<Value>(&body)
-                .ok()
-                .and_then(|v| v.get("content").cloned())
-                .and_then(|c| c.as_array().cloned())
-                .unwrap_or_default();
+                let body = match eudamed_get(&agent, &limiter, &url, 6) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        eprintln!("[crawl] page {page} failed: {e}");
+                        break;
+                    }
+                };
+                content = serde_json::from_str::<Value>(&body)
+                    .ok()
+                    .and_then(|v| v.get("content").cloned())
+                    .and_then(|c| c.as_array().cloned())
+                    .unwrap_or_default();
+                if !content.is_empty() || page + 1 >= pages {
+                    break;
+                }
+            }
+            if content.is_empty() && page + 1 < pages {
+                eprintln!("[crawl] page {page} stayed empty, will be retried on the next run");
+                errors.fetch_add(1, Ordering::Relaxed);
+                return;
+            }
 
             with_conn(conn, |c| {
                 if let Err(e) = insert_listing_page(c, page, &content) {
@@ -379,7 +408,10 @@ fn insert_listing_page(conn: &Connection, page: u32, content: &[Value]) -> Resul
         .map(|c| format!("\"{c}\""))
         .collect::<Vec<_>>()
         .join(",");
-    let sql = format!("INSERT INTO devices_listing ({cols}, rawJson) VALUES ({placeholders})");
+    // OR REPLACE + the unique uuid index: a device seen on two pages (shifted by
+    // a registration during the crawl, or a page fetched twice) is stored once.
+    let sql =
+        format!("INSERT OR REPLACE INTO devices_listing ({cols}, rawJson) VALUES ({placeholders})");
 
     conn.execute_batch("BEGIN IMMEDIATE")?;
     let result = (|| -> Result<()> {
