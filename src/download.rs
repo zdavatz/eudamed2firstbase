@@ -598,6 +598,12 @@ fn ensure_listing_cache(conn: &rusqlite::Connection) {
             budi_version_number INTEGER,
             listed_at TEXT NOT NULL DEFAULT ''
         );
+        CREATE TABLE IF NOT EXISTS srn_listing_size (
+            srn TEXT PRIMARY KEY,
+            total_elements INTEGER,
+            total_pages INTEGER NOT NULL,
+            measured_at TEXT NOT NULL DEFAULT ''
+        );
     ",
     );
     // Migrations for existing DBs
@@ -857,9 +863,42 @@ fn download_listing_for_srn(
     limiter: &RateLimiter,
     progress: &dyn DownloadProgress,
 ) -> Vec<(String, Option<u32>, Option<u32>)> {
+    download_listing_for_srn_opts(base_url, srn, limit, None, None, conn, limiter, progress).entries
+}
+
+/// Result of one SRN listing run.
+struct SrnListing {
+    entries: Vec<(String, Option<u32>, Option<u32>)>,
+    /// The SRN's page count (at `size=300`), when page 0 was read.
+    total_pages: Option<u64>,
+    /// Every device of the SRN was seen (no failed page, no early stop).
+    complete: bool,
+}
+
+/// SRN listing with two options for the GTIN worklist (04.11.2026):
+/// - `keep`: only devices whose uuid or primaryDi is in the set are written to
+///   `listing_cache` and returned; the other devices of the SRN are ignored.
+/// - `max_pages`: stop after page 0 when the SRN has more pages than this (the
+///   single GTIN lookups are cheaper then). Page 0 is still used.
+/// Page 0 also stores the SRN's size in `srn_listing_size` for the next run.
+#[allow(clippy::too_many_arguments)]
+fn download_listing_for_srn_opts(
+    base_url: &str,
+    srn: &str,
+    limit: Option<usize>,
+    keep: Option<&std::collections::HashSet<String>>,
+    max_pages: Option<u64>,
+    conn: &Mutex<rusqlite::Connection>,
+    limiter: &RateLimiter,
+    progress: &dyn DownloadProgress,
+) -> SrnListing {
     let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
     let mut page = 0;
     let mut srn_count = 0;
+    // Devices seen on the listing, kept or not (= srn_count without `keep`).
+    let mut srn_seen = 0usize;
+    let mut stopped_early = false;
+    let mut page_failed = false;
     let mut srn_new = 0usize;
     let mut srn_udi_bumped = 0usize;
     let mut srn_budi_bumped = 0usize;
@@ -923,6 +962,7 @@ fn download_listing_for_srn(
                     "  SRN {} page {} failed after retries: {}",
                     srn, page, last_err
                 )));
+                page_failed = true;
                 break;
             }
         };
@@ -962,8 +1002,21 @@ fn download_listing_for_srn(
             // Batch insert into DB + on-the-fly version classification
             let page_start = entries.len();
             if let Ok(db) = conn.lock() {
+                if page == 0 {
+                    let _ = db.execute(
+                        "INSERT OR REPLACE INTO srn_listing_size (srn, total_elements, total_pages, measured_at) VALUES (?1, ?2, ?3, ?4)",
+                        rusqlite::params![srn, total_elements.map(|t| t as i64), total_pages as i64, now],
+                    );
+                }
                 for item in items {
                     if let Some(uuid) = item.get("uuid").and_then(|u| u.as_str()) {
+                        srn_seen += 1;
+                        if let Some(k) = keep {
+                            let di = item.get("primaryDi").and_then(|v| v.as_str()).unwrap_or("");
+                            if !k.contains(uuid) && !k.contains(di) {
+                                continue;
+                            }
+                        }
                         let version = item
                             .get("versionNumber")
                             .and_then(|v| v.as_u64())
@@ -1065,8 +1118,19 @@ fn download_listing_for_srn(
 
             if let Some(lim) = limit {
                 if srn_count >= lim {
+                    stopped_early = true;
                     break;
                 }
+            }
+            if page == 0 && max_pages.is_some_and(|m| total_pages > m) {
+                progress.on_event(DownloadEvent::Log(format!(
+                    "  SRN {}: {} pages, more than its {} worklist GTIN(s) — single lookups instead",
+                    srn,
+                    total_pages,
+                    max_pages.unwrap_or(0)
+                )));
+                stopped_early = true;
+                break;
             }
 
             page += 1;
@@ -1079,21 +1143,34 @@ fn download_listing_for_srn(
     }
 
     if srn_count > 0 || page == 0 {
+        let of = if keep.is_some() {
+            format!(" (worklist devices, of {} listed)", srn_seen)
+        } else {
+            String::new()
+        };
         progress.on_event(DownloadEvent::Log(format!(
-            "  SRN {}: {} devices  [{}↑ new, {}↑ udi, {}↑ budi, {} same]",
-            srn, srn_count, srn_new, srn_udi_bumped, srn_budi_bumped, srn_unchanged
+            "  SRN {}: {} devices{}  [{}↑ new, {}↑ udi, {}↑ budi, {} same]",
+            srn, srn_count, of, srn_new, srn_udi_bumped, srn_budi_bumped, srn_unchanged
         )));
     }
-    if let (Some(total), None) = (known_total_elements, limit) {
-        if (srn_count as u64) < total {
-            progress.on_event(DownloadEvent::Log(format!(
-                "  WARNING: SRN {} incomplete — {} of {} devices listed; run again for the rest",
-                srn, srn_count, total
-            )));
+    let mut complete = !stopped_early && !page_failed;
+    if let Some(total) = known_total_elements {
+        if (srn_seen as u64) < total {
+            complete = false;
+            if !stopped_early {
+                progress.on_event(DownloadEvent::Log(format!(
+                    "  WARNING: SRN {} incomplete — {} of {} devices listed; run again for the rest",
+                    srn, srn_seen, total
+                )));
+            }
         }
     }
 
-    entries
+    SrnListing {
+        entries,
+        total_pages: known_total_pages,
+        complete,
+    }
 }
 
 /// Download paginated listings from EUDAMED, filtered by SRN.
@@ -1280,6 +1357,117 @@ fn download_listing_for_gtin(
 /// request per GTIN). Returns deduplicated (uuid, version, budi_version) tuples —
 /// the same shape `download_listings` produces, so the rest of `run_download`
 /// (version check, detail/basic fetch, indexing) is identical.
+/// GTINs of one SRN that are read from that SRN's listing.
+#[derive(Debug, PartialEq)]
+struct SrnGroup {
+    srn: String,
+    gtins: Vec<String>,
+    /// Known device uuids per GTIN (same order as `gtins`).
+    gtin_uuids: Vec<Vec<String>>,
+    /// All known uuids of the group.
+    uuids: Vec<String>,
+    /// Stop after page 0 when the SRN has more pages than this (size unknown).
+    max_pages: Option<u64>,
+}
+
+#[derive(Debug, PartialEq)]
+struct GtinPlan {
+    by_srn: Vec<SrnGroup>,
+    singles: Vec<String>,
+}
+
+/// `known`: primaryDi -> [(uuid, srn)] from listing_cache; `sizes`: srn -> pages
+/// at `size=300` from srn_listing_size.
+fn load_gtin_plan_inputs(
+    conn: &rusqlite::Connection,
+) -> (
+    std::collections::HashMap<String, Vec<(String, String)>>,
+    std::collections::HashMap<String, u64>,
+) {
+    let mut known: std::collections::HashMap<String, Vec<(String, String)>> =
+        std::collections::HashMap::new();
+    if let Ok(mut st) = conn.prepare("SELECT primary_di, uuid, srn FROM listing_cache") {
+        if let Ok(rows) = st.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        }) {
+            for (di, uuid, srn) in rows.flatten() {
+                if !di.is_empty() {
+                    known.entry(di).or_default().push((uuid, srn));
+                }
+            }
+        }
+    }
+    let mut sizes = std::collections::HashMap::new();
+    if let Ok(mut st) = conn.prepare("SELECT srn, total_pages FROM srn_listing_size") {
+        if let Ok(rows) = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))) {
+            for (srn, p) in rows.flatten() {
+                sizes.insert(srn, p.max(0) as u64);
+            }
+        }
+    }
+    (known, sizes)
+}
+
+/// Decide per GTIN: SRN listing or single `primaryDi` lookup.
+/// - Unknown GTIN (never resolved), or known under several SRNs: single.
+/// - SRN with known size: listing when its pages <= its GTIN count.
+/// - SRN with unknown size: listing for >= 2 GTINs, stopped after page 0 when
+///   it turns out longer than the GTIN count; a lone GTIN stays single.
+fn plan_gtin_lookups(
+    gtins: &[String],
+    known: &std::collections::HashMap<String, Vec<(String, String)>>,
+    sizes: &std::collections::HashMap<String, u64>,
+) -> GtinPlan {
+    let mut seen = std::collections::HashSet::new();
+    let mut singles = Vec::new();
+    let mut groups: std::collections::BTreeMap<String, SrnGroup> =
+        std::collections::BTreeMap::new();
+    for g in gtins {
+        if !seen.insert(g.clone()) {
+            continue;
+        }
+        let padded = format!("{:0>14}", g);
+        let rows = known.get(g).or_else(|| known.get(&padded));
+        let rows: Vec<&(String, String)> = rows
+            .map(|v| v.iter().filter(|(_, s)| !s.is_empty()).collect())
+            .unwrap_or_default();
+        let srns: std::collections::HashSet<&str> = rows.iter().map(|(_, s)| s.as_str()).collect();
+        if rows.is_empty() || srns.len() != 1 {
+            singles.push(g.clone());
+            continue;
+        }
+        let srn = rows[0].1.clone();
+        let uuids: Vec<String> = rows.iter().map(|(u, _)| u.clone()).collect();
+        let grp = groups.entry(srn.clone()).or_insert_with(|| SrnGroup {
+            srn,
+            gtins: Vec::new(),
+            gtin_uuids: Vec::new(),
+            uuids: Vec::new(),
+            max_pages: None,
+        });
+        grp.gtins.push(g.clone());
+        grp.uuids.extend(uuids.iter().cloned());
+        grp.gtin_uuids.push(uuids);
+    }
+    let mut by_srn = Vec::new();
+    for (_, mut grp) in groups {
+        let n = grp.gtins.len() as u64;
+        match sizes.get(&grp.srn) {
+            Some(&p) if p <= n => by_srn.push(grp),
+            None if n >= 2 => {
+                grp.max_pages = Some(n);
+                by_srn.push(grp);
+            }
+            _ => singles.extend(grp.gtins),
+        }
+    }
+    GtinPlan { by_srn, singles }
+}
+
 fn download_listings_by_gtin(
     base_url: &str,
     gtins: &[String],
@@ -1292,47 +1480,119 @@ fn download_listings_by_gtin(
     let db_path = db_dir.join("version_tracking.db");
     let conn = rusqlite::Connection::open(&db_path)?;
     ensure_listing_cache(&conn);
+
+    // Plan (04.11.2026): a GTIN already resolved once has its device and SRN in
+    // listing_cache. Such GTINs are grouped by SRN and read from the SRN listing
+    // (300 devices per request) when that costs fewer requests than one lookup
+    // per GTIN; the rest (new GTINs, small groups, long listings) stay single.
+    let (known, sizes) = load_gtin_plan_inputs(&conn);
+    let plan = plan_gtin_lookups(gtins, &known, &sizes);
     let conn = Mutex::new(conn);
+    let base_url_owned = base_url.to_string();
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(listing_threads)
+        .build()
+        .context("Failed to build rayon thread pool for GTIN lookups")?;
+
+    let via_srn: usize = plan.by_srn.iter().map(|g| g.gtins.len()).sum();
+    let est_pages: u64 = plan
+        .by_srn
+        .iter()
+        .map(|g| sizes.get(&g.srn).copied().unwrap_or(1))
+        .sum();
+    progress.on_event(DownloadEvent::Log(format!(
+        "GTIN plan: {} GTIN(s) via {} SRN listing(s) (~{} pages), {} single lookup(s)",
+        via_srn,
+        plan.by_srn.len(),
+        est_pages,
+        plan.singles.len()
+    )));
+
+    let mut flat: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
+    let mut singles = plan.singles.clone();
+    if !plan.by_srn.is_empty() {
+        let results: Vec<(Vec<(String, Option<u32>, Option<u32>)>, Vec<String>)> =
+            pool.install(|| {
+                plan.by_srn
+                    .par_iter()
+                    .map(|g| {
+                        let mut keep: std::collections::HashSet<String> =
+                            g.uuids.iter().cloned().collect();
+                        for gt in &g.gtins {
+                            keep.insert(gt.clone());
+                            keep.insert(format!("{:0>14}", gt));
+                        }
+                        let res = download_listing_for_srn_opts(
+                            &base_url_owned,
+                            &g.srn,
+                            None,
+                            Some(&keep),
+                            g.max_pages,
+                            &conn,
+                            limiter,
+                            progress,
+                        );
+                        let seen: std::collections::HashSet<&str> =
+                            res.entries.iter().map(|(u, ..)| u.as_str()).collect();
+                        // A GTIN is done when one of its known devices was listed;
+                        // otherwise (long listing, failed page, device gone from
+                        // the SRN) it falls back to the single lookup.
+                        let left: Vec<String> = g
+                            .gtins
+                            .iter()
+                            .zip(&g.gtin_uuids)
+                            .filter(|(_, us)| !us.iter().any(|u| seen.contains(u.as_str())))
+                            .map(|(gt, _)| gt.clone())
+                            .collect();
+                        (res.entries, left)
+                    })
+                    .collect()
+            });
+        let mut fallback = 0usize;
+        for (entries, left) in results {
+            flat.extend(entries);
+            fallback += left.len();
+            singles.extend(left);
+        }
+        progress.on_event(DownloadEvent::Log(format!(
+            "GTIN plan: SRN listings done, {} GTIN(s) not found there go to single lookups",
+            fallback
+        )));
+    }
 
     progress.on_event(DownloadEvent::Log(format!(
         "Resolving {} GTIN(s) via primaryDi ({} parallel)...",
-        gtins.len(),
+        singles.len(),
         listing_threads
     )));
 
-    let base_url_owned = base_url.to_string();
     let completed = AtomicUsize::new(0);
-    let total = gtins.len();
+    let total = singles.len();
 
-    let all_entries: Vec<Vec<(String, Option<u32>, Option<u32>)>> = rayon::ThreadPoolBuilder::new()
-        .num_threads(listing_threads)
-        .build()
-        .context("Failed to build rayon thread pool for GTIN lookups")?
-        .install(|| {
-            gtins
-                .par_iter()
-                .map(|gtin| {
-                    let entries =
-                        download_listing_for_gtin(&base_url_owned, gtin, &conn, limiter, progress);
-                    let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-                    if done % 100 == 0 || done == total {
-                        progress.on_event(DownloadEvent::Log(format!(
-                            "[GTIN] {}/{} resolved",
-                            done, total
-                        )));
-                    }
-                    progress.on_event(DownloadEvent::Status {
-                        phase: "GTIN lookup".into(),
-                        done,
-                        total,
-                    });
-                    entries
-                })
-                .collect()
-        });
+    let all_entries: Vec<Vec<(String, Option<u32>, Option<u32>)>> = pool.install(|| {
+        singles
+            .par_iter()
+            .map(|gtin| {
+                let entries =
+                    download_listing_for_gtin(&base_url_owned, gtin, &conn, limiter, progress);
+                let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
+                if done % 100 == 0 || done == total {
+                    progress.on_event(DownloadEvent::Log(format!(
+                        "[GTIN] {}/{} resolved",
+                        done, total
+                    )));
+                }
+                progress.on_event(DownloadEvent::Status {
+                    phase: "GTIN lookup".into(),
+                    done,
+                    total,
+                });
+                entries
+            })
+            .collect()
+    });
 
-    let mut flat: Vec<(String, Option<u32>, Option<u32>)> =
-        all_entries.into_iter().flatten().collect();
+    flat.extend(all_entries.into_iter().flatten());
 
     // Deduplicate by UUID (keep highest versions) — two GTINs could map to the
     // same device (rare), and the same device must not be downloaded twice.
@@ -1508,6 +1768,85 @@ fn parallel_fetch(
         });
 
     Ok((downloaded.load(Ordering::Relaxed), cached))
+}
+
+#[cfg(test)]
+mod gtin_plan_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn known(rows: &[(&str, &str, &str)]) -> HashMap<String, Vec<(String, String)>> {
+        let mut m: HashMap<String, Vec<(String, String)>> = HashMap::new();
+        for (di, u, s) in rows {
+            m.entry(di.to_string())
+                .or_default()
+                .push((u.to_string(), s.to_string()));
+        }
+        m
+    }
+    fn v(xs: &[&str]) -> Vec<String> {
+        xs.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn unknown_gtins_and_lone_gtins_of_unknown_srns_stay_single() {
+        let k = known(&[("00000000000001", "u1", "CH-MF-1")]);
+        let p = plan_gtin_lookups(
+            &v(&["00000000000001", "00000000000009"]),
+            &k,
+            &HashMap::new(),
+        );
+        assert!(p.by_srn.is_empty());
+        assert_eq!(p.singles, v(&["00000000000009", "00000000000001"]));
+    }
+
+    #[test]
+    fn short_listing_is_used_long_listing_is_not() {
+        let k = known(&[
+            ("01", "u1", "SHORT"),
+            ("02", "u2", "SHORT"),
+            ("03", "u3", "SHORT"),
+            ("04", "u4", "LONG"),
+            ("05", "u5", "LONG"),
+        ]);
+        let sizes: HashMap<String, u64> =
+            [("SHORT".to_string(), 2), ("LONG".to_string(), 40)].into();
+        let p = plan_gtin_lookups(&v(&["01", "02", "03", "04", "05"]), &k, &sizes);
+        assert_eq!(p.by_srn.len(), 1);
+        assert_eq!(p.by_srn[0].srn, "SHORT");
+        assert_eq!(p.by_srn[0].gtins, v(&["01", "02", "03"]));
+        assert_eq!(p.by_srn[0].max_pages, None);
+        assert_eq!(p.singles, v(&["04", "05"]));
+    }
+
+    #[test]
+    fn unknown_size_probes_with_the_gtin_count_as_page_cap() {
+        let k = known(&[("01", "u1", "X"), ("02", "u2", "X"), ("02", "u2b", "X")]);
+        let p = plan_gtin_lookups(&v(&["01", "02", "02"]), &k, &HashMap::new());
+        assert_eq!(p.by_srn.len(), 1);
+        let g = &p.by_srn[0];
+        assert_eq!(g.max_pages, Some(2));
+        assert_eq!(g.gtin_uuids, vec![v(&["u1"]), v(&["u2", "u2b"])]);
+        assert!(p.singles.is_empty());
+    }
+
+    #[test]
+    fn short_gtin_matches_its_14_digit_form_and_split_srns_stay_single() {
+        let k = known(&[
+            ("04012345678901", "u1", "A"),
+            ("04012345678902", "u2", "A"),
+            ("05000000000000", "u3", "A"),
+            ("05000000000000", "u4", "B"),
+        ]);
+        let sizes: HashMap<String, u64> = [("A".to_string(), 1)].into();
+        let p = plan_gtin_lookups(
+            &v(&["4012345678901", "04012345678902", "05000000000000"]),
+            &k,
+            &sizes,
+        );
+        assert_eq!(p.by_srn[0].gtins, v(&["4012345678901", "04012345678902"]));
+        assert_eq!(p.singles, v(&["05000000000000"]));
+    }
 }
 
 #[cfg(test)]
