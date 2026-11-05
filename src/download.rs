@@ -854,6 +854,101 @@ pub fn eudamed_get(
     Err(last)
 }
 
+/// Write datalake devices to listing_cache (only those in `keep`, if given) and
+/// return their (uuid, version, None) tuples. The Basic UDI-DI version is left
+/// NULL: the datalake has none (and the listing's was a 0 placeholder anyway).
+fn store_datalake_devices(
+    conn: &Mutex<rusqlite::Connection>,
+    devices: &[crate::datalake::DlDevice],
+    keep: Option<&std::collections::HashSet<String>>,
+    now: &str,
+) -> Vec<(String, Option<u32>, Option<u32>)> {
+    let mut out = Vec::new();
+    let Ok(db) = conn.lock() else {
+        return out;
+    };
+    for d in devices {
+        if let Some(k) = keep {
+            if !k.contains(&d.uuid) && !k.contains(&d.primary_di) {
+                continue;
+            }
+        }
+        let _ = db.execute(
+            "INSERT OR REPLACE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at, budi_ulid) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, ?10)",
+            rusqlite::params![d.uuid, d.srn, d.manufacturer_name, d.primary_di, d.trade_name, d.risk_class, d.device_status, d.version, now, d.budi_ulid],
+        );
+        out.push((d.uuid.clone(), d.version, None));
+    }
+    out
+}
+
+/// SRN listing via the datalake (`MF_SRN` filter, 1'000 devices per page).
+/// None = fall back to the public listing (datalake error, or no device under
+/// this SRN — e.g. a PR SRN, which the `MF_SRN` filter may not cover).
+fn datalake_listing_for_srn(
+    srn: &str,
+    limit: Option<usize>,
+    keep: Option<&std::collections::HashSet<String>>,
+    max_pages: Option<u64>,
+    conn: &Mutex<rusqlite::Connection>,
+    progress: &dyn DownloadProgress,
+) -> Option<SrnListing> {
+    // `max_pages` counts public pages of 300; a datalake page holds 1'000.
+    let dl_max = max_pages.map(|m| ((m * DEFAULT_PAGE_SIZE as u64).div_ceil(1000)).max(1) as usize);
+    let q = match crate::datalake::query("MF_SRN", srn, dl_max) {
+        Ok(q) => q,
+        Err(e) => {
+            progress.on_event(DownloadEvent::Log(format!(
+                "  SRN {}: datalake failed ({}), asking the public listing",
+                srn, e
+            )));
+            return None;
+        }
+    };
+    if q.devices.is_empty() && q.complete {
+        progress.on_event(DownloadEvent::Log(format!(
+            "  SRN {}: no device in the datalake, asking the public listing",
+            srn
+        )));
+        return None;
+    }
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let mut devices = q.devices;
+    if let Some(l) = limit {
+        devices.truncate(l);
+    }
+    let seen = devices.len();
+    let entries = store_datalake_devices(conn, &devices, keep, &now);
+    let pages_300 = (seen as u64).div_ceil(DEFAULT_PAGE_SIZE as u64).max(1);
+    if q.complete {
+        if let Ok(db) = conn.lock() {
+            let _ = db.execute(
+                "INSERT OR REPLACE INTO srn_listing_size (srn, total_elements, total_pages, measured_at) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![srn, seen as i64, pages_300 as i64, now],
+            );
+        }
+    }
+    let of = if keep.is_some() {
+        format!(" (worklist devices, of {} listed)", seen)
+    } else {
+        String::new()
+    };
+    progress.on_event(DownloadEvent::Log(format!(
+        "  SRN {}: {} devices{} via datalake, {} page(s){}",
+        srn,
+        entries.len(),
+        of,
+        q.pages,
+        if q.complete { "" } else { ", stopped early" }
+    )));
+    Some(SrnListing {
+        entries,
+        total_pages: q.complete.then_some(pages_300),
+        complete: q.complete && limit.is_none(),
+    })
+}
+
 /// Download paginated listings for a single SRN. Returns entries found.
 fn download_listing_for_srn(
     base_url: &str,
@@ -892,6 +987,11 @@ fn download_listing_for_srn_opts(
     limiter: &RateLimiter,
     progress: &dyn DownloadProgress,
 ) -> SrnListing {
+    if crate::datalake::enabled() {
+        if let Some(res) = datalake_listing_for_srn(srn, limit, keep, max_pages, conn, progress) {
+            return res;
+        }
+    }
     let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
     let mut page = 0;
     let mut srn_count = 0;
@@ -1269,6 +1369,31 @@ fn download_listing_for_gtin(
     progress: &dyn DownloadProgress,
 ) -> Vec<(String, Option<u32>, Option<u32>)> {
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    if crate::datalake::enabled() {
+        match crate::datalake::query("PRIMARY_DI", gtin, Some(1)) {
+            Ok(q) => {
+                let entries = store_datalake_devices(conn, &q.devices, None, &now);
+                if entries.is_empty() {
+                    progress.on_event(DownloadEvent::Log(format!(
+                        "  GTIN {}: no device in EUDAMED (datalake)",
+                        gtin
+                    )));
+                } else {
+                    for (uuid, _, _) in &entries {
+                        progress.on_event(DownloadEvent::Log(format!(
+                            "  GTIN {} -> {} (datalake)",
+                            gtin, uuid
+                        )));
+                    }
+                }
+                return entries;
+            }
+            Err(e) => progress.on_event(DownloadEvent::Log(format!(
+                "  GTIN {}: datalake failed ({}), asking the public endpoint",
+                gtin, e
+            ))),
+        }
+    }
     let agent = eudamed_agent();
     let url = format!(
         "{}?page=0&pageSize=5&primaryDi={}&iso2Code=en&languageIso2Code=en",
