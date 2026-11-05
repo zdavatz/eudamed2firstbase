@@ -5,6 +5,7 @@ mod actors;
 mod api_detail;
 mod api_json;
 mod config;
+mod datalake;
 mod download;
 mod eudamed;
 mod eudamed_json;
