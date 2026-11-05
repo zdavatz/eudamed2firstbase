@@ -257,7 +257,8 @@ pub fn run_download(
     let db_path = db_dir.join("version_tracking.db");
     let conn = crate::version_db::open_db(&db_path)?;
 
-    let (need_download, unchanged_skipped) =
+    let run_start = std::time::SystemTime::now();
+    let (mut need_download, unchanged_skipped) =
         filter_unchanged(&uuid_versions, &conn, &detail_dir, &basic_dir, progress);
 
     log(&format!(
@@ -396,6 +397,28 @@ pub fn run_download(
         } else {
             log("All files complete after retry");
         }
+    }
+
+    // With the public endpoint blocked, only devices whose detail file was
+    // written in THIS run (and that have a Basic UDI-DI file) go on to indexing,
+    // convert and push. A stale cached detail of a changed device must not be
+    // indexed (its version would hide the change) nor reconverted and re-pushed.
+    if public_endpoint_blocked() {
+        let total = need_download.len();
+        let fresh = |u: &String| {
+            let d = detail_dir.join(format!("{}.json", u));
+            let fresh_detail = std::fs::metadata(&d)
+                .and_then(|m| m.modified())
+                .map(|t| t >= run_start)
+                .unwrap_or(false);
+            fresh_detail && basic_dir.join(format!("{}.json", u)).exists()
+        };
+        need_download.retain(fresh);
+        log(&format!(
+            "WARNING: EUDAMED public endpoint blocked (429) — {} of {} changed device(s) could not be downloaded; they are retried next run",
+            total - need_download.len(),
+            total
+        ));
     }
 
     // --- Step 7: Extract versions from downloaded detail files into udi_versions DB ---
@@ -794,6 +817,48 @@ fn listing_trace(agent: &ureq::Agent, limiter: &RateLimiter, url: &str) -> Vec<S
 /// "still missing"). Here a throttled request waits out the window and retries
 /// rather than abandoning the page/file, so nothing is silently dropped.
 pub fn eudamed_get(
+    agent: &ureq::Agent,
+    limiter: &RateLimiter,
+    url: &str,
+    max_attempts: u32,
+) -> Result<String, String> {
+    if PUBLIC_BLOCKED.load(Ordering::Relaxed) {
+        return Err("EUDAMED public endpoint blocked (429), request skipped".into());
+    }
+    let res = eudamed_get_inner(agent, limiter, url, max_attempts);
+    match &res {
+        Ok(_) => PUBLIC_429_STREAK.store(0, Ordering::Relaxed),
+        Err(e) if e.starts_with("HTTP 429") => {
+            let n = PUBLIC_429_STREAK.fetch_add(1, Ordering::Relaxed) + 1;
+            if n >= PUBLIC_BLOCK_AFTER && !PUBLIC_BLOCKED.swap(true, Ordering::Relaxed) {
+                eprintln!(
+                    "EUDAMED public endpoint blocked: {} requests in a row ended in 429 after their retries — skipping all further public requests in this run",
+                    n
+                );
+            }
+        }
+        Err(_) => {}
+    }
+    res
+}
+
+/// Circuit breaker (05.11.2026): since ~12:00 CET EUDAMED answers every
+/// automated client with 429 on its public endpoints. Each request then waits
+/// through several Retry-After rounds (minutes), so a nightly with 1'500 new
+/// devices would hang for days and block the following nights via the overlap
+/// guard. After `PUBLIC_BLOCK_AFTER` requests in a row that end in 429, every
+/// further public request of this process fails at once. Devices whose files
+/// were not fetched stay incomplete and are retried by the next run.
+static PUBLIC_429_STREAK: AtomicUsize = AtomicUsize::new(0);
+static PUBLIC_BLOCKED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+const PUBLIC_BLOCK_AFTER: usize = 10;
+
+/// True once the circuit breaker tripped in this process.
+pub fn public_endpoint_blocked() -> bool {
+    PUBLIC_BLOCKED.load(Ordering::Relaxed)
+}
+
+fn eudamed_get_inner(
     agent: &ureq::Agent,
     limiter: &RateLimiter,
     url: &str,
