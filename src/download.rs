@@ -885,10 +885,25 @@ fn eudamed_get_inner(
                     return resp.body_mut().read_to_string().map_err(|e| e.to_string());
                 }
                 if status == 429 {
-                    let wait = resp
-                        .headers()
-                        .get("retry-after")
-                        .and_then(|v| v.to_str().ok())
+                    // EUDAMED's block (05.11.2026) carries a notice pointing to
+                    // the datalake API. Waiting through Retry-After rounds does
+                    // not lift it, so give up at once (the circuit breaker and
+                    // the datalake listing fallback take over).
+                    let blocked_notice = {
+                        let ra = resp
+                            .headers()
+                            .get("retry-after")
+                            .and_then(|v| v.to_str().ok())
+                            .map(|s| s.to_string());
+                        let body = resp.body_mut().read_to_string().unwrap_or_default();
+                        (body.contains("machineToMachineApi"), ra)
+                    };
+                    if blocked_notice.0 {
+                        return Err("HTTP 429 (EUDAMED block, M2M notice)".into());
+                    }
+                    let wait = blocked_notice
+                        .1
+                        .as_deref()
                         .and_then(|s| s.trim().parse::<u64>().ok())
                         .unwrap_or(60)
                         .min(70);
@@ -1127,6 +1142,17 @@ fn download_listing_for_srn_opts(
                     "  SRN {} page {} failed after retries: {}",
                     srn, page, last_err
                 )));
+                // EUDAMED blocks the public listing: list this SRN (and the rest
+                // of the run) via the datalake instead (v1.0.112).
+                if crate::datalake::is_block_error(&last_err) && crate::datalake::fallback_allowed()
+                {
+                    crate::datalake::activate_fallback(&last_err);
+                    if let Some(res) =
+                        datalake_listing_for_srn(srn, limit, keep, max_pages, conn, progress)
+                    {
+                        return res;
+                    }
+                }
                 page_failed = true;
                 break;
             }
@@ -1426,6 +1452,41 @@ fn download_listings(
 /// `primaryDi` filter, write it to listing_cache (with the real manufacturerSrn,
 /// so the device can also be pushed by SRN later), and return its
 /// (uuid, version, budi_version) tuple. Empty Vec when EUDAMED has no such device.
+/// GTIN lookup via the datalake (`PRIMARY_DI` filter). None on a datalake error.
+fn datalake_lookup_gtin(
+    gtin: &str,
+    conn: &Mutex<rusqlite::Connection>,
+    now: &str,
+    progress: &dyn DownloadProgress,
+) -> Option<Vec<(String, Option<u32>, Option<u32>)>> {
+    match crate::datalake::query("PRIMARY_DI", gtin, Some(1)) {
+        Ok(q) => {
+            let entries = store_datalake_devices(conn, &q.devices, None, now);
+            if entries.is_empty() {
+                progress.on_event(DownloadEvent::Log(format!(
+                    "  GTIN {}: no device in EUDAMED (datalake)",
+                    gtin
+                )));
+            } else {
+                for (uuid, _, _) in &entries {
+                    progress.on_event(DownloadEvent::Log(format!(
+                        "  GTIN {} -> {} (datalake)",
+                        gtin, uuid
+                    )));
+                }
+            }
+            Some(entries)
+        }
+        Err(e) => {
+            progress.on_event(DownloadEvent::Log(format!(
+                "  GTIN {}: datalake failed ({})",
+                gtin, e
+            )));
+            None
+        }
+    }
+}
+
 fn download_listing_for_gtin(
     base_url: &str,
     gtin: &str,
@@ -1435,28 +1496,8 @@ fn download_listing_for_gtin(
 ) -> Vec<(String, Option<u32>, Option<u32>)> {
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     if crate::datalake::enabled() {
-        match crate::datalake::query("PRIMARY_DI", gtin, Some(1)) {
-            Ok(q) => {
-                let entries = store_datalake_devices(conn, &q.devices, None, &now);
-                if entries.is_empty() {
-                    progress.on_event(DownloadEvent::Log(format!(
-                        "  GTIN {}: no device in EUDAMED (datalake)",
-                        gtin
-                    )));
-                } else {
-                    for (uuid, _, _) in &entries {
-                        progress.on_event(DownloadEvent::Log(format!(
-                            "  GTIN {} -> {} (datalake)",
-                            gtin, uuid
-                        )));
-                    }
-                }
-                return entries;
-            }
-            Err(e) => progress.on_event(DownloadEvent::Log(format!(
-                "  GTIN {}: datalake failed ({}), asking the public endpoint",
-                gtin, e
-            ))),
+        if let Some(entries) = datalake_lookup_gtin(gtin, conn, &now, progress) {
+            return entries;
         }
     }
     let agent = eudamed_agent();
@@ -1472,6 +1513,13 @@ fn download_listing_for_gtin(
                 "  GTIN {} lookup failed after retries: {}",
                 gtin, e
             )));
+            // EUDAMED blocks the public endpoint: ask the datalake (v1.0.112).
+            if crate::datalake::is_block_error(&e) && crate::datalake::fallback_allowed() {
+                crate::datalake::activate_fallback(&e);
+                if let Some(entries) = datalake_lookup_gtin(gtin, conn, &now, progress) {
+                    return entries;
+                }
+            }
             return Vec::new();
         }
     };

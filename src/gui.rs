@@ -2952,6 +2952,43 @@ pub fn push_to_firstbase(
         }
     }
 
+    // Basic guard (05.11.2026), for every caller incl. the GUI modes: a device
+    // downloaded from the EUDAMED API (detail file present) whose Basic UDI-DI
+    // file is missing would go out with defaults (EU_CLASS_I, no model number,
+    // no AR) and be rejected (097.013/025/054/024). Hold it back; the next
+    // download sees its cache as incomplete and fetches it again. Files from
+    // other sources (no detail file) are not affected.
+    let held: Vec<String> = {
+        let data_dir = download::app_data_dir().join(download::DEFAULT_DATA_DIR);
+        let has = |sub: &str, u: &str| {
+            let d = data_dir.join(sub);
+            [
+                d.join(format!("{u}.json")),
+                d.join("processed").join(format!("{u}.json")),
+            ]
+            .iter()
+            .any(|p| std::fs::metadata(p).map(|m| m.len() > 0).unwrap_or(false))
+        };
+        let mut held = Vec::new();
+        files.retain(|p| {
+            let u = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+            if has("detail", u) && !has("basic", u) {
+                held.push(u.to_string());
+                false
+            } else {
+                true
+            }
+        });
+        held
+    };
+    if !held.is_empty() {
+        log(&format!(
+            "Basic guard: holding back {} device(s) without a Basic UDI-DI file (retried next download): {}",
+            held.len(),
+            held.join(", ")
+        ));
+    }
+
     if files.is_empty() {
         log("No firstbase JSON files to push.");
         return Ok(PushOutcome {
