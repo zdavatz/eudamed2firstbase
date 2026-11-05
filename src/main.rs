@@ -1818,6 +1818,11 @@ fn main() -> Result<()> {
             };
             // SRN-scoped (CLI mirror of Mode 4/5/6): push ONLY this run's UUIDs,
             // not the whole firstbase_json/ backlog of other SRNs.
+            let uuids = hold_back_without_basic(&uuids);
+            if uuids.is_empty() {
+                eprintln!("Nothing to push after the Basic guard.");
+                return Ok(());
+            }
             match gui::push_to_firstbase(&settings, &log_fn, Some(&uuids)) {
                 Ok(out) => {
                     eprintln!(
@@ -2281,6 +2286,56 @@ fn deep_scan_diff(
 /// list is kept, and since accepted files move to `processed/`, the next
 /// nightly re-push covers exactly the undelivered remainder. Errors are
 /// logged, not propagated, so a retry after an outage still exits cleanly.
+/// Split `uuids` into (pushable, held back): a device whose Basic UDI-DI file is
+/// missing or empty in `basic_dir` (or its `processed/`) is held back. Without
+/// it the converter falls back to defaults (risk class EU_CLASS_I, no model
+/// number, no authorised representative) and GS1 rejects the device
+/// (05.11.2026: 00840273201991 with 097.013/025/054/024 after the Basic fetch
+/// hit EUDAMED's 429). A held-back device is not lost: its cache stays
+/// incomplete, so the next `check` re-downloads it and pushes it then.
+fn split_by_basic(
+    uuids: &std::collections::HashSet<String>,
+    basic_dir: &std::path::Path,
+) -> (std::collections::HashSet<String>, Vec<String>) {
+    let has_basic = |u: &str| {
+        [
+            basic_dir.join(format!("{u}.json")),
+            basic_dir.join("processed").join(format!("{u}.json")),
+        ]
+        .iter()
+        .any(|p| std::fs::metadata(p).map(|m| m.len() > 0).unwrap_or(false))
+    };
+    let mut keep = std::collections::HashSet::new();
+    let mut held = Vec::new();
+    for u in uuids {
+        if has_basic(u) {
+            keep.insert(u.clone());
+        } else {
+            held.push(u.clone());
+        }
+    }
+    held.sort();
+    (keep, held)
+}
+
+/// `split_by_basic` on the data dir, with a log line for the held-back devices.
+fn hold_back_without_basic(
+    uuids: &std::collections::HashSet<String>,
+) -> std::collections::HashSet<String> {
+    let basic_dir = download::app_data_dir()
+        .join(download::DEFAULT_DATA_DIR)
+        .join("basic");
+    let (keep, held) = split_by_basic(uuids, &basic_dir);
+    if !held.is_empty() {
+        eprintln!(
+            "Basic guard: holding back {} device(s) without a Basic UDI-DI file (retried next run): {}",
+            held.len(),
+            held.join(", ")
+        );
+    }
+    keep
+}
+
 fn push_changed_to_firstbase(
     fb_config: &config::Config,
     uuids: &std::collections::HashSet<String>,
@@ -2288,6 +2343,12 @@ fn push_changed_to_firstbase(
     gtin_worklist: &[String],
 ) -> anyhow::Result<bool> {
     eprintln!("\n=== Pushing to GS1 Firstbase API ===");
+    let pushable = hold_back_without_basic(uuids);
+    if pushable.is_empty() {
+        eprintln!("Nothing to push after the Basic guard.");
+        return Ok(true);
+    }
+    let uuids = &pushable;
     let email = std::env::var("FIRSTBASE_EMAIL").unwrap_or_default();
     let password = std::env::var("FIRSTBASE_PASSWORD").unwrap_or_default();
     // Env var takes priority; fall back to publish_gln from config.toml.
@@ -4203,6 +4264,33 @@ mod repush_srn_args_tests {
             repush_srn_args(&args),
             vec!["NZ-MF-000002767", "FR-PR-000000348"]
         );
+    }
+}
+
+#[cfg(test)]
+mod basic_guard_tests {
+    use super::*;
+
+    #[test]
+    fn devices_without_a_basic_file_are_held_back() {
+        let dir = std::env::temp_dir().join(format!("basic_guard_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("processed")).unwrap();
+        std::fs::write(dir.join("a.json"), "{\"basicUdi\":{\"code\":\"X\"}}").unwrap();
+        std::fs::write(
+            dir.join("processed/b.json"),
+            "{\"basicUdi\":{\"code\":\"Y\"}}",
+        )
+        .unwrap();
+        std::fs::write(dir.join("c.json"), "").unwrap(); // empty = missing
+        let uuids: std::collections::HashSet<String> =
+            ["a", "b", "c", "d"].iter().map(|s| s.to_string()).collect();
+        let (keep, held) = split_by_basic(&uuids, &dir);
+        let mut keep: Vec<_> = keep.into_iter().collect();
+        keep.sort();
+        assert_eq!(keep, vec!["a", "b"]);
+        assert_eq!(held, vec!["c", "d"]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
 
