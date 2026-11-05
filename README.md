@@ -12,6 +12,7 @@ cargo run gui                                 # also launches GUI
 
 The GUI provides:
 - SRN input (multiple SRNs, one per line or space/comma-separated)
+- GTIN input (since v1.0.113): paste a GTIN list of any size into the GTIN field — lines, a spreadsheet column, comma or tab separated. It is read at once (every 8-14 digit entry, padded to 14 digits, duplicates dropped, other cells counted as ignored), the field empties again and shows "N GTIN(s) loaded" with a **Clear GTINs** button. 28'000 GTINs paste without slowing the GUI; the list is kept in `gtins_gui.txt` (not in `settings.json`). The pipeline downloads the SRN list first, then the GTIN list as a second pass (as the nightly `check` does); the GTINs use the same lookups as the CLI (SRN-grouped listings, datalake fallback). The repush modes 4-6 stay SRN-only.
 - Limit per SRN option
 - Push target selector: **GS1 firstbase** or **Swissdamed** (radio buttons)
 - Target-specific credentials (collapsible):

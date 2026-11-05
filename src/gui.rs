@@ -27,6 +27,50 @@ struct InstallProgress {
 fn settings_path() -> PathBuf {
     download::app_data_dir().join("settings.json")
 }
+
+/// Pasted GTIN worklist of the GUI, one GTIN per line.
+fn gtins_path() -> PathBuf {
+    download::app_data_dir().join("gtins_gui.txt")
+}
+
+fn load_gtins() -> Vec<String> {
+    std::fs::read_to_string(gtins_path())
+        .map(|s| parse_gtins(&s).0)
+        .unwrap_or_default()
+}
+
+fn save_gtins(gtins: &[String]) {
+    let mut body = gtins.join("\n");
+    if !body.is_empty() {
+        body.push('\n');
+    }
+    let _ = std::fs::write(gtins_path(), body);
+}
+
+/// GTINs from pasted text: every run of 8-14 digits (any separator — lines,
+/// spaces, commas, tabs from a spreadsheet column), left-padded to 14 digits
+/// like EUDAMED's primaryDi, de-duplicated in paste order. Returns the GTINs and
+/// the number of tokens that were not a GTIN (e.g. a header cell).
+pub fn parse_gtins(text: &str) -> (Vec<String>, usize) {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    let mut ignored = 0usize;
+    for tok in text.split(|c: char| c.is_whitespace() || c == ',' || c == ';') {
+        let tok = tok.trim_matches(|c: char| c == '"' || c == '\'');
+        if tok.is_empty() {
+            continue;
+        }
+        if tok.len() >= 8 && tok.len() <= 14 && tok.bytes().all(|b| b.is_ascii_digit()) {
+            let g = format!("{:0>14}", tok);
+            if seen.insert(g.clone()) {
+                out.push(g);
+            }
+        } else {
+            ignored += 1;
+        }
+    }
+    (out, ignored)
+}
 fn logs_dir() -> PathBuf {
     download::app_data_dir().join("logs")
 }
@@ -83,6 +127,10 @@ impl FirstbaseEnv {
 #[serde(default)]
 pub struct Settings {
     pub srns: String,
+    /// GTIN worklist pasted into the GUI (v1.0.113). Kept out of settings.json
+    /// (it can hold 28'000+ entries); persisted in `gtins_gui.txt`.
+    #[serde(skip)]
+    pub gtins: Vec<String>,
     pub limit: String,
     #[serde(default)]
     pub push_target: PushTarget,
@@ -235,6 +283,11 @@ pub struct App {
     install_error: Option<String>,
     /// Shared download/swap progress for the banner.
     install_progress: Arc<Mutex<InstallProgress>>,
+    /// Paste target of the GTIN field; parsed into `settings.gtins` and cleared
+    /// in the same frame, so 28'000 pasted lines never stay in a text widget.
+    gtin_paste: String,
+    /// Result line of the last paste ("+N GTINs, M ignored").
+    gtin_note: String,
 }
 
 impl App {
@@ -306,6 +359,14 @@ impl App {
             "Data directory: {}",
             download::app_data_dir().display()
         ));
+        settings.gtins = load_gtins();
+        if !settings.gtins.is_empty() {
+            settings_notes.push(format!(
+                "{} GTIN(s) loaded from {}",
+                settings.gtins.len(),
+                gtins_path().display()
+            ));
+        }
         App {
             settings,
             last_saved_settings: last_saved,
@@ -328,7 +389,58 @@ impl App {
             installing: false,
             install_error: None,
             install_progress: Arc::new(Mutex::new(InstallProgress::default())),
+            gtin_paste: String::new(),
+            gtin_note: String::new(),
         }
+    }
+
+    /// GTIN field: paste any list (lines, spreadsheet column, comma separated);
+    /// it is parsed into `settings.gtins` at once and the field is cleared.
+    fn gtin_input_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label("GTINs (paste a list — any separator):");
+        let resp = ui.add(
+            egui::TextEdit::multiline(&mut self.gtin_paste)
+                .desired_rows(2)
+                .desired_width(f32::INFINITY)
+                .hint_text("04034342117337\n04034342368890"),
+        );
+        if resp.changed() && !self.gtin_paste.trim().is_empty() {
+            let (new, ignored) = parse_gtins(&self.gtin_paste);
+            let mut have: std::collections::HashSet<String> =
+                self.settings.gtins.iter().cloned().collect();
+            let before = self.settings.gtins.len();
+            for g in new {
+                if have.insert(g.clone()) {
+                    self.settings.gtins.push(g);
+                }
+            }
+            let added = self.settings.gtins.len() - before;
+            self.gtin_note = if ignored > 0 {
+                format!(
+                    "+{} GTIN(s), {} entry/entries ignored (not 8-14 digits)",
+                    added, ignored
+                )
+            } else {
+                format!("+{} GTIN(s)", added)
+            };
+            self.gtin_paste.clear();
+            save_gtins(&self.settings.gtins);
+        }
+        ui.horizontal(|ui| {
+            ui.label(format!("{} GTIN(s) loaded", self.settings.gtins.len()));
+            if !self.gtin_note.is_empty() {
+                ui.label(egui::RichText::new(&self.gtin_note).weak());
+            }
+            if !self.settings.gtins.is_empty()
+                && ui
+                    .add_enabled(!self.running, egui::Button::new("Clear GTINs"))
+                    .clicked()
+            {
+                self.settings.gtins.clear();
+                self.gtin_note.clear();
+                save_gtins(&self.settings.gtins);
+            }
+        });
     }
 
     /// Drain the one-shot update-check result and any in-flight install
@@ -1028,6 +1140,8 @@ impl eframe::App for App {
                                 .hint_text("DE-MF-000012345"),
                         );
                         ui.add_space(4.0);
+                        self.gtin_input_ui(ui);
+                        ui.add_space(4.0);
                         ui.horizontal(|ui| {
                             ui.label("Limit per SRN:");
                             ui.add(egui::TextEdit::singleline(&mut self.settings.limit).desired_width(60.0).hint_text("all"));
@@ -1094,7 +1208,9 @@ impl eframe::App for App {
                             });
                         });
                         ui.add_space(4.0);
-                        let can_start = !self.running && !self.settings.srns.trim().is_empty();
+                        let can_start = !self.running
+                            && (!self.settings.srns.trim().is_empty()
+                                || !self.settings.gtins.is_empty());
                         let target_name = match self.settings.push_target { PushTarget::Firstbase => "firstbase", PushTarget::Swissdamed => "Swissdamed" };
                         let btn = if self.settings.dry_run { "0: Download & Convert".to_string() } else { format!("0: DL+Push {}", target_name) };
                         if ui.add_enabled(can_start, egui::Button::new(&btn).min_size(egui::vec2(140.0, 28.0))).clicked() {
@@ -1191,6 +1307,8 @@ impl eframe::App for App {
                     .desired_width(f32::INFINITY)
                     .hint_text("DE-MF-000012345\nFR-MF-000067890"),
             );
+            ui.add_space(4.0);
+            self.gtin_input_ui(ui);
 
             ui.add_space(4.0);
 
@@ -1362,7 +1480,8 @@ impl eframe::App for App {
                 format!("0: Download, Convert & Push to {}", target_name)
             };
 
-            let can_start = !self.running && !self.settings.srns.trim().is_empty();
+            let can_start = !self.running
+                && (!self.settings.srns.trim().is_empty() || !self.settings.gtins.is_empty());
 
             ui.horizontal(|ui| {
                 if ui
@@ -1874,8 +1993,8 @@ fn run_pipeline(
         .filter(|s| !s.is_empty())
         .collect();
 
-    if srns.is_empty() {
-        done(false, "No SRNs provided");
+    if srns.is_empty() && settings.gtins.is_empty() {
+        done(false, "No SRNs or GTINs provided");
         return;
     }
 
@@ -1899,6 +2018,13 @@ fn run_pipeline(
             5 => "Reconvert + Repush SRN",
             _ => "Repush SRN",
         };
+        if srns.is_empty() {
+            done(
+                false,
+                &format!("{} needs SRNs (the GTIN list is not used here)", mode_label),
+            );
+            return;
+        }
         if !matches!(settings.push_target, PushTarget::Firstbase) {
             done(
                 false,
@@ -2149,8 +2275,9 @@ fn run_pipeline(
     let limit: Option<usize> = settings.limit.trim().parse().ok();
 
     log(&format!(
-        "Starting pipeline for {} SRN(s){}",
+        "Starting pipeline for {} SRN(s) and {} GTIN(s){}",
         srns.len(),
+        settings.gtins.len(),
         limit
             .map(|l| format!(", limit {} per SRN", l))
             .unwrap_or_default()
@@ -2242,23 +2369,41 @@ fn run_pipeline(
         }
     } else {
         // --- Step 1: Download from EUDAMED (shared module) ---
-        let dl_config = DownloadConfig {
-            srns,
-            limit,
-            ..Default::default()
-        };
-
-        let dl_result = match download::run_download(&dl_config, &gui_progress) {
-            Ok(r) => r,
-            Err(e) => {
-                done(false, &format!("Download failed: {}", e));
-                return;
+        // SRN list first, then the GTIN list as a second, sequential pass (as in
+        // the nightly `check`): EUDAMED's request budget is per IP, so the two
+        // never run at the same time. Devices found by both are taken once.
+        uuids = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        if !srns.is_empty() {
+            let dl_config = DownloadConfig {
+                srns,
+                limit,
+                ..Default::default()
+            };
+            match download::run_download(&dl_config, &gui_progress) {
+                Ok(r) => uuids.extend(r.all_uuids().into_iter().filter(|u| seen.insert(u.clone()))),
+                Err(e) => {
+                    done(false, &format!("Download failed: {}", e));
+                    return;
+                }
             }
-        };
-
-        uuids = dl_result.all_uuids();
+        }
+        if !settings.gtins.is_empty() {
+            log(&format!("GTIN list: {} GTIN(s)", settings.gtins.len()));
+            let gcfg = DownloadConfig {
+                gtins: settings.gtins.clone(),
+                ..Default::default()
+            };
+            match download::run_download(&gcfg, &gui_progress) {
+                Ok(r) => uuids.extend(r.all_uuids().into_iter().filter(|u| seen.insert(u.clone()))),
+                Err(e) => {
+                    done(false, &format!("GTIN download failed: {}", e));
+                    return;
+                }
+            }
+        }
         if uuids.is_empty() {
-            done(false, "No devices found for the given SRN(s)");
+            done(false, "No devices found for the given SRN(s) / GTIN(s)");
             return;
         }
     }
@@ -4816,6 +4961,35 @@ pub fn run_gui() -> eframe::Result {
         options,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
+}
+
+#[cfg(test)]
+mod gtin_paste_tests {
+    use super::parse_gtins;
+
+    #[test]
+    fn any_separator_padding_dedup_and_ignored_cells() {
+        let (g, ignored) = parse_gtins(
+            "GTIN\n04034342117337\r\n4034342368890, 04034342117337\t\"07612345000435\"; abc 1234",
+        );
+        assert_eq!(
+            g,
+            vec!["04034342117337", "04034342368890", "07612345000435"]
+        );
+        assert_eq!(ignored, 3); // "GTIN", "abc", "1234"
+    }
+
+    #[test]
+    fn a_spreadsheet_column_of_30000_gtins_is_read_fast() {
+        let text: String = (0..30_000u64)
+            .map(|i| format!("0761234{:07}\r\n", i))
+            .collect();
+        let t = std::time::Instant::now();
+        let (g, ignored) = parse_gtins(&text);
+        assert_eq!(g.len(), 30_000);
+        assert_eq!(ignored, 0);
+        assert!(t.elapsed().as_millis() < 2_000, "took {:?}", t.elapsed());
+    }
 }
 
 #[cfg(test)]
