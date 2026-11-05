@@ -1420,6 +1420,34 @@ fn build_referenced_trade_items(device: &ApiDeviceDetail) -> Vec<ReferencedTrade
     }]
 }
 
+/// GS1 CertificationStandard for a legacy (MDD / AIMDD) certificate annex, from
+/// the UDID_CodeLists sheet: MDD_II_4 … MDD_VI, AIMDD_II_4 … AIMDD_V (AIMDD has
+/// no annex VI). None for an unknown directive or annex.
+fn legacy_certification_standard(type_code: &str, annex: &str) -> Option<&'static str> {
+    if type_code.contains("aimdd") {
+        match annex {
+            "ii-4" => Some("AIMDD_II_4"),
+            "ii-excluding-4" => Some("AIMDD_II_EX_4"),
+            "iii" => Some("AIMDD_III"),
+            "iv" => Some("AIMDD_IV"),
+            "v" => Some("AIMDD_V"),
+            _ => None,
+        }
+    } else if type_code.contains("mdd") {
+        match annex {
+            "ii-4" => Some("MDD_II_4"),
+            "ii-excluding-4" => Some("MDD_II_EX_4"),
+            "iii" => Some("MDD_III"),
+            "iv" => Some("MDD_IV"),
+            "v" => Some("MDD_V"),
+            "vi" => Some("MDD_VI"),
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
 /// Build chemical regulation module from substances.
 /// Build certification module from Basic UDI-DI certificate list.
 /// Maps MDR/IVDR certificate types to GS1 CertificationStandard codes.
@@ -1486,13 +1514,17 @@ fn build_certification_module(
                     continue;
                 }
             }
-            // MDD legacy certificates (097.105)
-            "ii-4" => "MDD_II_4",
-            "ii-excluding-4" => "MDD_II_EX_4",
-            "iii" if type_code.contains("mdd") => "MDD_III",
-            "iv" => "MDD_IV",
-            "v" => "MDD_V",
-            "vi" => "MDD_VI",
+            // Legacy directive certificates: MDD (097.105) and AIMDD (097.107).
+            // EUDAMED: `refdata.legacy.mdd-certificate-type.<annex>` and
+            // `refdata.legacy.aimdd-certificate-type.<annex>`. "aimdd" contains
+            // "mdd", so AIMDD must be tested first — until 05.11.2026 AIMDD
+            // certificates went out as MDD_* and GS1 rejected them (097.107).
+            annex @ ("ii-4" | "ii-excluding-4" | "iii" | "iv" | "v" | "vi") => {
+                match legacy_certification_standard(type_code, annex) {
+                    Some(s) => s,
+                    None => continue,
+                }
+            }
             _ => continue,
         };
 
@@ -2211,6 +2243,34 @@ mod tests {
         );
         let m = build_certification_module(Some(&basic)).expect("module");
         assert_eq!(m.infos.len(), 2);
+    }
+
+    /// AIMDD certificates map to AIMDD_* (097.107), MDD ones stay MDD_*.
+    /// "aimdd" contains "mdd": until 05.11.2026 AIMDD Annex II.4 / III
+    /// certificates went out as MDD_II_4 / MDD_III and GS1 rejected all ten
+    /// AIMDD devices of that night (e.g. GTIN 00763000059255).
+    #[test]
+    fn aimdd_certificates_use_the_aimdd_code_list() {
+        let basic = basic_with_certs(
+            r#"[
+              {"certificateNumber":"A","certificateExpiry":"2027-12-31",
+               "certificateType":{"code":"refdata.legacy.aimdd-certificate-type.iii"},
+               "notifiedBody":{"name":"NB","srn":"0123"}},
+              {"certificateNumber":"B","certificateExpiry":"2027-12-31",
+               "certificateType":{"code":"refdata.legacy.aimdd-certificate-type.ii-4"},
+               "notifiedBody":{"name":"NB","srn":"0123"}},
+              {"certificateNumber":"C","certificateExpiry":"2027-12-31",
+               "certificateType":{"code":"refdata.legacy.mdd-certificate-type.ii-excluding-4"},
+               "notifiedBody":{"name":"NB","srn":"0123"}},
+              {"certificateNumber":"D","certificateExpiry":"2027-12-31",
+               "certificateType":{"code":"refdata.legacy.aimdd-certificate-type.vi"},
+               "notifiedBody":{"name":"NB","srn":"0123"}}
+            ]"#,
+        );
+        let m = build_certification_module(Some(&basic)).expect("module");
+        let mut std: Vec<&str> = m.infos.iter().map(|i| i.standard.as_str()).collect();
+        std.sort();
+        assert_eq!(std, vec!["AIMDD_III", "AIMDD_II_4", "MDD_II_EX_4"]);
     }
 
     /// Same standard from two DIFFERENT notified bodies stays separate — the
