@@ -10,7 +10,9 @@
 //! listing / GTIN lookups that drive the version check, NOT the detail + Basic
 //! UDI-DI downloads the converter needs.
 //!
-//! Enabled with `EUDAMED_LISTING_SOURCE=datalake`. Versions were checked against
+//! Used automatically once the public listing answers with EUDAMED's block
+//! (429 with the M2M notice, v1.0.112 — GUI users cannot set env vars);
+//! `EUDAMED_LISTING_SOURCE=datalake` forces it, `=public` disables it. Versions were checked against
 //! listing_cache / udi_versions: 90 of 90 overlapping devices equal.
 
 use std::time::Duration;
@@ -24,11 +26,46 @@ const TIMEOUT_SECS: u64 = 180;
 const ATTEMPTS: u32 = 4;
 const RETRY_WAIT_SECS: u64 = 15;
 
-/// True when `EUDAMED_LISTING_SOURCE=datalake`.
-pub fn enabled() -> bool {
+/// Set once the public listing answered with EUDAMED's block (v1.0.112): the
+/// rest of the process lists via the datalake. GUI users cannot set env vars.
+static FALLBACK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn source_env() -> String {
     std::env::var("EUDAMED_LISTING_SOURCE")
-        .map(|v| v.eq_ignore_ascii_case("datalake"))
-        .unwrap_or(false)
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+}
+
+/// Listing via the datalake: forced by `EUDAMED_LISTING_SOURCE=datalake`, or
+/// automatically after the public listing was blocked (unless `=public`).
+pub fn enabled() -> bool {
+    match source_env().as_str() {
+        "datalake" => true,
+        "public" => false,
+        _ => {
+            FALLBACK.load(std::sync::atomic::Ordering::Relaxed)
+                || crate::download::public_endpoint_blocked()
+        }
+    }
+}
+
+/// May the listing switch to the datalake automatically? (not with `=public`)
+pub fn fallback_allowed() -> bool {
+    source_env() != "public"
+}
+
+/// Switch the rest of this process to the datalake listing (logged once).
+pub fn activate_fallback(reason: &str) {
+    if fallback_allowed() && !FALLBACK.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        eprintln!(
+            "Listing source: public EUDAMED listing blocked ({reason}) — switching to the EUDAMED datalake API"
+        );
+    }
+}
+
+/// An `eudamed_get` error that means "blocked / throttled" (429).
+pub fn is_block_error(e: &str) -> bool {
+    e.starts_with("HTTP 429") || e.contains("blocked (429)")
 }
 
 /// One device of the datalake `/udi` answer, mapped to listing_cache columns.
@@ -269,5 +306,16 @@ mod tests {
         let d = parse_row(&r).unwrap();
         assert_eq!(d.risk_class, "");
         assert_eq!(d.device_status, "");
+    }
+
+    #[test]
+    fn block_errors_are_recognised() {
+        assert!(is_block_error("HTTP 429 (EUDAMED block, M2M notice)"));
+        assert!(is_block_error("HTTP 429 (waited 60s)"));
+        assert!(is_block_error(
+            "EUDAMED public endpoint blocked (429), request skipped"
+        ));
+        assert!(!is_block_error("HTTP 503"));
+        assert!(!is_block_error("network error: timeout"));
     }
 }
