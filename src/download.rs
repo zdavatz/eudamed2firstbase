@@ -720,8 +720,48 @@ impl RateLimiter {
 /// were not checked that night.
 pub const EUDAMED_TIMEOUT_SECS: u64 = 120;
 
+/// Windows desktop Chrome. The public UI (`ec.europa.eu/tools/eudamed/api/devices/…`)
+/// answers automated clients with HTTP 429 and a notice to use the datalake API.
+/// Live check 06.11.2026 on
+/// `…/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en`
+/// with `Accept: application/json, text/plain, */*` and
+/// `Accept-Language: en-US,en;q=0.9`:
+/// `User-Agent: eudamed2firstbase`, no User-Agent, and Macintosh Chrome 120/131
+/// were 429 (`Retry-After: 300`). Windows Chrome 120, Windows Chrome 131 and
+/// Windows Firefox 121 were 200 (uuid `522a2c98-…`, primaryDi `00195451000232`).
+/// The same Windows Chrome 120 string also returned the Basic UDI-DI.
+/// Listing requests do **not** use this header: they keep the client default so
+/// a public-listing 429 still switches to the datalake. GitHub update checks
+/// keep their own app User-Agent.
+pub const PUBLIC_UI_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+/// `Accept` sent with [`PUBLIC_UI_USER_AGENT`] (the value from the 200 responses).
+pub const PUBLIC_UI_ACCEPT: &str = "application/json, text/plain, */*";
+
+/// `Accept-Language` sent with [`PUBLIC_UI_USER_AGENT`].
+pub const PUBLIC_UI_ACCEPT_LANGUAGE: &str = "en-US,en;q=0.9";
+
+/// Detail (`…/udiDiData/{uuid}`) and Basic UDI-DI (`…/basicUdiData/…`) record
+/// URLs. A listing is `…/udiDiData` plus a query string and no further path
+/// segment, so it does not match.
+pub fn is_public_device_record_url(url: &str) -> bool {
+    let path = url.split('?').next().unwrap_or(url).trim_end_matches('/');
+    path.contains("/basicUdiData/") || path.contains("/udiDiData/")
+}
+
+/// Attach the Windows desktop browser headers the public UI accepts on a
+/// device detail or Basic UDI-DI request. Per-request, so the same agent can
+/// still list with ureq's own User-Agent.
+pub fn with_public_ui_browser_headers<B>(req: ureq::RequestBuilder<B>) -> ureq::RequestBuilder<B> {
+    req.header("User-Agent", PUBLIC_UI_USER_AGENT)
+        .header("Accept", PUBLIC_UI_ACCEPT)
+        .header("Accept-Language", PUBLIC_UI_ACCEPT_LANGUAGE)
+}
+
 /// A ureq agent that surfaces HTTP status (so 429 / `Retry-After` are readable
 /// instead of arriving as an opaque `Err`) with a generous global timeout.
+/// The agent itself keeps ureq's default User-Agent. Device detail and Basic
+/// UDI-DI calls override it per request via [`with_public_ui_browser_headers`].
 pub fn eudamed_agent() -> ureq::Agent {
     ureq::Agent::config_builder()
         .http_status_as_error(false)
@@ -873,12 +913,16 @@ fn eudamed_get_inner(
         // no-cache: a caching proxy on the user's side served GS1 an empty
         // listing for CH-MF-000016376 for hours after an EUDAMED outage
         // (29.10.2026, v1.0.110); this asks every cache on the way to refetch.
-        match agent
+        // Browser headers only on a device record. Listing URLs stay on the
+        // client default so a 429 still falls through to the datalake.
+        let mut req = agent
             .get(url)
             .header("Cache-Control", "no-cache")
-            .header("Pragma", "no-cache")
-            .call()
-        {
+            .header("Pragma", "no-cache");
+        if is_public_device_record_url(url) {
+            req = with_public_ui_browser_headers(req);
+        }
+        match req.call() {
             Ok(mut resp) => {
                 let status = resp.status().as_u16();
                 if (200..300).contains(&status) {
@@ -2121,5 +2165,135 @@ mod rate_tests {
         );
         assert_eq!(parse_rate_interval_ms(Some("0")), DEFAULT_RATE_INTERVAL_MS);
         assert_eq!(parse_rate_interval_ms(Some("")), DEFAULT_RATE_INTERVAL_MS);
+    }
+}
+
+#[cfg(test)]
+mod public_ui_header_tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::time::Duration;
+
+    fn header_value<'a>(req: &'a str, name: &str) -> Option<&'a str> {
+        req.lines().find_map(|line| {
+            let (k, v) = line.split_once(':')?;
+            if k.eq_ignore_ascii_case(name) {
+                Some(v.trim())
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Accept one HTTP/1 request and return the raw header block.
+    fn capture_one_request(url_path_and_query: &str) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let (mut sock, _) = listener.accept().unwrap();
+            sock.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            let mut buf = Vec::new();
+            let mut tmp = [0u8; 1024];
+            loop {
+                match sock.read(&mut tmp) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        buf.extend_from_slice(&tmp[..n]);
+                        if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+            let body = b"{\"ok\":true}";
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = sock.write_all(resp.as_bytes());
+            let _ = sock.write_all(body);
+            String::from_utf8_lossy(&buf).into_owned()
+        });
+
+        let agent = eudamed_agent();
+        let limiter = RateLimiter::new(Duration::from_millis(0));
+        let url = format!("http://127.0.0.1:{port}{url_path_and_query}");
+        let body = eudamed_get(&agent, &limiter, &url, 1).expect("local request");
+        assert_eq!(body, "{\"ok\":true}");
+        server.join().unwrap()
+    }
+
+    #[test]
+    fn record_urls_are_detail_and_basic_not_listing_or_datalake() {
+        assert!(is_public_device_record_url(
+            "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en"
+        ));
+        assert!(is_public_device_record_url(
+            "https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en"
+        ));
+        assert!(!is_public_device_record_url(
+            "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData?page=0&size=300&srn=DE-MF-000000001&iso2Code=en&languageIso2Code=en"
+        ));
+        assert!(!is_public_device_record_url(
+            "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData/"
+        ));
+        assert!(!is_public_device_record_url(
+            "https://api.datalake.sante.service.ec.europa.eu/eudamed/udi?format=json&MF_SRN=DE-MF-000000001"
+        ));
+    }
+
+    #[test]
+    fn browser_user_agent_is_the_windows_chrome_that_returned_200() {
+        assert!(PUBLIC_UI_USER_AGENT.starts_with("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"));
+        assert!(PUBLIC_UI_USER_AGENT.contains("Chrome/120.0.0.0"));
+        assert!(!PUBLIC_UI_USER_AGENT.contains("Macintosh"));
+        assert!(!PUBLIC_UI_USER_AGENT
+            .to_ascii_lowercase()
+            .contains("eudamed2firstbase"));
+        assert_eq!(PUBLIC_UI_ACCEPT, "application/json, text/plain, */*");
+        assert_eq!(PUBLIC_UI_ACCEPT_LANGUAGE, "en-US,en;q=0.9");
+    }
+
+    #[test]
+    fn detail_and_basic_send_windows_browser_headers_listing_does_not() {
+        let detail = capture_one_request(
+            "/devices/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en",
+        );
+        assert_eq!(
+            header_value(&detail, "user-agent"),
+            Some(PUBLIC_UI_USER_AGENT)
+        );
+        assert_eq!(header_value(&detail, "accept"), Some(PUBLIC_UI_ACCEPT));
+        assert_eq!(
+            header_value(&detail, "accept-language"),
+            Some(PUBLIC_UI_ACCEPT_LANGUAGE)
+        );
+        assert!(!detail.to_ascii_lowercase().contains("eudamed2firstbase"));
+
+        let basic = capture_one_request(
+            "/devices/basicUdiData/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en",
+        );
+        assert_eq!(
+            header_value(&basic, "user-agent"),
+            Some(PUBLIC_UI_USER_AGENT)
+        );
+        assert_eq!(header_value(&basic, "accept"), Some(PUBLIC_UI_ACCEPT));
+        assert_eq!(
+            header_value(&basic, "accept-language"),
+            Some(PUBLIC_UI_ACCEPT_LANGUAGE)
+        );
+
+        let listing = capture_one_request(
+            "/devices/udiDiData?page=0&size=300&srn=DE-MF-000000001&languageIso2Code=en",
+        );
+        let listing_ua = header_value(&listing, "user-agent").unwrap_or("");
+        assert!(
+            listing_ua.starts_with("ureq/"),
+            "listing should keep ureq's User-Agent, got {listing_ua}"
+        );
+        assert!(!listing_ua.contains("Mozilla"));
+        assert!(header_value(&listing, "accept-language").is_none());
     }
 }

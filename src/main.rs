@@ -3565,7 +3565,7 @@ fn fetch_basic_udi_di_outcome(
 
     let mut last_reason = BasicFetchReason::Network;
     for attempt in 1..=4 {
-        match agent.get(&url).call() {
+        match download::with_public_ui_browser_headers(agent.get(&url)).call() {
             Ok(mut resp) => {
                 // http_status_as_error(false) ⇒ 404/429/5xx arrive here as Ok with a
                 // readable status, NOT as Err. Capture it so we can categorise.
@@ -3711,7 +3711,7 @@ fn fetch_detail(uuid: &str, cache_dir: &Path) -> Option<api_detail::ApiDeviceDet
         .new_agent();
 
     for attempt in 1..=4 {
-        match agent.get(&url).call() {
+        match download::with_public_ui_browser_headers(agent.get(&url)).call() {
             Ok(mut resp) => {
                 let body = resp.body_mut().read_to_string().unwrap_or_default();
                 match serde_json::from_str::<api_detail::ApiDeviceDetail>(&body) {
