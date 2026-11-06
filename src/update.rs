@@ -127,3 +127,14 @@ pub fn check_latest(current: &str) -> Option<UpdateInfo> {
     }
     best
 }
+
+#[cfg(test)]
+mod tests {
+    use super::USER_AGENT;
+
+    #[test]
+    fn github_update_check_identifies_as_the_app() {
+        assert!(USER_AGENT.contains("eudamed2firstbase"));
+        assert!(!USER_AGENT.to_ascii_lowercase().contains("mozilla"));
+    }
+}
