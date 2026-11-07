@@ -49,6 +49,16 @@ pub fn enabled() -> bool {
     }
 }
 
+/// The operator forced the datalake (`EUDAMED_LISTING_SOURCE=datalake`).
+/// Unlike [`enabled`], this stays false after an automatic fallback, so a
+/// public listing probe is still how an unset run discovers the block.
+/// A forced run must not probe the public listing at all: those 429s are not
+/// a signal, and they used to arm the detail/basic circuit breaker before
+/// any device record was fetched.
+pub fn forced() -> bool {
+    source_env() == "datalake"
+}
+
 /// May the listing switch to the datalake automatically? (not with `=public`)
 pub fn fallback_allowed() -> bool {
     source_env() != "public"
@@ -215,12 +225,35 @@ pub struct DlQuery {
     pub complete: bool,
 }
 
+/// Base URL of `/udi`. Tests point this at a local server; production uses
+/// [`UDI_URL`].
+fn udi_url() -> String {
+    #[cfg(test)]
+    if let Some(url) = TEST_UDI_URL.with(|c| c.borrow().clone()) {
+        return url;
+    }
+    UDI_URL.to_string()
+}
+
+#[cfg(test)]
+thread_local! {
+    static TEST_UDI_URL: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Point `/udi` at a local server for one test thread. `None` restores the
+/// real datalake URL.
+#[cfg(test)]
+pub fn set_test_udi_url(url: Option<String>) {
+    TEST_UDI_URL.with(|c| *c.borrow_mut() = url);
+}
+
 /// `/udi?<key>=<value>`, following `nextLink`; stops after `max_pages` pages
 /// (then `complete` is false). An error on a later page keeps what was read.
 pub fn query(key: &str, value: &str, max_pages: Option<usize>) -> Result<DlQuery> {
     let agent = agent();
     let mut url = format!(
-        "{UDI_URL}?format=json&api-version=v1.0&{key}={}",
+        "{}?format=json&api-version=v1.0&{key}={}",
+        udi_url(),
         urlencode(value)
     );
     let mut rows: Vec<Value> = Vec::new();
