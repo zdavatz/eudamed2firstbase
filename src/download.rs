@@ -296,6 +296,16 @@ pub fn run_download(
     ));
 
     // --- Step 5: Download Basic UDI-DI files ---
+    // Devices that need no certificate (non-sterile MDR Class I / IVDR Class A)
+    // take their Basic UDI-DI from the datalake rows of this run's listing, so
+    // only the rest asks the public endpoint (07.11.2026).
+    let from_datalake = write_datalake_basics(&need_download, &basic_dir);
+    if from_datalake > 0 {
+        log(&format!(
+            "Basic UDI-DI: {} taken from the datalake (non-sterile MDR Class I / IVDR Class A)",
+            from_datalake
+        ));
+    }
     let (basic_downloaded, basic_cached) = parallel_fetch(
         &need_download,
         &basic_dir,
@@ -2092,6 +2102,28 @@ fn filter_unchanged(
 
 /// Generic parallel download: fetch URL per UUID, save to dir, log to file.
 /// Returns (downloaded_count, cached_count).
+/// Write the datalake Basic UDI-DI ([`crate::datalake::basic_for`]) of every
+/// device in `uuids` that has no usable cached Basic UDI-DI. Returns the count.
+fn write_datalake_basics(uuids: &[String], basic_dir: &Path) -> usize {
+    let mut n = 0;
+    for u in uuids {
+        let p = basic_dir.join(format!("{}.json", u));
+        if cached_record_ok(&p) {
+            continue;
+        }
+        let Some(b) = crate::datalake::basic_for(u) else {
+            continue;
+        };
+        let Ok(body) = serde_json::to_string_pretty(&b) else {
+            continue;
+        };
+        if std::fs::write(&p, body).is_ok() {
+            n += 1;
+        }
+    }
+    n
+}
+
 /// A cached detail/basic file counts only when it starts like a JSON object.
 /// An empty file or a saved HTML error page is fetched again.
 pub fn cached_record_ok(path: &Path) -> bool {

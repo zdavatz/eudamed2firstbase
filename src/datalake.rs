@@ -14,7 +14,19 @@
 //! (429 with the M2M notice, v1.0.112 — GUI users cannot set env vars);
 //! `EUDAMED_LISTING_SOURCE=datalake` forces it, `=public` disables it. Versions were checked against
 //! listing_cache / udi_versions: 90 of 90 overlapping devices equal.
+//!
+//! Basic UDI-DI from the datalake (07.11.2026): every row read by [`query`]
+//! that belongs to a non-sterile, non-SPP MDR Class I or IVDR Class A device
+//! is turned into a Basic UDI-DI record in the public format
+//! ([`basic_from_row`]); `run_download` writes it instead of asking the public
+//! `basicUdiData` endpoint. Measured on the 52'851 cached public records: all
+//! 18'305 such MDR Class I devices carry no certificate (the only field the
+//! datalake lacks that the converter needs for them); sterile Class I devices
+//! do (32 of 1'358), so they stay public. `EUDAMED_BASIC_SOURCE=public`
+//! disables it.
 
+use std::collections::HashMap;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
@@ -122,6 +134,157 @@ fn risk_code(id: i64) -> &'static str {
         -156 => "refdata.risk-class.ivd-annex-ii-list-b",
         _ => "",
     }
+}
+
+/// MULTI_COMPONENT_ID -> public refdata code (checked against cached public
+/// records 07.11.2026: -116 system, -117 procedure-pack, -541 spp-procedure-pack).
+fn multi_component_code(id: i64) -> Option<&'static str> {
+    match id {
+        -116 => Some("refdata.multi-component.system"),
+        -117 => Some("refdata.multi-component.procedure-pack"),
+        -540 => Some("refdata.multi-component.spp-system"),
+        -541 => Some("refdata.multi-component.spp-procedure-pack"),
+        _ => None,
+    }
+}
+
+const LEGISLATION_MDR: i64 = -197;
+const LEGISLATION_IVDR: i64 = -198;
+const RISK_CLASS_I: i64 = -203;
+const RISK_CLASS_A: i64 = -199;
+
+/// Basic UDI-DI from the datalake is on unless `EUDAMED_BASIC_SOURCE=public`.
+pub fn basic_enabled() -> bool {
+    !std::env::var("EUDAMED_BASIC_SOURCE")
+        .map(|v| v.trim().eq_ignore_ascii_case("public"))
+        .unwrap_or(false)
+}
+
+fn flag(v: &Value, k: &str) -> Value {
+    match num(v, k) {
+        Some(1) => Value::Bool(true),
+        Some(0) => Value::Bool(false),
+        _ => Value::Null,
+    }
+}
+
+fn opt_text(v: &Value, k: &str) -> Value {
+    let t = text(v, k);
+    if t.is_empty() {
+        Value::Null
+    } else {
+        Value::String(t)
+    }
+}
+
+/// A Basic UDI-DI record in the public `basicUdiData` format, built from one
+/// datalake `/udi` row — only for devices that need no certificate: MDR
+/// Class I or IVDR Class A, `STERILE` = 0, not a system/procedure pack (SPP;
+/// its medical purpose comes in one language only). None for every other row,
+/// which then keeps the public Basic UDI-DI request. Carries `"source":
+/// "datalake"`; it has no version numbers and no `lastUpdated`.
+pub fn basic_from_row(v: &Value) -> Option<Value> {
+    let legislation = num(v, "APPLICABLE_LEGISLATION_ID")?;
+    let risk = num(v, "RISK_CLASS_ID")?;
+    let legislation_code = match (legislation, risk) {
+        (LEGISLATION_MDR, RISK_CLASS_I) => "refdata.applicable-legislation.mdr",
+        (LEGISLATION_IVDR, RISK_CLASS_A) => "refdata.applicable-legislation.ivdr",
+        _ => return None,
+    };
+    if num(v, "STERILE") != Some(0) {
+        return None;
+    }
+    let criterion = text(v, "DEVICE_CRITERION");
+    if criterion.eq_ignore_ascii_case("SPP") {
+        return None;
+    }
+    let basic_udi = text(v, "BASIC_UDI");
+    let mf_srn = text(v, "MF_SRN");
+    if basic_udi.is_empty() || mf_srn.is_empty() || text(v, "UUID").is_empty() {
+        return None;
+    }
+    let multi_component = match num(v, "MULTI_COMPONENT_ID").and_then(multi_component_code) {
+        Some(code) => {
+            serde_json::json!({ "code": code, "criterion": opt_text(v, "DEVICE_CRITERION") })
+        }
+        None => Value::Null,
+    };
+    let ar_srn = text(v, "AR_SRN");
+    let authorised_representative = if ar_srn.is_empty() {
+        Value::Null
+    } else {
+        serde_json::json!({ "srn": ar_srn, "name": opt_text(v, "AR_NAME") })
+    };
+    Some(serde_json::json!({
+        "source": "datalake",
+        "uuid": opt_text(v, "BASIC_UDI_DATA_UUID"),
+        "active": flag(v, "ACTIVE"),
+        "implantable": flag(v, "IMPLANTABLE"),
+        "sutures": flag(v, "SUTURES"),
+        "measuringFunction": flag(v, "MEASURING_FUNCTION"),
+        "reusable": flag(v, "REUSABLE"),
+        "medicinalProduct": flag(v, "MEDICINAL_PRODUCT"),
+        "administeringMedicine": flag(v, "ADMINISTERING_MEDICINE"),
+        "humanTissues": flag(v, "HUMAN_TISSUES"),
+        "animalTissues": flag(v, "ANIMAL_TISSUES"),
+        "humanProduct": flag(v, "HUMAN_PRODUCT"),
+        "deviceName": opt_text(v, "DEVICE_NAME"),
+        "deviceModel": opt_text(v, "DEVICE_MODEL"),
+        "multiComponent": multi_component,
+        "riskClass": { "code": risk_code(risk) },
+        "legislation": { "code": legislation_code, "legacyDirective": false },
+        "basicUdi": { "code": basic_udi },
+        "manufacturer": { "srn": mf_srn, "name": opt_text(v, "MF_NAME") },
+        "authorisedRepresentative": authorised_representative,
+    }))
+}
+
+/// Basic UDI-DI records built from the rows this process has read, by device
+/// uuid. Filled by [`query`], taken by `run_download`.
+static BASICS: Mutex<Option<HashMap<String, Value>>> = Mutex::new(None);
+
+/// Remember a Basic UDI-DI for the latest row of every uuid in `rows` (same
+/// choice as [`dedup_latest`]).
+fn remember_basics(rows: &[Value]) {
+    if !basic_enabled() {
+        return;
+    }
+    let mut best: HashMap<String, (bool, Option<i64>, &Value)> = HashMap::new();
+    for r in rows {
+        let uuid = text(r, "UUID");
+        if uuid.is_empty() {
+            continue;
+        }
+        let key = (
+            num(r, "LATEST_VERSION") == Some(1),
+            num(r, "VERSION_NUMBER"),
+        );
+        if best.get(&uuid).is_none_or(|(l, n, _)| key > (*l, *n)) {
+            best.insert(uuid, (key.0, key.1, r));
+        }
+    }
+    let mut guard = BASICS.lock().unwrap_or_else(|e| e.into_inner());
+    let map = guard.get_or_insert_with(HashMap::new);
+    for (uuid, (_, _, r)) in best {
+        match basic_from_row(r) {
+            Some(b) => {
+                map.insert(uuid, b);
+            }
+            None => {
+                map.remove(&uuid);
+            }
+        }
+    }
+}
+
+/// The datalake Basic UDI-DI for `uuid`, if this process read an eligible row.
+pub fn basic_for(uuid: &str) -> Option<Value> {
+    BASICS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()?
+        .get(uuid)
+        .cloned()
 }
 
 fn num(v: &Value, k: &str) -> Option<i64> {
@@ -278,6 +441,7 @@ pub fn query(key: &str, value: &str, max_pages: Option<usize>) -> Result<DlQuery
             _ => break true,
         }
     };
+    remember_basics(&rows);
     Ok(DlQuery {
         devices: dedup_latest(&rows),
         pages,
@@ -298,6 +462,63 @@ fn urlencode(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+
+    fn class_i_row() -> Value {
+        serde_json::json!({
+            "UUID": "d1", "PRIMARY_DI": "04250203936606", "VERSION_NUMBER": 1.0, "LATEST_VERSION": 1.0,
+            "APPLICABLE_LEGISLATION_ID": -197.0, "RISK_CLASS_ID": -203.0, "STERILE": 0.0,
+            "ACTIVE": 0.0, "IMPLANTABLE": 0.0, "REUSABLE": 1.0, "MEASURING_FUNCTION": null,
+            "BASIC_UDI": "B-1", "BASIC_UDI_DATA_UUID": "b1", "DEVICE_NAME": "Bandage",
+            "MF_SRN": "US-MF-000000001", "MF_NAME": "M", "AR_SRN": "IE-AR-000000001", "AR_NAME": "A",
+            "MULTI_COMPONENT_ID": -116.0, "DEVICE_CRITERION": "STANDARD"
+        })
+    }
+
+    #[test]
+    fn basic_from_row_builds_a_public_shaped_record_for_class_i() {
+        let b = basic_from_row(&class_i_row()).expect("eligible");
+        let parsed = crate::api_detail::parse_basic_udi_di(&b.to_string()).unwrap();
+        assert_eq!(
+            parsed.risk_class_code().as_deref(),
+            Some("refdata.risk-class.class-i")
+        );
+        assert_eq!(parsed.regulatory_act().as_deref(), Some("MDR"));
+        assert_eq!(parsed.reusable, Some(true));
+        assert_eq!(parsed.active, Some(false));
+        assert_eq!(parsed.measuring_function, None);
+        assert_eq!(
+            parsed.basic_udi.and_then(|d| d.code).as_deref(),
+            Some("B-1")
+        );
+        assert_eq!(
+            parsed
+                .authorised_representative
+                .and_then(|a| a.srn)
+                .as_deref(),
+            Some("IE-AR-000000001")
+        );
+        assert_eq!(
+            parsed.multi_component.and_then(|m| m.code).as_deref(),
+            Some("refdata.multi-component.system")
+        );
+    }
+
+    #[test]
+    fn basic_from_row_skips_devices_that_can_carry_certificates() {
+        let mut sterile = class_i_row();
+        sterile["STERILE"] = serde_json::json!(1.0);
+        let mut unknown_sterile = class_i_row();
+        unknown_sterile["STERILE"] = Value::Null;
+        let mut class_iia = class_i_row();
+        class_iia["RISK_CLASS_ID"] = serde_json::json!(-204.0);
+        let mut legacy = class_i_row();
+        legacy["APPLICABLE_LEGISLATION_ID"] = serde_json::json!(-53.0);
+        let mut spp = class_i_row();
+        spp["DEVICE_CRITERION"] = serde_json::json!("SPP");
+        for r in [sterile, unknown_sterile, class_iia, legacy, spp] {
+            assert!(basic_from_row(&r).is_none(), "{r}");
+        }
+    }
     use super::*;
 
     fn row(uuid: &str, ver: f64, latest: f64) -> Value {
