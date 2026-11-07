@@ -1202,11 +1202,46 @@ fn main() -> Result<()> {
                         .and_then(|body| basic_record_ulid(&body))
                 })
             });
-            let requests = todo.len() + groups.len();
+            // Devices whose public Basic UDI-DI request can be skipped: the
+            // datalake row hash of the nightly listing covers that record
+            // (stored hash) and the cached records show no certificate can be
+            // there (download::basic_covered_by_datalake). Their cached Basic
+            // UDI-DI stands in; the detail is still fetched (07.11.2026).
+            let hashed: std::collections::HashSet<String> = conn
+                .prepare("SELECT uuid FROM datalake_row_hash")
+                .and_then(|mut st| {
+                    st.query_map([], |r| r.get::<_, String>(0))
+                        .map(|rows| rows.flatten().collect())
+                })
+                .unwrap_or_default();
+            let skip_basic: std::collections::HashSet<String> = todo
+                .iter()
+                .filter(|u| hashed.contains(*u))
+                .filter(|u| {
+                    let b = std::fs::read_to_string(basic_dir.join(format!("{}.json", u)));
+                    let d = std::fs::read_to_string(detail_dir.join(format!("{}.json", u)));
+                    match (b, d) {
+                        (Ok(b), Ok(d)) => download::basic_covered_by_datalake(&b, &d),
+                        _ => false,
+                    }
+                })
+                .cloned()
+                .collect();
+            let basic_requests = groups
+                .iter()
+                .filter(|(_, m)| m.iter().any(|u| !skip_basic.contains(u)))
+                .count();
+            if !skip_basic.is_empty() {
+                eprintln!(
+                    "Basic UDI-DI: {} device(s) covered by the datalake row hash (no certificate possible) — public request skipped",
+                    skip_basic.len()
+                );
+            }
+            let requests = todo.len() + basic_requests;
             eprintln!(
                 "Fetching detail for {} device(s) + Basic UDI-DI for {} record(s) = {} requests at ~{}/min (ETA ~{} min)...",
                 todo.len(),
-                groups.len(),
+                basic_requests,
                 requests,
                 60_000 / rate_ms.max(1),
                 (requests as u64 * rate_ms) / 60_000
@@ -1249,103 +1284,115 @@ fn main() -> Result<()> {
                 .context("deep-scan thread pool")?
                 .install(|| {
                     // Everything after the two fetches, per device.
-                    let handle =
-                        |uuid: &String,
-                         detail: std::result::Result<String, String>,
-                         basic: std::result::Result<String, String>| {
-                            let n = done.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-                            if n % 200 == 0 || n == total {
-                                eprintln!("  deep-scan {}/{}", n, total);
-                            }
-                            let (detail, basic) = match (detail, basic) {
-                                (Ok(d), Ok(b)) if d.contains("\"uuid\"") => (d, b),
-                                _ => {
-                                    if let Ok(mut s) = stats.lock() {
-                                        s.fetch_failed += 1;
-                                    }
-                                    return;
+                    let handle = |uuid: &String,
+                                  detail: std::result::Result<String, String>,
+                                  basic: std::result::Result<String, String>,
+                                  basic_from_cache: bool| {
+                        let n = done.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                        if n % 200 == 0 || n == total {
+                            eprintln!("  deep-scan {}/{}", n, total);
+                        }
+                        let (detail, basic) = match (detail, basic) {
+                            (Ok(d), Ok(b)) if d.contains("\"uuid\"") => (d, b),
+                            _ => {
+                                if let Ok(mut s) = stats.lock() {
+                                    s.fetch_failed += 1;
                                 }
-                            };
-                            let mut rec = version_db::extract_detail_versions(&detail);
-                            if rec.uuid.is_empty() {
-                                rec.uuid = uuid.clone();
-                            }
-                            version_db::merge_budi_versions(&mut rec, &basic);
-                            rec.last_synced = Some(now_str.clone());
-                            let old = match conn_m.lock() {
-                                Ok(c) => version_db::get_version(&c, uuid).ok().flatten(),
-                                Err(_) => None,
-                            };
-                            let why = deep_scan_diff(old.as_ref(), &rec);
-                            let mut s = match stats.lock() {
-                                Ok(s) => s,
-                                Err(e) => e.into_inner(),
-                            };
-                            s.scanned += 1;
-                            let baseline =
-                                why.as_deref().is_some_and(|w| w.starts_with("baseline"));
-                            match why.as_deref() {
-                                None => {
-                                    s.unchanged += 1;
-                                    return;
-                                }
-                                Some("new") => s.new += 1,
-                                Some(w) if w.starts_with("baseline") => {
-                                    s.baseline += 1;
-                                    if let Ok(mut t) = baseline_parts.lock() {
-                                        for part in w.trim_start_matches("baseline:").split(',') {
-                                            *t.entry(part.to_string()).or_insert(0usize) += 1;
-                                        }
-                                    }
-                                }
-                                Some(w) => {
-                                    for part in w.split('+') {
-                                        let part = part.split('(').next().unwrap_or(part);
-                                        let part = if part == "mfr" || part == "ar" {
-                                            "mfr/ar"
-                                        } else {
-                                            part
-                                        };
-                                        match part {
-                                            "udi" => s.udi += 1,
-                                            "budi" => s.budi += 1,
-                                            "mfr/ar" => s.mfr_ar += 1,
-                                            "cert" => s.cert += 1,
-                                            "pkg" => s.pkg += 1,
-                                            "market" => s.market += 1,
-                                            "status" => s.status += 1,
-                                            _ => s.other += 1,
-                                        }
-                                    }
-                                }
-                            }
-                            drop(s);
-                            if !dry_run {
-                                let _ = std::fs::write(
-                                    detail_dir.join(format!("{}.json", uuid)),
-                                    &detail,
-                                );
-                                // Only cache a Basic UDI-DI body that carries a code
-                                // (parse-before-cache, same rule as fetch_basic_udi_di).
-                                if basic.contains("\"code\"") {
-                                    let _ = std::fs::write(
-                                        basic_dir.join(format!("{}.json", uuid)),
-                                        &basic,
-                                    );
-                                }
-                                if let Ok(c) = conn_m.lock() {
-                                    let _ = version_db::upsert_version(&c, &rec);
-                                }
-                            }
-                            // A baseline fill only records the missing parts in the DB;
-                            // the device did not change, so it is not reconverted/pushed.
-                            if baseline {
                                 return;
                             }
-                            if let Ok(mut ch) = changed.lock() {
-                                ch.push((uuid.clone(), why.unwrap_or_default()));
-                            }
                         };
+                        let mut rec = version_db::extract_detail_versions(&detail);
+                        if rec.uuid.is_empty() {
+                            rec.uuid = uuid.clone();
+                        }
+                        let old = match conn_m.lock() {
+                            Ok(c) => version_db::get_version(&c, uuid).ok().flatten(),
+                            Err(_) => None,
+                        };
+                        if basic_from_cache {
+                            // No fresh Basic UDI-DI: keep the stored Basic UDI-DI,
+                            // manufacturer, AR and certificate versions as they are
+                            // (a datalake-built cache file has none and would wipe them).
+                            if let Some(o) = old.as_ref() {
+                                rec.budi_version = o.budi_version;
+                                rec.budi_date = o.budi_date.clone();
+                                rec.mfr_version = o.mfr_version;
+                                rec.mfr_date = o.mfr_date.clone();
+                                rec.ar_version = o.ar_version;
+                                rec.ar_date = o.ar_date.clone();
+                                rec.cert_versions = o.cert_versions.clone();
+                            }
+                        } else {
+                            version_db::merge_budi_versions(&mut rec, &basic);
+                        }
+                        rec.last_synced = Some(now_str.clone());
+                        let why = deep_scan_diff(old.as_ref(), &rec);
+                        let mut s = match stats.lock() {
+                            Ok(s) => s,
+                            Err(e) => e.into_inner(),
+                        };
+                        s.scanned += 1;
+                        let baseline = why.as_deref().is_some_and(|w| w.starts_with("baseline"));
+                        match why.as_deref() {
+                            None => {
+                                s.unchanged += 1;
+                                return;
+                            }
+                            Some("new") => s.new += 1,
+                            Some(w) if w.starts_with("baseline") => {
+                                s.baseline += 1;
+                                if let Ok(mut t) = baseline_parts.lock() {
+                                    for part in w.trim_start_matches("baseline:").split(',') {
+                                        *t.entry(part.to_string()).or_insert(0usize) += 1;
+                                    }
+                                }
+                            }
+                            Some(w) => {
+                                for part in w.split('+') {
+                                    let part = part.split('(').next().unwrap_or(part);
+                                    let part = if part == "mfr" || part == "ar" {
+                                        "mfr/ar"
+                                    } else {
+                                        part
+                                    };
+                                    match part {
+                                        "udi" => s.udi += 1,
+                                        "budi" => s.budi += 1,
+                                        "mfr/ar" => s.mfr_ar += 1,
+                                        "cert" => s.cert += 1,
+                                        "pkg" => s.pkg += 1,
+                                        "market" => s.market += 1,
+                                        "status" => s.status += 1,
+                                        _ => s.other += 1,
+                                    }
+                                }
+                            }
+                        }
+                        drop(s);
+                        if !dry_run {
+                            let _ =
+                                std::fs::write(detail_dir.join(format!("{}.json", uuid)), &detail);
+                            // Only cache a Basic UDI-DI body that carries a code
+                            // (parse-before-cache, same rule as fetch_basic_udi_di).
+                            if !basic_from_cache && basic.contains("\"code\"") {
+                                let _ = std::fs::write(
+                                    basic_dir.join(format!("{}.json", uuid)),
+                                    &basic,
+                                );
+                            }
+                            if let Ok(c) = conn_m.lock() {
+                                let _ = version_db::upsert_version(&c, &rec);
+                            }
+                        }
+                        // A baseline fill only records the missing parts in the DB;
+                        // the device did not change, so it is not reconverted/pushed.
+                        if baseline {
+                            return;
+                        }
+                        if let Ok(mut ch) = changed.lock() {
+                            ch.push((uuid.clone(), why.unwrap_or_default()));
+                        }
+                    };
                     groups.par_iter().for_each(|(key, members)| {
                         // The Basic UDI-DI record of a keyed group, once a fetched
                         // body has proven (by its own ULID) to be that record.
@@ -1357,6 +1404,14 @@ fn main() -> Result<()> {
                                 uuid
                             );
                             let detail = download::eudamed_get(&agent, &limiter, &d_url, 4);
+                            if skip_basic.contains(uuid) {
+                                let cached = std::fs::read_to_string(
+                                    basic_dir.join(format!("{}.json", uuid)),
+                                )
+                                .map_err(|e| e.to_string());
+                                handle(uuid, detail, cached, true);
+                                continue;
+                            }
                             let basic = match &shared {
                                 Some(body) => {
                                     basic_reused.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1378,7 +1433,7 @@ fn main() -> Result<()> {
                                     fetched
                                 }
                             };
-                            handle(uuid, detail, basic);
+                            handle(uuid, detail, basic, false);
                         }
                     });
                 });

@@ -2246,6 +2246,52 @@ fn write_datalake_basics(uuids: &[String], force: &HashSet<String>, basic_dir: &
     n
 }
 
+/// deep-scan may skip the public Basic UDI-DI request of a device when the
+/// cached records show it can carry no certificate — MDR Class I or IVDR
+/// Class A, not sterile (detail `sterile` explicitly false), not a system /
+/// procedure pack, no certificate in the cached Basic UDI-DI — because the
+/// nightly datalake row hash already covers every other field of that record
+/// (07.11.2026). The caller also requires a stored datalake row hash.
+pub fn basic_covered_by_datalake(basic_body: &str, detail_body: &str) -> bool {
+    let (Ok(b), Ok(d)) = (
+        serde_json::from_str::<serde_json::Value>(basic_body),
+        serde_json::from_str::<serde_json::Value>(detail_body),
+    ) else {
+        return false;
+    };
+    let code = |v: &serde_json::Value, k: &str| -> String {
+        v.get(k)
+            .and_then(|x| x.get("code"))
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string()
+    };
+    let class_ok = matches!(
+        (
+            code(&b, "legislation").as_str(),
+            code(&b, "riskClass").as_str()
+        ),
+        (
+            "refdata.applicable-legislation.mdr",
+            "refdata.risk-class.class-i"
+        ) | (
+            "refdata.applicable-legislation.ivdr",
+            "refdata.risk-class.class-a"
+        )
+    );
+    let spp = b
+        .get("multiComponent")
+        .and_then(|m| m.get("criterion"))
+        .and_then(|c| c.as_str())
+        .is_some_and(|c| c.eq_ignore_ascii_case("SPP"));
+    let has_cert = b
+        .get("deviceCertificateInfoListForDisplay")
+        .and_then(|c| c.as_array())
+        .is_some_and(|a| !a.is_empty());
+    let sterile_false = d.get("sterile").and_then(|x| x.as_bool()) == Some(false);
+    class_ok && !spp && !has_cert && sterile_false
+}
+
 /// A cached detail/basic file counts only when it starts like a JSON object.
 /// An empty file or a saved HTML error page is fetched again.
 pub fn cached_record_ok(path: &Path) -> bool {
@@ -2790,6 +2836,53 @@ mod listing_breaker_tests {
             eudamed_get(&agent, &limiter, &detail, 1).unwrap_err(),
             NOT_JSON_ERR
         );
+    }
+
+    #[test]
+    fn deep_scan_skips_basic_only_for_certificate_free_class_i() {
+        let basic = |risk: &str, leg: &str, extra: &str| {
+            format!(
+                r#"{{"riskClass":{{"code":"refdata.risk-class.{risk}"}},"legislation":{{"code":"refdata.applicable-legislation.{leg}"}}{extra}}}"#
+            )
+        };
+        let not_sterile = r#"{"uuid":"x","sterile":false}"#;
+        let sterile = r#"{"uuid":"x","sterile":true}"#;
+        let unknown = r#"{"uuid":"x"}"#;
+        assert!(basic_covered_by_datalake(
+            &basic("class-i", "mdr", ""),
+            not_sterile
+        ));
+        assert!(basic_covered_by_datalake(
+            &basic("class-a", "ivdr", ""),
+            not_sterile
+        ));
+        assert!(!basic_covered_by_datalake(
+            &basic("class-i", "mdr", ""),
+            sterile
+        ));
+        assert!(!basic_covered_by_datalake(
+            &basic("class-i", "mdr", ""),
+            unknown
+        ));
+        assert!(!basic_covered_by_datalake(
+            &basic("class-iia", "mdr", ""),
+            not_sterile
+        ));
+        assert!(!basic_covered_by_datalake(
+            &basic("class-i", "mdd", ""),
+            not_sterile
+        ));
+        let cert = r#","deviceCertificateInfoListForDisplay":[{"certificateNumber":"1"}]"#;
+        assert!(!basic_covered_by_datalake(
+            &basic("class-i", "mdr", cert),
+            not_sterile
+        ));
+        let spp = r#","multiComponent":{"criterion":"SPP"}"#;
+        assert!(!basic_covered_by_datalake(
+            &basic("class-i", "mdr", spp),
+            not_sterile
+        ));
+        assert!(!basic_covered_by_datalake("<!DOCTYPE html>", not_sterile));
     }
 
     #[test]
