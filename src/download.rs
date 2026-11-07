@@ -862,40 +862,97 @@ pub fn eudamed_get(
     url: &str,
     max_attempts: u32,
 ) -> Result<String, String> {
-    if PUBLIC_BLOCKED.load(Ordering::Relaxed) {
+    if public_endpoint_blocked() {
         return Err("EUDAMED public endpoint blocked (429), request skipped".into());
     }
     let res = eudamed_get_inner(agent, limiter, url, max_attempts);
-    match &res {
-        Ok(_) => PUBLIC_429_STREAK.store(0, Ordering::Relaxed),
-        Err(e) if e.starts_with("HTTP 429") => {
-            let n = PUBLIC_429_STREAK.fetch_add(1, Ordering::Relaxed) + 1;
-            if n >= PUBLIC_BLOCK_AFTER && !PUBLIC_BLOCKED.swap(true, Ordering::Relaxed) {
-                eprintln!(
-                    "EUDAMED public endpoint blocked: {} requests in a row ended in 429 after their retries — skipping all further public requests in this run",
-                    n
-                );
-            }
-        }
-        Err(_) => {}
+    if note_public_outcome(url, &res) {
+        eprintln!(
+            "EUDAMED public device records blocked: {} detail/basic requests in a row ended in 429 after their retries — skipping all further public requests in this run",
+            PUBLIC_BLOCK_AFTER
+        );
     }
     res
 }
 
-/// Circuit breaker (05.11.2026): since ~12:00 CET EUDAMED answers every
-/// automated client with 429 on its public endpoints. Each request then waits
-/// through several Retry-After rounds (minutes), so a nightly with 1'500 new
-/// devices would hang for days and block the following nights via the overlap
-/// guard. After `PUBLIC_BLOCK_AFTER` requests in a row that end in 429, every
-/// further public request of this process fails at once. Devices whose files
-/// were not fetched stay incomplete and are retried by the next run.
-static PUBLIC_429_STREAK: AtomicUsize = AtomicUsize::new(0);
-static PUBLIC_BLOCKED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// What one finished `eudamed_get` meant for the circuit breaker.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PublicOutcome {
+    Ok,
+    Http429,
+    Other,
+}
+
+/// Counts only device-record 429s. A public listing answers 429 on purpose
+/// (no browser User-Agent, so the run can switch to the datalake). Those
+/// listing 429s must not arm this breaker: detail and Basic UDI-DI run later
+/// in the same process and are the calls that carry the browser User-Agent.
+/// Ten record 429s in a row still stop every further public request, so a
+/// real burst of detail/basic failures does not hang the night.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PublicCircuit {
+    streak: usize,
+    blocked: bool,
+}
+
+impl PublicCircuit {
+    const fn fresh() -> Self {
+        Self {
+            streak: 0,
+            blocked: false,
+        }
+    }
+
+    fn observe(mut self, url: &str, outcome: PublicOutcome) -> Self {
+        if self.blocked || !is_public_device_record_url(url) {
+            return self;
+        }
+        match outcome {
+            PublicOutcome::Ok => self.streak = 0,
+            PublicOutcome::Http429 => {
+                self.streak += 1;
+                if self.streak >= PUBLIC_BLOCK_AFTER {
+                    self.blocked = true;
+                }
+            }
+            PublicOutcome::Other => {}
+        }
+        self
+    }
+}
+
+/// Circuit breaker (05.11.2026, narrowed 07.11.2026): a burst of detail/basic
+/// 429s used to be indistinguishable from the public listing's M2M 429. The
+/// nightly lists first, so ten listing 429s tripped the breaker and every
+/// later detail/basic call returned "request skipped" without being sent.
+/// Only [`is_public_device_record_url`] outcomes move the streak. Once it
+/// trips, every further public request of this process fails at once.
 const PUBLIC_BLOCK_AFTER: usize = 10;
+static PUBLIC_CIRCUIT: Mutex<PublicCircuit> = Mutex::new(PublicCircuit::fresh());
+
+fn note_public_outcome(url: &str, res: &Result<String, String>) -> bool {
+    let outcome = match res {
+        Ok(_) => PublicOutcome::Ok,
+        Err(e) if e.starts_with("HTTP 429") => PublicOutcome::Http429,
+        Err(_) => PublicOutcome::Other,
+    };
+    let mut guard = PUBLIC_CIRCUIT.lock().unwrap_or_else(|e| e.into_inner());
+    let was = guard.blocked;
+    *guard = guard.observe(url, outcome);
+    !was && guard.blocked
+}
 
 /// True once the circuit breaker tripped in this process.
 pub fn public_endpoint_blocked() -> bool {
-    PUBLIC_BLOCKED.load(Ordering::Relaxed)
+    PUBLIC_CIRCUIT
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .blocked
+}
+
+#[cfg(test)]
+fn reset_public_circuit() {
+    *PUBLIC_CIRCUIT.lock().unwrap_or_else(|e| e.into_inner()) = PublicCircuit::fresh();
 }
 
 fn eudamed_get_inner(
@@ -931,8 +988,9 @@ fn eudamed_get_inner(
                 if status == 429 {
                     // EUDAMED's block (05.11.2026) carries a notice pointing to
                     // the datalake API. Waiting through Retry-After rounds does
-                    // not lift it, so give up at once (the circuit breaker and
-                    // the datalake listing fallback take over).
+                    // not lift it, so give up at once. A listing 429 switches
+                    // the run to the datalake; it does not arm the detail/basic
+                    // circuit breaker. A record 429 still does.
                     let blocked_notice = {
                         let ra = resp
                             .headers()
@@ -1024,13 +1082,33 @@ fn datalake_listing_for_srn(
         Ok(q) => q,
         Err(e) => {
             progress.on_event(DownloadEvent::Log(format!(
-                "  SRN {}: datalake failed ({}), asking the public listing",
-                srn, e
+                "  SRN {}: datalake failed ({}){}",
+                srn,
+                e,
+                if crate::datalake::forced() {
+                    "; public listing not asked"
+                } else {
+                    ", asking the public listing"
+                }
             )));
             return None;
         }
     };
     if q.devices.is_empty() && q.complete {
+        // A forced datalake run must not probe the public UI to "confirm" an
+        // empty SRN. That probe is a 429, and ten of them used to trip the
+        // detail/basic circuit breaker before any device record was fetched.
+        if crate::datalake::forced() {
+            progress.on_event(DownloadEvent::Log(format!(
+                "  SRN {}: no device in the datalake",
+                srn
+            )));
+            return Some(SrnListing {
+                entries: Vec::new(),
+                total_pages: Some(0),
+                complete: true,
+            });
+        }
         progress.on_event(DownloadEvent::Log(format!(
             "  SRN {}: no device in the datalake, asking the public listing",
             srn
@@ -1112,8 +1190,18 @@ fn download_listing_for_srn_opts(
     progress: &dyn DownloadProgress,
 ) -> SrnListing {
     if crate::datalake::enabled() {
-        if let Some(res) = datalake_listing_for_srn(srn, limit, keep, max_pages, conn, progress) {
-            return res;
+        match datalake_listing_for_srn(srn, limit, keep, max_pages, conn, progress) {
+            Some(res) => return res,
+            // Forced datalake: an error (None) stops here. Falling through
+            // would send the public listing request this mode exists to avoid.
+            None if crate::datalake::forced() => {
+                return SrnListing {
+                    entries: Vec::new(),
+                    total_pages: None,
+                    complete: false,
+                };
+            }
+            None => {}
         }
     }
     let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
@@ -1540,8 +1628,16 @@ fn download_listing_for_gtin(
 ) -> Vec<(String, Option<u32>, Option<u32>)> {
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     if crate::datalake::enabled() {
-        if let Some(entries) = datalake_lookup_gtin(gtin, conn, &now, progress) {
-            return entries;
+        match datalake_lookup_gtin(gtin, conn, &now, progress) {
+            Some(entries) => return entries,
+            None if crate::datalake::forced() => {
+                progress.on_event(DownloadEvent::Log(format!(
+                    "  GTIN {}: public listing not asked",
+                    gtin
+                )));
+                return Vec::new();
+            }
+            None => {}
         }
     }
     let agent = eudamed_agent();
@@ -2295,5 +2391,265 @@ mod public_ui_header_tests {
         );
         assert!(!listing_ua.contains("Mozilla"));
         assert!(header_value(&listing, "accept-language").is_none());
+    }
+}
+
+#[cfg(test)]
+mod listing_breaker_tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+    use std::time::Duration;
+
+    struct Silent;
+    impl DownloadProgress for Silent {
+        fn on_event(&self, _: DownloadEvent) {}
+    }
+
+    struct ListingSourceGuard {
+        prev: Option<String>,
+    }
+
+    impl ListingSourceGuard {
+        fn datalake() -> Self {
+            let prev = std::env::var("EUDAMED_LISTING_SOURCE").ok();
+            // The process environment is the production switch. Restored on drop
+            // so other tests keep seeing an unset source.
+            unsafe { std::env::set_var("EUDAMED_LISTING_SOURCE", "datalake") };
+            Self { prev }
+        }
+    }
+
+    impl Drop for ListingSourceGuard {
+        fn drop(&mut self) {
+            unsafe {
+                match &self.prev {
+                    Some(v) => std::env::set_var("EUDAMED_LISTING_SOURCE", v),
+                    None => std::env::remove_var("EUDAMED_LISTING_SOURCE"),
+                }
+            }
+            crate::datalake::set_test_udi_url(None);
+        }
+    }
+
+    struct LocalApi {
+        port: u16,
+        hits: Arc<Mutex<Vec<String>>>,
+        stop: Arc<AtomicBool>,
+        join: Option<std::thread::JoinHandle<()>>,
+    }
+
+    impl LocalApi {
+        /// One server for both APIs. `/eudamed/udi` answers as the datalake
+        /// (empty for `MF_SRN`, one device for `PRIMARY_DI`). Anything else is
+        /// the public UI: 429 with the M2M notice for a listing, 200 for a
+        /// device record.
+        fn spawn() -> Self {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let hits = Arc::new(Mutex::new(Vec::new()));
+            let stop = Arc::new(AtomicBool::new(false));
+            let hits_t = hits.clone();
+            let stop_t = stop.clone();
+            let join = std::thread::spawn(move || {
+                while !stop_t.load(AtomicOrdering::Relaxed) {
+                    match listener.accept() {
+                        Ok((mut sock, _)) => {
+                            sock.set_nonblocking(false).unwrap();
+                            sock.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+                            let mut buf = Vec::new();
+                            let mut tmp = [0u8; 1024];
+                            loop {
+                                match sock.read(&mut tmp) {
+                                    Ok(0) => break,
+                                    Ok(n) => {
+                                        buf.extend_from_slice(&tmp[..n]);
+                                        if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                                            break;
+                                        }
+                                    }
+                                    Err(_) => break,
+                                }
+                            }
+                            let req = String::from_utf8_lossy(&buf).into_owned();
+                            let target = req
+                                .lines()
+                                .next()
+                                .unwrap_or("")
+                                .split_whitespace()
+                                .nth(1)
+                                .unwrap_or("")
+                                .to_string();
+                            hits_t.lock().unwrap().push(target.clone());
+                            let (status, reason, body) = if target.contains("/eudamed/udi") {
+                                if target.contains("PRIMARY_DI=") {
+                                    (
+                                        200,
+                                        "OK",
+                                        r#"{"value":[{"UUID":"522a2c98-6a71-4b20-8959-ad1287b2e776","PRIMARY_DI":"00195451000232","VERSION_NUMBER":2,"LATEST_VERSION":1,"MF_SRN":"US-MF-000016658","MF_NAME":"M","TRADE_NAME":"Shockwave","RISK_CLASS_ID":-204,"DEVICE_STATUS_TYPE_ID":-11,"BASIC_UDI_DATA_ULID":"01M4"}]}"#,
+                                    )
+                                } else {
+                                    (200, "OK", r#"{"value":[]}"#)
+                                }
+                            } else if is_public_device_record_url(&format!(
+                                "https://ec.europa.eu{target}"
+                            )) {
+                                (200, "OK", r#"{"ok":true}"#)
+                            } else {
+                                (
+                                    429,
+                                    "Too Many Requests",
+                                    r#"{"message":"machineToMachineApi"}"#,
+                                )
+                            };
+                            let resp = format!(
+                                "HTTP/1.1 {status} {reason}\r\nContent-Length: {}\r\nRetry-After: 300\r\nConnection: close\r\n\r\n{body}",
+                                body.len()
+                            );
+                            let _ = sock.write_all(resp.as_bytes());
+                        }
+                        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            std::thread::sleep(Duration::from_millis(5));
+                        }
+                        Err(_) => break,
+                    }
+                }
+            });
+            Self {
+                port,
+                hits,
+                stop,
+                join: Some(join),
+            }
+        }
+    }
+
+    impl Drop for LocalApi {
+        fn drop(&mut self) {
+            self.stop.store(true, AtomicOrdering::Relaxed);
+            if let Some(join) = self.join.take() {
+                let _ = join.join();
+            }
+        }
+    }
+
+    #[test]
+    fn record_429s_trip_the_breaker_listing_429s_do_not() {
+        let listing = "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData?page=0&size=300&srn=DE-MF-000000001";
+        let detail = "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en";
+        let basic = "https://ec.europa.eu/tools/eudamed/api/devices/basicUdiData/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en";
+        let mut circuit = PublicCircuit::fresh();
+        for _ in 0..PUBLIC_BLOCK_AFTER {
+            circuit = circuit.observe(listing, PublicOutcome::Http429);
+        }
+        assert!(!circuit.blocked);
+        assert_eq!(circuit.streak, 0);
+        for _ in 0..PUBLIC_BLOCK_AFTER - 1 {
+            circuit = circuit.observe(detail, PublicOutcome::Http429);
+        }
+        assert!(!circuit.blocked);
+        circuit = circuit.observe(basic, PublicOutcome::Http429);
+        assert!(circuit.blocked);
+        circuit = circuit.observe(detail, PublicOutcome::Ok);
+        assert!(circuit.blocked);
+    }
+
+    #[test]
+    fn listing_429s_still_send_the_later_detail_and_basic_requests() {
+        reset_public_circuit();
+        let api = LocalApi::spawn();
+        let limiter = RateLimiter::new(Duration::from_millis(0));
+        let agent = eudamed_agent();
+        let listing = format!(
+            "http://127.0.0.1:{}/devices/udiDiData?page=0&size=300&srn=DE-MF-000000001&languageIso2Code=en",
+            api.port
+        );
+        for _ in 0..PUBLIC_BLOCK_AFTER {
+            let err = eudamed_get(&agent, &limiter, &listing, 1).unwrap_err();
+            assert!(
+                err.starts_with("HTTP 429"),
+                "listing 429 should be reported, not swallowed: {err}"
+            );
+        }
+        assert!(
+            !public_endpoint_blocked(),
+            "listing 429s armed the detail/basic circuit breaker"
+        );
+        let detail = format!(
+            "http://127.0.0.1:{}/devices/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en",
+            api.port
+        );
+        let basic = format!(
+            "http://127.0.0.1:{}/devices/basicUdiData/udiDiData/522a2c98-6a71-4b20-8959-ad1287b2e776?languageIso2Code=en",
+            api.port
+        );
+        assert_eq!(
+            eudamed_get(&agent, &limiter, &detail, 1).unwrap(),
+            r#"{"ok":true}"#
+        );
+        assert_eq!(
+            eudamed_get(&agent, &limiter, &basic, 1).unwrap(),
+            r#"{"ok":true}"#
+        );
+        let hits = api.hits.lock().unwrap().clone();
+        assert!(
+            hits.iter().any(|h| h.contains("/udiDiData/522a2c98")),
+            "detail was not sent: {hits:?}"
+        );
+        assert!(
+            hits.iter()
+                .any(|h| h.contains("/basicUdiData/udiDiData/522a2c98")),
+            "basic was not sent: {hits:?}"
+        );
+        assert!(!public_endpoint_blocked());
+    }
+
+    #[test]
+    fn datalake_listing_source_does_not_probe_the_public_listing() {
+        let _source = ListingSourceGuard::datalake();
+        let api = LocalApi::spawn();
+        crate::datalake::set_test_udi_url(Some(format!(
+            "http://127.0.0.1:{}/eudamed/udi",
+            api.port
+        )));
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        ensure_listing_cache(&conn);
+        let conn = Mutex::new(conn);
+        let limiter = RateLimiter::new(Duration::from_millis(0));
+        let public_base = format!("http://127.0.0.1:{}/devices/udiDiData", api.port);
+
+        let empty = download_listing_for_srn_opts(
+            &public_base,
+            "DE-MF-000000001",
+            None,
+            None,
+            None,
+            &conn,
+            &limiter,
+            &Silent,
+        );
+        assert!(empty.entries.is_empty());
+        assert!(empty.complete);
+
+        let found =
+            download_listing_for_gtin(&public_base, "00195451000232", &conn, &limiter, &Silent);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].0, "522a2c98-6a71-4b20-8959-ad1287b2e776");
+
+        let hits = api.hits.lock().unwrap().clone();
+        assert!(
+            hits.iter().any(|h| h.contains("MF_SRN=")),
+            "datalake SRN listing was not asked: {hits:?}"
+        );
+        assert!(
+            hits.iter().any(|h| h.contains("PRIMARY_DI=")),
+            "datalake GTIN lookup was not asked: {hits:?}"
+        );
+        assert!(
+            hits.iter().all(|h| !h.contains("udiDiData")),
+            "public listing was probed: {hits:?}"
+        );
     }
 }
