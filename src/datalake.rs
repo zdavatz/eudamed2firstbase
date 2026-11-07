@@ -93,6 +93,8 @@ pub fn is_block_error(e: &str) -> bool {
 /// One device of the datalake `/udi` answer, mapped to listing_cache columns.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DlDevice {
+    /// Fingerprint of the row's content fields ([`row_hash`]).
+    pub row_hash: String,
     pub uuid: String,
     pub primary_di: String,
     pub version: Option<u32>,
@@ -298,6 +300,33 @@ fn text(v: &Value, k: &str) -> String {
         .to_string()
 }
 
+/// Row fields left out of [`row_hash`]: the row id and the version fields
+/// (a version bump is detected through the version itself).
+const HASH_SKIP: &[&str] = &["ID", "LATEST_VERSION", "VERSION_NUMBER"];
+
+/// SHA-256 over every content field of one `/udi` row (sorted by name,
+/// numbers and nulls as JSON). It changes when the Basic UDI-DI part,
+/// manufacturer, AR, status or a package DI changes, even when
+/// `VERSION_NUMBER` stays the same.
+pub fn row_hash(v: &Value) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    if let Some(obj) = v.as_object() {
+        let mut keys: Vec<&String> = obj
+            .keys()
+            .filter(|k| !HASH_SKIP.contains(&k.as_str()))
+            .collect();
+        keys.sort();
+        for k in keys {
+            h.update(k.as_bytes());
+            h.update(b"=");
+            h.update(obj[k].to_string().as_bytes());
+            h.update(b"\n");
+        }
+    }
+    format!("{:x}", h.finalize())
+}
+
 /// Map one `/udi` row. None without a uuid.
 pub fn parse_row(v: &Value) -> Option<DlDevice> {
     let uuid = text(v, "UUID");
@@ -305,6 +334,7 @@ pub fn parse_row(v: &Value) -> Option<DlDevice> {
         return None;
     }
     Some(DlDevice {
+        row_hash: row_hash(v),
         uuid,
         primary_di: text(v, "PRIMARY_DI"),
         version: num(v, "VERSION_NUMBER").and_then(|n| u32::try_from(n).ok()),
@@ -501,6 +531,24 @@ mod tests {
             parsed.multi_component.and_then(|m| m.code).as_deref(),
             Some("refdata.multi-component.system")
         );
+    }
+
+    #[test]
+    fn row_hash_sees_content_changes_but_not_id_or_version() {
+        let base = class_i_row();
+        let h = row_hash(&base);
+        let mut moved = base.clone();
+        moved["ID"] = serde_json::json!(42.0);
+        moved["VERSION_NUMBER"] = serde_json::json!(2.0);
+        moved["LATEST_VERSION"] = serde_json::json!(0.0);
+        assert_eq!(row_hash(&moved), h);
+        let mut new_ar = base.clone();
+        new_ar["AR_SRN"] = serde_json::json!("NL-AR-000000002");
+        assert_ne!(row_hash(&new_ar), h);
+        let mut new_flag = base;
+        new_flag["IMPLANTABLE"] = serde_json::json!(1.0);
+        assert_ne!(row_hash(&new_flag), h);
+        assert_eq!(parse_row(&class_i_row()).unwrap().row_hash, h);
     }
 
     #[test]

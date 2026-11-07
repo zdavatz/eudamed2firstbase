@@ -1,6 +1,7 @@
 //! Shared download module for EUDAMED data.
 //! Used by both the GUI and the CLI `download` subcommand.
 
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -258,8 +259,15 @@ pub fn run_download(
     let conn = crate::version_db::open_db(&db_path)?;
 
     let run_start = std::time::SystemTime::now();
-    let (mut need_download, unchanged_skipped) =
-        filter_unchanged(&uuid_versions, &conn, &detail_dir, &basic_dir, progress);
+    let hash_changed = take_hash_changes(&log);
+    let (mut need_download, unchanged_skipped, stale) = filter_unchanged(
+        &uuid_versions,
+        &conn,
+        &detail_dir,
+        &basic_dir,
+        &hash_changed,
+        progress,
+    );
 
     log(&format!(
         "Version check: {} new/changed, {} unchanged (skipping download)",
@@ -279,6 +287,7 @@ pub fn run_download(
     // --- Step 4: Download detail files ---
     let (detail_downloaded, detail_cached) = parallel_fetch(
         &need_download,
+        &stale,
         &detail_dir,
         EUDAMED_BASE_URL,
         "detail",
@@ -299,15 +308,23 @@ pub fn run_download(
     // Devices that need no certificate (non-sterile MDR Class I / IVDR Class A)
     // take their Basic UDI-DI from the datalake rows of this run's listing, so
     // only the rest asks the public endpoint (07.11.2026).
-    let from_datalake = write_datalake_basics(&need_download, &basic_dir);
+    let from_datalake = write_datalake_basics(&need_download, &stale, &basic_dir);
     if from_datalake > 0 {
         log(&format!(
             "Basic UDI-DI: {} taken from the datalake (non-sterile MDR Class I / IVDR Class A)",
             from_datalake
         ));
     }
+    // A datalake Basic UDI-DI written above for a stale device is fresh; only
+    // the other stale devices still need a forced public refetch.
+    let stale_public: HashSet<String> = stale
+        .iter()
+        .filter(|u| crate::datalake::basic_for(u).is_none())
+        .cloned()
+        .collect();
     let (basic_downloaded, basic_cached) = parallel_fetch(
         &need_download,
+        &stale_public,
         &basic_dir,
         BASIC_UDI_BASE_URL,
         "basic",
@@ -367,6 +384,7 @@ pub fn run_download(
         if !missing_detail_uuids.is_empty() {
             parallel_fetch(
                 &missing_detail_uuids,
+                &HashSet::new(),
                 &detail_dir,
                 EUDAMED_BASE_URL,
                 "detail",
@@ -380,6 +398,7 @@ pub fn run_download(
         if !missing_basic_uuids.is_empty() {
             parallel_fetch(
                 &missing_basic_uuids,
+                &HashSet::new(),
                 &basic_dir,
                 BASIC_UDI_BASE_URL,
                 "basic",
@@ -428,6 +447,31 @@ pub fn run_download(
             "WARNING: EUDAMED public endpoint blocked (429) — {} of {} changed device(s) could not be downloaded; they are retried next run",
             total - need_download.len(),
             total
+        ));
+    }
+
+    // Datalake row hashes of changed devices are stored only once their detail
+    // was written in this run and a Basic UDI-DI file is there, so a change
+    // whose refetch failed is detected again next run.
+    if !hash_changed.is_empty() {
+        let mut stored = 0usize;
+        for u in &need_download {
+            let Some(h) = hash_changed.get(u) else {
+                continue;
+            };
+            let fresh_detail = std::fs::metadata(detail_dir.join(format!("{}.json", u)))
+                .and_then(|m| m.modified())
+                .map(|t| t >= run_start)
+                .unwrap_or(false);
+            if fresh_detail && cached_record_ok(&basic_dir.join(format!("{}.json", u))) {
+                set_row_hash(&conn, u, h);
+                stored += 1;
+            }
+        }
+        log(&format!(
+            "Datalake row hash: {} of {} changed device(s) refreshed",
+            stored,
+            hash_changed.len()
         ));
     }
 
@@ -1098,9 +1142,80 @@ fn store_datalake_devices(
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, ?10)",
             rusqlite::params![d.uuid, d.srn, d.manufacturer_name, d.primary_di, d.trade_name, d.risk_class, d.device_status, d.version, now, d.budi_ulid],
         );
+        if !d.row_hash.is_empty() {
+            let old: Option<String> = db
+                .query_row(
+                    "SELECT hash FROM datalake_row_hash WHERE uuid = ?1",
+                    [d.uuid.as_str()],
+                    |r| r.get(0),
+                )
+                .ok();
+            match old {
+                // First sight: baseline, not a change.
+                None => set_row_hash(&db, &d.uuid, &d.row_hash),
+                Some(o) if o != d.row_hash => note_hash_change(&d.uuid, &d.row_hash),
+                Some(_) => {}
+            }
+        }
         out.push((d.uuid.clone(), d.version, None));
     }
     out
+}
+
+/// Devices whose datalake row hash changed in this process (uuid -> new hash).
+static HASH_CHANGES: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
+
+fn note_hash_change(uuid: &str, hash: &str) {
+    HASH_CHANGES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(uuid.to_string(), hash.to_string());
+}
+
+/// Most hash changes one run treats as real (`EUDAMED_HASH_CHANGE_MAX`,
+/// default 1'500 = the nightly GS1 portion). More than that in one night
+/// looks like a format change on the datalake side, not 1'500 edits.
+fn hash_change_max() -> usize {
+    std::env::var("EUDAMED_HASH_CHANGE_MAX")
+        .ok()
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or(1500)
+}
+
+/// Take the hash changes collected by the listing. Above
+/// [`hash_change_max`] none is used and none is stored (so the warning
+/// repeats until someone looks).
+fn take_hash_changes(log: &dyn Fn(&str)) -> HashMap<String, String> {
+    let changes = HASH_CHANGES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take()
+        .unwrap_or_default();
+    if changes.is_empty() {
+        return changes;
+    }
+    let max = hash_change_max();
+    if changes.len() > max {
+        log(&format!(
+            "WARNING: datalake row hash changed for {} device(s) without a version bump (limit {}) — ignored this run; check whether the datalake changed its format",
+            changes.len(),
+            max
+        ));
+        return HashMap::new();
+    }
+    log(&format!(
+        "Datalake row hash: {} device(s) changed without a version bump — refetching them",
+        changes.len()
+    ));
+    changes
+}
+
+fn set_row_hash(db: &rusqlite::Connection, uuid: &str, hash: &str) {
+    let _ = db.execute(
+        "INSERT OR REPLACE INTO datalake_row_hash (uuid, hash, seen_at) VALUES (?1, ?2, datetime('now'))",
+        rusqlite::params![uuid, hash],
+    );
 }
 
 /// SRN listing via the datalake (`MF_SRN` filter, 1'000 devices per page).
@@ -2045,10 +2160,15 @@ fn filter_unchanged(
     conn: &rusqlite::Connection,
     detail_dir: &Path,
     basic_dir: &Path,
+    hash_changed: &HashMap<String, String>,
     _progress: &dyn DownloadProgress,
-) -> (Vec<String>, usize) {
+) -> (Vec<String>, usize, HashSet<String>) {
     let mut need_download = Vec::new();
     let mut unchanged = 0;
+    // Changed devices whose cached files exist: they must be fetched again
+    // although the files are there (a version bump or a datalake row-hash
+    // change). parallel_fetch skips a cached file otherwise.
+    let mut stale = HashSet::new();
 
     let file_present = |dir: &Path, uuid: &str| -> bool {
         let p = dir.join(format!("{}.json", uuid));
@@ -2074,7 +2194,11 @@ fn filter_unchanged(
                 (db_rec.budi_version, budi_listing_version),
                 (Some(db), Some(listing)) if *listing > db
             );
-            if !udi_bumped && !budi_bumped {
+            let row_changed = hash_changed.contains_key(uuid);
+            if udi_bumped || budi_bumped || row_changed {
+                stale.insert(uuid.clone());
+            }
+            if !udi_bumped && !budi_bumped && !row_changed {
                 if file_present(detail_dir, uuid) && file_present(basic_dir, uuid) {
                     unchanged += 1;
                     continue;
@@ -2097,18 +2221,16 @@ fn filter_unchanged(
         need_download.push(uuid.clone());
     }
 
-    (need_download, unchanged)
+    (need_download, unchanged, stale)
 }
 
-/// Generic parallel download: fetch URL per UUID, save to dir, log to file.
-/// Returns (downloaded_count, cached_count).
 /// Write the datalake Basic UDI-DI ([`crate::datalake::basic_for`]) of every
 /// device in `uuids` that has no usable cached Basic UDI-DI. Returns the count.
-fn write_datalake_basics(uuids: &[String], basic_dir: &Path) -> usize {
+fn write_datalake_basics(uuids: &[String], force: &HashSet<String>, basic_dir: &Path) -> usize {
     let mut n = 0;
     for u in uuids {
         let p = basic_dir.join(format!("{}.json", u));
-        if cached_record_ok(&p) {
+        if cached_record_ok(&p) && !force.contains(u) {
             continue;
         }
         let Some(b) = crate::datalake::basic_for(u) else {
@@ -2138,8 +2260,12 @@ pub fn cached_record_ok(path: &Path) -> bool {
         .starts_with('{')
 }
 
+/// Generic parallel download: fetch URL per UUID, save to dir, log to file.
+/// A file in `force` is fetched even when cached; it is only overwritten
+/// once the new answer arrived. Returns (downloaded_count, cached_count).
 fn parallel_fetch(
     uuids: &[String],
+    force: &HashSet<String>,
     target_dir: &Path,
     base_url: &str,
     log_prefix: &str,
@@ -2154,7 +2280,7 @@ fn parallel_fetch(
         .iter()
         .filter(|uuid| {
             let p = target_dir.join(format!("{}.json", uuid));
-            !cached_record_ok(&p)
+            !cached_record_ok(&p) || force.contains(*uuid)
         })
         .collect();
     let cached = uuids.len() - need.len();
@@ -2479,6 +2605,39 @@ mod listing_breaker_tests {
     struct Silent;
     impl DownloadProgress for Silent {
         fn on_event(&self, _: DownloadEvent) {}
+    }
+
+    #[test]
+    fn changed_devices_with_cached_files_are_marked_stale() {
+        let dir = std::env::temp_dir().join(format!("e2f_stale_{}", std::process::id()));
+        let (detail, basic) = (dir.join("detail"), dir.join("basic"));
+        std::fs::create_dir_all(&detail).unwrap();
+        std::fs::create_dir_all(&basic).unwrap();
+        let conn = crate::version_db::open_db(&dir.join("v.db")).unwrap();
+        for u in ["same", "bumped", "rowhash"] {
+            std::fs::write(detail.join(format!("{u}.json")), "{}").unwrap();
+            std::fs::write(basic.join(format!("{u}.json")), "{}").unwrap();
+            let rec = crate::version_db::VersionRecord {
+                uuid: u.to_string(),
+                udi_version: Some(1),
+                last_synced: Some("2026-11-07T00:00:00".to_string()),
+                ..Default::default()
+            };
+            crate::version_db::upsert_version(&conn, &rec).unwrap();
+        }
+        let listing = vec![
+            ("same".to_string(), Some(1), None),
+            ("bumped".to_string(), Some(2), None),
+            ("rowhash".to_string(), Some(1), None),
+        ];
+        let mut changed = HashMap::new();
+        changed.insert("rowhash".to_string(), "h2".to_string());
+        let (need, unchanged, stale) =
+            filter_unchanged(&listing, &conn, &detail, &basic, &changed, &Silent);
+        assert_eq!(unchanged, 1);
+        assert_eq!(need, vec!["bumped".to_string(), "rowhash".to_string()]);
+        assert!(stale.contains("bumped") && stale.contains("rowhash") && !stale.contains("same"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     struct ListingSourceGuard {

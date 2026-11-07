@@ -213,6 +213,14 @@ pub fn open_db(path: &Path) -> Result<Connection> {
             uuid TEXT NOT NULL DEFAULT '',
             last_synced TEXT NOT NULL DEFAULT ''
         );
+        -- Fingerprint of the datalake /udi row per device (07.11.2026): a
+        -- changed hash with an unchanged VERSION_NUMBER means a Basic UDI-DI /
+        -- manufacturer / AR / package-DI change the version does not show.
+        CREATE TABLE IF NOT EXISTS datalake_row_hash (
+            uuid TEXT PRIMARY KEY,
+            hash TEXT NOT NULL,
+            seen_at TEXT NOT NULL DEFAULT ''
+        );
         CREATE INDEX IF NOT EXISTS idx_actors_country ON actors(country_iso2);
         CREATE INDEX IF NOT EXISTS idx_actors_role ON actors(role_name);",
     )?;
