@@ -535,20 +535,27 @@ fn main() -> Result<()> {
             let total = result.need_download.len();
             let converted = std::sync::atomic::AtomicUsize::new(0);
             let reported = std::sync::atomic::AtomicUsize::new(0);
+            // Detail files that exist but do not parse (07.11.2026: EUDAMED's
+            // HTML error page saved as <uuid>.json) used to vanish silently
+            // behind "Converted 0".
+            let unreadable = std::sync::atomic::AtomicUsize::new(0);
             let conn = std::sync::Mutex::new(conn);
             result.need_download.par_iter().for_each(|uuid| {
                 let detail_path = detail_dir.join(format!("{}.json", uuid));
                 if !detail_path.exists() {
                     return;
                 }
+                let bad = || {
+                    unreadable.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                };
                 let json_content = match std::fs::read_to_string(&detail_path) {
                     Ok(s) => s,
-                    Err(_) => return,
+                    Err(_) => return bad(),
                 };
                 let device: api_detail::ApiDeviceDetail = match serde_json::from_str(&json_content)
                 {
                     Ok(d) => d,
-                    Err(_) => return,
+                    Err(_) => return bad(),
                 };
                 let basic_udi = basic_udi_cache.get(uuid);
                 let doc = transform_detail::transform_detail_document(
@@ -594,6 +601,13 @@ fn main() -> Result<()> {
             });
             let converted = converted.load(std::sync::atomic::Ordering::Relaxed);
             eprintln!("Converted {} devices to firstbase_json/", converted);
+            let unreadable = unreadable.load(std::sync::atomic::Ordering::Relaxed);
+            if unreadable > 0 {
+                eprintln!(
+                    "WARNING: {} detail file(s) could not be parsed (not a device record) — skipped",
+                    unreadable
+                );
+            }
 
             if converted == 0 && owed.is_empty() {
                 eprintln!("Nothing to push.");

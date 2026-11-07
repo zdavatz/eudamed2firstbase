@@ -319,14 +319,14 @@ pub fn run_download(
         .iter()
         .filter(|u| {
             let p = detail_dir.join(format!("{}.json", u));
-            !p.exists() || std::fs::metadata(&p).map(|m| m.len() == 0).unwrap_or(true)
+            !cached_record_ok(&p)
         })
         .count();
     let missing_basic = need_download
         .iter()
         .filter(|u| {
             let p = basic_dir.join(format!("{}.json", u));
-            !p.exists() || std::fs::metadata(&p).map(|m| m.len() == 0).unwrap_or(true)
+            !cached_record_ok(&p)
         })
         .count();
 
@@ -341,7 +341,7 @@ pub fn run_download(
             .iter()
             .filter(|u| {
                 let p = detail_dir.join(format!("{}.json", u));
-                !p.exists() || std::fs::metadata(&p).map(|m| m.len() == 0).unwrap_or(true)
+                !cached_record_ok(&p)
             })
             .cloned()
             .collect();
@@ -349,7 +349,7 @@ pub fn run_download(
             .iter()
             .filter(|u| {
                 let p = basic_dir.join(format!("{}.json", u));
-                !p.exists() || std::fs::metadata(&p).map(|m| m.len() == 0).unwrap_or(true)
+                !cached_record_ok(&p)
             })
             .cloned()
             .collect();
@@ -383,11 +383,11 @@ pub fn run_download(
 
         let still_missing_d = need_download
             .iter()
-            .filter(|u| !detail_dir.join(format!("{}.json", u)).exists())
+            .filter(|u| !cached_record_ok(&detail_dir.join(format!("{}.json", u))))
             .count();
         let still_missing_b = need_download
             .iter()
-            .filter(|u| !basic_dir.join(format!("{}.json", u)).exists())
+            .filter(|u| !cached_record_ok(&basic_dir.join(format!("{}.json", u))))
             .count();
         if still_missing_d > 0 || still_missing_b > 0 {
             log(&format!(
@@ -411,7 +411,7 @@ pub fn run_download(
                 .and_then(|m| m.modified())
                 .map(|t| t >= run_start)
                 .unwrap_or(false);
-            fresh_detail && basic_dir.join(format!("{}.json", u)).exists()
+            fresh_detail && cached_record_ok(&basic_dir.join(format!("{}.json", u)))
         };
         need_download.retain(fresh);
         log(&format!(
@@ -749,6 +749,18 @@ pub fn is_public_device_record_url(url: &str) -> bool {
     path.contains("/basicUdiData/") || path.contains("/udiDiData/")
 }
 
+/// True when a body can be an EUDAMED device record: JSON object, not an HTML
+/// page. On 07.11.2026 EUDAMED answered 3'728 detail/Basic UDI-DI requests
+/// with 2xx and its "Server temporarily unavailable" HTML page; they were
+/// written as `<uuid>.json`, then counted as cached and never refetched.
+pub fn looks_like_json_record(body: &str) -> bool {
+    body.trim_start().starts_with('{')
+}
+
+/// Error text for a 2xx answer that is not a JSON record (see
+/// [`looks_like_json_record`]). Counts toward the circuit breaker like a 429.
+const NOT_JSON_ERR: &str = "HTTP 2xx but not JSON (EUDAMED error page)";
+
 /// Attach the Windows desktop browser headers the public UI accepts on a
 /// device detail or Basic UDI-DI request. Per-request, so the same agent can
 /// still list with ureq's own User-Agent.
@@ -933,7 +945,8 @@ static PUBLIC_CIRCUIT: Mutex<PublicCircuit> = Mutex::new(PublicCircuit::fresh())
 fn note_public_outcome(url: &str, res: &Result<String, String>) -> bool {
     let outcome = match res {
         Ok(_) => PublicOutcome::Ok,
-        Err(e) if e.starts_with("HTTP 429") => PublicOutcome::Http429,
+        // A 2xx HTML error page is as much a refusal as a 429.
+        Err(e) if e.starts_with("HTTP 429") || e == NOT_JSON_ERR => PublicOutcome::Http429,
         Err(_) => PublicOutcome::Other,
     };
     let mut guard = PUBLIC_CIRCUIT.lock().unwrap_or_else(|e| e.into_inner());
@@ -983,7 +996,22 @@ fn eudamed_get_inner(
             Ok(mut resp) => {
                 let status = resp.status().as_u16();
                 if (200..300).contains(&status) {
-                    return resp.body_mut().read_to_string().map_err(|e| e.to_string());
+                    let body = resp
+                        .body_mut()
+                        .read_to_string()
+                        .map_err(|e| e.to_string())?;
+                    // A record URL must answer with a JSON object. EUDAMED's
+                    // HTML error page also comes with 2xx; retry it and never
+                    // hand it on to be cached.
+                    if is_public_device_record_url(url) && !looks_like_json_record(&body) {
+                        last = NOT_JSON_ERR.to_string();
+                        if attempt < max_attempts {
+                            std::thread::sleep(std::time::Duration::from_secs(5 * attempt as u64));
+                            continue;
+                        }
+                        return Err(last);
+                    }
+                    return Ok(body);
                 }
                 if status == 429 {
                     // EUDAMED's block (05.11.2026) carries a notice pointing to
@@ -2064,6 +2092,20 @@ fn filter_unchanged(
 
 /// Generic parallel download: fetch URL per UUID, save to dir, log to file.
 /// Returns (downloaded_count, cached_count).
+/// A cached detail/basic file counts only when it starts like a JSON object.
+/// An empty file or a saved HTML error page is fetched again.
+pub fn cached_record_ok(path: &Path) -> bool {
+    use std::io::Read;
+    let Ok(mut f) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut head = [0u8; 64];
+    let n = f.read(&mut head).unwrap_or(0);
+    String::from_utf8_lossy(&head[..n])
+        .trim_start()
+        .starts_with('{')
+}
+
 fn parallel_fetch(
     uuids: &[String],
     target_dir: &Path,
@@ -2080,7 +2122,7 @@ fn parallel_fetch(
         .iter()
         .filter(|uuid| {
             let p = target_dir.join(format!("{}.json", uuid));
-            !p.exists() || std::fs::metadata(&p).map(|m| m.len() == 0).unwrap_or(true)
+            !cached_record_ok(&p)
         })
         .collect();
     let cached = uuids.len() - need.len();
@@ -2493,6 +2535,12 @@ mod listing_breaker_tests {
                                 } else {
                                     (200, "OK", r#"{"value":[]}"#)
                                 }
+                            } else if target.contains("/udiDiData/00000000-html") {
+                                (
+                                    200,
+                                    "OK",
+                                    "<!DOCTYPE html>\n<html><title>Server temporarily unavailable</title></html>",
+                                )
                             } else if is_public_device_record_url(&format!(
                                 "https://ec.europa.eu{target}"
                             )) {
@@ -2533,6 +2581,43 @@ mod listing_breaker_tests {
                 let _ = join.join();
             }
         }
+    }
+
+    #[test]
+    fn html_error_page_with_200_is_an_error_not_a_record() {
+        let api = LocalApi::spawn();
+        let limiter = RateLimiter::new(Duration::from_millis(0));
+        let agent = eudamed_agent();
+        let detail = format!(
+            "http://127.0.0.1:{}/devices/udiDiData/00000000-html?languageIso2Code=en",
+            api.port
+        );
+        if public_endpoint_blocked() {
+            return; // another test tripped the shared breaker
+        }
+        assert_eq!(
+            eudamed_get(&agent, &limiter, &detail, 1).unwrap_err(),
+            NOT_JSON_ERR
+        );
+    }
+
+    #[test]
+    fn saved_html_page_is_not_a_cached_record() {
+        assert!(looks_like_json_record("  {\"uuid\":\"x\"}"));
+        assert!(!looks_like_json_record("<!DOCTYPE html>"));
+        let dir = std::env::temp_dir().join(format!("e2f_cache_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let ok = dir.join("ok.json");
+        let html = dir.join("html.json");
+        let empty = dir.join("empty.json");
+        std::fs::write(&ok, "\n{\"uuid\":\"x\"}").unwrap();
+        std::fs::write(&html, "<!DOCTYPE html>\n<html lang=\"en\">").unwrap();
+        std::fs::write(&empty, "").unwrap();
+        assert!(cached_record_ok(&ok));
+        assert!(!cached_record_ok(&html));
+        assert!(!cached_record_ok(&empty));
+        assert!(!cached_record_ok(&dir.join("missing.json")));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
