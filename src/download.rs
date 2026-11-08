@@ -661,6 +661,17 @@ pub fn index_all_detail_versions(
 
 /// Create the listing_cache table if it doesn't exist.
 fn ensure_listing_cache(conn: &rusqlite::Connection) {
+    // The listing connections are opened raw (not via version_db::open_db), so
+    // the datalake row-hash table must be created here too: on 08.11.2026 the
+    // first nightly SRN pass ran before any open_db and every hash INSERT failed
+    // silently (only the GTIN pass stored hashes).
+    let _ = conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS datalake_row_hash (
+            uuid TEXT PRIMARY KEY,
+            hash TEXT NOT NULL,
+            seen_at TEXT NOT NULL DEFAULT ''
+        );",
+    );
     let _ = conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS listing_cache (
@@ -2651,6 +2662,21 @@ mod listing_breaker_tests {
     struct Silent;
     impl DownloadProgress for Silent {
         fn on_event(&self, _: DownloadEvent) {}
+    }
+
+    #[test]
+    fn raw_listing_connection_can_store_row_hashes() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        ensure_listing_cache(&conn);
+        set_row_hash(&conn, "u1", "h1");
+        let h: String = conn
+            .query_row(
+                "SELECT hash FROM datalake_row_hash WHERE uuid='u1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(h, "h1");
     }
 
     #[test]
