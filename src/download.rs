@@ -1315,6 +1315,85 @@ fn datalake_listing_for_srn(
     })
 }
 
+/// The SRN's devices as `listing_cache` knows them from earlier runs, for a run
+/// in which no listing source answers (10.11.2026: datalake 504 all day, public
+/// listing 429). Their versions are the last listed ones, so no new change is
+/// detected, but a device whose detail or Basic UDI-DI is still missing — or
+/// whose version bump was seen earlier and not fetched yet — is retried instead
+/// of waiting for the next night with a working listing. Never `complete`.
+/// The Basic UDI-DI version stays None, as for a datalake listing.
+fn cached_listing_for_srn(
+    srn: &str,
+    limit: Option<usize>,
+    keep: Option<&std::collections::HashSet<String>>,
+    conn: &Mutex<rusqlite::Connection>,
+    progress: &dyn DownloadProgress,
+) -> Option<SrnListing> {
+    let mut entries: Vec<(String, Option<u32>, Option<u32>)> = Vec::new();
+    {
+        let db = conn.lock().ok()?;
+        let mut st = db
+            .prepare(
+                "SELECT uuid, primary_di, version_number FROM listing_cache WHERE srn = ?1 ORDER BY uuid",
+            )
+            .ok()?;
+        let rows = st
+            .query_map([srn], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, Option<String>>(1)?,
+                    r.get::<_, Option<u32>>(2)?,
+                ))
+            })
+            .ok()?;
+        for (uuid, di, version) in rows.flatten() {
+            if let Some(k) = keep {
+                if !k.contains(&uuid) && !di.as_ref().is_some_and(|d| k.contains(d)) {
+                    continue;
+                }
+            }
+            entries.push((uuid, version, None));
+        }
+    }
+    if let Some(l) = limit {
+        entries.truncate(l);
+    }
+    if entries.is_empty() {
+        return None;
+    }
+    progress.on_event(DownloadEvent::Log(format!(
+        "  SRN {}: {} devices from the cached listing (no listing source answered) — pending devices are retried, new changes are not detected",
+        srn,
+        entries.len()
+    )));
+    Some(SrnListing {
+        entries,
+        total_pages: None,
+        complete: false,
+    })
+}
+
+/// A GTIN's devices as `listing_cache` knows them (see [`cached_listing_for_srn`]).
+fn cached_listing_for_gtin(
+    gtin: &str,
+    conn: &Mutex<rusqlite::Connection>,
+) -> Vec<(String, Option<u32>, Option<u32>)> {
+    let Ok(db) = conn.lock() else {
+        return Vec::new();
+    };
+    let Ok(mut st) = db.prepare(
+        "SELECT uuid, version_number FROM listing_cache WHERE primary_di IN (?1, ?2) ORDER BY uuid",
+    ) else {
+        return Vec::new();
+    };
+    let padded = format!("{:0>14}", gtin);
+    st.query_map([gtin, padded.as_str()], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, Option<u32>>(1)?, None))
+    })
+    .map(|rows| rows.flatten().collect())
+    .unwrap_or_default()
+}
+
 /// Download paginated listings for a single SRN. Returns entries found.
 fn download_listing_for_srn(
     base_url: &str,
@@ -1359,11 +1438,13 @@ fn download_listing_for_srn_opts(
             // Forced datalake: an error (None) stops here. Falling through
             // would send the public listing request this mode exists to avoid.
             None if crate::datalake::forced() => {
-                return SrnListing {
-                    entries: Vec::new(),
-                    total_pages: None,
-                    complete: false,
-                };
+                return cached_listing_for_srn(srn, limit, keep, conn, progress).unwrap_or(
+                    SrnListing {
+                        entries: Vec::new(),
+                        total_pages: None,
+                        complete: false,
+                    },
+                );
             }
             None => {}
         }
@@ -1446,6 +1527,12 @@ fn download_listing_for_srn_opts(
                     if let Some(res) =
                         datalake_listing_for_srn(srn, limit, keep, max_pages, conn, progress)
                     {
+                        return res;
+                    }
+                }
+                // Neither source answered: the devices known from earlier runs.
+                if page == 0 {
+                    if let Some(res) = cached_listing_for_srn(srn, limit, keep, conn, progress) {
                         return res;
                     }
                 }
@@ -1795,11 +1882,13 @@ fn download_listing_for_gtin(
         match datalake_lookup_gtin(gtin, conn, &now, progress) {
             Some(entries) => return entries,
             None if crate::datalake::forced() => {
+                let cached = cached_listing_for_gtin(gtin, conn);
                 progress.on_event(DownloadEvent::Log(format!(
-                    "  GTIN {}: public listing not asked",
-                    gtin
+                    "  GTIN {}: public listing not asked, {} device(s) from the cached listing",
+                    gtin,
+                    cached.len()
                 )));
-                return Vec::new();
+                return cached;
             }
             None => {}
         }
@@ -2712,17 +2801,23 @@ mod listing_breaker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// The listing source is a process-wide environment variable: tests that
+    /// set it must not run at the same time.
+    static SOURCE_LOCK: Mutex<()> = Mutex::new(());
+
     struct ListingSourceGuard {
         prev: Option<String>,
+        _lock: std::sync::MutexGuard<'static, ()>,
     }
 
     impl ListingSourceGuard {
         fn datalake() -> Self {
+            let lock = SOURCE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
             let prev = std::env::var("EUDAMED_LISTING_SOURCE").ok();
             // The process environment is the production switch. Restored on drop
             // so other tests keep seeing an unset source.
             unsafe { std::env::set_var("EUDAMED_LISTING_SOURCE", "datalake") };
-            Self { prev }
+            Self { prev, _lock: lock }
         }
     }
 
@@ -3046,5 +3141,83 @@ mod listing_breaker_tests {
             hits.iter().all(|h| !h.contains("udiDiData")),
             "public listing was probed: {hits:?}"
         );
+    }
+
+    /// 10.11.2026: the datalake answered 504 all day and the public listing
+    /// 429. The devices known from earlier runs must still be handed to the
+    /// version check, so pending ones are retried.
+    #[test]
+    fn datalake_outage_reads_the_cached_listing() {
+        let _source = ListingSourceGuard::datalake();
+        let api = LocalApi::spawn();
+        crate::datalake::set_test_udi_url(Some(format!(
+            "http://127.0.0.1:{}/eudamed/udi",
+            api.port
+        )));
+        crate::datalake::trip_test_breaker();
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        ensure_listing_cache(&conn);
+        for (uuid, di, version) in [("u1", "04000000000011", 3), ("u2", "04000000000028", 1)] {
+            conn.execute(
+                "INSERT INTO listing_cache (uuid, srn, primary_di, version_number, listed_at) VALUES (?1, 'DE-MF-000000001', ?2, ?3, 'x')",
+                rusqlite::params![uuid, di, version],
+            )
+            .unwrap();
+        }
+        let conn = Mutex::new(conn);
+        let limiter = RateLimiter::new(Duration::from_millis(0));
+        let public_base = format!("http://127.0.0.1:{}/devices/udiDiData", api.port);
+
+        let all = download_listing_for_srn_opts(
+            &public_base,
+            "DE-MF-000000001",
+            None,
+            None,
+            None,
+            &conn,
+            &limiter,
+            &Silent,
+        );
+        assert_eq!(
+            all.entries,
+            vec![
+                ("u1".to_string(), Some(3), None),
+                ("u2".to_string(), Some(1), None)
+            ]
+        );
+        assert!(!all.complete, "a cached listing is never complete");
+
+        let keep: std::collections::HashSet<String> = ["04000000000028".to_string()].into();
+        let kept = download_listing_for_srn_opts(
+            &public_base,
+            "DE-MF-000000001",
+            None,
+            Some(&keep),
+            None,
+            &conn,
+            &limiter,
+            &Silent,
+        );
+        assert_eq!(kept.entries, vec![("u2".to_string(), Some(1), None)]);
+
+        let unknown = download_listing_for_srn_opts(
+            &public_base,
+            "DE-MF-000000002",
+            None,
+            None,
+            None,
+            &conn,
+            &limiter,
+            &Silent,
+        );
+        assert!(unknown.entries.is_empty());
+
+        let gtin =
+            download_listing_for_gtin(&public_base, "4000000000011", &conn, &limiter, &Silent);
+        assert_eq!(gtin, vec![("u1".to_string(), Some(3), None)]);
+
+        crate::datalake::set_test_breaker(false);
+        let hits = api.hits.lock().unwrap().clone();
+        assert!(hits.is_empty(), "no source may be asked: {hits:?}");
     }
 }

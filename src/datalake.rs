@@ -443,6 +443,73 @@ pub fn set_test_udi_url(url: Option<String>) {
 /// `/udi?<key>=<value>`, following `nextLink`; stops after `max_pages` pages
 /// (then `complete` is false). An error on a later page keeps what was read.
 pub fn query(key: &str, value: &str, max_pages: Option<usize>) -> Result<DlQuery> {
+    if down() {
+        anyhow::bail!(
+            "datalake not available: {DOWN_AFTER} requests in a row failed, not asked again in this run"
+        );
+    }
+    let res = query_inner(key, value, max_pages);
+    if breaker_counts() {
+        use std::sync::atomic::Ordering::Relaxed;
+        match &res {
+            Ok(_) => DL_FAILS.store(0, Relaxed),
+            Err(e) => {
+                if DL_FAILS.fetch_add(1, Relaxed) + 1 == DOWN_AFTER {
+                    eprintln!(
+                        "WARNING: EUDAMED datalake not available ({e}) — {DOWN_AFTER} requests in a row failed; the rest of this run reads the cached listing"
+                    );
+                }
+            }
+        }
+    }
+    res
+}
+
+/// Datalake requests that failed in a row (any error before the first page).
+static DL_FAILS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// After this many failed requests in a row the datalake is not asked again in
+/// this process (10.11.2026: a 504 outage made every request wait 120 s, so a
+/// run with 6'000 GTIN lookups would have crawled through timeouts for days).
+const DOWN_AFTER: usize = 5;
+
+#[cfg(test)]
+thread_local! {
+    static TEST_BREAKER: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Tests share the process-wide counter, so it only counts for a test that
+/// asked for it.
+#[cfg(test)]
+pub fn set_test_breaker(on: bool) {
+    TEST_BREAKER.with(|c| c.set(on));
+    DL_FAILS.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Put the calling test into the state after [`DOWN_AFTER`] failed requests.
+#[cfg(test)]
+pub fn trip_test_breaker() {
+    TEST_BREAKER.with(|c| c.set(true));
+    DL_FAILS.store(DOWN_AFTER, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn breaker_counts() -> bool {
+    #[cfg(test)]
+    {
+        TEST_BREAKER.with(|c| c.get())
+    }
+    #[cfg(not(test))]
+    {
+        true
+    }
+}
+
+/// The datalake failed [`DOWN_AFTER`] times in a row in this process.
+pub fn down() -> bool {
+    breaker_counts() && DL_FAILS.load(std::sync::atomic::Ordering::Relaxed) >= DOWN_AFTER
+}
+
+fn query_inner(key: &str, value: &str, max_pages: Option<usize>) -> Result<DlQuery> {
     let agent = agent();
     let mut url = format!(
         "{}?format=json&api-version=v1.0&{key}={}",
