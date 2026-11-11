@@ -428,21 +428,18 @@ pub fn run_download(
         }
     }
 
-    // With the public endpoint blocked, only devices whose detail file was
-    // written in THIS run (and that have a Basic UDI-DI file) go on to indexing,
-    // convert and push. A stale cached detail of a changed device must not be
-    // indexed (its version would hide the change) nor reconverted and re-pushed.
+    // With the public endpoint blocked, only devices with a usable detail and a
+    // Basic UDI-DI file go on to indexing, convert and push. A stale cached detail
+    // of a changed device must not be indexed (its version would hide the change)
+    // nor reconverted and re-pushed, so a changed device needs a detail written in
+    // THIS run. Any other device (new, or one whose cache was incomplete) may use
+    // its cached detail: nothing says it is outdated, and only its Basic UDI-DI
+    // was missing (11.11.2026: 5'725 details on disk were dropped every night
+    // although their Basic UDI-DI arrived).
     if public_endpoint_blocked() {
         let total = need_download.len();
-        let fresh = |u: &String| {
-            let d = detail_dir.join(format!("{}.json", u));
-            let fresh_detail = std::fs::metadata(&d)
-                .and_then(|m| m.modified())
-                .map(|t| t >= run_start)
-                .unwrap_or(false);
-            fresh_detail && cached_record_ok(&basic_dir.join(format!("{}.json", u)))
-        };
-        need_download.retain(fresh);
+        need_download
+            .retain(|u| usable_when_blocked(u, &stale, &detail_dir, &basic_dir, run_start));
         log(&format!(
             "WARNING: EUDAMED public endpoint blocked (429) — {} of {} changed device(s) could not be downloaded; they are retried next run",
             total - need_download.len(),
@@ -2324,6 +2321,30 @@ fn filter_unchanged(
     (need_download, unchanged, stale)
 }
 
+/// With the public endpoint blocked: may device `u` go on to convert and push?
+/// It needs a usable Basic UDI-DI file and a usable detail; a device in `stale`
+/// (changed since its files were cached) needs a detail written at or after
+/// `run_start`, any other device may use its cached detail.
+fn usable_when_blocked(
+    u: &str,
+    stale: &HashSet<String>,
+    detail_dir: &Path,
+    basic_dir: &Path,
+    run_start: std::time::SystemTime,
+) -> bool {
+    let d = detail_dir.join(format!("{}.json", u));
+    if !cached_record_ok(&d) || !cached_record_ok(&basic_dir.join(format!("{}.json", u))) {
+        return false;
+    }
+    if !stale.contains(u) {
+        return true;
+    }
+    std::fs::metadata(&d)
+        .and_then(|m| m.modified())
+        .map(|t| t >= run_start)
+        .unwrap_or(false)
+}
+
 /// Write the datalake Basic UDI-DI ([`crate::datalake::basic_for`]) of every
 /// device in `uuids` that has no usable cached Basic UDI-DI. Returns the count.
 fn write_datalake_basics(uuids: &[String], force: &HashSet<String>, basic_dir: &Path) -> usize {
@@ -2766,6 +2787,40 @@ mod listing_breaker_tests {
             )
             .unwrap();
         assert_eq!(h, "h1");
+    }
+
+    #[test]
+    fn blocked_endpoint_keeps_cached_details_of_unchanged_devices() {
+        let dir = std::env::temp_dir().join(format!("e2f_blocked_{}", std::process::id()));
+        let (detail, basic) = (dir.join("detail"), dir.join("basic"));
+        std::fs::create_dir_all(&detail).unwrap();
+        std::fs::create_dir_all(&basic).unwrap();
+        for u in ["new", "changed", "nobasic"] {
+            std::fs::write(detail.join(format!("{u}.json")), "{\"uuid\":1}").unwrap();
+        }
+        for u in ["new", "changed"] {
+            std::fs::write(basic.join(format!("{u}.json")), "{\"code\":1}").unwrap();
+        }
+        // Run started after the files were written: all details are "old".
+        let run_start = std::time::SystemTime::now() + Duration::from_secs(5);
+        let stale: HashSet<String> = ["changed".to_string()].into();
+        let ok = |u| usable_when_blocked(u, &stale, &detail, &basic, run_start);
+        assert!(
+            ok("new"),
+            "a cached detail of an unchanged device is usable"
+        );
+        assert!(
+            !ok("changed"),
+            "a changed device needs a detail of this run"
+        );
+        assert!(!ok("nobasic"), "no Basic UDI-DI, no push");
+        assert!(!ok("missing"));
+        // A detail written during the run is usable for a changed device too.
+        let earlier = std::time::SystemTime::now() - Duration::from_secs(60);
+        assert!(usable_when_blocked(
+            "changed", &stale, &detail, &basic, earlier
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

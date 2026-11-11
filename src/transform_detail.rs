@@ -1076,7 +1076,14 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
             let mut values = Vec::new();
             let mut maximums = Vec::new();
 
-            if let Some(v) = cs.value {
+            // A value needs a unit: GS1 rejects an empty measurementUnitCode at
+            // XSD level (G361/SCHEMA), which fails the whole CreateMany batch
+            // (11.11.2026: one LARGE-characteristic size with value 0 rejected
+            // 100 devices). A characteristic code (MU137..MU176) carries no unit,
+            // so its EUDAMED placeholder value is dropped.
+            if unit_code.is_empty() {
+                // no value / maximum slots
+            } else if let Some(v) = cs.value {
                 values.push(MeasurementValue {
                     unit_code: unit_code.clone(),
                     value: v,
@@ -1088,7 +1095,7 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
                 });
             }
 
-            if let Some(max) = cs.maximum_value {
+            if let (false, Some(max)) = (unit_code.is_empty(), cs.maximum_value) {
                 maximums.push(MeasurementValue {
                     unit_code: unit_code.clone(),
                     value: max,
@@ -2186,6 +2193,27 @@ pub fn transform_detail_document(
 mod tests {
     use super::{build_certification_module, iso_max};
     use crate::api_detail::BasicUdiDiData;
+
+    #[test]
+    fn clinical_size_without_unit_carries_no_value() {
+        use super::{build_clinical_sizes, ApiDeviceDetail};
+        // 11.11.2026, a8e79b92: CST27 with MU163 (LARGE) and value 0 was sent
+        // with measurementUnitCode "" -> G361/SCHEMA for the whole batch.
+        let d: ApiDeviceDetail = serde_json::from_str(
+            r#"{"clinicalSizes":[
+              {"value":0,"type":{"code":"refdata.clinical-size-type.CST27"},
+               "precision":{"code":"refdata.clinical-size-precision.value"},
+               "metricOfMeasurement":{"code":"refdata.unit-of-measurement.MU163"}},
+              {"minimumValue":100,"maximumValue":150,"type":{"code":"refdata.clinical-size-type.CST65"},
+               "precision":{"code":"refdata.clinical-size-precision.range"},
+               "metricOfMeasurement":{"code":"refdata.unit-of-measurement.MU10"}}]}"#,
+        )
+        .unwrap();
+        let out = build_clinical_sizes(&d);
+        let v = serde_json::to_value(&out).unwrap().to_string();
+        assert!(!v.contains("\"MeasurementUnitCode\":\"\""), "{v}");
+        assert!(v.contains("LARGE") && v.contains("CMT"), "{v}");
+    }
 
     fn basic_with_certs(certs: &str) -> BasicUdiDiData {
         serde_json::from_str(&format!(
