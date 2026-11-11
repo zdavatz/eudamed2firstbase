@@ -2635,8 +2635,8 @@ fn run_pipeline(
         done(
             true,
             &format!(
-                "Dry run complete. {} devices downloaded, {} converted.",
-                uuids.len(),
+                "Dry run complete. {}, {} converted.",
+                device_count_summary(&uuids, &detail_dir, &basic_dir),
                 converted
             ),
         );
@@ -2670,10 +2670,13 @@ fn run_pipeline(
                     done(
                         true,
                         &format!(
-                        "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.{}",
-                        uuids.len(), converted, out.accepted, out.rejected,
-                        transport_failure_note(out.transport_failed)
-                    ),
+                            "Pipeline complete. {}, {} converted, {} accepted, {} rejected.{}",
+                            device_count_summary(&uuids, &detail_dir, &basic_dir),
+                            converted,
+                            out.accepted,
+                            out.rejected,
+                            transport_failure_note(out.transport_failed)
+                        ),
                     );
                 }
                 Err(e) => {
@@ -2701,9 +2704,12 @@ fn run_pipeline(
                     done(
                         true,
                         &format!(
-                        "Pipeline complete. {} downloaded, {} converted, {} accepted, {} rejected.",
-                        uuids.len(), converted, accepted, rejected
-                    ),
+                            "Pipeline complete. {}, {} converted, {} accepted, {} rejected.",
+                            device_count_summary(&uuids, &detail_dir, &basic_dir),
+                            converted,
+                            accepted,
+                            rejected
+                        ),
                     );
                 }
                 Err(e) => {
@@ -5316,5 +5322,52 @@ mod tests {
         ));
 
         let _ = std::fs::remove_dir_all(&base);
+    }
+}
+
+/// "N devices found, M complete" for the pipeline's closing line. A device is
+/// complete when its detail and its Basic UDI-DI file are usable on disk —
+/// the old line printed the listing count as "downloaded", so a run that was
+/// blocked for every record still said "157 downloaded" (Maik, 11.11.2026).
+fn device_count_summary<'a>(
+    uuids: impl IntoIterator<Item = &'a String>,
+    detail_dir: &std::path::Path,
+    basic_dir: &std::path::Path,
+) -> String {
+    let (mut found, mut complete) = (0usize, 0usize);
+    for u in uuids {
+        found += 1;
+        let f = format!("{}.json", u);
+        if download::cached_record_ok(&detail_dir.join(&f))
+            && download::cached_record_ok(&basic_dir.join(&f))
+        {
+            complete += 1;
+        }
+    }
+    format!(
+        "{} device(s) found, {} complete (detail + Basic UDI-DI)",
+        found, complete
+    )
+}
+
+#[cfg(test)]
+mod device_count_summary_tests {
+    #[test]
+    fn counts_only_devices_with_both_files() {
+        let dir = std::env::temp_dir().join(format!("e2f_summary_{}", std::process::id()));
+        let (d, b) = (dir.join("detail"), dir.join("basic"));
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::create_dir_all(&b).unwrap();
+        std::fs::write(d.join("a.json"), "{\"x\":1}").unwrap();
+        std::fs::write(b.join("a.json"), "{\"x\":1}").unwrap();
+        std::fs::write(d.join("b.json"), "{\"x\":1}").unwrap();
+        std::fs::write(d.join("c.json"), "<html>").unwrap();
+        std::fs::write(b.join("c.json"), "{\"x\":1}").unwrap();
+        let uuids: Vec<String> = ["a", "b", "c", "d"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(
+            super::device_count_summary(&uuids, &d, &b),
+            "4 device(s) found, 1 complete (detail + Basic UDI-DI)"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
