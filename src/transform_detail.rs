@@ -1948,6 +1948,15 @@ pub fn transform_detail_document(
         .value
         .clone();
     let base_discontinued = base_trade_item.synchronisation_dates.discontinued.clone();
+    let is_ivd_act = matches!(
+        basic_udi.and_then(|b| b.regulatory_act()).as_deref(),
+        Some("IVDR") | Some("IVDD")
+    );
+    let base_multi_component = base_trade_item
+        .medical_device_module
+        .info
+        .multi_component_type
+        .clone();
 
     // Check for packaging hierarchy
     let levels = device
@@ -2087,6 +2096,14 @@ pub fn transform_detail_document(
                 info: MedicalDeviceInformation {
                     eu_status: CodeValue {
                         value: base_status_code.clone(),
+                    },
+                    // 097.122: on an IVDR/IVDD trade item multiComponentDeviceTypeCode
+                    // must be KIT or DEVICE, package levels included (11.11.2026:
+                    // 4 IVDR devices with packaging rejected on the package GTIN).
+                    multi_component_type: if is_ivd_act {
+                        base_multi_component.clone()
+                    } else {
+                        None
                     },
                     ..Default::default()
                 },
