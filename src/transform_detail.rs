@@ -1431,6 +1431,22 @@ fn build_referenced_trade_items(device: &ApiDeviceDetail) -> Vec<ReferencedTrade
 /// the UDID_CodeLists sheet: MDD_II_4 … MDD_VI, AIMDD_II_4 … AIMDD_V (AIMDD has
 /// no annex VI). None for an unknown directive or annex.
 fn legacy_certification_standard(type_code: &str, annex: &str) -> Option<&'static str> {
+    // IVDD (097.108 / BR-UDID-113, 11.11.2026): EUDAMED
+    // `refdata.legacy.ivdd-certificate-type.<annex>`. "ivdd" contains no "mdd",
+    // but test it first anyway so the order never matters.
+    if type_code.contains("ivdd") {
+        return match annex {
+            "iii-6" => Some("IVDD_III_6"),
+            "iv-excluding-4-6" => Some("IVDD_IV_EX_4_6"),
+            "iv-4" => Some("IVDD_IV_4"),
+            "iv-6" => Some("IVDD_IV_6"),
+            "v" => Some("IVDD_V"),
+            "vi" => Some("IVDD_VI"),
+            "vii-5" => Some("IVDD_VII_5"),
+            "vii-excluding-5" => Some("IVDD_VII_EX_5"),
+            _ => None,
+        };
+    }
     if type_code.contains("aimdd") {
         match annex {
             "ii-4" => Some("AIMDD_II_4"),
@@ -1526,7 +1542,8 @@ fn build_certification_module(
             // `refdata.legacy.aimdd-certificate-type.<annex>`. "aimdd" contains
             // "mdd", so AIMDD must be tested first — until 05.11.2026 AIMDD
             // certificates went out as MDD_* and GS1 rejected them (097.107).
-            annex @ ("ii-4" | "ii-excluding-4" | "iii" | "iv" | "v" | "vi") => {
+            annex @ ("ii-4" | "ii-excluding-4" | "iii" | "iv" | "v" | "vi" | "iii-6"
+            | "iv-excluding-4-6" | "iv-4" | "iv-6" | "vii-5" | "vii-excluding-5") => {
                 match legacy_certification_standard(type_code, annex) {
                     Some(s) => s,
                     None => continue,
@@ -2246,6 +2263,27 @@ mod tests {
     /// is the required one (proven on TEST 20.08.2026 with the two DEKRA
     /// MDR technical-documentation certificates of GTIN 04250203913355 —
     /// rejected as two entries, accepted as one).
+    #[test]
+    fn ivdd_certificate_types_map_to_ivdd_standards() {
+        use super::legacy_certification_standard as l;
+        let t = "refdata.legacy.ivdd-certificate-type.";
+        assert_eq!(l(&format!("{t}iv-4"), "iv-4"), Some("IVDD_IV_4"));
+        assert_eq!(
+            l(&format!("{t}iv-excluding-4-6"), "iv-excluding-4-6"),
+            Some("IVDD_IV_EX_4_6")
+        );
+        assert_eq!(l(&format!("{t}v"), "v"), Some("IVDD_V"));
+        // MDD/AIMDD unchanged
+        assert_eq!(
+            l("refdata.legacy.mdd-certificate-type.v", "v"),
+            Some("MDD_V")
+        );
+        assert_eq!(
+            l("refdata.legacy.aimdd-certificate-type.v", "v"),
+            Some("AIMDD_V")
+        );
+    }
+
     #[test]
     fn certificates_of_same_standard_are_merged() {
         let basic = basic_with_certs(
