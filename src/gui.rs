@@ -275,6 +275,9 @@ pub struct App {
     update_info: Option<update::UpdateInfo>,
     /// User dismissed the update banner this session.
     update_dismissed: bool,
+    /// Set when the run log reports that the EUDAMED datalake API does not
+    /// answer; shown as a red banner until the next run starts.
+    datalake_warning: Option<String>,
     /// Receiver for in-app install events (download/swap progress).
     install_rx: Option<mpsc::Receiver<installer::InstallEvent>>,
     /// True while the in-app update is downloading/swapping.
@@ -385,6 +388,7 @@ impl App {
             update_rx: Some(spawn_update_check()),
             update_info: None,
             update_dismissed: false,
+            datalake_warning: None,
             install_rx: None,
             installing: false,
             install_error: None,
@@ -569,6 +573,33 @@ impl App {
 
     /// Render the "update available" banner (and install progress).
     /// Returns nothing; mutates state when the user clicks a button.
+    /// Red banner while the EUDAMED datalake API does not answer: the listing
+    /// then hangs on timeouts and only cached devices are found.
+    fn render_datalake_warning(&mut self, ui: &mut egui::Ui) {
+        let Some(msg) = self.datalake_warning.clone() else {
+            return;
+        };
+        egui::Frame::new()
+            .fill(egui::Color32::from_rgb(255, 230, 230))
+            .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(200, 0, 0)))
+            .inner_margin(8.0)
+            .corner_radius(4.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(160, 0, 0),
+                        "⚠ Die EUDAMED Datalake-API antwortet nicht. Neue oder geänderte Geräte werden nicht gefunden; bitte später erneut versuchen.",
+                    )
+                    .on_hover_text(msg);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Ausblenden").clicked() {
+                            self.datalake_warning = None;
+                        }
+                    });
+                });
+            });
+    }
+
     fn render_update_banner(&mut self, ui: &mut egui::Ui) {
         if self.update_dismissed {
             return;
@@ -780,6 +811,7 @@ impl App {
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
         self.running = true;
+        self.datalake_warning = None;
         self.log_lines
             .push("WhatsApp: starting pairing session…".to_string());
 
@@ -830,6 +862,7 @@ impl App {
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
         self.running = true;
+        self.datalake_warning = None;
         if raw != jid {
             self.log_lines
                 .push(format!("WhatsApp: \"{}\" → {}", raw, jid));
@@ -959,6 +992,7 @@ impl App {
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
         self.running = true;
+        self.datalake_warning = None;
         self.log_lines.clear();
         self.download_status = None;
         self.log_lines.push("Pipeline started...".to_string());
@@ -1021,6 +1055,12 @@ impl eframe::App for App {
                         {
                             self.qr_texture = None;
                             self.qr_data = None;
+                        }
+                        if line
+                            .trim_start()
+                            .starts_with(crate::datalake::NOT_RESPONDING)
+                        {
+                            self.datalake_warning = Some(line.trim().to_string());
                         }
                         self.log_lines.push(line);
                     }
@@ -1109,6 +1149,7 @@ impl eframe::App for App {
 
             // GitHub in-app updater banner (only shows when a newer release exists)
             self.render_update_banner(ui);
+            self.render_datalake_warning(ui);
 
             if self.horizontal_split {
                 // --- Horizontal: Settings left, Log right ---

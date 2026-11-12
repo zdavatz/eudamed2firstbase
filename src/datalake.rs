@@ -36,7 +36,10 @@ pub const UDI_URL: &str = "https://api.datalake.sante.service.ec.europa.eu/eudam
 /// Answers take 10-25 s for 1'000 rows; keep the timeout well above that.
 const TIMEOUT_SECS: u64 = 180;
 const ATTEMPTS: u32 = 4;
+#[cfg(not(test))]
 const RETRY_WAIT_SECS: u64 = 15;
+#[cfg(test)]
+const RETRY_WAIT_SECS: u64 = 0;
 
 /// Set once the public listing answered with EUDAMED's block (v1.0.112): the
 /// rest of the process lists via the datalake. GUI users cannot set env vars.
@@ -79,9 +82,55 @@ pub fn fallback_allowed() -> bool {
 /// Switch the rest of this process to the datalake listing (logged once).
 pub fn activate_fallback(reason: &str) {
     if fallback_allowed() && !FALLBACK.swap(true, std::sync::atomic::Ordering::Relaxed) {
-        eprintln!(
+        notice(format!(
             "Listing source: public EUDAMED listing blocked ({reason}) — switching to the EUDAMED datalake API"
-        );
+        ));
+    }
+}
+
+/// Messages about the datalake's state for the run log. They go through the
+/// caller's progress handler ([`take_notices`]) so the GUI log shows them too —
+/// an `eprintln!` reaches only the terminal, and GUI users saw nothing when the
+/// datalake did not answer (12.11.2026).
+static NOTICES: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+fn notice(msg: String) {
+    if let Ok(mut n) = NOTICES.lock() {
+        n.push(msg);
+    }
+}
+
+/// Drain the pending datalake notices (see [`NOTICES`]).
+pub fn take_notices() -> Vec<String> {
+    NOTICES
+        .lock()
+        .map(|mut n| std::mem::take(&mut *n))
+        .unwrap_or_default()
+}
+
+/// Start of every warning that the datalake does not answer; the GUI shows a
+/// banner for log lines that start with it.
+pub const NOT_RESPONDING: &str = "WARNING: EUDAMED datalake API not responding";
+
+/// Set once the first datalake request of the process failed.
+static FIRST_FAIL_WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(test)]
+thread_local! {
+    static TEST_FIRST_FAIL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// True the first time a datalake request fails in this process (per thread in
+/// tests, which run in parallel).
+fn first_fail() -> bool {
+    #[cfg(test)]
+    {
+        let _ = &FIRST_FAIL_WARNED;
+        !TEST_FIRST_FAIL.with(|c| c.replace(true))
+    }
+    #[cfg(not(test))]
+    {
+        !FIRST_FAIL_WARNED.swap(true, std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -380,9 +429,17 @@ fn agent() -> ureq::Agent {
         .new_agent()
 }
 
-fn get_page(agent: &ureq::Agent, url: &str) -> Result<Value> {
+fn get_page(agent: &ureq::Agent, url: &str, log: &dyn Fn(String)) -> Result<Value> {
     let mut last = String::new();
     for attempt in 0..ATTEMPTS {
+        // A datalake that does not answer costs TIMEOUT_SECS per attempt; say so
+        // at the first failed attempt of the process instead of after all of
+        // them (~13 min), so a GUI user knows why the listing hangs.
+        if attempt == 1 && first_fail() {
+            log(format!(
+                "{NOT_RESPONDING} ({last}) — retrying ({ATTEMPTS} attempts, up to {TIMEOUT_SECS} s each); devices are then listed from the cached listing where one exists, new or changed devices are not found until it answers again"
+            ));
+        }
         if attempt > 0 {
             std::thread::sleep(Duration::from_secs(RETRY_WAIT_SECS * attempt as u64));
         }
@@ -443,21 +500,36 @@ pub fn set_test_udi_url(url: Option<String>) {
 /// `/udi?<key>=<value>`, following `nextLink`; stops after `max_pages` pages
 /// (then `complete` is false). An error on a later page keeps what was read.
 pub fn query(key: &str, value: &str, max_pages: Option<usize>) -> Result<DlQuery> {
+    query_logged(key, value, max_pages, &|m| notice(m))
+}
+
+/// [`query`] that reports the first failed attempt through `log` right away.
+pub fn query_logged(
+    key: &str,
+    value: &str,
+    max_pages: Option<usize>,
+    log: &dyn Fn(String),
+) -> Result<DlQuery> {
     if down() {
         anyhow::bail!(
             "datalake not available: {DOWN_AFTER} requests in a row failed, not asked again in this run"
         );
     }
-    let res = query_inner(key, value, max_pages);
+    let res = query_inner(key, value, max_pages, log);
     if breaker_counts() {
         use std::sync::atomic::Ordering::Relaxed;
         match &res {
             Ok(_) => DL_FAILS.store(0, Relaxed),
             Err(e) => {
+                if first_fail() {
+                    notice(format!(
+                        "{NOT_RESPONDING} ({e}) — devices are listed from the cached listing where one exists; new or changed devices are not found until it answers again"
+                    ));
+                }
                 if DL_FAILS.fetch_add(1, Relaxed) + 1 == DOWN_AFTER {
-                    eprintln!(
-                        "WARNING: EUDAMED datalake not available ({e}) — {DOWN_AFTER} requests in a row failed; the rest of this run reads the cached listing"
-                    );
+                    notice(format!(
+                        "{NOT_RESPONDING}: {DOWN_AFTER} requests in a row failed ({e}) — not asked again in this run; the rest of this run reads the cached listing"
+                    ));
                 }
             }
         }
@@ -509,7 +581,12 @@ pub fn down() -> bool {
     breaker_counts() && DL_FAILS.load(std::sync::atomic::Ordering::Relaxed) >= DOWN_AFTER
 }
 
-fn query_inner(key: &str, value: &str, max_pages: Option<usize>) -> Result<DlQuery> {
+fn query_inner(
+    key: &str,
+    value: &str,
+    max_pages: Option<usize>,
+    log: &dyn Fn(String),
+) -> Result<DlQuery> {
     let agent = agent();
     let mut url = format!(
         "{}?format=json&api-version=v1.0&{key}={}",
@@ -519,7 +596,7 @@ fn query_inner(key: &str, value: &str, max_pages: Option<usize>) -> Result<DlQue
     let mut rows: Vec<Value> = Vec::new();
     let mut pages = 0usize;
     let complete = loop {
-        let page = match get_page(&agent, &url) {
+        let page = match get_page(&agent, &url, log) {
             Ok(p) => p,
             Err(e) if pages == 0 => return Err(e),
             Err(_) => break false,
@@ -559,6 +636,33 @@ fn urlencode(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_datalake_that_does_not_answer_is_reported_in_the_run_log() {
+        use std::io::{Read, Write};
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = l.local_addr().unwrap();
+        std::thread::spawn(move || {
+            for s in l.incoming().take(ATTEMPTS as usize) {
+                let Ok(mut s) = s else { continue };
+                let mut b = [0u8; 2048];
+                let _ = s.read(&mut b);
+                let _ = s.write_all(
+                    b"HTTP/1.1 504 Gateway Time-out\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                );
+            }
+        });
+        TEST_UDI_URL.with(|c| *c.borrow_mut() = Some(format!("http://{addr}/udi")));
+        let logged = std::cell::RefCell::new(Vec::<String>::new());
+        let r = query_logged("MF_SRN", "XX-MF-000000001", Some(1), &|m| {
+            logged.borrow_mut().push(m)
+        });
+        TEST_UDI_URL.with(|c| *c.borrow_mut() = None);
+        assert!(r.is_err());
+        let logged = logged.into_inner();
+        assert_eq!(logged.len(), 1, "{logged:?}");
+        assert!(logged[0].starts_with(NOT_RESPONDING), "{logged:?}");
+        assert!(logged[0].contains("HTTP 504"), "{logged:?}");
+    }
 
     fn class_i_row() -> Value {
         serde_json::json!({

@@ -1229,6 +1229,14 @@ fn set_row_hash(db: &rusqlite::Connection, uuid: &str, hash: &str) {
 /// SRN listing via the datalake (`MF_SRN` filter, 1'000 devices per page).
 /// None = fall back to the public listing (datalake error, or no device under
 /// this SRN — e.g. a PR SRN, which the `MF_SRN` filter may not cover).
+/// Write the pending datalake notices ([`crate::datalake::take_notices`]) to the
+/// run log, so the GUI shows them as well as the terminal.
+fn log_datalake_notices(progress: &dyn DownloadProgress) {
+    for n in crate::datalake::take_notices() {
+        progress.on_event(DownloadEvent::Log(n));
+    }
+}
+
 fn datalake_listing_for_srn(
     srn: &str,
     limit: Option<usize>,
@@ -1239,7 +1247,11 @@ fn datalake_listing_for_srn(
 ) -> Option<SrnListing> {
     // `max_pages` counts public pages of 300; a datalake page holds 1'000.
     let dl_max = max_pages.map(|m| ((m * DEFAULT_PAGE_SIZE as u64).div_ceil(1000)).max(1) as usize);
-    let q = match crate::datalake::query("MF_SRN", srn, dl_max) {
+    let q = crate::datalake::query_logged("MF_SRN", srn, dl_max, &|m| {
+        progress.on_event(DownloadEvent::Log(m))
+    });
+    log_datalake_notices(progress);
+    let q = match q {
         Ok(q) => q,
         Err(e) => {
             progress.on_event(DownloadEvent::Log(format!(
@@ -1521,6 +1533,7 @@ fn download_listing_for_srn_opts(
                 if crate::datalake::is_block_error(&last_err) && crate::datalake::fallback_allowed()
                 {
                     crate::datalake::activate_fallback(&last_err);
+                    log_datalake_notices(progress);
                     if let Some(res) =
                         datalake_listing_for_srn(srn, limit, keep, max_pages, conn, progress)
                     {
@@ -1839,7 +1852,11 @@ fn datalake_lookup_gtin(
     now: &str,
     progress: &dyn DownloadProgress,
 ) -> Option<Vec<(String, Option<u32>, Option<u32>)>> {
-    match crate::datalake::query("PRIMARY_DI", gtin, Some(1)) {
+    let q = crate::datalake::query_logged("PRIMARY_DI", gtin, Some(1), &|m| {
+        progress.on_event(DownloadEvent::Log(m))
+    });
+    log_datalake_notices(progress);
+    match q {
         Ok(q) => {
             let entries = store_datalake_devices(conn, &q.devices, None, now);
             if entries.is_empty() {
@@ -1906,6 +1923,7 @@ fn download_listing_for_gtin(
             // EUDAMED blocks the public endpoint: ask the datalake (v1.0.112).
             if crate::datalake::is_block_error(&e) && crate::datalake::fallback_allowed() {
                 crate::datalake::activate_fallback(&e);
+                log_datalake_notices(progress);
                 if let Some(entries) = datalake_lookup_gtin(gtin, conn, &now, progress) {
                     return entries;
                 }
