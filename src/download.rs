@@ -451,7 +451,7 @@ pub fn run_download(
     // was written in this run and a Basic UDI-DI file is there, so a change
     // whose refetch failed is detected again next run.
     if !hash_changed.is_empty() {
-        let mut stored = 0usize;
+        let mut refreshed: HashSet<String> = HashSet::new();
         for u in &need_download {
             let Some(h) = hash_changed.get(u) else {
                 continue;
@@ -462,13 +462,26 @@ pub fn run_download(
                 .unwrap_or(false);
             if fresh_detail && cached_record_ok(&basic_dir.join(format!("{}.json", u))) {
                 set_row_hash(&conn, u, h);
-                stored += 1;
+                refreshed.insert(u.clone());
             }
         }
+        let open: Vec<&String> = hash_changed
+            .keys()
+            .filter(|u| !refreshed.contains(*u))
+            .collect();
+        let file = update_outdated_list(&open, &refreshed);
         log(&format!(
-            "Datalake row hash: {} of {} changed device(s) refreshed",
-            stored,
-            hash_changed.len()
+            "Datalake row hash: {} of {} changed device(s) refreshed{}",
+            refreshed.len(),
+            hash_changed.len(),
+            match &file {
+                Some((n, path)) => format!(
+                    "; {} changed device(s) still wait for a fresh detail (GS1 has the older version): {}",
+                    n,
+                    path.display()
+                ),
+                None => String::new(),
+            }
         ));
     }
 
@@ -1217,6 +1230,148 @@ fn take_hash_changes(log: &dyn Fn(&str)) -> HashMap<String, String> {
         changes.len()
     ));
     changes
+}
+
+/// `log/outdated_uuids.txt`: devices whose datalake row changed but whose fresh
+/// detail could not be fetched yet, so GS1 still has the older version. Each
+/// run adds its `open` devices and drops the `refreshed` ones; the file is
+/// removed when it gets empty. Returns the count and path while it exists.
+fn update_outdated_list(
+    open: &[&String],
+    refreshed: &HashSet<String>,
+) -> Option<(usize, std::path::PathBuf)> {
+    let path = app_data_dir().join("log").join("outdated_uuids.txt");
+    let mut set: std::collections::BTreeSet<String> = std::fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect();
+    for u in open {
+        set.insert((*u).clone());
+    }
+    set.retain(|u| !refreshed.contains(u));
+    if set.is_empty() {
+        let _ = std::fs::remove_file(&path);
+        return None;
+    }
+    let body: String = set.iter().map(|u| format!("{u}\n")).collect();
+    std::fs::write(&path, body).ok()?;
+    Some((set.len(), path))
+}
+
+/// One device whose datalake row differs from what was last delivered.
+pub struct OutdatedDevice {
+    pub uuid: String,
+    pub srn: String,
+    pub gtin: String,
+    /// `row-hash` (content changed without a version bump) or `version`.
+    pub reason: &'static str,
+}
+
+/// `outdated`: compare the current datalake rows of the worklist with the
+/// stored row hashes and versions, without downloading or pushing anything.
+/// SRNs are read with one `MF_SRN` query each; with `gtin_devices` the devices
+/// of other SRNs in `listing_cache` (the GTIN worklist) are looked up one by one
+/// (`PRIMARY_DI`). Returns the outdated devices and the number of failed
+/// queries (> 0 means the list is incomplete).
+pub fn find_outdated(
+    srns: &[String],
+    gtin_devices: bool,
+    threads: usize,
+    progress: &dyn DownloadProgress,
+) -> anyhow::Result<(Vec<OutdatedDevice>, usize)> {
+    let db_path = app_data_dir().join("db").join("version_tracking.db");
+    let conn = rusqlite::Connection::open(&db_path).context("open version DB")?;
+    ensure_listing_cache(&conn);
+    let hashes: HashMap<String, String> = conn
+        .prepare("SELECT uuid, hash FROM datalake_row_hash")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .flatten()
+        .collect();
+    let versions: HashMap<String, u32> = conn
+        .prepare("SELECT uuid, udi_version FROM udi_versions WHERE udi_version IS NOT NULL")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .flatten()
+        .collect();
+    // uuid -> (srn, primary_di) for every worklist device.
+    let known: HashMap<String, (String, String)> = conn
+        .prepare("SELECT uuid, srn, primary_di FROM listing_cache")?
+        .query_map([], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?
+        .flatten()
+        .collect();
+    drop(conn);
+
+    let srn_set: HashSet<&str> = srns.iter().map(|s| s.as_str()).collect();
+    // Work items: (filter key, value, uuid to match or None for a whole SRN).
+    let mut items: Vec<(&'static str, String, Option<String>)> =
+        srns.iter().map(|s| ("MF_SRN", s.clone(), None)).collect();
+    if gtin_devices {
+        for (u, (srn, di)) in &known {
+            if !srn_set.contains(srn.as_str()) && !di.is_empty() {
+                items.push(("PRIMARY_DI", di.clone(), Some(u.clone())));
+            }
+        }
+    }
+    let total = items.len();
+    let done = AtomicUsize::new(0);
+    let failed = AtomicUsize::new(0);
+    let out: Mutex<Vec<OutdatedDevice>> = Mutex::new(Vec::new());
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(threads.max(1))
+        .build()
+        .context("thread pool")?;
+    let log_line = |m: String| progress.on_event(DownloadEvent::Log(m));
+    pool.install(|| {
+        items.par_iter().for_each(|(key, value, only)| {
+            let q = crate::datalake::query_logged(key, value, None, &|m| log_line(m));
+            let n = done.fetch_add(1, Ordering::Relaxed) + 1;
+            let q = match q {
+                Ok(q) => q,
+                Err(e) => {
+                    failed.fetch_add(1, Ordering::Relaxed);
+                    log_line(format!("  {key}={value}: datalake failed ({e})"));
+                    return;
+                }
+            };
+            let mut found = Vec::new();
+            for d in &q.devices {
+                if only.as_ref().is_some_and(|u| u != &d.uuid) {
+                    continue;
+                }
+                let Some((srn, di)) = known.get(&d.uuid) else {
+                    continue;
+                };
+                let reason = if d
+                    .version
+                    .zip(versions.get(&d.uuid))
+                    .is_some_and(|(now, stored)| now > *stored)
+                {
+                    Some("version")
+                } else if hashes.get(&d.uuid).is_some_and(|h| h != &d.row_hash) {
+                    Some("row-hash")
+                } else {
+                    None
+                };
+                if let Some(reason) = reason {
+                    found.push(OutdatedDevice {
+                        uuid: d.uuid.clone(),
+                        srn: srn.clone(),
+                        gtin: di.clone(),
+                        reason,
+                    });
+                }
+            }
+            if n % 50 == 0 || n == total {
+                log_line(format!("[outdated] {n}/{total} queries"));
+            }
+            out.lock().unwrap_or_else(|e| e.into_inner()).extend(found);
+        });
+    });
+    let mut v = out.into_inner().unwrap_or_else(|e| e.into_inner());
+    v.sort_by(|a, b| (&a.srn, &a.gtin).cmp(&(&b.srn, &b.gtin)));
+    v.dedup_by(|a, b| a.uuid == b.uuid);
+    Ok((v, failed.into_inner()))
 }
 
 fn set_row_hash(db: &rusqlite::Connection, uuid: &str, hash: &str) {

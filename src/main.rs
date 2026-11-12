@@ -2002,6 +2002,86 @@ fn main() -> Result<()> {
             send_gs1_report(&config, env, accepted, rejected, &srns, &gtins, session_id)?;
             Ok(())
         }
+        Some("outdated") => {
+            // outdated [<srns.txt>] [--gtins] [--threads N]
+            // Lists worklist devices whose datalake row changed since it was last
+            // delivered (row hash or version), without downloading or pushing.
+            // Writes log/outdated_uuids.txt (one uuid per line, the file the
+            // nightly keeps up to date) and log/outdated_uuids.tsv.
+            let srn_file = args
+                .iter()
+                .skip(2)
+                .find(|a| !a.starts_with("--") && !a.chars().all(|c| c.is_ascii_digit()))
+                .cloned()
+                .unwrap_or_else(|| "srns_sheet.txt".to_string());
+            let srns: Vec<String> = std::fs::read_to_string(&srn_file)
+                .with_context(|| format!("read {srn_file}"))?
+                .lines()
+                .map(|l| l.trim().to_string())
+                .filter(|l| !l.is_empty() && !l.starts_with('#'))
+                .collect();
+            let gtins = args.iter().any(|a| a == "--gtins");
+            let threads = args
+                .iter()
+                .position(|a| a == "--threads")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(8usize);
+            eprintln!(
+                "outdated: {} SRN(s) from {}{}, {} thread(s)",
+                srns.len(),
+                srn_file,
+                if gtins {
+                    " + GTIN-worklist devices"
+                } else {
+                    ""
+                },
+                threads
+            );
+            let (list, failed) =
+                download::find_outdated(&srns, gtins, threads, &download::StderrProgress)?;
+            let log_dir = download::app_data_dir().join("log");
+            let txt = log_dir.join("outdated_uuids.txt");
+            let tsv = log_dir.join("outdated_uuids.tsv");
+            let mut t = String::new();
+            let mut v = String::from("uuid\tsrn\tgtin\treason\n");
+            for d in &list {
+                t.push_str(&format!("{}\n", d.uuid));
+                v.push_str(&format!(
+                    "{}\t{}\t{}\t{}\n",
+                    d.uuid, d.srn, d.gtin, d.reason
+                ));
+            }
+            if failed > 0 {
+                // Incomplete run: add to the existing list, never shrink it (a
+                // datalake outage would otherwise empty the nightly's list).
+                let mut set: std::collections::BTreeSet<String> = std::fs::read_to_string(&txt)
+                    .unwrap_or_default()
+                    .lines()
+                    .map(|l| l.trim().to_string())
+                    .filter(|l| !l.is_empty())
+                    .collect();
+                set.extend(list.iter().map(|d| d.uuid.clone()));
+                t = set.iter().map(|u| format!("{u}\n")).collect();
+            }
+            std::fs::write(&txt, t)?;
+            std::fs::write(&tsv, v)?;
+            let by_reason = |r: &str| list.iter().filter(|d| d.reason == r).count();
+            eprintln!(
+                "outdated: {} device(s) (row-hash {}, version {}) -> {} , {}",
+                list.len(),
+                by_reason("row-hash"),
+                by_reason("version"),
+                txt.display(),
+                tsv.display()
+            );
+            if failed > 0 {
+                eprintln!(
+                    "WARNING: {failed} datalake querie(s) failed — the list is incomplete, run again when the datalake answers"
+                );
+            }
+            Ok(())
+        }
         Some("status") => {
             // Live snapshot of EUDAMED ingest + Firstbase push state.
             // Reads the version DB (WAL mode, safe alongside a running `check`).

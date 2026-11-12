@@ -482,6 +482,12 @@ fn udi_url() -> String {
     if let Some(url) = TEST_UDI_URL.with(|c| c.borrow().clone()) {
         return url;
     }
+    // EUDAMED_DATALAKE_URL: a stand-in `/udi` (local test server, mirror).
+    if let Ok(u) = std::env::var("EUDAMED_DATALAKE_URL") {
+        if !u.trim().is_empty() {
+            return u.trim().to_string();
+        }
+    }
     UDI_URL.to_string()
 }
 
