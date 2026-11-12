@@ -1216,6 +1216,17 @@ fn take_hash_changes(log: &dyn Fn(&str)) -> HashMap<String, String> {
     if changes.is_empty() {
         return changes;
     }
+    let mut changes = changes;
+    let accepted = accept_delivered_hashes(&mut changes);
+    if accepted > 0 {
+        log(&format!(
+            "Datalake row hash: {} changed device(s) were already delivered in their current version (outdated list) — new hash stored, no refetch",
+            accepted
+        ));
+    }
+    if changes.is_empty() {
+        return changes;
+    }
     let max = hash_change_max();
     if changes.len() > max {
         log(&format!(
@@ -1230,6 +1241,89 @@ fn take_hash_changes(log: &dyn Fn(&str)) -> HashMap<String, String> {
         changes.len()
     ));
     changes
+}
+
+fn delivered_outdated_path() -> std::path::PathBuf {
+    app_data_dir()
+        .join("log")
+        .join("delivered_outdated_uuids.txt")
+}
+
+fn read_uuid_set(path: &std::path::Path) -> std::collections::BTreeSet<String> {
+    std::fs::read_to_string(path)
+        .unwrap_or_default()
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect()
+}
+
+fn write_uuid_set(path: &std::path::Path, set: &std::collections::BTreeSet<String>) {
+    if set.is_empty() {
+        let _ = std::fs::remove_file(path);
+    } else {
+        let body: String = set.iter().map(|u| format!("{u}\n")).collect();
+        let _ = std::fs::write(path, body);
+    }
+}
+
+/// A Production push accepted these devices. Those on the outdated list were
+/// delivered with a detail supplied by hand (`repush-srn` with imported files),
+/// so they move from `outdated_uuids.txt` to `delivered_outdated_uuids.txt`.
+/// The next run that sees their changed datalake row stores the new row hash
+/// instead of refetching (and re-pushing) them. Returns how many moved.
+pub fn mark_outdated_delivered(accepted: &[String]) -> usize {
+    let out_path = app_data_dir().join("log").join("outdated_uuids.txt");
+    let mut outdated = read_uuid_set(&out_path);
+    if outdated.is_empty() {
+        return 0;
+    }
+    let moved: Vec<String> = accepted
+        .iter()
+        .filter(|u| outdated.contains(*u))
+        .cloned()
+        .collect();
+    if moved.is_empty() {
+        return 0;
+    }
+    let del_path = delivered_outdated_path();
+    let mut delivered = read_uuid_set(&del_path);
+    for u in &moved {
+        outdated.remove(u);
+        delivered.insert(u.clone());
+    }
+    write_uuid_set(&del_path, &delivered);
+    write_uuid_set(&out_path, &outdated);
+    moved.len()
+}
+
+/// Row-hash changes of devices in `delivered_outdated_uuids.txt`: store the
+/// new hash, drop them from `changes` and from the file. A delivered device
+/// whose row was not seen this run (datalake down) stays in the file.
+fn accept_delivered_hashes(changes: &mut HashMap<String, String>) -> usize {
+    let path = delivered_outdated_path();
+    let mut delivered = read_uuid_set(&path);
+    if delivered.is_empty() || changes.is_empty() {
+        return 0;
+    }
+    let db_path = app_data_dir().join("db").join("version_tracking.db");
+    let Ok(conn) = rusqlite::Connection::open(&db_path) else {
+        return 0;
+    };
+    ensure_listing_cache(&conn);
+    let hits: Vec<String> = changes
+        .keys()
+        .filter(|u| delivered.contains(*u))
+        .cloned()
+        .collect();
+    for u in &hits {
+        if let Some(h) = changes.remove(u) {
+            set_row_hash(&conn, u, &h);
+        }
+        delivered.remove(u);
+    }
+    write_uuid_set(&path, &delivered);
+    hits.len()
 }
 
 /// `log/outdated_uuids.txt`: devices whose datalake row changed but whose fresh

@@ -4122,6 +4122,7 @@ pub fn push_to_firstbase(
 
     // Insert per-item push_log with ACCEPTED/REJECTED + error codes
     let mut logged = 0;
+    let mut accepted_here: Vec<String> = Vec::new();
     for (_, _, uuid, doc) in &pushable {
         let gtin = doc
             .pointer("/DraftItem/TradeItem/Gtin")
@@ -4154,12 +4155,24 @@ pub fn push_to_firstbase(
             "INSERT INTO push_log (uuid,gtin,pushed_at,status,error_code,publish_gln,firstbase_env) VALUES (?1,?2,?3,?4,?5,?6,?7)",
             rusqlite::params![uuid, gtin, now, status, error_code_str, settings.publish_to_gln, env_label],
         );
+        if status == "ACCEPTED" {
+            accepted_here.push(uuid.clone());
+        }
         logged += 1;
     }
     log(&format!(
         "[Push] Logged {} items to push_log DB (session {})",
         logged, session_id
     ));
+    if matches!(settings.firstbase_env, FirstbaseEnv::Production) {
+        let n = crate::download::mark_outdated_delivered(&accepted_here);
+        if n > 0 {
+            log(&format!(
+                "[Push] {} outdated device(s) delivered in their current version — removed from outdated_uuids.txt",
+                n
+            ));
+        }
+    }
 
     // Move only ACCEPTED files to processed/ — rejected files stay for retry
     let mut moved = 0;
