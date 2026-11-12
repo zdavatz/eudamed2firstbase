@@ -30,7 +30,7 @@ The full command list is in `README.md` and `src/main.rs`. No golden-file tests:
 ## Rules that are easy to break
 
 - **No mail addresses, credentials, customer names or customer worklists in tracked files.** Recipients, GLN overrides and the spreadsheet id live in the gitignored `config.toml` or in env vars; `srns_sheet.txt` / `gtins_sheet.txt` are gitignored. `.claude/settings.local.json` is tracked — never add a rule that contains a secret.
-- **Always send the GS1 report on Production pushes, corrective runs included** — never pass `GS1_REPORT_DISABLE`.
+- **Always send the GS1 report on Production pushes, corrective runs included** — never pass `GS1_REPORT_DISABLE`. Since 12.11.2026 `repush-srn` also reports TEST pushes (`send_gs1_report` with env `Test`, subject `TEST — …`); `check` / `deep-scan` stay Production-only because they default to Test when `FIRSTBASE_ENV` is unset and a development run must not mail GS1. `gs1-report --test --session <id>` resends a TEST report.
 - **A device counts as ACCEPTED only when GS1 confirmed it.** Document-level errors, a failed/unconfirmed batch and a rejected child GTIN all make the whole document REJECTED (see skill `gs1-push-pipeline`). Only ACCEPTED files move to `processed/`.
 - **Do not predict a GS1 reject from "field is empty"** — settle mapping questions with a TEST push.
 - **Never delete a cached Basic UDI-DI before its refetch succeeded**, and cache a body only when it parses and carries a code.

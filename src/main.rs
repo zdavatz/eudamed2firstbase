@@ -1907,10 +1907,12 @@ fn main() -> Result<()> {
                     }
                     // After a Production push, auto-email the GS1 report (errors-only
                     // CSV + full HTML log) to GS1. Never fail the run on a mail error.
-                    if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
+                    // TEST pushes are reported too (subject "TEST — …").
+                    {
                         // repush-srn is SRN-scoped — no GTIN worklist.
-                        if let Err(e) = send_gs1_prod_report(
+                        if let Err(e) = send_gs1_report(
                             &config,
+                            env_name(&settings.firstbase_env),
                             out.accepted,
                             out.rejected,
                             &srns,
@@ -1931,7 +1933,7 @@ fn main() -> Result<()> {
             // Manually (re)send the GS1 Production push report (errors CSV +
             // devices CSV + HTML log) for the latest Production session. Mirrors
             // the automatic send after a `repush-srn` Production push.
-            // Usage: gs1-report [<accepted> <rejected>] [SRN ...] [--file <srns.txt>] [--gtin-file <gtins.txt>] [--session <id>]
+            // Usage: gs1-report [<accepted> <rejected>] [SRN ...] [--file <srns.txt>] [--gtin-file <gtins.txt>] [--session <id>] [--test]
             //   The SRNs (positional after the two counts, or --file) are listed in
             //   the mail body. --gtin-file adds the separate GTIN-worklist updates
             //   CSV. GS1_REPORT_TO / GS1_REPORT_FROM / GS1_REPORT_DISABLE apply.
@@ -1991,7 +1993,13 @@ fn main() -> Result<()> {
                 .position(|a| a == "--session")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|v| v.parse::<i64>().ok());
-            send_gs1_prod_report(&config, accepted, rejected, &srns, &gtins, session_id)?;
+            // --test: the report of a TEST session (subject "TEST — …").
+            let env = if args.iter().any(|a| a == "--test") {
+                "Test"
+            } else {
+                "Production"
+            };
+            send_gs1_report(&config, env, accepted, rejected, &srns, &gtins, session_id)?;
             Ok(())
         }
         Some("status") => {
@@ -2464,6 +2472,9 @@ fn push_changed_to_firstbase(
             );
             // After a Production push, auto-email the GS1 report (non-fatal — a
             // mail error never fails the run).
+            // Production only: `check` / `deep-scan` default to Test when
+            // FIRSTBASE_ENV is unset, and a development run must not mail GS1.
+            // TEST reports come from `repush-srn`, a deliberate push.
             if matches!(settings.firstbase_env, gui::FirstbaseEnv::Production) {
                 if let Err(e) = send_gs1_prod_report(
                     fb_config,
@@ -2507,6 +2518,14 @@ fn push_changed_to_firstbase(
 /// (e.g. the 27.08.–02.09.2026 nightly reports lost to a Gmail delegation
 /// outage). With an explicit session the accepted/rejected counts are taken
 /// from the `push_session` row, not from the caller.
+/// `push_session.firstbase_env` label of a push environment.
+fn env_name(env: &gui::FirstbaseEnv) -> &'static str {
+    match env {
+        gui::FirstbaseEnv::Production => "Production",
+        gui::FirstbaseEnv::Test => "Test",
+    }
+}
+
 fn send_gs1_prod_report(
     config: &config::Config,
     accepted: u32,
@@ -2515,6 +2534,31 @@ fn send_gs1_prod_report(
     gtin_worklist: &[String],
     session_id: Option<i64>,
 ) -> anyhow::Result<()> {
+    send_gs1_report(
+        config,
+        "Production",
+        accepted,
+        rejected,
+        srns,
+        gtin_worklist,
+        session_id,
+    )
+}
+
+/// The GS1 report of the latest push session of `env` ("Production" or
+/// "Test"). A TEST report has `TEST —` in front of the subject and reads the
+/// TEST logs (`log/firstbase_test/`); recipients are the same (12.11.2026: GS1
+/// asked for TEST pushes done for a customer's playground to be reported too).
+fn send_gs1_report(
+    config: &config::Config,
+    env: &str,
+    accepted: u32,
+    rejected: u32,
+    srns: &[String],
+    gtin_worklist: &[String],
+    session_id: Option<i64>,
+) -> anyhow::Result<()> {
+    let is_test = env == "Test";
     if std::env::var("GS1_REPORT_DISABLE")
         .map(|v| !v.is_empty())
         .unwrap_or(false)
@@ -2551,7 +2595,11 @@ fn send_gs1_prod_report(
     }
 
     let data_dir = download::app_data_dir();
-    let prod_log_dir = data_dir.join("log").join("firstbase_prod");
+    let prod_log_dir = data_dir.join("log").join(if is_test {
+        "firstbase_test"
+    } else {
+        "firstbase_prod"
+    });
 
     // --- Build two CSVs from the latest Production push session ---
     //   1) errors  CSV: one row per GS1 error (a device can have several)
@@ -2585,24 +2633,24 @@ fn send_gs1_prod_report(
             Some(id) => conn
                 .query_row(
                     "SELECT id, COALESCE(session_ts,''), total_accepted, total_rejected \
-                     FROM push_session WHERE firstbase_env='Production' AND id = ?1",
-                    [id],
+                     FROM push_session WHERE firstbase_env = ?2 AND id = ?1",
+                    rusqlite::params![id, env],
                     |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
                 )
                 .ok(),
             None => conn
                 .query_row(
                     "SELECT id, COALESCE(session_ts,''), total_accepted, total_rejected \
-                     FROM push_session WHERE firstbase_env='Production' \
+                     FROM push_session WHERE firstbase_env = ?1 \
                      ORDER BY id DESC LIMIT 1",
-                    [],
+                    [env],
                     |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
                 )
                 .ok(),
         };
         if let Some(id) = session_id {
             if session.is_none() {
-                anyhow::bail!("No Production push_session with id {}", id);
+                anyhow::bail!("No {} push_session with id {}", env, id);
             }
             // Explicit session: the counts come from the DB row, not the caller.
             if let Some((_, _, a, r)) = &session {
@@ -2864,7 +2912,7 @@ fn send_gs1_prod_report(
             );
         }
     } else {
-        eprintln!("GS1 auto-report: no Production HTML log found — sending the two CSVs only.");
+        eprintln!("GS1 auto-report: no {env} HTML log found — sending the CSVs only.");
     }
 
     let total = accepted + rejected;
@@ -2875,8 +2923,12 @@ fn send_gs1_prod_report(
     };
     // Subject leads with the push date instead of a fixed phrase.
     let subject = format!(
-        "{} — {} / {} ACCEPTED ({:.2}%)",
-        push_date, accepted, total, pct
+        "{}{} — {} / {} ACCEPTED ({:.2}%)",
+        if is_test { "TEST — " } else { "" },
+        push_date,
+        accepted,
+        total,
+        pct
     );
 
     // Body separates the pushed SRNs into "ok" (no push errors) and "not-ok"
