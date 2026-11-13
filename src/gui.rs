@@ -4165,6 +4165,15 @@ pub fn push_to_firstbase(
         logged, session_id
     ));
     if matches!(settings.firstbase_env, FirstbaseEnv::Production) {
+        // Only Production: udi_versions has no environment, and a TEST push
+        // must not make the nightly treat a device as delivered to Production.
+        let indexed = crate::download::index_delivered_versions(&accepted_here);
+        if indexed > 0 {
+            log(&format!(
+                "[Push] Indexed {} delivered detail version(s) in udi_versions",
+                indexed
+            ));
+        }
         let n = crate::download::mark_outdated_delivered(&accepted_here);
         if n > 0 {
             log(&format!(

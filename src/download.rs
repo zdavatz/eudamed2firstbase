@@ -583,6 +583,28 @@ fn index_detail_versions(
     Ok(count)
 }
 
+/// A Production push accepted these devices: index the versions of the detail
+/// files that were delivered, so `check` sees them as known. The nightly does
+/// this in its download step, but `repush-srn` and GUI pushes of imported files
+/// skip that step; without it the next `check` treated the devices as new and
+/// pushed them again (11.11.2026: ~5'640, 13.11.2026: 117 devices). Returns the
+/// number of indexed records.
+pub fn index_delivered_versions(uuids: &[String]) -> usize {
+    struct Quiet;
+    impl DownloadProgress for Quiet {
+        fn on_event(&self, _: DownloadEvent) {}
+    }
+    if uuids.is_empty() {
+        return 0;
+    }
+    let detail_dir = app_data_dir().join(DEFAULT_DATA_DIR).join("detail");
+    let db_path = app_data_dir().join("db").join("version_tracking.db");
+    let Ok(conn) = crate::version_db::open_db(&db_path) else {
+        return 0;
+    };
+    index_detail_versions(&detail_dir, uuids, &conn, &Quiet).unwrap_or(0)
+}
+
 /// Bulk-index all detail files in a directory into udi_versions DB.
 /// Skips files already indexed with matching hash. Used for initial population.
 pub fn index_all_detail_versions(
