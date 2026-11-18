@@ -742,6 +742,36 @@ pub fn issuing_agency_to_type_code(agency: &str) -> &str {
     }
 }
 
+/// GS1 `additionalTradeItemIdentificationTypeCode` + value for a non-GS1 DI.
+///
+/// The code list (UDID_CodeLists) has HIBC, ICCBBA, PZN, PPN, MODEL_NUMBER,
+/// MANUFACTURER_PART_NUMBER and SUPPLIER_ASSIGNED, but no `IFA`: an IFA DI sent
+/// as `IFA` is G541 and rejects the whole device (18 of 18 devices with a
+/// `PZN-…` secondary DI, 17.11.2026). An IFA DI is either a PPN (12
+/// characters, starting with `11`) or a PZN (`PZN-` + 8 digits in EUDAMED);
+/// the PZN value is sent without the `PZN-` label.
+pub fn additional_id_type_and_value(agency: &str, code: &str) -> (String, String) {
+    let suffix = agency.rsplit('.').next().unwrap_or(agency);
+    if suffix == "ifa" {
+        let c = code.trim();
+        let is_ppn =
+            c.len() == 12 && c.starts_with("11") && c.chars().all(|ch| ch.is_ascii_alphanumeric());
+        if is_ppn {
+            return ("PPN".to_string(), c.to_string());
+        }
+        let digits = c
+            .strip_prefix("PZN-")
+            .or_else(|| c.strip_prefix("PZN"))
+            .unwrap_or(c)
+            .trim();
+        return ("PZN".to_string(), digits.to_string());
+    }
+    (
+        issuing_agency_to_type_code(agency).to_string(),
+        code.to_string(),
+    )
+}
+
 /// CMR substance type refdata suffix → GS1 CMR type code
 /// e.g. "1a" → "CMR_1A", "1b" → "CMR_1B", "2" → "CMR_2"
 pub fn cmr_type_to_gs1(code: &str) -> String {
@@ -887,6 +917,18 @@ mod tests {
     #[test]
     fn characteristic_code_orientations() {
         assert_eq!(mu_code_to_characteristic_code("MU137"), Some("PASSIVE"));
+        assert_eq!(
+            additional_id_type_and_value("refdata.issuing-agency.ifa", "PZN-04081113"),
+            ("PZN".to_string(), "04081113".to_string())
+        );
+        assert_eq!(
+            additional_id_type_and_value("refdata.issuing-agency.ifa", "110408111354"),
+            ("PPN".to_string(), "110408111354".to_string())
+        );
+        assert_eq!(
+            additional_id_type_and_value("refdata.issuing-agency.hibcc", "+E123"),
+            ("HIBC".to_string(), "+E123".to_string())
+        );
         assert_eq!(mu_code_to_characteristic_code("MU138"), Some("ACTIVE"));
         assert_eq!(mu_code_to_characteristic_code("MU141"), Some("J-TIP"));
         assert_eq!(

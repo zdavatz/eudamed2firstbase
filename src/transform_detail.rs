@@ -295,13 +295,10 @@ pub fn transform_detail_device(
     // --- Non-GS1 primary DI → additional identification (GDSN only allows GS1 as Gtin) ---
     if !device.is_gs1_primary() {
         let agency = device.primary_di_agency().unwrap_or_default();
-        let type_code = mappings::issuing_agency_to_type_code(&agency).to_string();
         let code = device.primary_di_code();
         if !code.is_empty() {
-            additional_identification.push(AdditionalTradeItemIdentification {
-                type_code,
-                value: code,
-            });
+            let (type_code, value) = mappings::additional_id_type_and_value(&agency, &code);
+            additional_identification.push(AdditionalTradeItemIdentification { type_code, value });
         }
     }
 
@@ -310,16 +307,15 @@ pub fn transform_detail_device(
     // Use issuing agency to determine the correct type code.
     if let Some(ref secondary) = device.secondary_di {
         if let Some(ref code) = secondary.code {
-            let sec_type = secondary
+            let (type_code, value) = match secondary
                 .issuing_agency
                 .as_ref()
                 .and_then(|a| a.code.as_ref())
-                .map(|c| mappings::issuing_agency_to_type_code(c))
-                .unwrap_or("GTIN_14");
-            additional_identification.push(AdditionalTradeItemIdentification {
-                type_code: sec_type.to_string(),
-                value: code.clone(),
-            });
+            {
+                Some(agency) => mappings::additional_id_type_and_value(agency, code),
+                None => ("GTIN_14".to_string(), code.clone()),
+            };
+            additional_identification.push(AdditionalTradeItemIdentification { type_code, value });
         }
     }
 

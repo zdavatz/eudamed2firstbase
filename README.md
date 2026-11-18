@@ -390,7 +390,7 @@ log/                       # API push logs (MM.HH_DD.MM.YYYY.log.html with GTIN-
   - Substance types (CMR, endocrine, medicinal, human product)
   - Sterilisation: sterile=true → UNSPECIFIED, false → NOT_STERILISED; sterilization-before-use=true → UNSPECIFIED, false → NO_STERILISATION_REQUIRED
   - Issuing agency (GS1/HIBC/ICCBBA/IFA)
-- Only GS1 identifiers (GTIN/GMN) are written to the `Gtin` field; non-GS1 primary DIs (HIBC, IFA/PPN) are placed in `AdditionalTradeItemIdentification` with the appropriate type code
+- Only GS1 identifiers (GTIN/GMN) are written to the `Gtin` field; non-GS1 primary DIs (HIBC, IFA/PPN) are placed in `AdditionalTradeItemIdentification` with the appropriate type code. An IFA DI goes out as `PZN` (digits without the `PZN-` label) or `PPN` (12 characters starting with `11`) — GS1's code list has no `IFA`, which was G541 (fixed 18.11.2026, 18/18 US-MF-000006765 devices accepted on TEST and Production)
 - Maps substances to ChemicalRegulationInformation (WHO for medicinal/human, ECHA for CMR/endocrine)
 - Extracts contact information (manufacturer, authorised representative, product designer)
 - Generates market info with country-specific sales conditions
