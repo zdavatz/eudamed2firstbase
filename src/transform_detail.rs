@@ -1112,6 +1112,20 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
             // (characteristic_codes already computed above, alongside unit_code,
             // because they're mutually exclusive — same EUDAMED slot)
 
+            // 097.068: RANGE requires clinicalSizeValue + clinicalSizeValueMaximum,
+            // but a characteristic code carries no unit, so the range values can't
+            // be sent (no unit = G361). EUDAMED has such sizes (needle gauge 23-27
+            // with MU140 ANGLED, US-MF-000029814): send them like the accepted
+            // characteristic-only sizes, as VALUE without values (18.11.2026).
+            let precision_code = if values.is_empty()
+                && !characteristic_codes.is_empty()
+                && precision_code == "RANGE"
+            {
+                "VALUE"
+            } else {
+                precision_code
+            };
+
             Some(ClinicalSizeOutput {
                 descriptions,
                 type_code: CodeValue {
