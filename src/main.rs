@@ -12,6 +12,7 @@ mod eudamed_json;
 mod firstbase;
 mod gui;
 mod installer;
+mod listing_compare;
 mod mail;
 mod mappings;
 mod mirror;
@@ -2000,6 +2001,32 @@ fn main() -> Result<()> {
                 "Production"
             };
             send_gs1_report(&config, env, accepted, rejected, &srns, &gtins, session_id)?;
+            Ok(())
+        }
+        Some("listing-compare") => {
+            // listing-compare <dir> [--tag <tag>]
+            // Compares hand-downloaded public listing pages (<SRN>_page<N>.json,
+            // size=300) with listing_cache: missing pages, new devices, version
+            // bumps, status changes, devices no longer listed. Read-only; writes
+            // log/unknown_uuids_<tag>.txt|.tsv, log/listing_urls_<tag>_missing.txt,
+            // log/listing_changes_<tag>.tsv, log/no_longer_listed_<tag>.tsv.
+            let dir = args
+                .get(2)
+                .filter(|a| !a.starts_with("--"))
+                .context("Usage: eudamed2firstbase listing-compare <dir> [--tag <tag>]")?;
+            let tag = args
+                .iter()
+                .position(|a| a == "--tag")
+                .and_then(|i| args.get(i + 1))
+                .cloned()
+                .unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
+            let data = download::app_data_dir();
+            listing_compare::run(
+                std::path::Path::new(dir),
+                &data.join("db").join("version_tracking.db"),
+                &data.join("log"),
+                &tag,
+            )?;
             Ok(())
         }
         Some("outdated") => {
