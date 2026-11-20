@@ -11,7 +11,9 @@
 //!   `listing-compare`;
 //! - `log/handoff/uuids.txt`: known devices whose detail or Basic UDI-DI
 //!   record is missing (neither in `eudamed_json/` nor in an `import/*_detail`
-//!   / `import/*_basic` directory), plus `log/outdated_uuids.txt`.
+//!   / `import/*_basic` directory), plus `log/outdated_uuids.txt`, minus
+//!   `log/no_basic_uuids.txt` (devices the operator checked by hand: EUDAMED
+//!   has no Basic UDI-DI for them, so asking again every night is useless).
 //!
 //! With `EUDAMED_HANDOFF_HOST` (`user@host`, set in the untracked nightly
 //! wrapper — never commit the host) both lists are copied to that host:
@@ -166,10 +168,26 @@ pub fn build(data: &Path, srns: &[String]) -> Result<Handoff> {
         }
     }
 
+    for u in no_basic(data) {
+        uuids.remove(&u);
+    }
+
     Ok(Handoff {
         urls: urls_for(&srn_counts),
         uuids: uuids.into_iter().collect(),
     })
+}
+
+/// `log/no_basic_uuids.txt`: one UUID per line (tab + note allowed, `#`
+/// comments). Devices without a Basic UDI-DI in EUDAMED (checked by the
+/// operator, 20.11.2026: 6e7daa00…). The Basic guard still holds them back.
+fn no_basic(data: &Path) -> HashSet<String> {
+    std::fs::read_to_string(data.join("log").join("no_basic_uuids.txt"))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| l.split('\t').next().unwrap_or("").trim().to_string())
+        .filter(|u| !u.is_empty() && !u.starts_with('#'))
+        .collect()
 }
 
 fn lines(v: &[String]) -> String {
@@ -487,12 +505,20 @@ mod tests {
         );
         let h = build(&tmp, &["S1".into(), "S2".into(), "S1".into()]).unwrap();
         assert_eq!(h.uuids, vec!["a", "b", "d"]);
+        // A device checked by hand as having no Basic UDI-DI is left out.
+        put(
+            "log/no_basic_uuids.txt",
+            "# no Basic UDI-DI in EUDAMED\nb\tchecked 20.11.\n",
+        );
+        let h = build(&tmp, &["S1".into(), "S2".into(), "S1".into()]).unwrap();
+        assert_eq!(h.uuids, vec!["a", "d"]);
+        std::fs::remove_file(tmp.join("log/no_basic_uuids.txt")).unwrap();
         // S1: 3 cached devices -> 1 page; S2: newest total 601 -> 3 pages.
         assert_eq!(h.urls.len(), 1 + 3);
         let dir = write(&tmp, &h).unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.join("uuids.txt")).unwrap(),
-            "a\nb\nd\n"
+            "a\nd\n"
         );
         let _ = std::fs::remove_dir_all(&tmp);
     }
