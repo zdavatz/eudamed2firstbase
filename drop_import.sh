@@ -9,14 +9,14 @@
 # A file is taken once it has not changed for 2 minutes (download finished).
 # Records (non-empty, JSON object) move to import/<date>_drop_detail|basic/,
 # anything else to import/<date>_drop_rejected/. A device whose detail AND
-# Basic UDI-DI are both imported is copied into eudamed_json/detail|basic, at
-# most 1'500 devices per day (GS1 limit) — the nightly `check` pushes them
-# (only devices in listing_cache). Released UUIDs: log/drop_released.txt.
+# Basic UDI-DI are both imported is copied into eudamed_json/detail|basic and
+# pushed to GS1 Production right away (repush-srn, devices in listing_cache
+# only; never next to the nightly or another push). Released UUIDs:
+# log/drop_released.txt; queue: log/drop_push_pending.txt.
 # Log: log/drop_import.log
 DATA="${DATA:-$HOME/eudamed2firstbase}"
 DROP="$DATA/drop"
 REPO="${REPO:-$(cd "$(dirname "$0")" && pwd)}"
-MAX_PER_DAY="${MAX_PER_DAY:-1500}"
 DAY=$(date +%F)
 LOG="$DATA/log/drop_import.log"
 RELEASED="$DATA/log/drop_released.txt"
@@ -56,26 +56,64 @@ if [ "$lm" -gt 0 ]; then
     || log "listing compare failed (rc=$?)"
 fi
 
-# 2. Release complete devices (detail + Basic UDI-DI) into eudamed_json/.
-touch "$RELEASED"
+# 2. Release complete devices (detail + Basic UDI-DI) into eudamed_json/ and
+# queue them for the push (log/drop_push_pending.txt). MAX_PER_DAY (default:
+# no limit) caps the releases per day.
+PENDING="$DATA/log/drop_push_pending.txt"
+touch "$RELEASED" "$PENDING"
 today=$(grep -c "	$DAY\$" "$RELEASED")
-room=$((MAX_PER_DAY - today))
-[ "$room" -le 0 ] && exit 0
+room=$(( ${MAX_PER_DAY:-0} > 0 ? MAX_PER_DAY - today : 1000000000 ))
 tmp=$(mktemp -d)
-for kind in detail basic; do
-  find "$DATA"/import/*_drop_"$kind" -maxdepth 1 -type f -name '*.json' -printf '%f\n' 2>/dev/null \
-    | sed 's/\.json$//' | sort -u > "$tmp/$kind"
-done
-cut -f1 "$RELEASED" | sort -u > "$tmp/done"
-comm -12 "$tmp/detail" "$tmp/basic" | comm -23 - "$tmp/done" > "$tmp/ready"
-n=0
-while read -r u; do
-  [ "$n" -ge "$room" ] && break
-  d=$(ls -t "$DATA"/import/*_drop_detail/"$u.json" | head -1)
-  b=$(ls -t "$DATA"/import/*_drop_basic/"$u.json" | head -1)
-  cp -f "$d" "$DATA/eudamed_json/detail/$u.json" && cp -f "$b" "$DATA/eudamed_json/basic/$u.json" \
-    && printf '%s\t%s\n' "$u" "$DAY" >> "$RELEASED" && n=$((n+1))
-done < "$tmp/ready"
-left=$(( $(wc -l < "$tmp/ready") - n ))
-[ "$n" -gt 0 ] && log "released $n device(s) to eudamed_json/ for the nightly push ($left waiting for the next day)"
-rm -rf "$tmp"
+trap 'rm -rf "$tmp"' EXIT
+if [ "$room" -gt 0 ]; then
+  for kind in detail basic; do
+    find "$DATA"/import/*_drop_"$kind" -maxdepth 1 -type f -name '*.json' -printf '%f\n' 2>/dev/null \
+      | sed 's/\.json$//' | sort -u > "$tmp/$kind"
+  done
+  cut -f1 "$RELEASED" | sort -u > "$tmp/done"
+  comm -12 "$tmp/detail" "$tmp/basic" | comm -23 - "$tmp/done" > "$tmp/ready"
+  n=0
+  while read -r u; do
+    [ "$n" -ge "$room" ] && break
+    d=$(ls -t "$DATA"/import/*_drop_detail/"$u.json" | head -1)
+    b=$(ls -t "$DATA"/import/*_drop_basic/"$u.json" | head -1)
+    cp -f "$d" "$DATA/eudamed_json/detail/$u.json" && cp -f "$b" "$DATA/eudamed_json/basic/$u.json" \
+      && printf '%s\t%s\n' "$u" "$DAY" >> "$RELEASED" && echo "$u" >> "$PENDING" && n=$((n+1))
+  done < "$tmp/ready"
+  left=$(( $(wc -l < "$tmp/ready") - n ))
+  [ "$n" -gt 0 ] && log "released $n device(s) to eudamed_json/ ($left waiting for the next day)"
+fi
+
+# 3. Push the queued devices to GS1 Production right away (repush-srn sends the
+# GS1 report). Guard: never next to the nightly or another push — then the
+# queue waits for the next poll. The push holds the nightly lock, so a nightly
+# starting meanwhile is skipped (and caught up by the next night).
+[ -s "$PENDING" ] || exit 0
+exec 8>"$DATA/log/nightly_check.lock"
+if ! flock -n 8 || pgrep -f "eudamed2firstbase (check|deep-scan|repush-srn) " >/dev/null; then
+  log "push: $(sort -u "$PENDING" | wc -l) device(s) queued, nightly or another push running — retry next poll"
+  exit 0
+fi
+sort -u "$PENDING" > "$tmp/push_uuids"
+in_list=$(printf "'%s'," $(cat "$tmp/push_uuids")); in_list=${in_list%,}
+sqlite3 "$DATA/db/version_tracking.db" "SELECT DISTINCT srn FROM listing_cache WHERE uuid IN ($in_list)" > "$tmp/push_srns"
+known=$(sqlite3 "$DATA/db/version_tracking.db" "SELECT COUNT(*) FROM listing_cache WHERE uuid IN ($in_list)")
+total=$(wc -l < "$tmp/push_uuids")
+if [ ! -s "$tmp/push_srns" ]; then
+  log "push: none of the $total queued device(s) is in listing_cache — compare the listing first (queue kept)"
+  exit 0
+fi
+[ "$known" -lt "$total" ] && log "push: $((total - known)) of $total queued device(s) not in listing_cache — they stay queued"
+[ -f "$HOME/.fb_prod_env" ] && { set -a; . "$HOME/.fb_prod_env"; set +a; }
+export FIRSTBASE_ENV=Production
+PLOG="$DATA/log/drop_push_$(date +%F_%H%M%S).log"
+log "push: $known device(s) of $(wc -l < "$tmp/push_srns") SRN(s) -> GS1 Production, log $PLOG"
+( cd "$REPO" && ./target/debug/eudamed2firstbase repush-srn --reconvert \
+    --file "$tmp/push_srns" --uuid-file "$tmp/push_uuids" ) > "$PLOG" 2>&1
+rc=$?
+log "push: rc=$rc — $(grep -E '^Done:' "$PLOG" | tail -1)"
+if [ "$rc" -eq 0 ]; then
+  # Keep only the queued devices that are not in listing_cache yet.
+  sqlite3 "$DATA/db/version_tracking.db" "SELECT uuid FROM listing_cache WHERE uuid IN ($in_list)" | sort -u > "$tmp/pushed"
+  comm -23 "$tmp/push_uuids" "$tmp/pushed" > "$PENDING"
+fi
