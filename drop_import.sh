@@ -5,6 +5,7 @@
 #   ~/eudamed2firstbase/drop/detail/<uuid>.json   (udiDiData)
 #   ~/eudamed2firstbase/drop/basic/<uuid>.json    (basicUdiData)
 #   ~/eudamed2firstbase/drop/url_down/<SRN>_page<N>.json  (listing pages)
+#   ~/eudamed2firstbase/drop/gtin/<GTIN>.json             (GTIN lookups, gtin_urls.txt)
 #
 # A file is taken once it has not changed for 2 minutes (download finished).
 # Records (non-empty, JSON object) move to import/<date>_drop_detail|basic/,
@@ -20,7 +21,7 @@ REPO="${REPO:-$(cd "$(dirname "$0")" && pwd)}"
 DAY=$(date +%F)
 LOG="$DATA/log/drop_import.log"
 RELEASED="$DATA/log/drop_released.txt"
-mkdir -p "$DROP/detail" "$DROP/basic" "$DROP/url_down" "$DATA/log"
+mkdir -p "$DROP/detail" "$DROP/basic" "$DROP/url_down" "$DROP/gtin" "$DATA/log"
 exec 9>"$DATA/log/drop_import.lock"
 flock -n 9 || exit 0
 log() { echo "$(date '+%F %T') $*" >> "$LOG"; }
@@ -54,6 +55,21 @@ if [ "$lm" -gt 0 ]; then
   "$REPO/target/debug/eudamed2firstbase" handoff "$REPO/srns_sheet.txt" \
     --collect "$DATA/import/${DAY}_drop_listing" >> "$LOG" 2>&1 \
     || log "listing compare failed (rc=$?)"
+fi
+
+# 1c. GTIN lookups (<GTIN>.json, answers to log/handoff/gtin_urls.txt) from
+# drop/gtin: move them to import/<date>_drop_gtin/ and read them. Found devices
+# -> listing_cache + log/handoff/uuids.txt; answered GTINs leave gtin_urls.txt.
+gm=0
+while IFS= read -r -d '' f; do
+  mkdir -p "$DATA/import/${DAY}_drop_gtin"
+  mv -f "$f" "$DATA/import/${DAY}_drop_gtin/"; gm=$((gm+1))
+done < <(find "$DROP/gtin" -maxdepth 1 -type f -name '*.json' -mmin +2 -print0)
+if [ "$gm" -gt 0 ]; then
+  log "gtin: $gm answer(s) moved to import/${DAY}_drop_gtin"
+  "$REPO/target/debug/eudamed2firstbase" handoff "$REPO/srns_sheet.txt" \
+    --collect-gtins "$DATA/import/${DAY}_drop_gtin" >> "$LOG" 2>&1 \
+    || log "gtin collect failed (rc=$?)"
 fi
 
 # 2. Release complete devices (detail + Basic UDI-DI) into eudamed_json/ and

@@ -326,16 +326,6 @@ fn insert_new(db: &Path, dir: &Path, new: &HashSet<String>) -> Result<usize> {
     let con = rusqlite::Connection::open(db)?;
     con.busy_timeout(std::time::Duration::from_secs(60))?;
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
-    let code = |v: &serde_json::Value, k: &str| {
-        v.get(k)
-            .and_then(|x| x.get("code"))
-            .and_then(|x| x.as_str())
-            .unwrap_or("")
-            .to_string()
-    };
-    let txt = |v: &serde_json::Value, k: &str| {
-        v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string()
-    };
     let mut n = 0;
     for e in std::fs::read_dir(dir)?.flatten() {
         let Ok(body) = std::fs::read_to_string(e.path()) else {
@@ -350,28 +340,240 @@ fn insert_new(db: &Path, dir: &Path, new: &HashSet<String>) -> Result<usize> {
             .into_iter()
             .flatten()
         {
-            let uuid = txt(d, "uuid");
-            if !new.contains(&uuid) {
-                continue;
+            if new.contains(&txt(d, "uuid")) {
+                n += insert_row(&con, d, &now)?;
             }
-            n += con.execute(
-                "INSERT OR IGNORE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at, budi_ulid) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, ?10)",
-                rusqlite::params![
-                    uuid,
-                    txt(d, "manufacturerSrn"),
-                    txt(d, "manufacturerName"),
-                    txt(d, "primaryDi"),
-                    txt(d, "tradeName"),
-                    code(d, "riskClass"),
-                    code(d, "deviceStatusType"),
-                    d.get("versionNumber").and_then(|x| x.as_i64()),
-                    now,
-                    txt(d, "basicUdiDiDataUlid"),
-                ],
-            )?;
         }
     }
     Ok(n)
+}
+
+fn txt(v: &serde_json::Value, k: &str) -> String {
+    v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string()
+}
+
+/// Insert one listing item (public listing page or `mirror` rawJson, same
+/// shape) into `listing_cache`. Never overwrites a known device.
+fn insert_row(con: &rusqlite::Connection, d: &serde_json::Value, now: &str) -> Result<usize> {
+    let code = |k: &str| {
+        d.get(k)
+            .and_then(|x| x.get("code"))
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string()
+    };
+    let uuid = txt(d, "uuid");
+    if uuid.is_empty() {
+        return Ok(0);
+    }
+    Ok(con.execute(
+        "INSERT OR IGNORE INTO listing_cache (uuid, srn, manufacturer_name, primary_di, trade_name, risk_class, device_status, version_number, budi_version_number, listed_at, budi_ulid) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, ?10)",
+        rusqlite::params![
+            uuid,
+            txt(d, "manufacturerSrn"),
+            txt(d, "manufacturerName"),
+            txt(d, "primaryDi"),
+            txt(d, "tradeName"),
+            code("riskClass"),
+            code("deviceStatusType"),
+            d.get("versionNumber").and_then(|x| x.as_i64()),
+            now,
+            txt(d, "basicUdiDiDataUlid"),
+        ],
+    )?)
+}
+
+/// Public GTIN lookup URL (same query as the nightly's GTIN pass). The
+/// operator saves the answer as `<GTIN>.json` into `drop/gtin/`.
+pub fn gtin_url(gtin: &str) -> String {
+    format!(
+        "https://ec.europa.eu/tools/eudamed/api/devices/udiDiData?page=0&pageSize=5&primaryDi={gtin}&iso2Code=en&languageIso2Code=en"
+    )
+}
+
+fn read_gtins(path: &Path) -> Result<BTreeSet<String>> {
+    Ok(std::fs::read_to_string(path)
+        .with_context(|| format!("read {}", path.display()))?
+        .lines()
+        .map(|l| l.split('\t').next().unwrap_or("").trim().to_string())
+        .filter(|g| !g.is_empty() && g.bytes().all(|b| b.is_ascii_digit()))
+        .collect())
+}
+
+fn write_set(path: &Path, set: &BTreeSet<String>) -> Result<()> {
+    let v: Vec<String> = set.iter().cloned().collect();
+    std::fs::write(path, lines(&v)).with_context(|| format!("write {}", path.display()))
+}
+
+/// Merge `add` into the GTIN list at `path` (created when missing).
+fn merge_into(path: &Path, add: &BTreeSet<String>) -> Result<()> {
+    let mut set = if path.exists() {
+        read_gtins(path)?
+    } else {
+        BTreeSet::new()
+    };
+    set.extend(add.iter().cloned());
+    write_set(path, &set)
+}
+
+/// `handoff --gtins <file> [--mirror <db>]` (20.11.2026): bring a GTIN list
+/// into the hand-off. GTINs already in `listing_cache` are skipped; GTINs
+/// found in the `mirror` database (an earlier full listing crawl,
+/// `devices_listing.rawJson`) are inserted into `listing_cache`, so their
+/// devices land in `uuids.txt`; the rest go to `log/handoff/gtin_urls.txt`
+/// (public GTIN lookups for the browser, answers into `drop/gtin/`).
+pub fn add_gtins(
+    data: &Path,
+    gtins_file: &Path,
+    mirror: Option<&Path>,
+    srns: &[String],
+    log: &dyn Fn(&str),
+) -> Result<()> {
+    let gtins = read_gtins(gtins_file)?;
+    let db = data.join("db").join("version_tracking.db");
+    let con = rusqlite::Connection::open(&db)?;
+    con.busy_timeout(std::time::Duration::from_secs(60))?;
+    let known: HashSet<String> = {
+        let mut st = con.prepare("SELECT DISTINCT primary_di FROM listing_cache")?;
+        let rows = st.query_map([], |r| r.get::<_, String>(0))?;
+        rows.flatten().collect()
+    };
+    let mirror = match mirror {
+        Some(m) => Some(
+            rusqlite::Connection::open_with_flags(m, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+                .with_context(|| format!("open {}", m.display()))?,
+        ),
+        None => None,
+    };
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let (mut in_cache, mut from_mirror, mut rows) = (0usize, 0usize, 0usize);
+    let mut ask = BTreeSet::new();
+    con.execute_batch("BEGIN")?;
+    for g in &gtins {
+        if known.contains(g) {
+            in_cache += 1;
+            continue;
+        }
+        let mut hit = 0;
+        if let Some(m) = &mirror {
+            let mut st =
+                m.prepare_cached("SELECT rawJson FROM devices_listing WHERE primaryDi = ?1")?;
+            let bodies = st.query_map([g], |r| r.get::<_, String>(0))?;
+            for b in bodies.flatten() {
+                let Ok(d) = serde_json::from_str::<serde_json::Value>(&b) else {
+                    continue;
+                };
+                if d.get("latestVersion").and_then(|x| x.as_bool()) == Some(false) {
+                    continue;
+                }
+                hit += 1;
+                rows += insert_row(&con, &d, &now)?;
+            }
+        }
+        if hit > 0 {
+            from_mirror += 1;
+        } else {
+            ask.insert(g.clone());
+        }
+    }
+    con.execute_batch("COMMIT")?;
+    let dir = data.join("log").join("handoff");
+    std::fs::create_dir_all(&dir)?;
+    let urls: Vec<String> = ask.iter().map(|g| gtin_url(g)).collect();
+    std::fs::write(dir.join("gtin_urls.txt"), lines(&urls))?;
+    log(&format!(
+        "GTINs: {} in the list, {} already in listing_cache, {} found in the mirror ({} device(s) added to listing_cache), {} to look up by hand -> {}",
+        gtins.len(),
+        in_cache,
+        from_mirror,
+        rows,
+        ask.len(),
+        dir.join("gtin_urls.txt").display()
+    ));
+    run_handoff(data, srns, false, log);
+    Ok(())
+}
+
+/// `handoff --collect-gtins <dir>` (20.11.2026, `drop_import.sh` for answers
+/// from `drop/gtin/<GTIN>.json`): found devices go into `listing_cache` (and
+/// so into `uuids.txt`), found / not-found GTINs into
+/// `log/handoff/gtins_found.txt` / `gtins_not_found.txt`, and both leave
+/// `gtin_urls.txt`. Unusable answers (not JSON, no `content`, EUDAMED's empty
+/// `"pageable": "INSTANCE"` placeholder) stay in `gtin_urls.txt`.
+pub fn collect_gtins(data: &Path, dir: &Path, srns: &[String], log: &dyn Fn(&str)) -> Result<()> {
+    let db = data.join("db").join("version_tracking.db");
+    let con = rusqlite::Connection::open(&db)?;
+    con.busy_timeout(std::time::Duration::from_secs(60))?;
+    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let (mut found, mut not_found, mut bad) = (BTreeSet::new(), BTreeSet::new(), Vec::new());
+    let mut rows = 0;
+    con.execute_batch("BEGIN")?;
+    for e in std::fs::read_dir(dir)?.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        let Some(g) = name
+            .strip_suffix(".json")
+            .filter(|g| !g.is_empty() && g.bytes().all(|b| b.is_ascii_digit()))
+        else {
+            continue;
+        };
+        let v = std::fs::read_to_string(e.path())
+            .ok()
+            .and_then(|b| serde_json::from_str::<serde_json::Value>(&b).ok());
+        let Some(v) = v else {
+            bad.push(name);
+            continue;
+        };
+        let Some(content) = v.get("content").and_then(|c| c.as_array()) else {
+            bad.push(name);
+            continue;
+        };
+        let hits: Vec<&serde_json::Value> = content
+            .iter()
+            .filter(|d| txt(d, "primaryDi") == g)
+            .collect();
+        if !hits.is_empty() {
+            for d in hits {
+                rows += insert_row(&con, d, &now)?;
+            }
+            found.insert(g.to_string());
+        } else if v.get("pageable").and_then(|p| p.as_str()) == Some("INSTANCE") {
+            bad.push(name);
+        } else {
+            not_found.insert(g.to_string());
+        }
+    }
+    con.execute_batch("COMMIT")?;
+    let hd = data.join("log").join("handoff");
+    std::fs::create_dir_all(&hd)?;
+    merge_into(&hd.join("gtins_found.txt"), &found)?;
+    merge_into(&hd.join("gtins_not_found.txt"), &not_found)?;
+    let urls_path = hd.join("gtin_urls.txt");
+    let left: Vec<String> = std::fs::read_to_string(&urls_path)
+        .unwrap_or_default()
+        .lines()
+        .filter(|u| {
+            let g = u
+                .split("primaryDi=")
+                .nth(1)
+                .and_then(|r| r.split('&').next())
+                .unwrap_or("");
+            !found.contains(g) && !not_found.contains(g)
+        })
+        .map(|u| u.to_string())
+        .collect();
+    std::fs::write(&urls_path, lines(&left))?;
+    log(&format!(
+        "GTIN answers: {} found ({} device(s) added to listing_cache), {} not in EUDAMED, {} unusable{}; {} GTIN URL(s) left -> {}",
+        found.len(),
+        rows,
+        not_found.len(),
+        bad.len(),
+        if bad.is_empty() { String::new() } else { format!(" ({})", bad.join(", ")) },
+        left.len(),
+        urls_path.display()
+    ));
+    run_handoff(data, srns, false, log);
+    Ok(())
 }
 
 /// Add UUIDs to `log/outdated_uuids.txt` (devices whose records must be
@@ -520,6 +722,70 @@ mod tests {
             std::fs::read_to_string(dir.join("uuids.txt")).unwrap(),
             "a\nd\n"
         );
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn gtins_from_mirror_and_drop_answers() {
+        let tmp = std::env::temp_dir().join(format!("handoff_gtin_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        for d in ["db", "log", "answers"] {
+            std::fs::create_dir_all(tmp.join(d)).unwrap();
+        }
+        let lc = "CREATE TABLE listing_cache (uuid TEXT PRIMARY KEY, srn TEXT NOT NULL DEFAULT '', manufacturer_name TEXT NOT NULL DEFAULT '', primary_di TEXT NOT NULL DEFAULT '', trade_name TEXT NOT NULL DEFAULT '', risk_class TEXT NOT NULL DEFAULT '', device_status TEXT NOT NULL DEFAULT '', version_number INTEGER, budi_version_number INTEGER, listed_at TEXT NOT NULL DEFAULT '', budi_ulid TEXT NOT NULL DEFAULT '');
+             INSERT INTO listing_cache (uuid, srn, primary_di) VALUES ('u1','S1','111');";
+        let db = rusqlite::Connection::open(tmp.join("db/version_tracking.db")).unwrap();
+        db.execute_batch(lc).unwrap();
+        drop(db);
+        let m = rusqlite::Connection::open(tmp.join("mirror.db")).unwrap();
+        m.execute_batch(
+            r#"CREATE TABLE devices_listing (primaryDi TEXT, rawJson TEXT);
+               INSERT INTO devices_listing VALUES
+                 ('222','{"uuid":"u2","primaryDi":"222","manufacturerSrn":"S2","latestVersion":true,"basicUdiDiDataUlid":"B2"}'),
+                 ('222','{"uuid":"u2old","primaryDi":"222","manufacturerSrn":"S2","latestVersion":false}');"#,
+        )
+        .unwrap();
+        drop(m);
+        std::fs::write(
+            tmp.join("gtins.txt"),
+            "111\n222\n333\n444\n555\nnot-a-gtin\n",
+        )
+        .unwrap();
+        add_gtins(
+            &tmp,
+            &tmp.join("gtins.txt"),
+            Some(&tmp.join("mirror.db")),
+            &[],
+            &|_| {},
+        )
+        .unwrap();
+        let read = |p: &str| std::fs::read_to_string(tmp.join(p)).unwrap_or_default();
+        // 111 known, 222 from the mirror (latest version only), 333/444/555 to ask.
+        assert_eq!(read("log/handoff/uuids.txt"), "u1\nu2\n");
+        assert_eq!(read("log/handoff/gtin_urls.txt").lines().count(), 3);
+        assert!(read("log/handoff/gtin_urls.txt").contains("primaryDi=333&"));
+
+        let put = |p: &str, b: &str| std::fs::write(tmp.join("answers").join(p), b).unwrap();
+        put(
+            "333.json",
+            r#"{"content":[{"uuid":"u3","primaryDi":"333","manufacturerSrn":"S3"}],"totalElements":1}"#,
+        );
+        put(
+            "444.json",
+            r#"{"content":[],"totalElements":0,"pageable":{"pageNumber":0}}"#,
+        );
+        put(
+            "555.json",
+            r#"{"content":[],"totalElements":0,"pageable":"INSTANCE"}"#,
+        );
+        collect_gtins(&tmp, &tmp.join("answers"), &[], &|_| {}).unwrap();
+        assert_eq!(read("log/handoff/uuids.txt"), "u1\nu2\nu3\n");
+        assert_eq!(read("log/handoff/gtins_found.txt"), "333\n");
+        assert_eq!(read("log/handoff/gtins_not_found.txt"), "444\n");
+        // The INSTANCE placeholder is no answer: 555 stays to be asked again.
+        let left = read("log/handoff/gtin_urls.txt");
+        assert_eq!(left.lines().count(), 1);
+        assert!(left.contains("primaryDi=555&"));
         let _ = std::fs::remove_dir_all(&tmp);
     }
 

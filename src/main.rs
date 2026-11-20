@@ -2022,7 +2022,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Some("handoff") => {
-            // handoff [srns.txt] [--upload | --collect <dir>]
+            // handoff [srns.txt] [--upload | --collect <dir> | --gtins <file> [--mirror <db>] | --collect-gtins <dir>]
             // Writes log/handoff/urls.txt (listing URLs of the SRNs) and
             // log/handoff/uuids.txt (known devices without detail/Basic UDI-DI).
             // --upload copies them to EUDAMED_HANDOFF_HOST (clears /tmp/uuid and
@@ -2048,6 +2048,26 @@ fn main() -> Result<()> {
                 // into log/handoff/.
                 let stamp = || chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
                 return handoff::collect_local(&data, std::path::Path::new(dir), &srns, &|m| {
+                    println!("{} {m}", stamp())
+                });
+            }
+            let opt = |k: &str| {
+                args.iter()
+                    .position(|a| a == k)
+                    .and_then(|i| args.get(i + 1))
+                    .map(std::path::PathBuf::from)
+            };
+            let stamp = || chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+            if let Some(dir) = opt("--collect-gtins") {
+                // Answers of the GTIN lookups (drop/gtin/<GTIN>.json, drop_import.sh).
+                return handoff::collect_gtins(&data, &dir, &srns, &|m| {
+                    println!("{} {m}", stamp())
+                });
+            }
+            if let Some(file) = opt("--gtins") {
+                // GTIN list into the hand-off: from the mirror db where known,
+                // the rest to log/handoff/gtin_urls.txt.
+                return handoff::add_gtins(&data, &file, opt("--mirror").as_deref(), &srns, &|m| {
                     println!("{} {m}", stamp())
                 });
             }
