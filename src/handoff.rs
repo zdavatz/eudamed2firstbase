@@ -18,9 +18,10 @@
 //! `/tmp/uuid` and `/tmp/url` are deleted and recreated empty first, then
 //! `uuids.txt` / `urls.txt` are copied into them.
 //!
-//! [`collect`] (step 5, `handoff --collect` from cron) picks up the listing
-//! pages the operator downloaded into `/tmp/url_down`, compares them and hands
-//! back the UUIDs to download (or the still missing pages).
+//! [`collect_local`] (step 5, `handoff --collect <dir>`, called by
+//! `drop_import.sh` for pages from the local `drop/url_down`) compares the
+//! listing pages and writes the next lists (UUIDs, or still missing pages).
+//! Nothing here downloads from EUDAMED or polls another host.
 
 use anyhow::{bail, Context, Result};
 use std::collections::{BTreeSet, HashSet};
@@ -240,9 +241,6 @@ pub fn run_handoff(data: &Path, srns: &[String], log: &dyn Fn(&str)) {
     match std::env::var(HOST_ENV) {
         Ok(host) if !host.trim().is_empty() => match upload(host.trim(), &dir) {
             Ok(()) => {
-                // A fresh full URL list starts a new round: an unfinished one
-                // must not mix older pages into it.
-                close_open_rounds(data);
                 log(&format!(
                 "Hand-off: copied to the hand-off host ({REMOTE_UUID_DIR}/uuids.txt, {REMOTE_URL_DIR}/urls.txt; both dirs cleared first)"
             ))
@@ -253,9 +251,6 @@ pub fn run_handoff(data: &Path, srns: &[String], log: &dyn Fn(&str)) {
     }
 }
 
-/// Download folder of the listing pages on the hand-off host.
-pub const REMOTE_LISTING_DIR: &str = "/tmp/url_down";
-
 const SSH_OPTS: [&str; 4] = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=30"];
 
 fn check_host(host: &str) -> Result<()> {
@@ -263,92 +258,6 @@ fn check_host(host: &str) -> Result<()> {
         bail!("{HOST_ENV}: invalid host {host:?}");
     }
     Ok(())
-}
-
-/// Run `script` on `host`, return its stdout.
-fn ssh(host: &str, script: &str) -> Result<String> {
-    let out = Command::new("ssh")
-        .args(SSH_OPTS)
-        .arg(host)
-        .arg(script)
-        .output()
-        .context("ssh")?;
-    if !out.status.success() {
-        bail!(
-            "ssh {script:?} failed ({}): {}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr).trim()
-        );
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).to_string())
-}
-
-/// Replace the contents of `remote_dir` on `host` with one file `name`
-/// holding `lines` (the directory is deleted and recreated empty first).
-fn put_list(host: &str, remote_dir: &str, name: &str, lines_: &[String]) -> Result<()> {
-    let tmp = std::env::temp_dir().join(format!("handoff_{}_{name}", std::process::id()));
-    std::fs::write(&tmp, lines(lines_))?;
-    ssh(
-        host,
-        &format!("rm -rf {remote_dir} && mkdir -p {remote_dir}"),
-    )?;
-    let r = run(Command::new("scp")
-        .args(SSH_OPTS)
-        .arg(&tmp)
-        .arg(format!("{host}:{remote_dir}/{name}")));
-    let _ = std::fs::remove_file(&tmp);
-    r
-}
-
-/// The import folder for this round: the newest `import/<date>_handoff_listing*`
-/// without a `.done` marker, else a new one for today.
-fn collect_dir(data: &Path) -> Result<PathBuf> {
-    let import = data.join("import");
-    std::fs::create_dir_all(&import)?;
-    let mut open: Vec<PathBuf> = std::fs::read_dir(&import)?
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| {
-            p.is_dir()
-                && p.file_name()
-                    .and_then(|n| n.to_str())
-                    .is_some_and(|n| n.contains("_handoff_listing"))
-                && !p.join(".done").exists()
-        })
-        .collect();
-    open.sort();
-    if let Some(d) = open.pop() {
-        return Ok(d);
-    }
-    let date = chrono::Local::now().format("%Y-%m-%d").to_string();
-    for n in 1.. {
-        let name = if n == 1 {
-            format!("{date}_handoff_listing")
-        } else {
-            format!("{date}_handoff_listing_{n}")
-        };
-        let d = import.join(name);
-        if !d.exists() {
-            std::fs::create_dir_all(&d)?;
-            return Ok(d);
-        }
-    }
-    unreachable!()
-}
-
-/// Mark every unfinished `import/*_handoff_listing*` round as done
-/// (`.done` = "superseded"): a new full URL list was handed off.
-fn close_open_rounds(data: &Path) {
-    let Ok(rd) = std::fs::read_dir(data.join("import")) else {
-        return;
-    };
-    for e in rd.flatten() {
-        let p = e.path();
-        let name = e.file_name().to_string_lossy().to_string();
-        if p.is_dir() && name.contains("_handoff_listing") && !p.join(".done").exists() {
-            let _ = std::fs::write(p.join(".done"), "superseded by a new hand-off\n");
-        }
-    }
 }
 
 /// Expected `(SRN, page)` from the last hand-off `urls.txt`.
@@ -461,89 +370,41 @@ fn add_outdated(data: &Path, uuids: &[String]) -> Result<()> {
     Ok(())
 }
 
-/// Step 5 of the hand-off (20.11.2026): pick up the listing pages the operator
-/// downloaded into `/tmp/url_down` on `host`, compare them, and hand the
-/// UUIDs to download back via `/tmp/uuid`.
+/// Step 5 of the hand-off (20.11.2026), local: compare the listing pages in
+/// `dir` (moved there from the drop folder by `drop_import.sh`) and write
+/// what to download next into `log/handoff/`:
 ///
-/// Does nothing while `/tmp/url_down` is empty or a file in it changed in the
-/// last 2 minutes (download in progress). Otherwise the pages are copied into
-/// the round's `import/<date>_handoff_listing*` folder, checked byte for byte
-/// and only then deleted on the host. Still missing pages → `/tmp/url` gets
-/// just those URLs. Complete → new devices go into `listing_cache`, version
-/// bumps / status changes into `log/outdated_uuids.txt`, and `/tmp/uuid` gets
-/// every known device without detail / Basic UDI-DI plus the outdated ones;
-/// `/tmp/url` is emptied and the folder marked `.done`. `/tmp/uuid` and
-/// `/tmp/url` are always deleted and recreated before writing.
-pub fn collect(data: &Path, host: &str, srns: &[String], log: &dyn Fn(&str)) -> Result<()> {
-    check_host(host)?;
-    let listing = ssh(
-        host,
-        &format!(
-            "mkdir -p {d}; echo \"$(find {d} -type f | wc -l) $(find {d} -type f -mmin -2 | wc -l)\"",
-            d = REMOTE_LISTING_DIR
-        ),
-    )?;
-    let mut it = listing
-        .split_whitespace()
-        .map(|x| x.parse::<usize>().unwrap_or(0));
-    let (files, fresh) = (it.next().unwrap_or(0), it.next().unwrap_or(0));
-    if files == 0 {
-        return Ok(());
-    }
-    if fresh > 0 {
-        log(&format!(
-            "Hand-off collect: {files} file(s) in {REMOTE_LISTING_DIR}, {fresh} changed in the last 2 min — waiting"
-        ));
-        return Ok(());
-    }
-    let dir = collect_dir(data)?;
-    let src = format!("{host}:{REMOTE_LISTING_DIR}/");
-    let ssh_e = format!("ssh {}", SSH_OPTS.join(" "));
-    run(Command::new("rsync")
-        .args(["-a", "-e", &ssh_e, &src])
-        .arg(format!("{}/", dir.display())))?;
-    let diff = Command::new("rsync")
-        .args(["-rcn", "--out-format=%n", "-e", &ssh_e, &src])
-        .arg(format!("{}/", dir.display()))
-        .output()
-        .context("rsync verify")?;
-    let differing = String::from_utf8_lossy(&diff.stdout)
-        .lines()
-        .filter(|l| !l.ends_with('/'))
-        .count();
-    if !diff.status.success() || differing > 0 {
-        bail!("copy of {REMOTE_LISTING_DIR} not verified ({differing} file(s) differ) — left on the host");
-    }
-    ssh(
-        host,
-        &format!("find {REMOTE_LISTING_DIR} -mindepth 1 -delete"),
-    )?;
-    log(&format!(
-        "Hand-off collect: {files} listing file(s) copied to {} and verified; {REMOTE_LISTING_DIR} emptied",
-        dir.display()
-    ));
-
+/// - pages still missing (an SRN grew, a page unusable, an expected SRN
+///   without any page) → `urls.txt` lists only those, `uuids.txt` stays;
+/// - listing complete → new devices go into `listing_cache` (so the nightly
+///   pushes them once their records are there), version bumps / status
+///   changes into `log/outdated_uuids.txt`, `uuids.txt` gets every known
+///   device without detail / Basic UDI-DI plus the outdated ones, and
+///   `urls.txt` is emptied.
+pub fn collect_local(data: &Path, dir: &Path, srns: &[String], log: &dyn Fn(&str)) -> Result<()> {
     let db = data.join("db").join("version_tracking.db");
     let tag = dir
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or("handoff")
+        .unwrap_or("drop_listing")
         .to_string();
-    let c = crate::listing_compare::run(&dir, &db, &data.join("log"), &tag)?;
-    let (pages, _) = crate::listing_compare::read_dir(&dir)?;
+    let c = crate::listing_compare::run(dir, &db, &data.join("log"), &tag)?;
+    let (pages, _) = crate::listing_compare::read_dir(dir)?;
     let missing = still_missing(&expected_pages(data), &pages, &c);
+    let hdir = data.join("log").join("handoff");
+    std::fs::create_dir_all(&hdir)?;
     if !missing.is_empty() {
         let urls: Vec<String> = missing.iter().map(|(s, p)| listing_url(s, *p)).collect();
-        put_list(host, REMOTE_URL_DIR, "urls.txt", &urls)?;
+        std::fs::write(hdir.join("urls.txt"), lines(&urls))?;
         log(&format!(
-            "Hand-off collect: {} page(s) still missing — {REMOTE_URL_DIR}/urls.txt now lists only those; {REMOTE_UUID_DIR} untouched until the listing is complete",
-            urls.len()
+            "Listing: {} page(s) still missing -> {} (uuids.txt unchanged until the listing is complete)",
+            urls.len(),
+            hdir.join("urls.txt").display()
         ));
         return Ok(());
     }
-
     let new: HashSet<String> = c.new.iter().map(|d| d.uuid.clone()).collect();
-    let inserted = insert_new(&db, &dir, &new)?;
+    let inserted = insert_new(&db, dir, &new)?;
     let changed: Vec<String> = c
         .version_bumps
         .iter()
@@ -552,18 +413,10 @@ pub fn collect(data: &Path, host: &str, srns: &[String], log: &dyn Fn(&str)) -> 
         .collect();
     add_outdated(data, &changed)?;
     let h = build(data, srns)?;
-    let hdir = write(
-        data,
-        &Handoff {
-            urls: Vec::new(),
-            uuids: h.uuids.clone(),
-        },
-    )?;
-    put_list(host, REMOTE_UUID_DIR, "uuids.txt", &h.uuids)?;
-    put_list(host, REMOTE_URL_DIR, "urls.txt", &[])?;
-    std::fs::write(dir.join(".done"), "")?;
+    std::fs::write(hdir.join("uuids.txt"), lines(&h.uuids))?;
+    std::fs::write(hdir.join("urls.txt"), "")?;
     log(&format!(
-        "Hand-off collect: listing complete — {} new ({} added to listing_cache), {} version bump(s), {} status change(s); {} UUID(s) to download -> {REMOTE_UUID_DIR}/uuids.txt ({}); {REMOTE_URL_DIR} emptied",
+        "Listing complete: {} new ({} added to listing_cache), {} version bump(s), {} status change(s); {} UUID(s) to download -> {}; urls.txt emptied",
         c.new.len(),
         inserted,
         c.version_bumps.len(),
@@ -668,13 +521,6 @@ mod tests {
             still_missing(&exp, &srns, &c),
             vec![("A".to_string(), 2), ("B".to_string(), 0)]
         );
-        // A new round folder per day; a .done folder is not reused.
-        let d1 = collect_dir(&tmp).unwrap();
-        assert_eq!(collect_dir(&tmp).unwrap(), d1);
-        std::fs::write(d1.join(".done"), "").unwrap();
-        let d2 = collect_dir(&tmp).unwrap();
-        assert_ne!(d1, d2);
-        assert!(d2.to_string_lossy().ends_with("_handoff_listing_2"));
         let _ = std::fs::remove_dir_all(&tmp);
     }
 }

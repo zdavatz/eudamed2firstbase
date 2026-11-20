@@ -4,6 +4,7 @@
 #
 #   ~/eudamed2firstbase/drop/detail/<uuid>.json   (udiDiData)
 #   ~/eudamed2firstbase/drop/basic/<uuid>.json    (basicUdiData)
+#   ~/eudamed2firstbase/drop/url_down/<SRN>_page<N>.json  (listing pages)
 #
 # A file is taken once it has not changed for 2 minutes (download finished).
 # Records (non-empty, JSON object) move to import/<date>_drop_detail|basic/,
@@ -14,11 +15,12 @@
 # Log: log/drop_import.log
 DATA="${DATA:-$HOME/eudamed2firstbase}"
 DROP="$DATA/drop"
+REPO="${REPO:-$(cd "$(dirname "$0")" && pwd)}"
 MAX_PER_DAY="${MAX_PER_DAY:-1500}"
 DAY=$(date +%F)
 LOG="$DATA/log/drop_import.log"
 RELEASED="$DATA/log/drop_released.txt"
-mkdir -p "$DROP/detail" "$DROP/basic" "$DATA/log"
+mkdir -p "$DROP/detail" "$DROP/basic" "$DROP/url_down" "$DATA/log"
 exec 9>"$DATA/log/drop_import.lock"
 flock -n 9 || exit 0
 log() { echo "$(date '+%F %T') $*" >> "$LOG"; }
@@ -38,6 +40,21 @@ for kind in detail basic; do
   done < <(find "$DROP/$kind" -maxdepth 1 -type f -name '*.json' -mmin +2 -print0)
   [ $((moved+bad)) -gt 0 ] && log "$kind: $moved imported, $bad rejected (not a JSON record)"
 done
+
+# 1b. Listing pages (<SRN>_page<N>.json) from drop/url_down: move them to
+# import/<date>_drop_listing/ and compare. Missing pages -> log/handoff/urls.txt;
+# listing complete -> new devices into listing_cache, log/handoff/uuids.txt.
+lm=0
+while IFS= read -r -d '' f; do
+  mkdir -p "$DATA/import/${DAY}_drop_listing"
+  mv -f "$f" "$DATA/import/${DAY}_drop_listing/"; lm=$((lm+1))
+done < <(find "$DROP/url_down" -maxdepth 1 -type f -name '*_page*.json' -mmin +2 -print0)
+if [ "$lm" -gt 0 ]; then
+  log "listing: $lm page(s) moved to import/${DAY}_drop_listing"
+  "$REPO/target/debug/eudamed2firstbase" handoff "$REPO/srns_sheet.txt" \
+    --collect "$DATA/import/${DAY}_drop_listing" >> "$LOG" 2>&1 \
+    || log "listing compare failed (rc=$?)"
+fi
 
 # 2. Release complete devices (detail + Basic UDI-DI) into eudamed_json/.
 touch "$RELEASED"
