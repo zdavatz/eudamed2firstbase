@@ -2022,7 +2022,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Some("handoff") => {
-            // handoff [srns.txt] [--upload | --collect <dir> | --gtins <file> [--mirror <db>] | --collect-gtins <dir>]
+            // handoff [srns.txt] [--upload | --collect <dir> | --gtins <file> [--mirror <db>] | --collect-gtins <dir> | --known <uuids.txt>]
             // Writes log/handoff/urls.txt (listing URLs of the SRNs) and
             // log/handoff/uuids.txt (known devices without detail/Basic UDI-DI).
             // --upload copies them to EUDAMED_HANDOFF_HOST (clears /tmp/uuid and
@@ -2063,6 +2063,14 @@ fn main() -> Result<()> {
                 return handoff::collect_gtins(&data, &dir, &srns, &|m| {
                     println!("{} {m}", stamp())
                 });
+            }
+            if let Some(file) = opt("--known") {
+                // drop_import.sh: "uuid<TAB>srn" for every UUID of <file> that is
+                // in listing_cache (any number of UUIDs; no shell argument limit).
+                for (u, srn) in handoff::known_in_cache(&data, &file)? {
+                    println!("{u}\t{srn}");
+                }
+                return Ok(());
             }
             if let Some(file) = opt("--gtins") {
                 // GTIN list into the hand-off: from the mirror db where known,

@@ -383,6 +383,33 @@ fn insert_row(con: &rusqlite::Connection, d: &serde_json::Value, now: &str) -> R
     )?)
 }
 
+/// The UUIDs of `file` (one per line) that are in `listing_cache`, with their
+/// SRN, sorted by UUID. Used by `drop_import.sh` (`handoff --known`) to plan
+/// the push: thousands of UUIDs in a shell `sqlite3` argument fail with
+/// "Argument list too long" (20.11.2026, 6'752 UUIDs).
+pub fn known_in_cache(data: &Path, file: &Path) -> Result<Vec<(String, String)>> {
+    let wanted: BTreeSet<String> = std::fs::read_to_string(file)
+        .with_context(|| format!("read {}", file.display()))?
+        .lines()
+        .map(|l| l.split('\t').next().unwrap_or("").trim().to_string())
+        .filter(|u| !u.is_empty() && !u.starts_with('#'))
+        .collect();
+    let con = rusqlite::Connection::open_with_flags(
+        data.join("db").join("version_tracking.db"),
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .context("open version_tracking.db")?;
+    con.busy_timeout(std::time::Duration::from_secs(60))?;
+    let mut st = con.prepare_cached("SELECT srn FROM listing_cache WHERE uuid = ?1")?;
+    let mut out = Vec::new();
+    for u in wanted {
+        if let Ok(srn) = st.query_row([&u], |r| r.get::<_, String>(0)) {
+            out.push((u, srn));
+        }
+    }
+    Ok(out)
+}
+
 /// Public GTIN lookup URL (same query as the nightly's GTIN pass). The
 /// operator saves the answer as `<GTIN>.json` into `drop/gtin/`.
 pub fn gtin_url(gtin: &str) -> String {
@@ -721,6 +748,41 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(dir.join("uuids.txt")).unwrap(),
             "a\nd\n"
+        );
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn known_in_cache_many_uuids() {
+        let tmp = std::env::temp_dir().join(format!("handoff_known_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join("db")).unwrap();
+        let db = rusqlite::Connection::open(tmp.join("db/version_tracking.db")).unwrap();
+        db.execute_batch("CREATE TABLE listing_cache (uuid TEXT PRIMARY KEY, srn TEXT);")
+            .unwrap();
+        let mut list = String::new();
+        for i in 0..10_000 {
+            let u = format!("{i:08x}-0000-0000-0000-000000000000");
+            if i % 2 == 0 {
+                db.execute(
+                    "INSERT INTO listing_cache VALUES (?1, ?2)",
+                    [&u, &format!("S{}", i % 7)],
+                )
+                .unwrap();
+            }
+            list.push_str(&u);
+            list.push('\n');
+        }
+        drop(db);
+        std::fs::write(tmp.join("u.txt"), list).unwrap();
+        let k = known_in_cache(&tmp, &tmp.join("u.txt")).unwrap();
+        assert_eq!(k.len(), 5_000);
+        assert_eq!(
+            k[0],
+            (
+                "00000000-0000-0000-0000-000000000000".to_string(),
+                "S0".to_string()
+            )
         );
         let _ = std::fs::remove_dir_all(&tmp);
     }

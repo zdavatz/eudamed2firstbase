@@ -111,9 +111,13 @@ if ! flock -n 8 || pgrep -f "eudamed2firstbase (check|deep-scan|repush-srn) " >/
   exit 0
 fi
 sort -u "$PENDING" > "$tmp/push_uuids"
-in_list=$(printf "'%s'," $(cat "$tmp/push_uuids")); in_list=${in_list%,}
-sqlite3 "$DATA/db/version_tracking.db" "SELECT DISTINCT srn FROM listing_cache WHERE uuid IN ($in_list)" > "$tmp/push_srns"
-known=$(sqlite3 "$DATA/db/version_tracking.db" "SELECT COUNT(*) FROM listing_cache WHERE uuid IN ($in_list)")
+# Which queued UUIDs are in listing_cache, and their SRNs: asked in Rust
+# (handoff --known) — thousands of UUIDs in one sqlite3 argument fail with
+# "Argument list too long" (20.11.2026, 6'752).
+"$REPO/target/debug/eudamed2firstbase" handoff --known "$tmp/push_uuids" > "$tmp/known" \
+  || { log "push: listing_cache lookup failed (rc=$?) — queue kept"; exit 0; }
+cut -f2 "$tmp/known" | sort -u > "$tmp/push_srns"
+known=$(wc -l < "$tmp/known")
 total=$(wc -l < "$tmp/push_uuids")
 if [ ! -s "$tmp/push_srns" ]; then
   log "push: none of the $total queued device(s) is in listing_cache — compare the listing first (queue kept)"
@@ -130,6 +134,6 @@ rc=$?
 log "push: rc=$rc — $(grep -E '^Done:' "$PLOG" | tail -1)"
 if [ "$rc" -eq 0 ]; then
   # Keep only the queued devices that are not in listing_cache yet.
-  sqlite3 "$DATA/db/version_tracking.db" "SELECT uuid FROM listing_cache WHERE uuid IN ($in_list)" | sort -u > "$tmp/pushed"
+  cut -f1 "$tmp/known" | sort -u > "$tmp/pushed"
   comm -23 "$tmp/push_uuids" "$tmp/pushed" > "$PENDING"
 fi
