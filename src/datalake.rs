@@ -527,6 +527,7 @@ pub fn query_logged(
         match &res {
             Ok(_) => DL_FAILS.store(0, Relaxed),
             Err(e) => {
+                FAILED_THIS_RUN.store(true, Relaxed);
                 if first_fail() {
                     notice(format!(
                         "{NOT_RESPONDING} ({e}) — devices are listed from the cached listing where one exists; new or changed devices are not found until it answers again"
@@ -541,6 +542,15 @@ pub fn query_logged(
         }
     }
     res
+}
+
+/// A datalake request of this process failed (20.11.2026): `check` then
+/// writes the hand-off lists for the operator (see `handoff.rs`).
+static FAILED_THIS_RUN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Some datalake request of this process failed (any error, 404 included).
+pub fn failed_this_run() -> bool {
+    FAILED_THIS_RUN.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// Datalake requests that failed in a row (any error before the first page).

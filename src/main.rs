@@ -11,6 +11,7 @@ mod eudamed;
 mod eudamed_json;
 mod firstbase;
 mod gui;
+mod handoff;
 mod installer;
 mod listing_compare;
 mod mail;
@@ -462,6 +463,14 @@ fn main() -> Result<()> {
                         result.uuid_versions.push(tup);
                     }
                 }
+            }
+
+            // Datalake failed (20.11.2026): new devices and version bumps were not
+            // found. Write the listing URLs and the UUIDs without records for the
+            // operator's browser download; with EUDAMED_HANDOFF_HOST set they are
+            // copied to that host (/tmp/uuid and /tmp/url cleared first).
+            if datalake::failed_this_run() {
+                handoff::run_handoff(&download::app_data_dir(), &srns, &|m| eprintln!("{m}"));
             }
 
             // Devices owed from a prior failed push: keep only those whose converted
@@ -2001,6 +2010,45 @@ fn main() -> Result<()> {
                 "Production"
             };
             send_gs1_report(&config, env, accepted, rejected, &srns, &gtins, session_id)?;
+            Ok(())
+        }
+        Some("handoff") => {
+            // handoff [srns.txt] [--upload]
+            // Writes log/handoff/urls.txt (listing URLs of the SRNs) and
+            // log/handoff/uuids.txt (known devices without detail/Basic UDI-DI).
+            // --upload copies them to EUDAMED_HANDOFF_HOST (clears /tmp/uuid and
+            // /tmp/url there first). `check` does this by itself when the
+            // datalake failed.
+            let srns: Vec<String> = match args.get(2).filter(|a| !a.starts_with("--")) {
+                Some(f) => std::fs::read_to_string(f)
+                    .with_context(|| format!("read {f}"))?
+                    .lines()
+                    .map(|l| l.trim().to_string())
+                    .filter(|l| !l.is_empty() && !l.starts_with('#'))
+                    .collect(),
+                None => Vec::new(),
+            };
+            let data = download::app_data_dir();
+            let h = handoff::build(&data, &srns)?;
+            let dir = handoff::write(&data, &h)?;
+            eprintln!(
+                "{} listing URL(s), {} UUID(s) without detail/Basic UDI-DI -> {}",
+                h.urls.len(),
+                h.uuids.len(),
+                dir.display()
+            );
+            if args.iter().any(|a| a == "--upload") {
+                let host = std::env::var(handoff::HOST_ENV)
+                    .ok()
+                    .filter(|h| !h.trim().is_empty())
+                    .with_context(|| format!("--upload needs {}", handoff::HOST_ENV))?;
+                handoff::upload(host.trim(), &dir)?;
+                eprintln!(
+                    "copied to {}/uuids.txt and {}/urls.txt (both cleared first)",
+                    handoff::REMOTE_UUID_DIR,
+                    handoff::REMOTE_URL_DIR
+                );
+            }
             Ok(())
         }
         Some("listing-compare") => {
