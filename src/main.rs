@@ -2013,7 +2013,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Some("handoff") => {
-            // handoff [srns.txt] [--upload]
+            // handoff [srns.txt] [--upload | --collect]
             // Writes log/handoff/urls.txt (listing URLs of the SRNs) and
             // log/handoff/uuids.txt (known devices without detail/Basic UDI-DI).
             // --upload copies them to EUDAMED_HANDOFF_HOST (clears /tmp/uuid and
@@ -2029,6 +2029,19 @@ fn main() -> Result<()> {
                 None => Vec::new(),
             };
             let data = download::app_data_dir();
+            if args.iter().any(|a| a == "--collect") {
+                // Step 5: pick up the operator's listing pages from /tmp/url_down,
+                // compare, and put the UUIDs to download into /tmp/uuid (or the
+                // still missing pages into /tmp/url). Run from cron.
+                let host = std::env::var(handoff::HOST_ENV)
+                    .ok()
+                    .filter(|h| !h.trim().is_empty())
+                    .with_context(|| format!("--collect needs {}", handoff::HOST_ENV))?;
+                let stamp = || chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+                return handoff::collect(&data, host.trim(), &srns, &|m| {
+                    println!("{} {m}", stamp())
+                });
+            }
             let h = handoff::build(&data, &srns)?;
             let dir = handoff::write(&data, &h)?;
             eprintln!(
