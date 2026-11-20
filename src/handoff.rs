@@ -221,33 +221,37 @@ pub fn upload(host: &str, dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Build, write and (with [`HOST_ENV`] set) upload. Errors are logged, never
-/// fatal: the nightly goes on with its push.
-pub fn run_handoff(data: &Path, srns: &[String], log: &dyn Fn(&str)) {
+/// Write the lists after a nightly `check`. `with_urls` (the datalake failed):
+/// both lists. Otherwise (records could not be downloaded, e.g. public 429)
+/// only `uuids.txt`; `urls.txt` stays as it is. Never copies anything to
+/// another host. Errors are logged, never fatal.
+pub fn run_handoff(data: &Path, srns: &[String], with_urls: bool, log: &dyn Fn(&str)) {
     let h = match build(data, srns) {
         Ok(h) => h,
         Err(e) => return log(&format!("Hand-off: lists not built: {e:#}")),
     };
-    let dir = match write(data, &h) {
-        Ok(d) => d,
-        Err(e) => return log(&format!("Hand-off: lists not written: {e:#}")),
-    };
-    log(&format!(
-        "Hand-off: {} listing URL(s), {} UUID(s) without detail/Basic UDI-DI -> {}",
-        h.urls.len(),
-        h.uuids.len(),
-        dir.display()
-    ));
-    match std::env::var(HOST_ENV) {
-        Ok(host) if !host.trim().is_empty() => match upload(host.trim(), &dir) {
-            Ok(()) => {
-                log(&format!(
-                "Hand-off: copied to the hand-off host ({REMOTE_UUID_DIR}/uuids.txt, {REMOTE_URL_DIR}/urls.txt; both dirs cleared first)"
-            ))
-            }
-            Err(e) => log(&format!("Hand-off: upload failed: {e:#}")),
-        },
-        _ => log(&format!("Hand-off: {HOST_ENV} not set, lists not copied")),
+    if with_urls {
+        match write(data, &h) {
+            Ok(dir) => log(&format!(
+                "Hand-off: {} listing URL(s), {} UUID(s) without detail/Basic UDI-DI -> {}",
+                h.urls.len(),
+                h.uuids.len(),
+                dir.display()
+            )),
+            Err(e) => log(&format!("Hand-off: lists not written: {e:#}")),
+        }
+        return;
+    }
+    let dir = data.join("log").join("handoff");
+    let res = std::fs::create_dir_all(&dir)
+        .and_then(|_| std::fs::write(dir.join("uuids.txt"), lines(&h.uuids)));
+    match res {
+        Ok(()) => log(&format!(
+            "Hand-off: {} UUID(s) without detail/Basic UDI-DI -> {} (urls.txt unchanged)",
+            h.uuids.len(),
+            dir.join("uuids.txt").display()
+        )),
+        Err(e) => log(&format!("Hand-off: uuids.txt not written: {e}")),
     }
 }
 

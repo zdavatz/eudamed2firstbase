@@ -469,8 +469,17 @@ fn main() -> Result<()> {
             // found. Write the listing URLs and the UUIDs without records for the
             // operator's browser download; with EUDAMED_HANDOFF_HOST set they are
             // copied to that host (/tmp/uuid and /tmp/url cleared first).
+            // Otherwise (20.11.2026) rewrite uuids.txt only — the listing came
+            // through, but records may have failed (public 429, errors); the list
+            // always shows every known device still without its records.
             if datalake::failed_this_run() {
-                handoff::run_handoff(&download::app_data_dir(), &srns, &|m| eprintln!("{m}"));
+                handoff::run_handoff(&download::app_data_dir(), &srns, true, &|m| {
+                    eprintln!("{m}")
+                });
+            } else {
+                handoff::run_handoff(&download::app_data_dir(), &srns, false, &|m| {
+                    eprintln!("{m}")
+                });
             }
 
             // Devices owed from a prior failed push: keep only those whose converted
