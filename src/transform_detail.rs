@@ -43,6 +43,17 @@ fn truncate_id(s: String) -> String {
     }
 }
 
+/// globalModelDescription is a GS1 `Description250Type` (20.11.2026): a longer
+/// deviceName is an XSD error (G361 / SCHEMA) that rejects the whole CreateMany
+/// batch at document level — 7 devices with 255 characters took 700 with them.
+fn truncate_desc(s: &str) -> String {
+    s.chars()
+        .take(250)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
 /// Transform a full API device detail record into a firstbase TradeItem.
 /// Optional `basic_udi` provides real MDR mandatory fields from the Basic UDI-DI level.
 pub fn transform_detail_device(
@@ -713,7 +724,7 @@ pub fn transform_detail_device(
                 .map(|n| {
                     vec![LangValue {
                         language_code: "en".to_string(),
-                        value: n.clone(),
+                        value: truncate_desc(n),
                     }]
                 })
                 .unwrap_or_default();
@@ -2048,7 +2059,7 @@ pub fn transform_detail_document(
         .map(|n| {
             vec![LangValue {
                 language_code: "en".to_string(),
-                value: n.clone(),
+                value: truncate_desc(n),
             }]
         })
         .unwrap_or_default();

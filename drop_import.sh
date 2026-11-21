@@ -105,6 +105,11 @@ fi
 # queue waits for the next poll. The push holds the nightly lock, so a nightly
 # starting meanwhile is skipped (and caught up by the next night).
 [ -s "$PENDING" ] || exit 0
+# Release the poll lock before pushing (21.11.2026): a push takes hours, and
+# holding the lock meanwhile blocked every import (1'929 GTIN answers waited
+# during the 20.11. push). Two pushes at once are still prevented by the
+# nightly lock below and the pgrep guard.
+exec 9>&-
 exec 8>"$DATA/log/nightly_check.lock"
 if ! flock -n 8 || pgrep -f "eudamed2firstbase (check|deep-scan|repush-srn) " >/dev/null; then
   log "push: $(sort -u "$PENDING" | wc -l) device(s) queued, nightly or another push running — retry next poll"
@@ -132,8 +137,13 @@ log "push: $known device(s) of $(wc -l < "$tmp/push_srns") SRN(s) -> GS1 Product
     --file "$tmp/push_srns" --uuid-file "$tmp/push_uuids" ) > "$PLOG" 2>&1
 rc=$?
 log "push: rc=$rc — $(grep -E '^Done:' "$PLOG" | tail -1)"
-if [ "$rc" -eq 0 ]; then
-  # Keep only the queued devices that are not in listing_cache yet.
+# repush-srn exits 0 even when the push never reached GS1 (21.11.2026: token
+# 503, queue of 80 emptied) — only a "Done:" line means the batches went out.
+if [ "$rc" -eq 0 ] && grep -q '^Done:' "$PLOG"; then
+  # Drop the pushed devices from the queue; keep the ones not in listing_cache
+  # yet and those a poll queued while this push ran (the lock is released).
   cut -f1 "$tmp/known" | sort -u > "$tmp/pushed"
-  comm -23 "$tmp/push_uuids" "$tmp/pushed" > "$PENDING"
+  sort -u "$PENDING" | comm -23 - "$tmp/pushed" > "$tmp/left" && cat "$tmp/left" > "$PENDING"
+else
+  log "push: did not reach GS1 — $(sort -u "$PENDING" | wc -l) device(s) stay queued"
 fi
