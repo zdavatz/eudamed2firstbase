@@ -304,13 +304,12 @@ fn put_list(data: &Path, name: &str, items: &[String]) -> Result<()> {
     Ok(())
 }
 
-/// Write `log/handoff/uuids.txt` and `urls.txt` (the directory is emptied
-/// first). Returns the directory.
+/// Write `log/handoff/uuids.txt` and `urls.txt`; other files there stay.
+/// Returns the directory.
 pub fn write(data: &Path, h: &Handoff) -> Result<PathBuf> {
+    // The directory is no longer emptied first (21.11.2026): that deleted the
+    // GTIN lists next to these two files.
     let dir = data.join("log").join("handoff");
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir)?;
-    }
     put_list(data, "uuids.txt", &h.uuids)?;
     put_list(data, "urls.txt", &h.urls)?;
     Ok(dir)
