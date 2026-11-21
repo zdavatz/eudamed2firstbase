@@ -278,30 +278,67 @@ pub fn record_received(data: &Path, list: &Path) -> Result<usize> {
     Ok(n)
 }
 
-/// Write `log/handoff/<name>` and record what was handed out in the DB.
-fn put_list(data: &Path, name: &str, items: &[String]) -> Result<()> {
+/// Lists whose entries are held back after a hand-out. `gtin_urls.txt` is a
+/// large work list taken in portions, so it is always written in full (an
+/// answered GTIN leaves it anyway); so are the answer lists.
+const TODO_LISTS: [&str; 2] = ["uuids.txt", "urls.txt"];
+
+/// Hours before an entry of a to-do list is handed out again
+/// (`HANDOFF_RETRY_HOURS`, default 24). 21.11.2026: the 21 devices without a
+/// Basic UDI-DI were put into `uuids.txt` 8 times in 4 hours (every poll),
+/// their details came back 3 times and the Basic UDI-DI never.
+fn retry_hours() -> i64 {
+    std::env::var("HANDOFF_RETRY_HOURS")
+        .ok()
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or(24)
+}
+
+/// Write `log/handoff/<name>` and record what was handed out in the DB. For
+/// the to-do lists, an entry handed out less than `retry_hours()` ago is held
+/// back (it reappears once the time is up; an entry whose record came in is
+/// no longer in `items` at all). Returns (written, held back).
+fn put_list(data: &Path, name: &str, items: &[String]) -> Result<(usize, usize)> {
     let dir = data.join("log").join("handoff");
     std::fs::create_dir_all(&dir)?;
-    std::fs::write(dir.join(name), lines(items))
-        .with_context(|| format!("write {}", dir.join(name).display()))?;
     let con = open_db(data)?;
-    let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let now_t = chrono::Local::now();
+    let now = now_t.format("%Y-%m-%d %H:%M:%S").to_string();
+    let out: Vec<String> = if TODO_LISTS.contains(&name) {
+        let cutoff = (now_t - chrono::Duration::hours(retry_hours()))
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
+        let mut st = con.prepare_cached(
+            "SELECT 1 FROM handoff_item WHERE file = ?1 AND item = ?2 AND last_at > ?3",
+        )?;
+        let mut keep = Vec::with_capacity(items.len());
+        for it in items {
+            if !st.exists(rusqlite::params![name, it, cutoff])? {
+                keep.push(it.clone());
+            }
+        }
+        keep
+    } else {
+        items.to_vec()
+    };
+    std::fs::write(dir.join(name), lines(&out))
+        .with_context(|| format!("write {}", dir.join(name).display()))?;
     con.execute_batch("BEGIN")?;
     con.execute(
         "INSERT INTO handoff_write (written_at, file, items) VALUES (?1, ?2, ?3)",
-        rusqlite::params![now, name, items.len() as i64],
+        rusqlite::params![now, name, out.len() as i64],
     )?;
     {
         let mut st = con.prepare_cached(
             "INSERT INTO handoff_item (file, item, first_at, last_at) VALUES (?1, ?2, ?3, ?3)
              ON CONFLICT(file, item) DO UPDATE SET last_at = ?3, times = times + 1",
         )?;
-        for it in items {
+        for it in &out {
             st.execute(rusqlite::params![name, it, now])?;
         }
     }
     con.execute_batch("COMMIT")?;
-    Ok(())
+    Ok((out.len(), items.len() - out.len()))
 }
 
 /// Write `log/handoff/uuids.txt` and `urls.txt`; other files there stay.
@@ -371,9 +408,10 @@ pub fn run_handoff(data: &Path, srns: &[String], with_urls: bool, log: &dyn Fn(&
     let dir = data.join("log").join("handoff");
     let res = put_list(data, "uuids.txt", &h.uuids);
     match res {
-        Ok(()) => log(&format!(
-            "Hand-off: {} UUID(s) without detail/Basic UDI-DI -> {} (urls.txt unchanged)",
+        Ok((n, held)) => log(&format!(
+            "Hand-off: {} UUID(s) without detail/Basic UDI-DI, {n} handed out, {held} held back (handed out < {} h ago) -> {} (urls.txt unchanged)",
             h.uuids.len(),
+            retry_hours(),
             dir.join("uuids.txt").display()
         )),
         Err(e) => log(&format!("Hand-off: uuids.txt not written: {e:#}")),
@@ -595,7 +633,7 @@ fn answer_gtins(
 
 /// Rebuild `log/handoff/gtin_urls.txt` (requested, unanswered, not in
 /// listing_cache) and `gtins_found.txt` / `gtins_not_found.txt` from the DB.
-/// Returns the number of URLs.
+/// Returns the number of URLs handed out (the rest is held back, see `put_list`).
 fn write_gtin_lists(data: &Path, con: &rusqlite::Connection) -> Result<usize> {
     let pick = |sql: &str| -> Result<Vec<String>> {
         let mut st = con.prepare(sql)?;
@@ -608,7 +646,7 @@ fn write_gtin_lists(data: &Path, con: &rusqlite::Connection) -> Result<usize> {
          ORDER BY gtin",
     )?;
     let urls: Vec<String> = ask.iter().map(|g| gtin_url(g)).collect();
-    put_list(data, "gtin_urls.txt", &urls)?;
+    let (n_out, _) = put_list(data, "gtin_urls.txt", &urls)?;
     put_list(
         data,
         "gtins_found.txt",
@@ -619,7 +657,7 @@ fn write_gtin_lists(data: &Path, con: &rusqlite::Connection) -> Result<usize> {
         "gtins_not_found.txt",
         &pick("SELECT gtin FROM handoff_gtin WHERE status = 'not_found' ORDER BY gtin")?,
     )?;
-    Ok(urls.len())
+    Ok(n_out)
 }
 
 /// `handoff --gtins <file> [--mirror <db>]` (20.11.2026): bring a GTIN list
@@ -1012,6 +1050,16 @@ mod tests {
             "555.json",
             r#"{"content":[],"totalElements":0,"pageable":"INSTANCE"}"#,
         );
+        let age = || {
+            let db = rusqlite::Connection::open(tmp.join("db/version_tracking.db")).unwrap();
+            db.execute(
+                "UPDATE handoff_item SET last_at = '2000-01-01 00:00:00'",
+                [],
+            )
+            .unwrap();
+        };
+        // Handed out long ago, so everything still missing goes out again.
+        age();
         collect_gtins(&tmp, &tmp.join("answers"), &[], &|_| {}).unwrap();
         assert_eq!(read("log/handoff/uuids.txt"), "u1\nu2\nu3\n");
         assert_eq!(read("log/handoff/gtins_found.txt"), "333\n");
@@ -1063,6 +1111,44 @@ mod tests {
         assert_eq!(item, "333");
         assert!(bytes > 0);
         drop(db);
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn todo_entries_held_back_until_retry() {
+        let tmp = std::env::temp_dir().join(format!("handoff_retry_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join("db")).unwrap();
+        let v = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            put_list(&tmp, "uuids.txt", &v(&["a", "b"])).unwrap(),
+            (2, 0)
+        );
+        // Same entries again: held back; a new one goes out at once.
+        assert_eq!(
+            put_list(&tmp, "uuids.txt", &v(&["a", "b", "c"])).unwrap(),
+            (1, 2)
+        );
+        let read = |p: &str| std::fs::read_to_string(tmp.join("log/handoff").join(p)).unwrap();
+        assert_eq!(read("uuids.txt"), "c\n");
+        // Answer lists are always written in full.
+        put_list(&tmp, "gtins_found.txt", &v(&["1"])).unwrap();
+        assert_eq!(
+            put_list(&tmp, "gtins_found.txt", &v(&["1"])).unwrap(),
+            (1, 0)
+        );
+        // Once the retry time is up, the entries come back.
+        let db = rusqlite::Connection::open(tmp.join("db/version_tracking.db")).unwrap();
+        db.execute(
+            "UPDATE handoff_item SET last_at = '2000-01-01 00:00:00'",
+            [],
+        )
+        .unwrap();
+        drop(db);
+        assert_eq!(
+            put_list(&tmp, "uuids.txt", &v(&["a", "b", "c"])).unwrap(),
+            (3, 0)
+        );
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
