@@ -25,6 +25,9 @@ mkdir -p "$DROP/detail" "$DROP/basic" "$DROP/url_down" "$DROP/gtin" "$DATA/log"
 exec 9>"$DATA/log/drop_import.lock"
 flock -n 9 || exit 0
 log() { echo "$(date '+%F %T') $*" >> "$LOG"; }
+# Every file taken from the drop folder is recorded in the DB (drop_received,
+# 21.11.2026): "<kind>\t<outcome>\t<path>" lines, stored after step 1c.
+RECV=$(mktemp)
 
 # 1. Move finished files from the drop folder into import/.
 for kind in detail basic; do
@@ -34,13 +37,22 @@ for kind in detail basic; do
     if [ -s "$f" ] && [ "$(head -c 64 "$f" | tr -d ' \t\r\n' | head -c 1)" = "{" ]; then
       mkdir -p "$DATA/import/${DAY}_drop_$kind"
       mv -f "$f" "$DATA/import/${DAY}_drop_$kind/$name"; moved=$((moved+1))
+      printf '%s\timported\t%s\n' "$kind" "$DATA/import/${DAY}_drop_$kind/$name" >> "$RECV"
     else
       mkdir -p "$DATA/import/${DAY}_drop_rejected/$kind"
       mv -f "$f" "$DATA/import/${DAY}_drop_rejected/$kind/$name"; bad=$((bad+1))
+      printf '%s\trejected\t%s\n' "$kind" "$DATA/import/${DAY}_drop_rejected/$kind/$name" >> "$RECV"
     fi
   done < <(find "$DROP/$kind" -maxdepth 1 -type f -name '*.json' -mmin +2 -print0)
   [ $((moved+bad)) -gt 0 ] && log "$kind: $moved imported, $bad rejected (not a JSON record)"
 done
+
+# Records imported -> uuids.txt lists only what is still missing (21.11.2026:
+# it stayed at 374 after the 374 details came in, until the nightly).
+if grep -qE '^(detail|basic)	' "$RECV" 2>/dev/null; then
+  "$REPO/target/debug/eudamed2firstbase" handoff "$REPO/srns_sheet.txt" --uuids >> "$LOG" 2>&1 \
+    || log "uuids.txt not rewritten (rc=$?)"
+fi
 
 # 1b. Listing pages (<SRN>_page<N>.json) from drop/url_down: move them to
 # import/<date>_drop_listing/ and compare. Missing pages -> log/handoff/urls.txt;
@@ -49,6 +61,7 @@ lm=0
 while IFS= read -r -d '' f; do
   mkdir -p "$DATA/import/${DAY}_drop_listing"
   mv -f "$f" "$DATA/import/${DAY}_drop_listing/"; lm=$((lm+1))
+  printf 'listing\timported\t%s\n' "$DATA/import/${DAY}_drop_listing/$(basename "$f")" >> "$RECV"
 done < <(find "$DROP/url_down" -maxdepth 1 -type f -name '*_page*.json' -mmin +2 -print0)
 if [ "$lm" -gt 0 ]; then
   log "listing: $lm page(s) moved to import/${DAY}_drop_listing"
@@ -64,12 +77,23 @@ gm=0
 while IFS= read -r -d '' f; do
   mkdir -p "$DATA/import/${DAY}_drop_gtin"
   mv -f "$f" "$DATA/import/${DAY}_drop_gtin/"; gm=$((gm+1))
+  printf 'gtin\timported\t%s\n' "$DATA/import/${DAY}_drop_gtin/$(basename "$f")" >> "$RECV"
 done < <(find "$DROP/gtin" -maxdepth 1 -type f -name '*.json' -mmin +2 -print0)
 if [ "$gm" -gt 0 ]; then
   log "gtin: $gm answer(s) moved to import/${DAY}_drop_gtin"
   "$REPO/target/debug/eudamed2firstbase" handoff "$REPO/srns_sheet.txt" \
     --collect-gtins "$DATA/import/${DAY}_drop_gtin" >> "$LOG" 2>&1 \
     || log "gtin collect failed (rc=$?)"
+fi
+
+if [ -s "$RECV" ]; then
+  if "$REPO/target/debug/eudamed2firstbase" handoff --received "$RECV" >> "$LOG" 2>&1; then
+    rm -f "$RECV"
+  else
+    log "drop_received not recorded — list kept in $RECV"
+  fi
+else
+  rm -f "$RECV"
 fi
 
 # 2. Release complete devices (detail + Basic UDI-DI) into eudamed_json/ and

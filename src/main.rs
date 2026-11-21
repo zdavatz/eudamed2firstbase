@@ -1943,7 +1943,10 @@ fn main() -> Result<()> {
                     }
                 }
                 Err(e) => {
+                    // Exit non-zero (21.11.2026): drop_import.sh emptied its
+                    // queue twice on rc=0 after a GS1 token 503 (4'088 + 80).
                     eprintln!("\nPush failed: {}", e);
+                    std::process::exit(3);
                 }
             }
             Ok(())
@@ -2022,7 +2025,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Some("handoff") => {
-            // handoff [srns.txt] [--upload | --collect <dir> | --gtins <file> [--mirror <db>] | --collect-gtins <dir> | --known <uuids.txt>]
+            // handoff [srns.txt] [--upload | --collect <dir> | --gtins <file> [--mirror <db>] | --collect-gtins <dir> | --known <uuids.txt> | --received <list> | --uuids]
             // Writes log/handoff/urls.txt (listing URLs of the SRNs) and
             // log/handoff/uuids.txt (known devices without detail/Basic UDI-DI).
             // --upload copies them to EUDAMED_HANDOFF_HOST (clears /tmp/uuid and
@@ -2063,6 +2066,19 @@ fn main() -> Result<()> {
                 return handoff::collect_gtins(&data, &dir, &srns, &|m| {
                     println!("{} {m}", stamp())
                 });
+            }
+            if args.iter().any(|a| a == "--uuids") {
+                // drop_import.sh after importing records: rewrite uuids.txt only
+                // (urls.txt and the GTIN lists stay as they are).
+                handoff::run_handoff(&data, &srns, false, &|m| println!("{} {m}", stamp()));
+                return Ok(());
+            }
+            if let Some(file) = opt("--received") {
+                // drop_import.sh: record the files taken from the drop folder
+                // ("<kind>\t<outcome>\t<path>" per line) in drop_received.
+                let n = handoff::record_received(&data, &file)?;
+                println!("{} drop: {n} file(s) recorded in drop_received", stamp());
+                return Ok(());
             }
             if let Some(file) = opt("--known") {
                 // drop_import.sh: "uuid<TAB>srn" for every UUID of <file> that is
