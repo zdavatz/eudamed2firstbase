@@ -1076,7 +1076,12 @@ fn build_clinical_sizes(device: &ApiDeviceDetail) -> Vec<ClinicalSizeOutput> {
 
             // Skip clinical sizes with unmappable measurement units (e.g. MU999 "Other"),
             // unless we have a characteristic code (in which case there's no value/unit anyway)
-            if unit_code.is_empty() && cs.value.is_some() && characteristic_codes.is_empty() {
+            // A RANGE has minimum/maximum instead of a value (21.11.2026: MU999
+            // range 0-20 went out as RANGE without values -> 097.068, 7 devices
+            // of DE-MF-000010822).
+            let has_number =
+                cs.value.is_some() || cs.minimum_value.is_some() || cs.maximum_value.is_some();
+            if unit_code.is_empty() && has_number && characteristic_codes.is_empty() {
                 return None;
             }
 
