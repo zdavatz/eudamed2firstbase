@@ -465,6 +465,23 @@ impl ApiDeviceDetail {
     }
 }
 
+/// Replace the control characters XML 1.0 does not allow (everything below
+/// 0x20 except tab, LF, CR) with a space (21.11.2026): GS1 converts the JSON
+/// to XML, and one `\x02` in a German additionalDescription ("HD-Ultraschall
+/// \x02Biopsienadel", 2 devices of US) was G361 / SCHEMA and rejected the
+/// whole CreateMany batch at document level (5 devices).
+pub fn clean_text(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            if (c as u32) < 0x20 && !matches!(c, '\t' | '\n' | '\r') {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect()
+}
+
 fn extract_lang_texts(mlt: Option<&MultiLangText>) -> Vec<(String, String)> {
     let raw: Vec<(String, String)> = mlt
         .and_then(|t| t.texts.as_ref())
@@ -472,7 +489,7 @@ fn extract_lang_texts(mlt: Option<&MultiLangText>) -> Vec<(String, String)> {
             texts
                 .iter()
                 .filter_map(|lt| {
-                    let text = lt.text.clone()?;
+                    let text = clean_text(lt.text.as_deref()?);
                     if text.is_empty() {
                         return None;
                     }
@@ -676,4 +693,16 @@ impl BasicUdiDiData {
 pub fn parse_basic_udi_di(json_str: &str) -> anyhow::Result<BasicUdiDiData> {
     let data: BasicUdiDiData = serde_json::from_str(json_str)?;
     Ok(data)
+}
+
+#[cfg(test)]
+mod clean_text_tests {
+    #[test]
+    fn control_chars_become_spaces() {
+        assert_eq!(
+            super::clean_text("HD-Ultraschall\x02Biopsienadel"),
+            "HD-Ultraschall Biopsienadel"
+        );
+        assert_eq!(super::clean_text("a\tb\nc\rd\u{1f}e"), "a\tb\nc\rd e");
+    }
 }

@@ -47,7 +47,8 @@ fn truncate_id(s: String) -> String {
 /// deviceName is an XSD error (G361 / SCHEMA) that rejects the whole CreateMany
 /// batch at document level — 7 devices with 255 characters took 700 with them.
 fn truncate_desc(s: &str) -> String {
-    s.chars()
+    crate::api_detail::clean_text(s)
+        .chars()
         .take(250)
         .collect::<String>()
         .trim_end()
@@ -1881,7 +1882,7 @@ fn extract_descriptions(mlt: &Option<crate::api_detail::MultiLangText>) -> Vec<L
             texts
                 .iter()
                 .filter_map(|lt| {
-                    let text = lt.text.clone()?;
+                    let text = crate::api_detail::clean_text(lt.text.as_deref()?);
                     if text.is_empty() {
                         return None;
                     }

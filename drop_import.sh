@@ -84,6 +84,11 @@ if [ "$gm" -gt 0 ]; then
   "$REPO/target/debug/eudamed2firstbase" handoff "$REPO/srns_sheet.txt" \
     --collect-gtins "$DATA/import/${DAY}_drop_gtin" >> "$LOG" 2>&1 \
     || log "gtin collect failed (rc=$?)"
+else
+  # No answers this poll: rebuild the GTIN lists anyway, so the daily re-check
+  # of the no-match GTINs goes out (21.11.2026; logs only when the list changed).
+  "$REPO/target/debug/eudamed2firstbase" handoff --gtin-lists >> "$LOG" 2>&1 \
+    || log "gtin lists not rewritten (rc=$?)"
 fi
 
 if [ -s "$RECV" ]; then

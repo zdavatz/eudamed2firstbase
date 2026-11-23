@@ -229,7 +229,13 @@ fn ensure_tables(con: &rusqlite::Connection) -> Result<()> {
              gtin TEXT PRIMARY KEY,
              requested_at TEXT NOT NULL,
              status TEXT NOT NULL DEFAULT 'requested',
-             answered_at TEXT);",
+             answered_at TEXT);
+         CREATE TABLE IF NOT EXISTS handoff_gtin_event (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             at TEXT NOT NULL,
+             gtin TEXT NOT NULL,
+             from_status TEXT NOT NULL,
+             to_status TEXT NOT NULL);",
     )?;
     Ok(())
 }
@@ -299,28 +305,47 @@ fn retry_hours() -> i64 {
 /// back (it reappears once the time is up; an entry whose record came in is
 /// no longer in `items` at all). Returns (written, held back).
 fn put_list(data: &Path, name: &str, items: &[String]) -> Result<(usize, usize)> {
+    if TODO_LISTS.contains(&name) {
+        put_list_due(data, name, &[], items)
+    } else {
+        put_list_due(data, name, items, &[])
+    }
+}
+
+/// Write `log/handoff/<name>`: every entry of `always`, plus the entries of
+/// `due` not handed out in the last `retry_hours()` — or still in the file on
+/// disk (not taken yet: a poll must not drop entries the operator's tooling
+/// has not picked up). Records the written entries in the DB. Returns
+/// (written, held back).
+fn put_list_due(
+    data: &Path,
+    name: &str,
+    always: &[String],
+    due: &[String],
+) -> Result<(usize, usize)> {
     let dir = data.join("log").join("handoff");
     std::fs::create_dir_all(&dir)?;
     let con = open_db(data)?;
     let now_t = chrono::Local::now();
     let now = now_t.format("%Y-%m-%d %H:%M:%S").to_string();
-    let out: Vec<String> = if TODO_LISTS.contains(&name) {
-        let cutoff = (now_t - chrono::Duration::hours(retry_hours()))
-            .format("%Y-%m-%d %H:%M:%S")
-            .to_string();
+    let on_disk: HashSet<String> = std::fs::read_to_string(dir.join(name))
+        .map(|b| b.lines().map(|l| l.trim().to_string()).collect())
+        .unwrap_or_default();
+    let cutoff = (now_t - chrono::Duration::hours(retry_hours()))
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string();
+    let mut out: Vec<String> = always.to_vec();
+    {
         let mut st = con.prepare_cached(
             "SELECT 1 FROM handoff_item WHERE file = ?1 AND item = ?2 AND last_at > ?3",
         )?;
-        let mut keep = Vec::with_capacity(items.len());
-        for it in items {
-            if !st.exists(rusqlite::params![name, it, cutoff])? {
-                keep.push(it.clone());
+        for it in due {
+            if on_disk.contains(it) || !st.exists(rusqlite::params![name, it, cutoff])? {
+                out.push(it.clone());
             }
         }
-        keep
-    } else {
-        items.to_vec()
-    };
+    }
+    let held = always.len() + due.len() - out.len();
     std::fs::write(dir.join(name), lines(&out))
         .with_context(|| format!("write {}", dir.join(name).display()))?;
     con.execute_batch("BEGIN")?;
@@ -338,7 +363,7 @@ fn put_list(data: &Path, name: &str, items: &[String]) -> Result<(usize, usize)>
         }
     }
     con.execute_batch("COMMIT")?;
-    Ok((out.len(), items.len() - out.len()))
+    Ok((out.len(), held))
 }
 
 /// Write `log/handoff/uuids.txt` and `urls.txt`; other files there stay.
@@ -609,14 +634,34 @@ fn request_gtins(con: &rusqlite::Connection, gtins: &BTreeSet<String>, now: &str
     Ok(())
 }
 
-/// Store answers; `found` always wins over an earlier `not_found`.
+/// Store answers; `found` always wins over an earlier `not_found`. Every
+/// status change goes into `handoff_gtin_event` (21.11.2026: the daily
+/// re-check of the no-match GTINs shows how many turn up in EUDAMED per day).
+/// Returns the number of GTINs that were `not_found` before.
 fn answer_gtins(
     con: &rusqlite::Connection,
     gtins: &BTreeSet<String>,
     status: &str,
     now: &str,
-) -> Result<()> {
+) -> Result<usize> {
+    let mut was_nf = 0;
     con.execute_batch("BEGIN")?;
+    {
+        let mut old = con.prepare_cached("SELECT status FROM handoff_gtin WHERE gtin = ?1")?;
+        let mut ev = con.prepare_cached(
+            "INSERT INTO handoff_gtin_event (at, gtin, from_status, to_status) VALUES (?1, ?2, ?3, ?4)",
+        )?;
+        for g in gtins {
+            let prev: Option<String> = old.query_row(rusqlite::params![g], |r| r.get(0)).ok();
+            let prev = prev.unwrap_or_else(|| "new".to_string());
+            if prev != status && prev != "found" {
+                ev.execute(rusqlite::params![now, g, prev, status])?;
+                if prev == "not_found" {
+                    was_nf += 1;
+                }
+            }
+        }
+    }
     {
         let mut st = con.prepare_cached(
             "INSERT INTO handoff_gtin (gtin, requested_at, status, answered_at) VALUES (?1, ?3, ?2, ?3)
@@ -628,13 +673,16 @@ fn answer_gtins(
         }
     }
     con.execute_batch("COMMIT")?;
-    Ok(())
+    Ok(was_nf)
 }
 
-/// Rebuild `log/handoff/gtin_urls.txt` (requested, unanswered, not in
-/// listing_cache) and `gtins_found.txt` / `gtins_not_found.txt` from the DB.
-/// Returns the number of URLs handed out (the rest is held back, see `put_list`).
-fn write_gtin_lists(data: &Path, con: &rusqlite::Connection) -> Result<usize> {
+/// Rebuild `log/handoff/gtin_urls.txt` and `gtins_found.txt` /
+/// `gtins_not_found.txt` from the DB. `gtin_urls.txt` = every requested,
+/// unanswered GTIN not in listing_cache, plus the `not_found` GTINs once a day
+/// (21.11.2026, operator: "they have to be looked up again tomorrow, so we see
+/// how big the diff is every day" — held back for `retry_hours()` after each
+/// hand-out, see `put_list_due`). Returns (URLs written, no-match GTINs among them).
+pub fn write_gtin_lists(data: &Path, con: &rusqlite::Connection) -> Result<(usize, usize)> {
     let pick = |sql: &str| -> Result<Vec<String>> {
         let mut st = con.prepare(sql)?;
         let rows = st.query_map([], |r| r.get::<_, String>(0))?;
@@ -645,8 +693,14 @@ fn write_gtin_lists(data: &Path, con: &rusqlite::Connection) -> Result<usize> {
          AND gtin NOT IN (SELECT primary_di FROM listing_cache WHERE primary_di IS NOT NULL)
          ORDER BY gtin",
     )?;
+    let again = pick(
+        "SELECT gtin FROM handoff_gtin WHERE status = 'not_found'
+         AND gtin NOT IN (SELECT primary_di FROM listing_cache WHERE primary_di IS NOT NULL)
+         ORDER BY gtin",
+    )?;
     let urls: Vec<String> = ask.iter().map(|g| gtin_url(g)).collect();
-    let (n_out, _) = put_list(data, "gtin_urls.txt", &urls)?;
+    let again: Vec<String> = again.iter().map(|g| gtin_url(g)).collect();
+    let (n_out, _) = put_list_due(data, "gtin_urls.txt", &urls, &again)?;
     put_list(
         data,
         "gtins_found.txt",
@@ -657,7 +711,7 @@ fn write_gtin_lists(data: &Path, con: &rusqlite::Connection) -> Result<usize> {
         "gtins_not_found.txt",
         &pick("SELECT gtin FROM handoff_gtin WHERE status = 'not_found' ORDER BY gtin")?,
     )?;
-    Ok(n_out)
+    Ok((n_out, n_out - urls.len()))
 }
 
 /// `handoff --gtins <file> [--mirror <db>]` (20.11.2026): bring a GTIN list
@@ -728,7 +782,7 @@ pub fn add_gtins(
         &gtins,
         &chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
     )?;
-    let n_urls = write_gtin_lists(data, &con)?;
+    let (n_urls, _) = write_gtin_lists(data, &con)?;
     let dir = data.join("log").join("handoff");
     log(&format!(
         "GTINs: {} in the list, {} already in listing_cache, {} found in the mirror ({} device(s) added to listing_cache), {} to look up by hand -> {}",
@@ -796,20 +850,56 @@ pub fn collect_gtins(data: &Path, dir: &Path, srns: &[String], log: &dyn Fn(&str
     migrate_state(data, &con)?;
     let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     answer_gtins(&con, &not_found, "not_found", &ts)?;
-    answer_gtins(&con, &found, "found", &ts)?;
-    let left = write_gtin_lists(data, &con)?;
+    let late = answer_gtins(&con, &found, "found", &ts)?;
+    let (left, again) = write_gtin_lists(data, &con)?;
     let urls_path = data.join("log").join("handoff").join("gtin_urls.txt");
     log(&format!(
-        "GTIN answers: {} found ({} device(s) added to listing_cache), {} not in EUDAMED, {} unusable{}; {} GTIN URL(s) left -> {}",
+        "GTIN answers: {} found{} ({} device(s) added to listing_cache), {} not in EUDAMED, {} unusable{}; {} GTIN URL(s) left{} -> {}",
         found.len(),
+        if late > 0 { format!(", {late} of them no match before") } else { String::new() },
         rows,
         not_found.len(),
         bad.len(),
         if bad.is_empty() { String::new() } else { format!(" ({})", bad.join(", ")) },
         left,
+        if again > 0 { format!(" ({again} no-match re-check)") } else { String::new() },
         urls_path.display()
     ));
     run_handoff(data, srns, false, log);
+    Ok(())
+}
+
+/// `handoff --gtin-lists` (drop_import.sh, every poll): rebuild the GTIN lists
+/// so the daily re-check of the no-match GTINs goes out without waiting for
+/// an answer. Logs only when `gtin_urls.txt` changed, with the per-day count of
+/// GTINs found after an earlier no match (`handoff_gtin_event`).
+pub fn gtin_lists(data: &Path, log: &dyn Fn(&str)) -> Result<()> {
+    let con = open_db(data)?;
+    migrate_state(data, &con)?;
+    let path = data.join("log").join("handoff").join("gtin_urls.txt");
+    let before = std::fs::read_to_string(&path).unwrap_or_default();
+    let (n, again) = write_gtin_lists(data, &con)?;
+    if std::fs::read_to_string(&path).unwrap_or_default() != before {
+        let mut st = con.prepare(
+            "SELECT substr(at, 1, 10), count(*) FROM handoff_gtin_event
+             WHERE from_status = 'not_found' AND to_status = 'found'
+             GROUP BY 1 ORDER BY 1 DESC LIMIT 7",
+        )?;
+        let days: Vec<String> = st
+            .query_map([], |r| {
+                Ok(format!(
+                    "{} {}",
+                    r.get::<_, String>(0)?,
+                    r.get::<_, i64>(1)?
+                ))
+            })?
+            .flatten()
+            .collect();
+        log(&format!(
+            "GTIN lists: {n} URL(s) in gtin_urls.txt ({again} no-match re-check); found after a no match: {}",
+            if days.is_empty() { "none yet".to_string() } else { days.join(", ") }
+        ));
+    }
     Ok(())
 }
 
@@ -1064,10 +1154,16 @@ mod tests {
         assert_eq!(read("log/handoff/uuids.txt"), "u1\nu2\nu3\n");
         assert_eq!(read("log/handoff/gtins_found.txt"), "333\n");
         assert_eq!(read("log/handoff/gtins_not_found.txt"), "444\n");
-        // The INSTANCE placeholder is no answer: 555 stays to be asked again.
-        let left = read("log/handoff/gtin_urls.txt");
-        assert_eq!(left.lines().count(), 1);
-        assert!(left.contains("primaryDi=555&"));
+        // The INSTANCE placeholder is no answer: 555 stays to be asked again;
+        // 444 (no match, handed out long ago) goes out for its daily re-check.
+        let first = read("log/handoff/gtin_urls.txt");
+        assert_eq!(first.lines().count(), 2);
+        assert!(first.contains("primaryDi=555&") && first.contains("primaryDi=444&"));
+        let left: String = first
+            .lines()
+            .filter(|l| l.contains("primaryDi=555&"))
+            .map(|l| format!("{l}\n"))
+            .collect();
         // Lists taken out of log/handoff/ come back from log/handoff_state/.
         for f in ["gtin_urls.txt", "gtins_found.txt", "gtins_not_found.txt"] {
             std::fs::remove_file(tmp.join("log/handoff").join(f)).unwrap();
@@ -1095,6 +1191,25 @@ mod tests {
             .unwrap();
         assert_eq!(times, 3);
         drop(db);
+        // The re-check finds 444: recorded as found after a no match.
+        std::fs::create_dir_all(tmp.join("late")).unwrap();
+        std::fs::write(
+            tmp.join("late/444.json"),
+            r#"{"content":[{"uuid":"u4","primaryDi":"444","manufacturerSrn":"S4"}],"totalElements":1}"#,
+        )
+        .unwrap();
+        collect_gtins(&tmp, &tmp.join("late"), &[], &|_| {}).unwrap();
+        let db = rusqlite::Connection::open(tmp.join("db/version_tracking.db")).unwrap();
+        let late: i64 = db
+            .query_row(
+                "SELECT count(*) FROM handoff_gtin_event WHERE gtin = '444' AND from_status = 'not_found' AND to_status = 'found'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(late, 1);
+        drop(db);
+        assert_eq!(read("log/handoff/gtins_not_found.txt"), "");
         let a = tmp.join("answers/333.json");
         std::fs::write(
             tmp.join("recv.txt"),
@@ -1120,16 +1235,23 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join("db")).unwrap();
         let v = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let read = |p: &str| std::fs::read_to_string(tmp.join("log/handoff").join(p)).unwrap();
+        let take = || std::fs::write(tmp.join("log/handoff/uuids.txt"), "").unwrap();
         assert_eq!(
             put_list(&tmp, "uuids.txt", &v(&["a", "b"])).unwrap(),
             (2, 0)
         );
-        // Same entries again: held back; a new one goes out at once.
+        // Not taken yet: the entries stay in the file.
+        assert_eq!(
+            put_list(&tmp, "uuids.txt", &v(&["a", "b"])).unwrap(),
+            (2, 0)
+        );
+        // Taken: held back; a new one goes out at once.
+        take();
         assert_eq!(
             put_list(&tmp, "uuids.txt", &v(&["a", "b", "c"])).unwrap(),
             (1, 2)
         );
-        let read = |p: &str| std::fs::read_to_string(tmp.join("log/handoff").join(p)).unwrap();
         assert_eq!(read("uuids.txt"), "c\n");
         // Answer lists are always written in full.
         put_list(&tmp, "gtins_found.txt", &v(&["1"])).unwrap();

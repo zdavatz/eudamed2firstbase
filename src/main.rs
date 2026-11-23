@@ -5,6 +5,7 @@ mod actors;
 mod api_detail;
 mod api_json;
 mod config;
+mod daily_report;
 mod datalake;
 mod download;
 mod eudamed;
@@ -2024,8 +2025,21 @@ fn main() -> Result<()> {
             send_gs1_report(&config, env, accepted, rejected, &srns, &gtins, session_id)?;
             Ok(())
         }
+        Some("daily-report") => {
+            // daily-report [--days N] (23.11.2026): per day new devices of the hand-off GTIN list
+            // found, devices new / delivered again in GS1 Production, EUDAMED
+            // changes in the hand-downloaded listings. Read-only.
+            let days = args
+                .iter()
+                .position(|a| a == "--days")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(7);
+            print!("{}", daily_report::run(&download::app_data_dir(), days)?);
+            return Ok(());
+        }
         Some("handoff") => {
-            // handoff [srns.txt] [--upload | --collect <dir> | --gtins <file> [--mirror <db>] | --collect-gtins <dir> | --known <uuids.txt> | --received <list> | --uuids]
+            // handoff [srns.txt] [--upload | --collect <dir> | --gtins <file> [--mirror <db>] | --collect-gtins <dir> | --known <uuids.txt> | --received <list> | --uuids | --gtin-lists]
             // Writes log/handoff/urls.txt (listing URLs of the SRNs) and
             // log/handoff/uuids.txt (known devices without detail/Basic UDI-DI).
             // --upload copies them to EUDAMED_HANDOFF_HOST (clears /tmp/uuid and
@@ -2066,6 +2080,11 @@ fn main() -> Result<()> {
                 return handoff::collect_gtins(&data, &dir, &srns, &|m| {
                     println!("{} {m}", stamp())
                 });
+            }
+            if args.iter().any(|a| a == "--gtin-lists") {
+                // drop_import.sh, every poll: GTIN lists incl. the daily
+                // re-check of the no-match GTINs.
+                return handoff::gtin_lists(&data, &|m| println!("{} {m}", stamp()));
             }
             if args.iter().any(|a| a == "--uuids") {
                 // drop_import.sh after importing records: rewrite uuids.txt only
