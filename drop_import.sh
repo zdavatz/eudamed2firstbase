@@ -168,7 +168,13 @@ rc=$?
 log "push: rc=$rc — $(grep -E '^Done:' "$PLOG" | tail -1)"
 # repush-srn exits 0 even when the push never reached GS1 (21.11.2026: token
 # 503, queue of 80 emptied) — only a "Done:" line means the batches went out.
-if [ "$rc" -eq 0 ] && grep -q '^Done:' "$PLOG"; then
+# A batch GS1 never processed (BATCH_UNCONFIRMED, 25.11.2026: 202 devices,
+# every batch "Waiting") also ends with a "Done:" line — keep the whole queue
+# then, the next poll pushes again (devices of confirmed batches are delivered
+# again, which GS1 accepts).
+if grep -q 'never processed (transport failure)' "$PLOG"; then
+  log "push: batch(es) GS1 never processed (BATCH_UNCONFIRMED) — $(sort -u "$PENDING" | wc -l) device(s) stay queued"
+elif [ "$rc" -eq 0 ] && grep -q '^Done:' "$PLOG"; then
   # Drop the pushed devices from the queue; keep the ones not in listing_cache
   # yet and those a poll queued while this push ran (the lock is released).
   cut -f1 "$tmp/known" | sort -u > "$tmp/pushed"
