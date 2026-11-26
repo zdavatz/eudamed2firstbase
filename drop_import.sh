@@ -139,6 +139,15 @@ fi
 # during the 20.11. push). Two pushes at once are still prevented by the
 # nightly lock below and the pgrep guard.
 exec 9>&-
+# Back-off after a BATCH_UNCONFIRMED push (26.11.2026): retrying on every poll
+# pushed the same 1'589 devices 8 times while GS1's queue was jammed (each
+# retry adds CIN workflows to that queue, sends a GS1 report, and re-pushes
+# devices GS1 created but never confirmed → G485). Wait PUSH_BACKOFF_HOURS.
+BACKOFF="$DATA/log/drop_push_backoff_until"
+if [ -s "$BACKOFF" ] && [ "$(date +%s)" -lt "$(cat "$BACKOFF")" ]; then
+  log "push: $(sort -u "$PENDING" | wc -l) device(s) queued, back-off after BATCH_UNCONFIRMED until $(date -d "@$(cat "$BACKOFF")" '+%F %H:%M')"
+  exit 0
+fi
 exec 8>"$DATA/log/nightly_check.lock"
 if ! flock -n 8 || pgrep -f "eudamed2firstbase (check|deep-scan|repush-srn) " >/dev/null; then
   log "push: $(sort -u "$PENDING" | wc -l) device(s) queued, nightly or another push running — retry next poll"
@@ -162,6 +171,7 @@ fi
 export FIRSTBASE_ENV=Production
 PLOG="$DATA/log/drop_push_$(date +%F_%H%M%S).log"
 log "push: $known device(s) of $(wc -l < "$tmp/push_srns") SRN(s) -> GS1 Production, log $PLOG"
+push_start=$(date -u +%FT%TZ)   # push_log.pushed_at is UTC
 ( cd "$REPO" && ./target/debug/eudamed2firstbase repush-srn --reconvert \
     --file "$tmp/push_srns" --uuid-file "$tmp/push_uuids" ) > "$PLOG" 2>&1
 rc=$?
@@ -169,11 +179,15 @@ log "push: rc=$rc — $(grep -E '^Done:' "$PLOG" | tail -1)"
 # repush-srn exits 0 even when the push never reached GS1 (21.11.2026: token
 # 503, queue of 80 emptied) — only a "Done:" line means the batches went out.
 # A batch GS1 never processed (BATCH_UNCONFIRMED, 25.11.2026: 202 devices,
-# every batch "Waiting") also ends with a "Done:" line — keep the whole queue
-# then, the next poll pushes again (devices of confirmed batches are delivered
-# again, which GS1 accepts).
+# every batch "Waiting") also ends with a "Done:" line — keep the devices
+# that were not accepted in this push and retry after PUSH_BACKOFF_HOURS.
 if grep -q 'never processed (transport failure)' "$PLOG"; then
-  log "push: batch(es) GS1 never processed (BATCH_UNCONFIRMED) — $(sort -u "$PENDING" | wc -l) device(s) stay queued"
+  sqlite3 -readonly "$DATA/db/version_tracking.db" \
+    "SELECT DISTINCT uuid FROM push_log WHERE status = 'ACCEPTED' AND firstbase_env = 'Production' AND pushed_at >= '$push_start'" \
+    | sort -u > "$tmp/accepted" || : > "$tmp/accepted"
+  sort -u "$PENDING" | comm -23 - "$tmp/accepted" > "$tmp/left" && cat "$tmp/left" > "$PENDING"
+  echo $(( $(date +%s) + ${PUSH_BACKOFF_HOURS:-4} * 3600 )) > "$BACKOFF"
+  log "push: batch(es) GS1 never processed (BATCH_UNCONFIRMED) — $(wc -l < "$tmp/accepted") accepted left the queue, $(sort -u "$PENDING" | wc -l) device(s) stay queued; next push after $(date -d "@$(cat "$BACKOFF")" '+%F %H:%M')"
 elif [ "$rc" -eq 0 ] && grep -q '^Done:' "$PLOG"; then
   # Drop the pushed devices from the queue; keep the ones not in listing_cache
   # yet and those a poll queued while this push ran (the lock is released).
