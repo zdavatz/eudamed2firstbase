@@ -2025,6 +2025,65 @@ fn main() -> Result<()> {
             send_gs1_report(&config, env, accepted, rejected, &srns, &gtins, session_id)?;
             Ok(())
         }
+        Some("mark-delivered") => {
+            // mark-delivered --uuid-file <f> [--note <text>] (27.11.2026): record devices
+            // GS1 published by hand as ACCEPTED in Production and index their
+            // detail versions, so the nightly stops pushing them as new. Case:
+            // 10 NO_LONGER devices created in a BATCH_UNCONFIRMED batch, then
+            // G485 on every re-push; GS1 published them manually on 26.11.
+            let file = args
+                .iter()
+                .position(|a| a == "--uuid-file")
+                .and_then(|i| args.get(i + 1))
+                .ok_or_else(|| {
+                    anyhow::anyhow!("usage: mark-delivered --uuid-file <f> [--note <text>]")
+                })?;
+            let note = args
+                .iter()
+                .position(|a| a == "--note")
+                .and_then(|i| args.get(i + 1))
+                .cloned()
+                .unwrap_or_else(|| "published manually by GS1".to_string());
+            let uuids: Vec<String> = std::fs::read_to_string(file)?
+                .lines()
+                .map(|l| l.trim().to_string())
+                .filter(|l| !l.is_empty())
+                .collect();
+            let db_path = download::app_data_dir()
+                .join("db")
+                .join("version_tracking.db");
+            let conn = version_db::open_db(&db_path)?;
+            let gln: String = conn
+                .query_row(
+                    "SELECT publish_gln FROM push_session WHERE firstbase_env = 'Production' ORDER BY id DESC LIMIT 1",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap_or_default();
+            let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+            let mut marked = 0;
+            for u in &uuids {
+                let gtin: String = conn
+                    .query_row(
+                        "SELECT gtin FROM push_log WHERE uuid = ?1 ORDER BY id DESC LIMIT 1",
+                        [u],
+                        |r| r.get(0),
+                    )
+                    .unwrap_or_default();
+                marked += conn.execute(
+                    "INSERT INTO push_log (uuid,gtin,pushed_at,status,error_code,error_msg,publish_gln,firstbase_env) VALUES (?1,?2,?3,'ACCEPTED','MANUAL_PUBLISH',?4,?5,'Production')",
+                    rusqlite::params![u, gtin, now, note, gln],
+                )?;
+            }
+            let indexed = download::index_delivered_versions(&uuids);
+            println!(
+                "mark-delivered: {} of {} device(s) recorded as ACCEPTED (Production), {} detail version(s) indexed",
+                marked,
+                uuids.len(),
+                indexed
+            );
+            return Ok(());
+        }
         Some("daily-report") => {
             // daily-report [--days N] (23.11.2026): per day new devices of the hand-off GTIN list
             // found, devices new / delivered again in GS1 Production, EUDAMED
